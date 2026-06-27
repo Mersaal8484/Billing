@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ===================== VIEW FOR IMAGES (WIZARD-LIKE) ===================== -->
+    <record id="view_utility_reading_images" model="ir.ui.view">
+        <field name="name">utility.reading.images.form</field>
+        <field name="model">utility.reading</field>
+        <field name="arch" type="xml">
+            <form string="صور العداد">
+                <sheet>
+                    <group>
+                        <field name="meter_image" widget="image" class="oe_avatar"
+                               options="{'size': [400, 300]}"/>
+                        <field name="meter_image_secondary" widget="image" class="oe_avatar"
+                               options="{'size': [400, 300]}"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button string="إغلاق" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- ===================== ACTION: Images ===================== -->
+    <record id="action_open_meter_images" model="ir.actions.act_window">
+        <field name="name">صورة العداد</field>
+        <field name="res_model">utility.reading</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_utility_reading_images"/>
+        <field name="target">new</field>
+    </record>
+
+    <!-- ===================== LIST VIEW ===================== -->
+    <record id="view_utility_reading_tree" model="ir.ui.view">
+        <field name="name">utility.reading.tree</field>
+        <field name="model">utility.reading</field>
+        <field name="arch" type="xml">
+            <tree decoration-warning="state == 'under_review'"
+                  decoration-success="state == 'approved'"
+                  decoration-danger="state == 'error'">
+                <field name="reading_id"/>
+                <field name="meter_id"/>
+                <field name="account_id"/>
+                <field name="reading_date"/>
+                <field name="reading_value"/>
+                <field name="consumption"/>
+                <field name="consumption_alert" widget="badge" decoration-danger="consumption_alert in ('high','negative','zero')" decoration-success="consumption_alert == 'normal'"/>
+                <field name="reading_type"/>
+                <field name="image_state" optional="show"/>
+                <field name="state" widget="badge" decoration-warning="state == 'under_review'" decoration-success="state == 'approved'" decoration-primary="state == 'billed'"/>
+                <field name="reviewer_id" optional="show"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- ===================== FORM VIEW ===================== -->
+    <record id="view_utility_reading_form" model="ir.ui.view">
+        <field name="name">utility.reading.form</field>
+        <field name="model">utility.reading</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <!-- أزرار حسب الحالة متوافقة مع Odoo 17/18 -->
+                    <button name="action_submit_review" type="object"
+                            string="إرسال للمراجعة" class="oe_highlight"
+                            invisible="state != 'draft'"
+                            groups="utility_core.group_utility_technician"/>
+                    <button name="action_approve" type="object"
+                            string="اعتماد القراءة" class="oe_highlight"
+                            invisible="state != 'under_review'"
+                            groups="utility_core.group_utility_supervisor"/>
+                    <button name="action_reject" type="object"
+                            string="رفض" class="btn-danger"
+                            invisible="state not in ('under_review', 'approved')"
+                            groups="utility_core.group_utility_supervisor"/>
+                    <button name="action_generate_bill" type="object"
+                            string="إنشاء فاتورة" class="oe_highlight"
+                            invisible="state != 'approved'"
+                            groups="utility_core.group_utility_billing_manager"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,under_review,approved,billed"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <!-- صور العداد -->
+                        <button name="%(action_open_meter_images)d" type="action"
+                                class="oe_stat_button" icon="fa-camera"
+                                help="صورة العداد">
+                            <div class="o_stat_info">
+                                <field name="image_state" widget="badge"/>
+                            </div>
+                        </button>
+                    </div>
+                    <group>
+                        <group string="معلومات القراءة">
+                            <field name="reading_id"/>
+                            <field name="meter_id" options="{'no_create': True}"/>
+                            <field name="account_id"/>
+                            <field name="customer_id"/>
+                            <field name="reading_date"/>
+                            <field name="reading_type"/>
+                        </group>
+                        <group string="قراءات العداد">
+                            <field name="previous_reading"/>
+                            <field name="previous_reading_date"/>
+                            <field name="reading_value"/>
+                            <field name="consumption" class="text-success"/>
+                            <!-- تحليل الاستهلاك متوافق مع Odoo 17/18 -->
+                            <field name="consumption_difference" invisible="consumption_alert == 'normal'"/>
+                            <field name="consumption_diff_percentage" invisible="consumption_alert == 'normal'"/>
+                            <field name="consumption_alert" widget="badge"/>
+                        </group>
+                    </group>
+                    <group string="صور العداد">
+                        <field name="meter_image" widget="image"
+                               class="oe_avatar" options="{'size': [200, 150]}"/>
+                        <field name="meter_image_secondary" widget="image"
+                               class="oe_avatar" options="{'size': [200, 150]}"/>
+                    </group>
+                    <group string="المراجعة" groups="utility_core.group_utility_supervisor">
+                        <field name="image_state"/>
+                        <field name="reviewer_id"/>
+                        <field name="review_date"/>
+                        <field name="review_notes"/>
+                        <field name="rejection_reason" invisible="not rejection_reason"/>
+                    </group>
+                    <field name="remarks" nolabel="1" placeholder="ملاحظات إضافية..."/>
+                </sheet>
+                
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" widget="mail_followers"/>
+                    <field name="activity_ids" widget="mail_activity"/>
+                    <field name="message_ids" widget="mail_thread"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- ===================== SEARCH VIEW ===================== -->
+    <record id="view_utility_reading_search" model="ir.ui.view">
+        <field name="name">utility.reading.search</field>
+        <field name="model">utility.reading</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="meter_id"/>
+                <field name="account_id"/>
+                <field name="reading_date"/>
+                <!-- فلاتر سريعة -->
+                <filter name="draft" string="مسودة" domain="[('state','=','draft')]"/>
+                <filter name="under_review" string="قيد المراجعة" domain="[('state','=','under_review')]"
+                        help="القراءات التي تنتظر المراجعة والاعتماد"/>
+                <filter name="approved" string="معتمدة" domain="[('state','=','approved')]"/>
+                <filter name="awaiting_bill" string="تنتظر الفوترة" domain="[('state','=','approved')]"/>
+                <filter name="estimated" string="تقديرية" domain="[('is_estimated','=',True)]"/>
+                <!-- مجموعات -->
+                <group expand="0" string="حالة الصورة">
+                    <filter name="img_clear" string="واضحة" domain="[('image_state','=','clear')]"/>
+                    <filter name="img_not_clear" string="غير واضحة" domain="[('image_state','=','not_clear')]"/>
+                    <filter name="img_no_image" string="بدون صورة" domain="[('image_state','=','none')]"/>
+                </group>
+                <separator/>
+                <group expand="0" string="حالة الاستهلاك">
+                    <filter name="cons_high" string="مرتفع" domain="[('consumption_alert','=','high')]"/>
+                    <filter name="cons_negative" string="سلبي" domain="[('consumption_alert','=','negative')]"/>
+                    <filter name="cons_zero" string="صفر" domain="[('consumption_alert','=','zero')]"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ===================== ACTIONS ===================== -->
+    <record id="action_utility_reading" model="ir.actions.act_window">
+        <field name="name">قراءات العدادات</field>
+        <field name="res_model">utility.reading</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_utility_reading_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                سجل قراءات العدادات. يتم رفع صورة مع كل قراءة، ثم تمر بالمراجعة والاعتماد قبل إنشاء الفاتورة.
+            </p>
+        </field>
+    </record>
+
+    <record id="action_utility_readings_pending_review" model="ir.actions.act_window">
+        <field name="name">قراءات تنتظر المراجعة</field>
+        <field name="res_model">utility.reading</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('state', '=', 'under_review')]</field>
+        <field name="context">{'default_state': 'under_review'}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                القراءات التي تم تسجيلها وتنتظر المراجعة والاعتماد.
+            </p>
+        </field>
+    </record>
+
+    <!-- ======================= MENU ITEM ======================= -->
+    <menuitem id="menu_utility_readings_pending_review"
+              name="قراءات تنتظر المراجعة"
+              parent="menu_utility_readings"
+              action="action_utility_readings_pending_review"
+              sequence="15"
+              groups="utility_core.group_utility_supervisor"/>
+</odoo>

@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="billing_cycle_demo" model="utility.billing.cycle">
+            <field name="name">Demo Monthly Cycle</field>
+            <field name="code">DEMO-MONTHLY</field>
+            <field name="cycle_date" eval="(datetime.now() - relativedelta(months=1)).strftime('%Y-%m-01')"/>
+            <field name="billing_period_start" eval="(datetime.now() - relativedelta(months=2)).strftime('%Y-%m-01')"/>
+            <field name="billing_period_end" eval="(datetime.now() - relativedelta(months=1)).strftime('%Y-%m-%d')"/>
+            <field name="due_date" eval="(datetime.now() + relativedelta(days=15)).strftime('%Y-%m-%d')"/>
+            <field name="frequency">monthly</field>
+            <field name="state">open</field>
+        </record>
+
+        <record id="reading_demo_1" model="utility.reading">
+            <field name="meter_id" ref="utility_core.demo_meter_1"/>
+            <field name="reading_date" eval="(datetime.now() - relativedelta(days=30)).strftime('%Y-%m-%d %H:%M:%S')"/>
+            <field name="reading_value">1250.0</field>
+            <field name="previous_reading">1000.0</field>
+            <field name="reading_type">manual</field>
+            <field name="is_validated" eval="True"/>
+            <field name="state">validated</field>
+        </record>
+
+        <record id="reading_demo_2" model="utility.reading">
+            <field name="meter_id" ref="utility_core.demo_meter_1"/>
+            <field name="reading_date" eval="datetime.now().strftime('%Y-%m-%d %H:%M:%S')"/>
+            <field name="reading_value">1500.0</field>
+            <field name="previous_reading">1250.0</field>
+            <field name="reading_type">manual</field>
+            <field name="is_validated" eval="True"/>
+            <field name="state">validated</field>
+        </record>
+
+        <record id="bill_demo" model="utility.bill">
+            <field name="customer_id" ref="utility_core.demo_customer_1"/>
+            <field name="account_id" ref="utility_core.demo_account_1"/>
+            <field name="meter_id" ref="utility_core.demo_meter_1"/>
+            <field name="billing_cycle_id" ref="billing_cycle_demo"/>
+            <field name="bill_date" eval="datetime.now().strftime('%Y-%m-%d')"/>
+            <field name="period_start" eval="(datetime.now() - relativedelta(days=30)).strftime('%Y-%m-%d')"/>
+            <field name="period_end" eval="datetime.now().strftime('%Y-%m-%d')"/>
+            <field name="due_date" eval="(datetime.now() + relativedelta(days=15)).strftime('%Y-%m-%d')"/>
+            <field name="previous_reading">1250.0</field>
+            <field name="current_reading">1500.0</field>
+            <field name="consumption">250.0</field>
+            <field name="amount_energy">125.0</field>
+            <field name="amount_fixed">10.0</field>
+            <field name="amount_service">5.0</field>
+            <field name="amount_tax">14.0</field>
+            <field name="amount_total">154.0</field>
+            <field name="state">confirmed</field>
+        </record>
+
+        <record id="bill_line_demo_1" model="utility.bill.line">
+            <field name="bill_id" ref="bill_demo"/>
+            <field name="sequence">10</field>
+            <field name="name">Energy Charge (250 kWh x 0.50)</field>
+            <field name="quantity">250.0</field>
+            <field name="unit">kWh</field>
+            <field name="unit_price">0.50</field>
+            <field name="amount">125.0</field>
+            <field name="is_tax" eval="False"/>
+        </record>
+
+        <record id="bill_line_demo_2" model="utility.bill.line">
+            <field name="bill_id" ref="bill_demo"/>
+            <field name="sequence">20</field>
+            <field name="name">Fixed Charge</field>
+            <field name="quantity">1.0</field>
+            <field name="unit">Unit</field>
+            <field name="unit_price">10.0</field>
+            <field name="amount">10.0</field>
+            <field name="is_tax" eval="False"/>
+        </record>
+
+        <record id="bill_line_demo_3" model="utility.bill.line">
+            <field name="bill_id" ref="bill_demo"/>
+            <field name="sequence">30</field>
+            <field name="name">Service Charge</field>
+            <field name="quantity">1.0</field>
+            <field name="unit">Unit</field>
+            <field name="unit_price">5.0</field>
+            <field name="amount">5.0</field>
+            <field name="is_tax" eval="False"/>
+        </record>
+
+        <record id="bill_line_demo_4" model="utility.bill.line">
+            <field name="bill_id" ref="bill_demo"/>
+            <field name="sequence">40</field>
+            <field name="name">Tax (10%)</field>
+            <field name="quantity">1.0</field>
+            <field name="unit">Unit</field>
+            <field name="unit_price">14.0</field>
+            <field name="amount">14.0</field>
+            <field name="is_tax" eval="True"/>
+        </record>
+
+        <record id="collection_demo" model="utility.collection">
+            <field name="customer_id" ref="utility_core.demo_customer_1"/>
+            <field name="account_id" ref="utility_core.demo_account_1"/>
+            <field name="bill_id" ref="bill_demo"/>
+            <field name="amount">154.0</field>
+            <field name="payment_method">cash</field>
+            <field name="state">collected</field>
+        </record>
+
+    </data>
+</odoo>

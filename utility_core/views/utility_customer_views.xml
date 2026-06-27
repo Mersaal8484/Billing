@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ===================== TREE VIEW ===================== -->
+    <record id="view_utility_customer_tree" model="ir.ui.view">
+        <field name="name">utility.customer.tree</field>
+        <field name="model">utility.customer</field>
+        <field name="arch" type="xml">
+            <tree decoration-muted="state == 'closed'" 
+                  decoration-warning="state in ('suspended', 'disconnected')" 
+                  decoration-success="state == 'active'">
+                <field name="customer_number"/>
+                <field name="partner_id"/>
+                <field name="national_id"/>
+                <field name="subscriber_category_id"/>
+                <field name="state" widget="badge" decoration-success="state == 'active'" decoration-warning="state in ('suspended', 'disconnected')" decoration-danger="state == 'closed'"/>
+                <field name="region_id"/>
+                <field name="area_id"/>
+                <field name="route_id"/>
+                <field name="balance"/>
+                <field name="meter_id"/>
+                <field name="active" widget="boolean_toggle"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- ===================== FORM VIEW ===================== -->
+    <record id="view_utility_customer_form" model="ir.ui.view">
+        <field name="name">utility.customer.form</field>
+        <field name="model">utility.customer</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_create_analytic_account" type="object"
+                            string="إنشاء حساب تحليلي" class="oe_highlight"
+                            invisible="analytic_account_id"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,active,suspended,disconnected,closed" options="{'clickable': '1'}"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_bills" type="object"
+                                class="oe_stat_button" icon="fa-pencil-square-o">
+                            <field name="invoice_count" string="الفواتير" widget="statinfo"/>
+                        </button>
+                        <button name="action_view_readings" type="object"
+                                class="oe_stat_button" icon="fa-tasks">
+                            <field name="reading_count" string="القراءات" widget="statinfo"/>
+                        </button>
+                        <button name="action_view_payments" type="object"
+                                class="oe_stat_button" icon="fa-money">
+                            <field name="payment_count" string="التحصيلات" widget="statinfo"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <label for="customer_number" string="رقم المشترك / الحساب"/>
+                        <h1><field name="customer_number" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group string="معلومات الهوية والنوع">
+                            <field name="partner_id"/>
+                            <field name="national_id"/>
+                            <field name="subscriber_category_id"/>
+                            <field name="active"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group string="معلومات الاتصال والمنطقة">
+                            <field name="mobile"/>
+                            <field name="phone"/>
+                            <field name="region_id"/>
+                            <field name="area_id"/>
+                            <field name="zone_id"/>
+                            <field name="office_id"/>
+                            <field name="route_id"/>
+                        </group>
+                    </group>
+                    
+                    <notebook>
+                        <!-- صفحة 1: بيانات العقد والفوترة -->
+                        <page name="billing" string="العقد والفوترة">
+                            <group>
+                                <group string="الأجهزة والتعرفة">
+                                    <field name="meter_id" options="{'no_create': True}"/>
+                                    <field name="tariff_id" options="{'no_create': True}"/>
+                                    <field name="analytic_account_id" readonly="1"/>
+                                </group>
+                                <group string="الأرصدة والمبيعات">
+                                    <field name="company_currency_id" invisible="1"/>
+                                    <field name="balance" widget="monetary" options="{'currency_field': 'company_currency_id'}"/>
+                                    <field name="emergency_credit" widget="monetary" options="{'currency_field': 'company_currency_id'}"/>
+                                    <field name="total_purchases" widget="monetary" options="{'currency_field': 'company_currency_id'}" readonly="1"/>
+                                    <field name="total_kwh_purchased" readonly="1"/>
+                                    <field name="last_purchase_date" readonly="1"/>
+                                </group>
+                            </group>
+                        </page>
+                        
+                        <!-- صفحة 2: الاشتراك المتكرر -->
+                        <page name="recurring_contract" string="الاشتراك المتكرر">
+                            <group>
+                                <group string="قالب العقد والتواريخ">
+                                    <field name="contract_template_id" options="{'no_create': True}"/>
+                                    <field name="date_contract"/>
+                                    <field name="date_sub_start"/>
+                                    <field name="date_end"/>
+                                </group>
+                                <group string="دورة الفوترة والقرارات">
+                                    <field name="recurring_next_date"/>
+                                    <field name="contract_state" readonly="1"/>
+                                    <field name="last_reading_date" readonly="1"/>
+                                    <field name="last_invoice_date" readonly="1"/>
+                                    <field name="last_reading_value" readonly="1"/>
+                                    <field name="last_invoice_reading" readonly="1"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <!-- صفحة 3: المحول والخلية -->
+                        <page name="transformer_cell" string="المحول والخلية">
+                            <group>
+                                <group string="تفاصيل الخلية">
+                                    <field name="cell_id" options="{'no_create': True}"/>
+                                    <field name="coupling_meter_id" readonly="1"/>
+                                </group>
+                                <group string="التوزيع والخصوصية">
+                                    <field name="is_private_transformer" readonly="1"/>
+                                    <field name="distribution_percentage" readonly="1"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <!-- صفحة 4: الموقع الجغرافي -->
+                        <page name="location" string="الموقع الجغرافي">
+                            <group>
+                                <field name="gps_latitude"/>
+                                <field name="gps_longitude"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" widget="mail_followers"/>
+                    <field name="activity_ids" widget="mail_activity"/>
+                    <field name="message_ids" widget="mail_thread"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- ===================== SEARCH VIEW ===================== -->
+    <record id="view_utility_customer_search" model="ir.ui.view">
+        <field name="name">utility.customer.search</field>
+        <field name="model">utility.customer</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="customer_number"/>
+                <field name="partner_id"/>
+                <field name="national_id"/>
+                <field name="mobile"/>
+                <field name="region_id"/>
+                <field name="area_id"/>
+                <field name="zone_id"/>
+                <field name="route_id"/>
+                <field name="meter_id"/>
+                <field name="tariff_id"/>
+                
+                <filter name="active" string="نشط" domain="[('active','=',True)]" default="1"/>
+                <separator/>
+                <filter name="draft" string="مسودة" domain="[('state','=','draft')]"/>
+                <filter name="active_state" string="فعال" domain="[('state','=','active')]"/>
+                <filter name="suspended_state" string="موقوف" domain="[('state','=','suspended')]"/>
+                <filter name="disconnected_state" string="مفصول" domain="[('state','=','disconnected')]"/>
+                <filter name="closed_state" string="مغلق" domain="[('state','=','closed')]"/>
+                <separator/>
+                
+                <group expand="0" string="Group By">
+                    <filter name="group_state" string="State" context="{'group_by':'state'}"/>
+                    <filter name="group_region" string="Region" context="{'group_by':'region_id'}"/>
+                    <filter name="group_area" string="Area" context="{'group_by':'area_id'}"/>
+                    <filter name="group_route" string="Route" context="{'group_by':'route_id'}"/>
+                    <filter name="group_category" string="Subscriber Category" context="{'group_by':'subscriber_category_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ===================== ACTIONS ===================== -->
+    <record id="action_utility_customer" model="ir.actions.act_window">
+        <field name="name">Customers</field>
+        <field name="res_model">utility.customer</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_utility_customer_search"/>
+    </record>
+</odoo>

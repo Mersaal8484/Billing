@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data>
+    <record id="demo_customer_1" model="res.partner">
+      <field name="name">Abdullah Al-Saud</field>
+      <field name="phone">+966 55 123 4567</field>
+      <field name="email">abdullah@example.com</field>
+    </record>
+
+    <record id="demo_account_1" model="utility.customer">
+      <field name="customer_number">ACC-2024-0001</field>
+      <field name="partner_id" ref="demo_customer_1"/>
+      <field name="balance">500.00</field>
+    </record>
+
+    <record id="demo_meter_1" model="utility.meter">
+      <field name="meter_number">MTR-R-2024-001</field>
+      <field name="customer_id" ref="demo_account_1"/>
+    </record>
+
+    <record id="demo_tariff_1" model="utility.tariff">
+      <field name="name">Residential Standard</field>
+      <field name="code">RES-STD</field>
+      <field name="unit_price">0.25</field>
+    </record>
+
+    <record id="demo_shift_1" model="utility.cashier.shift">
+      <field name="name">Demo Morning Shift</field>
+      <field name="cashier_id" ref="base.user_admin"/>
+      <field name="start_time">2024-06-27 08:00:00</field>
+      <field name="opening_balance">1000.00</field>
+      <field name="state">closed</field>
+      <field name="end_time">2024-06-27 16:00:00</field>
+      <field name="closing_balance">2100.00</field>
+      <field name="notes">Demo shift for testing purposes</field>
+    </record>
+
+    <record id="demo_sale_1" model="utility.sale">
+      <field name="receipt_number">SALE/2024/000001</field>
+      <field name="customer_id" ref="demo_customer_1"/>
+      <field name="account_id" ref="demo_account_1"/>
+      <field name="meter_id" ref="demo_meter_1"/>
+      <field name="tariff_id" ref="demo_tariff_1"/>
+      <field name="amount_paid">100.00</field>
+      <field name="kwh_purchased">400.0</field>
+      <field name="unit_price">0.25</field>
+      <field name="energy_charge">80.00</field>
+      <field name="fixed_charge">10.00</field>
+      <field name="service_charge">5.00</field>
+      <field name="fuel_adjustment">3.00</field>
+      <field name="tax_amount">2.00</field>
+      <field name="total_charge">100.00</field>
+      <field name="balance_before">500.00</field>
+      <field name="balance_after">600.00</field>
+      <field name="payment_method">cash</field>
+      <field name="operator_id" ref="base.user_admin"/>
+      <field name="state">completed</field>
+      <field name="token_status">generated</field>
+    </record>
+
+    <record id="demo_token_1" model="utility.token">
+      <field name="token_number">12345678901234567890</field>
+      <field name="token_identifier">TID-1-20240627083000</field>
+      <field name="sequence_number">1</field>
+      <field name="sale_id" ref="demo_sale_1"/>
+      <field name="account_id" ref="demo_account_1"/>
+      <field name="meter_id" ref="demo_meter_1"/>
+      <field name="customer_id" ref="demo_customer_1"/>
+      <field name="tariff_id" ref="demo_tariff_1"/>
+      <field name="amount">100.00</field>
+      <field name="kwh">400.0</field>
+      <field name="status">success</field>
+      <field name="response_code">00</field>
+      <field name="response_message">Token generated successfully</field>
+    </record>
+
+    <record id="demo_payment_1" model="utility.payment">
+      <field name="payment_reference">PAY/2024/000001</field>
+      <field name="payment_date">2024-06-27 08:30:00</field>
+      <field name="sale_id" ref="demo_sale_1"/>
+      <field name="customer_id" ref="demo_customer_1"/>
+      <field name="account_id" ref="demo_account_1"/>
+      <field name="amount">100.00</field>
+      <field name="payment_method">cash</field>
+      <field name="state">confirmed</field>
+      <field name="operator_id" ref="base.user_admin"/>
+    </record>
+  </data>
+</odoo>

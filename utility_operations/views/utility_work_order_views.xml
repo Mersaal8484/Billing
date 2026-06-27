@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="view_utility_work_order_tree" model="ir.ui.view">
+            <field name="name">utility.work.order.tree</field>
+            <field name="model">utility.work.order</field>
+            <field name="arch" type="xml">
+                <tree>
+                    <field name="work_order_number"/>
+                    <field name="date_created"/>
+                    <field name="work_type"/>
+                    <field name="priority"/>
+                    <field name="customer_id"/>
+                    <field name="assigned_technician_id"/>
+                    <field name="state"/>
+                    <field name="date_scheduled"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="view_utility_work_order_form" model="ir.ui.view">
+            <field name="name">utility.work.order.form</field>
+            <field name="model">utility.work.order</field>
+            <field name="arch" type="xml">
+                <form>
+                    <header>
+                        <field name="state" widget="statusbar"/>
+                    </header>
+                    <sheet>
+                        <h1>
+                            <field name="work_order_number" readonly="1"/>
+                        </h1>
+                        <group>
+                            <group>
+                                <field name="work_type" required="1"/>
+                                <field name="priority"/>
+                                <field name="state"/>
+                            </group>
+                            <group>
+                                <field name="assigned_technician_id"/>
+                                <field name="team_id"/>
+                                <field name="date_created"/>
+                                <field name="date_scheduled"/>
+                                <field name="date_started"/>
+                                <field name="date_completed"/>
+                            </group>
+                        </group>
+                        <group string="Related">
+                            <group>
+                                <field name="service_order_id"/>
+                                <field name="customer_id"/>
+                            </group>
+                            <group>
+                                <field name="account_id"/>
+                                <field name="meter_id"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="Description">
+                                <field name="description" nolabel="1"/>
+                            </page>
+                            <page string="Time &amp; GPS">
+                                <group>
+                                    <group>
+                                        <field name="labor_hours"/>
+                                        <field name="gps_check_in"/>
+                                        <field name="gps_check_out"/>
+                                    </group>
+                                    <group>
+                                        <field name="cost_estimate"/>
+                                        <field name="actual_cost"/>
+                                    </group>
+                                </group>
+                            </page>
+                            <page string="Parts &amp; Photos">
+                                <group>
+                                    <field name="parts_used"/>
+                                </group>
+                            </page>
+                            <page string="Signature">
+                                <field name="customer_signature" widget="signature"/>
+                            </page>
+                            <page string="Notes">
+                                <field name="notes" nolabel="1"/>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_utility_work_order" model="ir.actions.act_window">
+            <field name="name">Work Orders</field>
+            <field name="res_model">utility.work.order</field>
+            <field name="view_mode">tree,form</field>
+        </record>
+
+    </data>
+</odoo>

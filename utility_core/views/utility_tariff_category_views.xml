@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_tariff_category_tree" model="ir.ui.view">
+        <field name="name">utility.tariff.category.tree</field>
+        <field name="model">utility.tariff.category</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="code"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_utility_tariff_category_form" model="ir.ui.view">
+        <field name="name">utility.tariff.category.form</field>
+        <field name="model">utility.tariff.category</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="code"/>
+                            <field name="sequence"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="description"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_utility_tariff_category" model="ir.actions.act_window">
+        <field name="name">Tariff Categories</field>
+        <field name="res_model">utility.tariff.category</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

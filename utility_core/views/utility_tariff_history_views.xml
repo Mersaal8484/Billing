@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_tariff_history_tree" model="ir.ui.view">
+        <field name="name">utility.tariff.history.tree</field>
+        <field name="model">utility.tariff.history</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="tariff_id"/>
+                <field name="account_id"/>
+                <field name="change_date"/>
+                <field name="old_price"/>
+                <field name="new_price"/>
+                <field name="reason"/>
+                <field name="changed_by"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_utility_tariff_history_form" model="ir.ui.view">
+        <field name="name">utility.tariff.history.form</field>
+        <field name="model">utility.tariff.history</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="tariff_id"/>
+                            <field name="account_id"/>
+                            <field name="change_date"/>
+                        </group>
+                        <group>
+                            <field name="old_price"/>
+                            <field name="new_price"/>
+                            <field name="reason"/>
+                            <field name="changed_by"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_utility_tariff_history" model="ir.actions.act_window">
+        <field name="name">Tariff History</field>
+        <field name="res_model">utility.tariff.history</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

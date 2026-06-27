@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="portal_my_home_menu" inherit_id="portal.portal_my_home" name="Utility Portal Menu">
+        <xpath expr="//div[hasclass('o_portal_my_home')]" position="inside">
+            <t t-if="request.env.user.partner_id">
+                <div class="row">
+                    <div class="col-lg-6">
+                        <a href="/my/utility/accounts" class="btn btn-primary">
+                            Utility Accounts
+                        </a>
+                    </div>
+                </div>
+            </t>
+        </xpath>
+    </template>
+
+    <template id="portal_utility_accounts" name="Utility Accounts">
+        <t t-call="portal.portal_layout">
+            <div class="container">
+                <h2>My Utility Accounts</h2>
+                <t t-if="accounts">
+                    <t t-foreach="accounts" t-as="acc">
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <h5 t-esc="acc.account_number"/>
+                                <p>Balance: <span t-esc="acc.balance"/></p>
+                                <a href="#" class="btn btn-sm btn-primary">Buy Electricity</a>
+                                <a href="#" class="btn btn-sm btn-secondary">View Bills</a>
+                            </div>
+                        </div>
+                    </t>
+                </t>
+                <t t-else="">
+                    <p>No utility accounts found.</p>
+                </t>
+            </div>
+        </t>
+    </template>
+</odoo>

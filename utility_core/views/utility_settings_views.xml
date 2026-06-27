@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_config_settings" model="ir.ui.view">
+        <field name="name">Utility Settings</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form" position="inside">
+                <app data-string="Utility ERP" string="Utility ERP" name="utility">
+                    <block title="عدادات وإعدادات القراءة" id="utility_meter">
+                        <setting help="مطلوب مراجعة صورة العداد قبل اعتماد القراءة">
+                            <field name="meter_review_required"/>
+                        </setting>
+                        <setting help="صورة العداد إلزامية عند تسجيل القراءة">
+                            <field name="meter_image_mandatory"/>
+                        </setting>
+                        <setting help="طريقة التحقق من صحة قراءة العداد">
+                            <field name="meter_reading_validation"/>
+                        </setting>
+                    </block>
+                    <block title="الفوترة والمحاسبة" id="utility_billing">
+                        <setting help="تأكيد الفواتير تلقائياً بعد إنشائها">
+                            <field name="enable_auto_invoice_confirm"/>
+                        </setting>
+                        <setting help="توليد الفواتير تلقائياً حسب الدورات">
+                            <field name="auto_generate_bills"/>
+                        </setting>
+                        <setting help="عدد أيام الاستحقاق من تاريخ الفاتورة">
+                            <field name="billing_due_days"/>
+                        </setting>
+                        <setting help="نسبة غرامة التأخير عن السداد">
+                            <field name="late_penalty_percentage"/>
+                        </setting>
+                    </block>
+                    <block title="الإنذارات والتنبيهات" id="utility_alerts">
+                        <setting help="الحد الأدنى للرصيد الذي يطلق إنذار">
+                            <field name="low_credit_threshold"/>
+                        </setting>
+                        <setting help="حد الاستهلاك العالي">
+                            <field name="high_consumption_threshold"/>
+                        </setting>
+                        <setting help="نسبة التغير المنبهة للاستهلاك">
+                            <field name="consumption_variation_alert_percentage"/>
+                        </setting>
+                    </block>
+                    <block title="الحسابات المحاسبية" id="utility_accounts">
+                        <setting help="حساب إيرادات الغرامات">
+                            <field name="fine_account_id"/>
+                        </setting>
+                        <setting help="حساب الخصومات">
+                            <field name="discount_account_id"/>
+                        </setting>
+                        <setting help="حساب التأمينات">
+                            <field name="deposit_account_id"/>
+                        </setting>
+                    </block>
+                    <block title="المدفوعات التلقائية" id="utility_autopay">
+                        <setting help="الحد الأقصى لعدد محاولات إعادة الدفع التلقائي">
+                            <field name="max_auto_pay_retries"/>
+                        </setting>
+                    </block>
+                    <block title="رصيد الطوارئ" id="utility_emergency">
+                        <setting help="قيمة رصيد الطوارئ الافتراضية">
+                            <field name="emergency_credit_amount"/>
+                        </setting>
+                        <setting help="فترة السماح قبل استرداد رصيد الطوارئ">
+                            <field name="emergency_credit_grace_days"/>
+                        </setting>
+                    </block>
+                    <block title="إشعارات SMS" id="utility_sms">
+                        <setting help="إرسال رسالة نصية عند إصدار الفاتورة">
+                            <field name="send_sms_on_invoice"/>
+                        </setting>
+                        <setting help="إرسال رسالة نصية عند استلام الدفعة">
+                            <field name="send_sms_on_payment"/>
+                        </setting>
+                        <setting help="إرسال رسالة نصية عند انخفاض الرصيد">
+                            <field name="send_sms_on_low_credit"/>
+                        </setting>
+                    </block>
+                </app>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- إضافة خيار القائمة للإعدادات -->
+    <record id="action_utility_config_settings" model="ir.actions.act_window">
+        <field name="name">إعدادات ERP الكهرباء</field>
+        <field name="res_model">res.config.settings</field>
+        <field name="view_mode">form</field>
+        <field name="target">inline</field>
+        <field name="context">{'module': 'utility'}</field>
+    </record>
+
+    <menuitem id="menu_utility_config_settings"
+              name="إعدادات النظام"
+              parent="menu_utility_config"
+              sequence="100"
+              action="action_utility_config_settings"
+              groups="group_utility_admin"/>
+</odoo>

@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_staff_tree" model="ir.ui.view">
+        <field name="name">utility.staff.tree</field>
+        <field name="model">utility.staff</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="employee_code"/>
+                <field name="role"/>
+                <field name="team_id"/>
+                <field name="mobile"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_utility_staff_form" model="ir.ui.view">
+        <field name="name">utility.staff.form</field>
+        <field name="model">utility.staff</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="employee_code"/>
+                            <field name="user_id"/>
+                            <field name="role"/>
+                            <field name="team_id"/>
+                            <field name="active"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group>
+                            <field name="phone"/>
+                            <field name="mobile"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="view_utility_staff_search" model="ir.ui.view">
+        <field name="name">utility.staff.search</field>
+        <field name="model">utility.staff</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="employee_code"/>
+                <field name="role"/>
+                <field name="team_id"/>
+                <filter name="active" string="Active" domain="[('active','=',True)]" default="1"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_role" string="Role" context="{'group_by':'role'}"/>
+                    <filter name="group_team" string="Team" context="{'group_by':'team_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    <record id="action_utility_staff" model="ir.actions.act_window">
+        <field name="name">Staff</field>
+        <field name="res_model">utility.staff</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_utility_staff_search"/>
+    </record>
+</odoo>

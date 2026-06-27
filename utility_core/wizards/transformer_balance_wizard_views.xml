@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_transformer_balance_wizard_form" model="ir.ui.view">
+        <field name="name">utility.transformer.balance.wizard.form</field>
+        <field name="model">utility.transformer.balance.wizard</field>
+        <field name="arch" type="xml">
+            <form string="تقرير توازن المحول">
+                <sheet>
+                    <group>
+                        <group string="خيارات التقرير">
+                            <field name="transformer_id"/>
+                        </group>
+                        <group string="فترة التقرير والحدود">
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                            <field name="show_loss_threshold"/>
+                        </group>
+                    </group>
+                    
+                    <!-- تنبيه باللون الأحمر إذا تجاوز الفاقد الحد المسموح به متوافق مع Odoo 17/18 -->
+                    <div class="alert alert-danger" role="alert" style="margin-top: 15px;"
+                         invisible="loss_percentage &lt; show_loss_threshold">
+                        <strong>⚠️ تحذير:</strong> لقد تجاوز الفاقد في هذا المحول الحد الأقصى المسموح به وهو (<field name="show_loss_threshold" class="oe_inline"/>%)!
+                    </div>
+
+                    <group string="ملخص توازن طاقة الشبكة" class="mt-4">
+                        <group>
+                            <field name="total_supplied_kwh" readonly="1"/>
+                            <field name="total_consumed_kwh" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="total_loss_kwh" readonly="1"/>
+                            <field name="loss_percentage" readonly="1" widget="progressbar"/>
+                        </group>
+                    </group>
+                    
+                    <notebook>
+                        <page string="عدادات الربط">
+                            <field name="coupling_meter_ids" readonly="1">
+                                <tree>
+                                    <field name="meter_number"/>
+                                    <field name="serial_number"/>
+                                    <field name="installation_date"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="عدادات المشتركين">
+                            <field name="child_meter_ids" readonly="1">
+                                <tree>
+                                    <field name="meter_number"/>
+                                    <field name="customer_id"/>
+                                    <field name="serial_number"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <footer>
+                    <button name="action_print_report" string="طباعة التقرير (PDF)" type="object" class="oe_highlight"/>
+                    <button string="إلغلاق" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_utility_transformer_balance_wizard" model="ir.actions.act_window">
+        <field name="name">تحليل توازن المحول</field>
+        <field name="res_model">utility.transformer.balance.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

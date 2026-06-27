@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_tariff_tree" model="ir.ui.view">
+        <field name="name">utility.tariff.tree</field>
+        <field name="model">utility.tariff</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="category_id"/>
+                <field name="tariff_type"/>
+                <field name="price_per_kwh"/>
+                <field name="is_active"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_utility_tariff_form" model="ir.ui.view">
+        <field name="name">utility.tariff.form</field>
+        <field name="model">utility.tariff</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="code"/>
+                            <field name="category_id"/>
+                            <field name="tariff_type"/>
+                            <field name="is_active"/>
+                            <field name="active"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group>
+                            <field name="effective_date"/>
+                            <field name="end_date"/>
+                            <field name="minimum_charge"/>
+                            <field name="maximum_charge"/>
+                        </group>
+                    </group>
+                    <group string="Pricing">
+                        <group>
+                            <field name="price_per_kwh"/>
+                            <field name="fixed_charge"/>
+                            <field name="service_charge"/>
+                        </group>
+                        <group>
+                            <field name="tax_percentage"/>
+                            <field name="fuel_adjustment"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page name="blocks" string="Rate Blocks">
+                            <field name="block_ids">
+                                <tree editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name"/>
+                                    <field name="from_kwh"/>
+                                    <field name="to_kwh"/>
+                                    <field name="price_per_kwh"/>
+                                    <field name="from_month"/>
+                                    <field name="to_month"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page name="history" string="History">
+                            <field name="history_ids">
+                                <tree>
+                                    <field name="change_date"/>
+                                    <field name="old_price"/>
+                                    <field name="new_price"/>
+                                    <field name="reason"/>
+                                    <field name="changed_by"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page name="accounts" string="Accounts">
+                            <field name="account_ids">
+                                <tree>
+                                    <field name="account_number"/>
+                                    <field name="customer_id"/>
+                                    <field name="state"/>
+                                    <field name="balance" widget="monetary"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" widget="mail_followers"/>
+                    <field name="activity_ids" widget="mail_activity"/>
+                    <field name="message_ids" widget="mail_thread"/>
+                </div>
+            </form>
+        </field>
+    </record>
+    <record id="view_utility_tariff_search" model="ir.ui.view">
+        <field name="name">utility.tariff.search</field>
+        <field name="model">utility.tariff</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="category_id"/>
+                <field name="tariff_type"/>
+                <filter name="active_tariff" string="Active" domain="[('is_active','=',True)]" default="1"/>
+                <filter name="flat" string="Flat" domain="[('tariff_type','=','flat')]"/>
+                <filter name="block" string="Block" domain="[('tariff_type','=','block')]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_type" string="Tariff Type" context="{'group_by':'tariff_type'}"/>
+                    <filter name="group_category" string="Category" context="{'group_by':'category_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    <record id="action_utility_tariff" model="ir.actions.act_window">
+        <field name="name">Tariffs</field>
+        <field name="res_model">utility.tariff</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_utility_tariff_search"/>
+    </record>
+</odoo>

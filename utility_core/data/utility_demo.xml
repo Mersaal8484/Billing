@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Region -->
+        <record id="demo_region_central" model="utility.region">
+            <field name="name">Central Region</field>
+            <field name="code">CENTRAL</field>
+            <field name="type">region</field>
+        </record>
+
+        <!-- Areas -->
+        <record id="demo_area_north" model="utility.region">
+            <field name="name">North District</field>
+            <field name="code">NORTH</field>
+            <field name="type">area</field>
+            <field name="parent_id" ref="demo_region_central"/>
+        </record>
+        <record id="demo_area_south" model="utility.region">
+            <field name="name">South District</field>
+            <field name="code">SOUTH</field>
+            <field name="type">area</field>
+            <field name="parent_id" ref="demo_region_central"/>
+        </record>
+
+        <!-- Zones -->
+        <record id="demo_zone_a" model="utility.region">
+            <field name="name">Zone A</field>
+            <field name="code">ZONE_A</field>
+            <field name="type">zone</field>
+            <field name="parent_id" ref="demo_area_north"/>
+        </record>
+        <record id="demo_zone_b" model="utility.region">
+            <field name="name">Zone B</field>
+            <field name="code">ZONE_B</field>
+            <field name="type">zone</field>
+            <field name="parent_id" ref="demo_area_south"/>
+        </record>
+
+        <!-- Office -->
+        <record id="demo_office_main" model="utility.office">
+            <field name="name">Central Main Office</field>
+            <field name="code">MAIN_OFF</field>
+            <field name="area_id" ref="demo_area_north"/>
+            <field name="phone">+966-11-1234567</field>
+        </record>
+
+        <!-- Substation -->
+        <record id="demo_substation_1" model="utility.substation">
+            <field name="name">Main Substation North</field>
+            <field name="code">SS_NORTH_01</field>
+            <field name="zone_id" ref="demo_zone_a"/>
+            <field name="voltage_level">mv</field>
+            <field name="capacity_kva">50000</field>
+            <field name="status">active</field>
+        </record>
+
+        <!-- Feeder -->
+        <record id="demo_feeder_1" model="utility.feeder">
+            <field name="name">Feeder 11kV North</field>
+            <field name="code">FDR_11KV_N01</field>
+            <field name="zone_id" ref="demo_zone_a"/>
+            <field name="voltage_level">mv</field>
+            <field name="rated_capacity">5000</field>
+            <field name="current_load">3200</field>
+            <field name="substation_id" ref="demo_substation_1"/>
+        </record>
+
+        <!-- Transformer -->
+        <record id="demo_transformer_1" model="utility.transformer">
+            <field name="name">Transformer T1</field>
+            <field name="code">TRAF_T1</field>
+            <field name="substation_id" ref="demo_substation_1"/>
+            <field name="feeder_id" ref="demo_feeder_1"/>
+            <field name="capacity">1000</field>
+            <field name="phase">three</field>
+            <field name="manufacturer">ABB</field>
+            <field name="serial_number">SN-T1-2024-001</field>
+            <field name="voltage_primary">11000</field>
+            <field name="voltage_secondary">415</field>
+            <field name="status">active</field>
+        </record>
+
+        <!-- Route -->
+        <record id="demo_route_1" model="utility.route">
+            <field name="name">Route 1 - North Residential</field>
+            <field name="code">RTE_N_RES_01</field>
+            <field name="area_id" ref="demo_area_north"/>
+            <field name="zone_id" ref="demo_zone_a"/>
+        </record>
+
+        <!-- Customers (create partners first) -->
+        <record id="demo_partner_ahmed" model="res.partner">
+            <field name="name">Ahmed Al-Saud</field>
+            <field name="mobile">+966-50-1111111</field>
+            <field name="street">Olaya Street</field>
+            <field name="city">Riyadh</field>
+        </record>
+        <record id="demo_partner_fahd" model="res.partner">
+            <field name="name">Fahd Al-Otaibi</field>
+            <field name="mobile">+966-55-2222222</field>
+            <field name="street">Tahlia Street</field>
+            <field name="city">Riyadh</field>
+        </record>
+
+        <record id="demo_customer_1" model="utility.customer">
+            <field name="partner_id" ref="demo_partner_ahmed"/>
+            <field name="customer_number">CUS/2024/000001</field>
+            <field name="national_id">1012345678</field>
+            <field name="mobile">+966-50-1111111</field>
+            <field name="connection_status">active</field>
+            <field name="region_id" ref="demo_region_central"/>
+            <field name="area_id" ref="demo_area_north"/>
+            <field name="zone_id" ref="demo_zone_a"/>
+            <field name="tariff_id" ref="demo_tariff_residential"/>
+            <field name="balance">125.50</field>
+            <field name="state">active</field>
+        </record>
+        <record id="demo_customer_2" model="utility.customer">
+            <field name="partner_id" ref="demo_partner_fahd"/>
+            <field name="customer_number">CUS/2024/000002</field>
+            <field name="national_id">1023456789</field>
+            <field name="mobile">+966-55-2222222</field>
+            <field name="connection_status">active</field>
+            <field name="region_id" ref="demo_region_central"/>
+            <field name="area_id" ref="demo_area_south"/>
+            <field name="zone_id" ref="demo_zone_b"/>
+            <field name="tariff_id" ref="demo_tariff_residential"/>
+            <field name="balance">450.75</field>
+            <field name="state">active</field>
+        </record>
+
+        <!-- Tariff -->
+        <record id="demo_tariff_residential" model="utility.tariff">
+            <field name="name">Residential Flat Rate</field>
+            <field name="code">RES_FLAT</field>
+            <field name="category_id" ref="tariff_cat_residential"/>
+            <field name="tariff_type">flat</field>
+            <field name="price_per_kwh">0.18</field>
+            <field name="fixed_charge">15.00</field>
+            <field name="service_charge">5.00</field>
+            <field name="tax_percentage">5.0</field>
+            <field name="effective_date" eval="(datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')"/>
+        </record>
+
+        <!-- Meters -->
+        <record id="demo_meter_1" model="utility.meter">
+            <field name="meter_number">MET/2024/000001</field>
+            <field name="serial_number">SN-MET-001-2024</field>
+            <field name="manufacturer">Landis+Gyr</field>
+            <field name="meter_type_id" ref="meter_type_single_sts"/>
+            <field name="status_id" ref="meter_status_active"/>
+            <field name="phase">single</field>
+            <field name="customer_id" ref="demo_customer_1"/>
+            <field name="route_id" ref="demo_route_1"/>
+            <field name="communication_type">gsm</field>
+        </record>
+        <record id="demo_meter_2" model="utility.meter">
+            <field name="meter_number">MET/2024/000002</field>
+            <field name="serial_number">SN-MET-002-2024</field>
+            <field name="manufacturer">Iskraemeco</field>
+            <field name="meter_type_id" ref="meter_type_single_sts"/>
+            <field name="status_id" ref="meter_status_active"/>
+            <field name="phase">single</field>
+            <field name="customer_id" ref="demo_customer_2"/>
+            <field name="route_id" ref="demo_route_1"/>
+            <field name="communication_type">gsm</field>
+        </record>
+    </data>
+</odoo>

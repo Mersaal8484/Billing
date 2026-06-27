@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_route_tree" model="ir.ui.view">
+        <field name="name">utility.route.tree</field>
+        <field name="model">utility.route</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="area_id"/>
+                <field name="zone_id"/>
+                <field name="inspector_id"/>
+                <field name="cashier_id"/>
+                <field name="supervisor_id"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_utility_route_form" model="ir.ui.view">
+        <field name="name">utility.route.form</field>
+        <field name="model">utility.route</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group string="التهيئة الجغرافية">
+                            <field name="code"/>
+                            <field name="area_id"/>
+                            <field name="zone_id"/>
+                            <field name="region_id"/>
+                            <field name="active"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group string="طاقم العمل">
+                            <field name="inspector_id" options="{'no_create': True}"/>
+                            <field name="cashier_id" options="{'no_create': True}"/>
+                            <field name="supervisor_id" options="{'no_create': True}"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page name="customers" string="عقود المشتركين">
+                            <field name="customer_ids">
+                                <tree>
+                                    <field name="customer_number"/>
+                                    <field name="partner_id"/>
+                                    <field name="mobile"/>
+                                    <field name="state"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="view_utility_route_search" model="ir.ui.view">
+        <field name="name">utility.route.search</field>
+        <field name="model">utility.route</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="area_id"/>
+                <field name="zone_id"/>
+                <filter name="active" string="Active" domain="[('active','=',True)]" default="1"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_area" string="Area" context="{'group_by':'area_id'}"/>
+                    <filter name="group_zone" string="Zone" context="{'group_by':'zone_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    <record id="action_utility_route" model="ir.actions.act_window">
+        <field name="name">Routes</field>
+        <field name="res_model">utility.route</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_utility_route_search"/>
+    </record>
+</odoo>

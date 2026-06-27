@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_account_payment_form_inherit_utility" model="ir.ui.view">
+        <field name="name">account.payment.form.inherit.utility</field>
+        <field name="model">account.payment</field>
+        <field name="inherit_id" ref="account.view_account_payment_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//sheet/group" position="inside">
+                <group string="تفاصيل الكهرباء" invisible="not utility_collection_id">
+                    <field name="utility_collection_id" readonly="1"/>
+                    <field name="utility_payment_method" readonly="1"/>
+                    <field name="electronic_doc_no" readonly="1"/>
+                    <field name="is_invoice_verified" readonly="1"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

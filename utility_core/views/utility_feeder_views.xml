@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_feeder_tree" model="ir.ui.view">
+        <field name="name">utility.feeder.tree</field>
+        <field name="model">utility.feeder</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="zone_id"/>
+                <field name="voltage_level"/>
+                <field name="rated_capacity"/>
+                <field name="current_load"/>
+                <field name="load_percentage" widget="progressbar"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_utility_feeder_form" model="ir.ui.view">
+        <field name="name">utility.feeder.form</field>
+        <field name="model">utility.feeder</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="code"/>
+                            <field name="zone_id"/>
+                            <field name="area_id"/>
+                            <field name="region_id"/>
+                            <field name="substation_id"/>
+                            <field name="active"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group>
+                            <field name="voltage_level"/>
+                            <field name="rated_capacity"/>
+                            <field name="current_load"/>
+                            <field name="load_percentage" widget="progressbar"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page name="transformers" string="Transformers">
+                            <field name="transformer_ids">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="code"/>
+                                    <field name="capacity"/>
+                                    <field name="phase"/>
+                                    <field name="status"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page name="meters" string="Meters">
+                            <field name="meter_ids">
+                                <tree>
+                                    <field name="meter_number"/>
+                                    <field name="serial_number"/>
+                                    <field name="status_id"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="view_utility_feeder_search" model="ir.ui.view">
+        <field name="name">utility.feeder.search</field>
+        <field name="model">utility.feeder</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="zone_id"/>
+                <field name="substation_id"/>
+                <field name="voltage_level"/>
+                <filter name="active" string="Active" domain="[('active','=',True)]" default="1"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_zone" string="Zone" context="{'group_by':'zone_id'}"/>
+                    <filter name="group_voltage" string="Voltage Level" context="{'group_by':'voltage_level'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    <record id="action_utility_feeder" model="ir.actions.act_window">
+        <field name="name">Feeders</field>
+        <field name="res_model">utility.feeder</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_utility_feeder_search"/>
+    </record>
+</odoo>

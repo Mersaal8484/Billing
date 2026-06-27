@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_region_tree" model="ir.ui.view">
+        <field name="name">utility.region.tree</field>
+        <field name="model">utility.region</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="type"/>
+                <field name="parent_id" string="Parent"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_utility_region_form" model="ir.ui.view">
+        <field name="name">utility.region.form</field>
+        <field name="model">utility.region</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name" string="Name"/>
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="code"/>
+                            <field name="type"/>
+                            <field name="recurring_rule_type" 
+                                   invisible="type != 'region'" 
+                                   required="type == 'region'"/>
+                            <field name="parent_id" string="Parent Location" 
+                                   invisible="type == 'region'" 
+                                   required="type != 'region'"
+                                   domain="[('type', '=', type == 'zone' and 'area' or 'region')]"/>
+                            <field name="active"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page name="areas" string="Areas" invisible="type != 'region'">
+                            <field name="area_ids">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="code"/>
+                                    <field name="zone_count"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page name="zones" string="Zones" invisible="type != 'area'">
+                            <field name="zone_ids">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="code"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_utility_region_search" model="ir.ui.view">
+        <field name="name">utility.region.search</field>
+        <field name="model">utility.region</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="parent_id"/>
+                <filter name="active" string="Active" domain="[('active','=',True)]" default="1"/>
+                <filter name="inactive" string="Inactive" domain="[('active','=',False)]"/>
+                <filter name="type_region" string="Regions" domain="[('type','=','region')]"/>
+                <filter name="type_area" string="Areas" domain="[('type','=','area')]"/>
+                <filter name="type_zone" string="Zones" domain="[('type','=','zone')]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_type" string="Type" context="{'group_by':'type'}"/>
+                    <filter name="group_parent" string="Parent" context="{'group_by':'parent_id'}"/>
+                    <filter name="group_company" string="Company" context="{'group_by':'company_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_utility_region" model="ir.actions.act_window">
+        <field name="name">Regions</field>
+        <field name="res_model">utility.region</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('type', '=', 'region')]</field>
+        <field name="context">{'default_type': 'region'}</field>
+        <field name="search_view_id" ref="view_utility_region_search"/>
+    </record>
+
+    <record id="action_utility_area" model="ir.actions.act_window">
+        <field name="name">Areas</field>
+        <field name="res_model">utility.region</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('type', '=', 'area')]</field>
+        <field name="context">{'default_type': 'area'}</field>
+        <field name="search_view_id" ref="view_utility_region_search"/>
+    </record>
+
+    <record id="action_utility_zone" model="ir.actions.act_window">
+        <field name="name">Zones</field>
+        <field name="res_model">utility.region</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('type', '=', 'zone')]</field>
+        <field name="context">{'default_type': 'zone'}</field>
+        <field name="search_view_id" ref="view_utility_region_search"/>
+    </record>
+</odoo>

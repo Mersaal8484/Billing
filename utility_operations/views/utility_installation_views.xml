@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="view_utility_installation_tree" model="ir.ui.view">
+            <field name="name">utility.installation.tree</field>
+            <field name="model">utility.installation</field>
+            <field name="arch" type="xml">
+                <tree>
+                    <field name="name"/>
+                    <field name="customer_id"/>
+                    <field name="meter_id"/>
+                    <field name="installation_date"/>
+                    <field name="installer_id"/>
+                    <field name="state"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="view_utility_installation_form" model="ir.ui.view">
+            <field name="name">utility.installation.form</field>
+            <field name="model">utility.installation</field>
+            <field name="arch" type="xml">
+                <form>
+                    <header>
+                        <field name="state" widget="statusbar"/>
+                    </header>
+                    <sheet>
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                        <group>
+                            <group>
+                                <field name="service_order_id"/>
+                                <field name="customer_id" required="1"/>
+                                <field name="account_id" required="1"/>
+                            </group>
+                            <group>
+                                <field name="installation_date"/>
+                                <field name="installer_id"/>
+                                <field name="state"/>
+                            </group>
+                        </group>
+                        <group string="Meter Details">
+                            <group>
+                                <field name="meter_id" required="1"/>
+                                <field name="meter_serial"/>
+                                <field name="meter_type_id"/>
+                            </group>
+                            <group>
+                                <field name="seal_number"/>
+                                <field name="gps_latitude"/>
+                                <field name="gps_longitude"/>
+                            </group>
+                        </group>
+                        <field name="notes" nolabel="1"/>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_utility_installation" model="ir.actions.act_window">
+            <field name="name">Installations</field>
+            <field name="res_model">utility.installation</field>
+            <field name="view_mode">tree,form</field>
+        </record>
+
+    </data>
+</odoo>

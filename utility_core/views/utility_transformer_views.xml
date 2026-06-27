@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_transformer_tree" model="ir.ui.view">
+        <field name="name">utility.transformer.tree</field>
+        <field name="model">utility.transformer</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="substation_id"/>
+                <field name="feeder_id"/>
+                <field name="capacity"/>
+                <field name="phase"/>
+                <field name="status"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_utility_transformer_form" model="ir.ui.view">
+        <field name="name">utility.transformer.form</field>
+        <field name="model">utility.transformer</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_open_transformer_balance" type="object"
+                            string="توازن المحول" class="oe_highlight"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_cell_accounts" type="object"
+                                class="oe_stat_button" icon="fa-users">
+                            <field name="cell_account_count" string="المشتركون" widget="statinfo"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="code"/>
+                            <field name="substation_id"/>
+                            <field name="feeder_id"/>
+                            <field name="zone_id"/>
+                            <field name="area_id"/>
+                            <field name="region_id"/>
+                            <field name="status"/>
+                            <field name="active"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group>
+                            <field name="capacity"/>
+                            <field name="phase"/>
+                            <field name="manufacturer"/>
+                            <field name="serial_number"/>
+                            <field name="voltage_primary"/>
+                            <field name="voltage_secondary"/>
+                            <field name="gps_latitude"/>
+                            <field name="gps_longitude"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page name="meters" string="Meters">
+                            <field name="meter_ids">
+                                <tree>
+                                    <field name="meter_number"/>
+                                    <field name="serial_number"/>
+                                    <field name="status_id"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page name="cell_accounts" string="عقود المشتركين">
+                            <field name="cell_account_ids" readonly="1">
+                                <tree>
+                                    <field name="customer_number"/>
+                                    <field name="partner_id"/>
+                                    <field name="meter_id"/>
+                                    <field name="state"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page name="balance" string="توازن وفاقد الشبكة">
+                            <group>
+                                <group string="عداد الربط والإحصائيات">
+                                    <field name="coupling_meter_id"/>
+                                    <field name="total_consumption" readonly="1"/>
+                                </group>
+                                <group string="الفاقد والخصوصية">
+                                    <field name="cell_loss_kwh" readonly="1"/>
+                                    <field name="loss_percentage" readonly="1" widget="progressbar"/>
+                                </group>
+                            </group>
+                            <group string="إعدادات الخصوصية والتوزيع">
+                                <group>
+                                    <field name="is_private"/>
+                                    <field name="private_account_id" invisible="not is_private"/>
+                                </group>
+                                <group>
+                                    <field name="distribution_percentage"/>
+                                </group>
+                            </group>
+                            <group string="ملاحظات">
+                                <field name="notes" placeholder="ملاحظات المحول..."/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="view_utility_transformer_search" model="ir.ui.view">
+        <field name="name">utility.transformer.search</field>
+        <field name="model">utility.transformer</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="substation_id"/>
+                <field name="feeder_id"/>
+                <field name="status"/>
+                <filter name="active" string="Active" domain="[('active','=',True)]" default="1"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_substation" string="Substation" context="{'group_by':'substation_id'}"/>
+                    <filter name="group_status" string="Status" context="{'group_by':'status'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    <record id="action_utility_transformer" model="ir.actions.act_window">
+        <field name="name">Transformers</field>
+        <field name="res_model">utility.transformer</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_utility_transformer_search"/>
+    </record>
+</odoo>

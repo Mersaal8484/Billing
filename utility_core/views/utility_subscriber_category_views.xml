@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ===================== SUBSCRIBER CATEGORY VIEWS ===================== -->
+    <record id="view_utility_subscriber_category_tree" model="ir.ui.view">
+        <field name="name">utility.subscriber.category.tree</field>
+        <field name="model">utility.subscriber.category</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="level"/>
+                <field name="subsidized_enabled"/>
+                <field name="subsidized_max_units"/>
+                <field name="subsidized_percentage"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_utility_subscriber_category_form" model="ir.ui.view">
+        <field name="name">utility.subscriber.category.form</field>
+        <field name="model">utility.subscriber.category</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name" string="اسم الفئة"/>
+                        <h1>
+                            <field name="name" placeholder="مثال: سكني، تجاري..."/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="التهيئة الأساسية">
+                            <field name="code"/>
+                            <field name="sequence"/>
+                            <field name="parent_id" domain="[('parent_id', '=', False)]"/>
+                            <field name="level"/>
+                        </group>
+                        <group string="الخصم المدعوم">
+                            <field name="subsidized_enabled"/>
+                            <field name="subsidized_max_units" invisible="not subsidized_enabled"/>
+                            <field name="subsidized_percentage" invisible="not subsidized_enabled"/>
+                            <field name="subsidized_price_per_kwh" invisible="not subsidized_enabled"/>
+                        </group>
+                    </group>
+                    <group string="الحسابات والإعدادات الافتراضية">
+                        <group>
+                            <field name="subsidy_account_id"/>
+                            <field name="revenue_account_id"/>
+                        </group>
+                        <group>
+                            <field name="default_tariff_id"/>
+                            <field name="default_contract_template_id"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="الوصف">
+                            <field name="description" placeholder="اكتب وصفاً للفئة هنا..."/>
+                        </page>
+                        <page string="الفئات الفرعية" invisible="level == 'subcategory'">
+                            <field name="child_ids" readonly="1">
+                                <tree>
+                                    <field name="code"/>
+                                    <field name="name"/>
+                                    <field name="subsidized_enabled"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_utility_subscriber_category" model="ir.actions.act_window">
+        <field name="name">فئات المشتركين</field>
+        <field name="res_model">utility.subscriber.category</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <!-- ===================== FORMULA VIEWS ===================== -->
+    <record id="view_utility_formula_tree" model="ir.ui.view">
+        <field name="name">utility.formula.tree</field>
+        <field name="model">utility.formula</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_utility_formula_form" model="ir.ui.view">
+        <field name="name">utility.formula.form</field>
+        <field name="model">utility.formula</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name" string="اسم المعادلة"/>
+                        <h1>
+                            <field name="name" placeholder="مثال: خصم استهلاك مدعوم..."/>
+                        </h1>
+                    </div>
+                    <group>
+                        <field name="company_id" groups="base.group_multi_company"/>
+                    </group>
+                    <group string="كود المعادلة (Python)">
+                        <field name="code" widget="ace" options="{'mode': 'python'}" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_utility_formula" model="ir.actions.act_window">
+        <field name="name">معادلات الاحتساب</field>
+        <field name="res_model">utility.formula</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

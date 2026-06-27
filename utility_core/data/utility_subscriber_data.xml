@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- ====== فئات المشتركين ====== -->
+    <record id="sub_category_residential" model="utility.subscriber.category">
+        <field name="name">سكني</field>
+        <field name="code">RES</field>
+        <field name="sequence">10</field>
+        <field name="subsidized_enabled" eval="True"/>
+        <field name="subsidized_max_units">100</field>
+        <field name="subsidized_percentage">100</field>
+    </record>
+
+    <record id="sub_category_commercial" model="utility.subscriber.category">
+        <field name="name">تجاري</field>
+        <field name="code">COM</field>
+        <field name="sequence">20</field>
+        <field name="subsidized_enabled" eval="False"/>
+    </record>
+
+    <record id="sub_category_industrial" model="utility.subscriber.category">
+        <field name="name">صناعي</field>
+        <field name="code">IND</field>
+        <field name="sequence">30</field>
+        <field name="subsidized_enabled" eval="False"/>
+    </record>
+
+    <record id="sub_category_government" model="utility.subscriber.category">
+        <field name="name">حكومي</field>
+        <field name="code">GOV</field>
+        <field name="sequence">40</field>
+        <field name="subsidized_enabled" eval="False"/>
+    </record>
+
+    <record id="sub_category_agriculture" model="utility.subscriber.category">
+        <field name="name">زراعي</field>
+        <field name="code">AGR</field>
+        <field name="sequence">50</field>
+        <field name="subsidized_enabled" eval="True"/>
+        <field name="subsidized_max_units">200</field>
+        <field name="subsidized_percentage">50</field>
+    </record>
+
+    <!-- ====== معادلات افتراضية ====== -->
+    <record id="formula_fixed_fee" model="utility.formula">
+        <field name="name">رسوم اشتراك ثابت</field>
+        <field name="code"><![CDATA[# إذا كان الاستهلاك صفر → رسوم الاشتراك صفر
+if consumption > 0:
+    result = 1.0
+else:
+    result = 0.0]]></field>
+    </record>
+
+    <record id="formula_consumption" model="utility.formula">
+        <field name="name">استهلاك كهرباء</field>
+        <field name="code">result = consumption</field>
+    </record>
+
+    <record id="formula_discount" model="utility.formula">
+        <field name="name">خصم استهلاك مدعوم (نظام PEC)</field>
+        <field name="code"><![CDATA[# خصم أول 100 كيلوواط/ساعة مدعوم
+units = consumption or 0.0
+if units > 0:
+    if units < 100.0:
+        result = units
+        name = "خصم استهلاك مدعوم - %s وحدة" % units
+    else:
+        result = 100.0
+        name = "خصم استهلاك مدعوم - 100 وحدة"
+else:
+    result = 0.0]]></field>
+    </record>
+</odoo>

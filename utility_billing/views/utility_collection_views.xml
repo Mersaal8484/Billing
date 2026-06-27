@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_collection_tree" model="ir.ui.view">
+        <field name="name">utility.collection.tree</field>
+        <field name="model">utility.collection</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="collection_number"/>
+                <field name="customer_id"/>
+                <field name="account_id"/>
+                <field name="bill_id"/>
+                <field name="amount"/>
+                <field name="payment_date"/>
+                <field name="payment_method"/>
+                <field name="state"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_utility_collection_form" model="ir.ui.view">
+        <field name="name">utility.collection.form</field>
+        <field name="model">utility.collection</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="collection_number"/>
+                            <field name="customer_id"/>
+                            <field name="account_id"/>
+                            <field name="bill_id"/>
+                        </group>
+                        <group>
+                            <field name="amount"/>
+                            <field name="payment_date"/>
+                            <field name="payment_method"/>
+                            <field name="reference_number"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group>
+                            <field name="collected_by"/>
+                            <field name="receipt_number"/>
+                        </group>
+                        <group>
+                            <field name="state"/>
+                        </group>
+                    </group>
+                    <field name="notes" nolabel="1"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_utility_collection_search" model="ir.ui.view">
+        <field name="name">utility.collection.search</field>
+        <field name="model">utility.collection</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="collection_number"/>
+                <field name="customer_id"/>
+                <field name="account_id"/>
+                <filter name="collected" string="Collected" domain="[('state','=','collected')]"/>
+                <filter name="verified" string="Verified" domain="[('state','=','verified')]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_utility_collection" model="ir.actions.act_window">
+        <field name="name">Collections</field>
+        <field name="res_model">utility.collection</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_utility_collection_search"/>
+    </record>
+</odoo>

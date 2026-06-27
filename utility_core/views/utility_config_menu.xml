@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Configuration Menu -->
+    <menuitem id="menu_utility_config" name="Configuration" sequence="90" parent="menu_utility_root" groups="group_utility_admin"/>
+
+    <menuitem id="menu_utility_meter_type" name="Meter Types" parent="menu_utility_config" action="action_utility_meter_type" sequence="10"/>
+    <menuitem id="menu_utility_meter_model" name="Meter Models" parent="menu_utility_config" action="action_utility_meter_model" sequence="20"/>
+    <menuitem id="menu_utility_meter_status" name="Meter Statuses" parent="menu_utility_config" action="action_utility_meter_status" sequence="30"/>
+    <menuitem id="menu_utility_connection_type" name="Connection Types" parent="menu_utility_config" action="action_utility_connection_type" sequence="40"/>
+    <menuitem id="menu_utility_tariff" name="Tariffs" parent="menu_utility_config" action="action_utility_tariff" sequence="50"/>
+    <menuitem id="menu_utility_tariff_category" name="Tariff Categories" parent="menu_utility_config" action="action_utility_tariff_category" sequence="60"/>
+    <menuitem id="menu_utility_tariff_block" name="Tariff Blocks" parent="menu_utility_config" action="action_utility_tariff_block" sequence="70"/>
+    <menuitem id="menu_utility_tariff_history" name="Tariff History" parent="menu_utility_config" action="action_utility_tariff_history" sequence="80"/>
+    <menuitem id="menu_utility_user_role" name="User Roles" parent="menu_utility_config" action="action_utility_user_role" sequence="90"/>
+
+    <!-- Root menu item -->
+    <menuitem id="menu_utility_root" name="Utility" sequence="90" web_icon="utility_core,static/description/icon.png"/>
+</odoo>

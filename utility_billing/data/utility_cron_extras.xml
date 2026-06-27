@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- 1. توليد الفواتير المتكررة -->
+    <record id="ir_cron_generate_recurring_invoices" model="ir.cron">
+        <field name="name">ERP الكهرباء: توليد الفواتير المتكررة للعقود</field>
+        <field name="model_id" ref="utility_core.model_utility_contract_template"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_generate_recurring_invoices()</field>
+        <field name="user_id" ref="base.user_root"/>
+        <field name="interval_number">1</field>
+        <field name="interval_type">hours</field>
+        <field name="numbercall">-1</field>
+        <field name="active">True</field>
+    </record>
+
+    <!-- 2. فحص الأرصدة المنخفضة -->
+    <record id="ir_cron_check_low_credit" model="ir.cron">
+        <field name="name">ERP الكهرباء: مراقبة وتنبيه الأرصدة المنخفضة</field>
+        <field name="model_id" ref="utility_core.model_utility_account"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_check_low_credit()</field>
+        <field name="user_id" ref="base.user_root"/>
+        <field name="interval_number">30</field>
+        <field name="interval_type">minutes</field>
+        <field name="numbercall">-1</field>
+        <field name="active">True</field>
+    </record>
+
+    <!-- 3. تحديث الفواتير المتأخرة -->
+    <record id="ir_cron_update_overdue_bills" model="ir.cron">
+        <field name="name">ERP الكهرباء: تحديث حالة الفواتير المتأخرة</field>
+        <field name="model_id" ref="utility_billing.model_utility_bill"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_update_overdue_bills()</field>
+        <field name="user_id" ref="base.user_root"/>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="numbercall">-1</field>
+        <field name="active">True</field>
+    </record>
+
+    <!-- 4. إعادة محاولة الدفع التلقائي -->
+    <record id="ir_cron_retry_auto_pay" model="ir.cron">
+        <field name="name">ERP الكهرباء: إعادة محاولة الدفع التلقائي للمشتركين</field>
+        <field name="model_id" ref="utility_core.model_utility_account"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_retry_auto_pay()</field>
+        <field name="user_id" ref="base.user_root"/>
+        <field name="interval_number">30</field>
+        <field name="interval_type">minutes</field>
+        <field name="numbercall">-1</field>
+        <field name="active">True</field>
+    </record>
+
+    <!-- 5. الفوترة الجماعية للقراءات المعتمدة -->
+    <record id="ir_cron_batch_reading_invoicing" model="ir.cron">
+        <field name="name">ERP الكهرباء: الفوترة الجماعية للقراءات المعتمدة</field>
+        <field name="model_id" ref="utility_billing.model_utility_reading"/>
+        <field name="state">code</field>
+        <field name="code">model.action_generate_bills_batch()</field>
+        <field name="user_id" ref="base.user_root"/>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="numbercall">-1</field>
+        <field name="active">True</field>
+    </record>
+
+    <!-- 7. احتساب غرامات التأخير -->
+    <record id="ir_cron_calculate_late_penalties" model="ir.cron">
+        <field name="name">ERP الكهرباء: احتساب غرامات التأخير للفواتير المستحقة</field>
+        <field name="model_id" ref="utility_billing.model_utility_penalty"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_calculate_late_penalties()</field>
+        <field name="user_id" ref="base.user_root"/>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="numbercall">-1</field>
+        <field name="active">True</field>
+    </record>
+
+    <!-- 8. إرسال تذكير بالفواتير المستحقة -->
+    <record id="ir_cron_send_due_bill_reminders" model="ir.cron">
+        <field name="name">ERP الكهرباء: إرسال تذكير بالفواتير المستحقة</field>
+        <field name="model_id" ref="utility_billing.model_utility_bill"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_send_due_bill_reminders()</field>
+        <field name="user_id" ref="base.user_root"/>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="numbercall">-1</field>
+        <field name="active">True</field>
+    </record>
+</odoo>

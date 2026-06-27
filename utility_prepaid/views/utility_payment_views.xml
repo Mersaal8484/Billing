@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="view_utility_payment_tree" model="ir.ui.view">
+    <field name="name">utility.payment.tree</field>
+    <field name="model">utility.payment</field>
+    <field name="arch" type="xml">
+      <tree>
+        <field name="payment_reference"/>
+        <field name="payment_date"/>
+        <field name="customer_id"/>
+        <field name="amount" widget="monetary"/>
+        <field name="payment_method"/>
+        <field name="state" decoration-danger="state in ('failed','reversed')" decoration-success="state=='reconciled'"/>
+      </tree>
+    </field>
+  </record>
+
+  <record id="view_utility_payment_form" model="ir.ui.view">
+    <field name="name">utility.payment.form</field>
+    <field name="model">utility.payment</field>
+    <field name="arch" type="xml">
+      <form>
+        <header>
+          <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,reconciled"/>
+        </header>
+        <sheet>
+          <div class="oe_title">
+            <h1>
+              <field name="payment_reference" readonly="1"/>
+            </h1>
+          </div>
+          <group>
+            <group>
+              <field name="payment_date"/>
+              <field name="customer_id" options="{'no_create': True}"/>
+              <field name="account_id" options="{'no_create': True}"/>
+              <field name="sale_id"/>
+            </group>
+            <group>
+              <field name="amount" widget="monetary"/>
+              <field name="payment_method"/>
+              <field name="reference_number"/>
+              <field name="operator_id"/>
+            </group>
+          </group>
+          <notebook>
+            <page string="Payment Details">
+              <group>
+                <group>
+                  <field name="bank_name" attrs="{'invisible':[('payment_method','!=','bank')]}"/>
+                  <field name="check_number" attrs="{'invisible':[('payment_method','!=','bank')]}"/>
+                </group>
+                <group>
+                  <field name="mobile_provider" attrs="{'invisible':[('payment_method','!=','mobile_money')]}"/>
+                  <field name="wallet_provider" attrs="{'invisible':[('payment_method','!=','wallet')]}"/>
+                  <field name="online_gateway" attrs="{'invisible':[('payment_method','!=','online')]}"/>
+                </group>
+              </group>
+            </page>
+            <page string="Notes">
+              <field name="notes" nolabel="1"/>
+            </page>
+          </notebook>
+        </sheet>
+        <div class="oe_chatter">
+          <field name="message_ids" widget="mail_thread"/>
+        </div>
+      </form>
+    </field>
+  </record>
+
+  <record id="view_utility_payment_search" model="ir.ui.view">
+    <field name="name">utility.payment.search</field>
+    <field name="model">utility.payment</field>
+    <field name="arch" type="xml">
+      <search>
+        <field name="payment_reference"/>
+        <field name="customer_id"/>
+        <field name="account_id"/>
+        <field name="payment_method"/>
+        <field name="state"/>
+      </search>
+    </field>
+  </record>
+
+  <record id="action_utility_payment" model="ir.actions.act_window">
+    <field name="name">Payments</field>
+    <field name="res_model">utility.payment</field>
+    <field name="view_mode">tree,form</field>
+    <field name="search_view_id" ref="view_utility_payment_search"/>
+  </record>
+</odoo>
