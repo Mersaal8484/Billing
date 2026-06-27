@@ -24,38 +24,32 @@ class AccountAnalyticAccount(models.Model):
     payment_count = fields.Integer(compute='_compute_smart_buttons')
 
     def _compute_meter_readings(self):
-        """آخر قراءة معتمدة من utility.reading"""
-        Reading = self.env['utility.reading']
-        Bill = self.env['utility.bill']
+        Reading = self.env.get('utility.reading')
+        SaleOrder = self.env.get('sale.order')
         for rec in self:
             account = rec.utility_account_id
-            if account:
+            if account and Reading:
                 last = Reading.search([
                     ('account_id', '=', account.id),
                     ('state', 'in', ['approved', 'billed']),
                 ], order='reading_date desc', limit=1)
                 rec.meter_current_reading = last.reading_value if last else 0.0
-                
-                last_bill = Bill.search([
-                    ('account_id', '=', account.id),
-                    ('state', 'in', ['confirmed', 'paid']),
-                ], order='period_end desc', limit=1)
-                rec.meter_last_invo_reading = last_bill.current_reading if last_bill else 0.0
             else:
                 rec.meter_current_reading = 0.0
+            if account and SaleOrder:
+                last_order = SaleOrder.search([
+                    ('customer_id', '=', account.id),
+                    ('bill_state', 'in', ['confirmed', 'paid']),
+                ], order='period_end desc', limit=1)
+                rec.meter_last_invo_reading = last_order.current_reading if last_order else 0.0
+            else:
                 rec.meter_last_invo_reading = 0.0
 
     def _compute_smart_buttons(self):
-        Bill = self.env['utility.bill']
-        Reading = self.env['utility.reading']
-        Payment = self.env['utility.collection']
+        Bill = self.env.get('sale.order')
+        Reading = self.env.get('utility.reading')
         for rec in self:
             account = rec.utility_account_id
-            if account:
-                rec.invoice_count = Bill.search_count([('account_id', '=', account.id)])
-                rec.reading_count = Reading.search_count([('account_id', '=', account.id)])
-                rec.payment_count = Payment.search_count([('account_id', '=', account.id)])
-            else:
-                rec.invoice_count = 0
-                rec.reading_count = 0
-                rec.payment_count = 0
+            rec.invoice_count = Bill.search_count([('customer_id', '=', account.id)]) if account and Bill else 0
+            rec.reading_count = Reading.search_count([('account_id', '=', account.id)]) if account and Reading else 0
+            rec.payment_count = 0

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_cashier_shift_form_inherit_billing" model="ir.ui.view">
+        <field name="name">utility.cashier.shift.form.inherit.billing</field>
+        <field name="model">utility.cashier.shift</field>
+        <field name="inherit_id" ref="utility_prepaid.view_utility_cashier_shift_form"/>
+        <field name="arch" type="xml">
+            <field name="total_cash" position="after">
+                <field name="total_collections" widget="monetary"/>
+                <field name="total_cash_collections" widget="monetary"/>
+            </field>
+            <notebook position="inside">
+                <page name="collections" string="تحصيلات الفواتير">
+                    <field name="payment_ids" readonly="1">
+                        <tree>
+                            <field name="name"/>
+                            <field name="utility_sale_order_id"/>
+                            <field name="amount" widget="monetary"/>
+                            <field name="utility_payment_method"/>
+                            <field name="payment_date"/>
+                        </tree>
+                    </field>
+                </page>
+            </notebook>
+        </field>
+    </record>
+</odoo>

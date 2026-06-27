@@ -119,7 +119,7 @@
                             <group>
                                 <group string="تفاصيل الخلية">
                                     <field name="cell_id" options="{'no_create': True}"/>
-                                    <field name="coupling_meter_id" readonly="1"/>
+                                    <field name="cell_coupling_meter_id" readonly="1"/>
                                 </group>
                                 <group string="التوزيع والخصوصية">
                                     <field name="is_private_transformer" readonly="1"/>
@@ -128,7 +128,34 @@
                             </group>
                         </page>
 
-                        <!-- صفحة 4: الموقع الجغرافي -->
+                        <!-- صفحة 4: القراءات -->
+                        <page name="readings" string="القراءات">
+                            <group string="القراءات المرفوعة">
+                                <field name="uploaded_reading_ids" nolabel="1">
+                                    <tree editable="bottom" limit="20">
+                                        <field name="reading_id"/>
+                                        <field name="reading_date"/>
+                                        <field name="reading_value"/>
+                                        <field name="consumption"/>
+                                        <field name="state" widget="badge"/>
+                                        <field name="date_range_id"/>
+                                    </tree>
+                                </field>
+                            </group>
+                            <group string="القراءات المفوتـرة">
+                                <field name="billed_reading_ids" nolabel="1">
+                                    <tree limit="20">
+                                        <field name="reading_id"/>
+                                        <field name="reading_date"/>
+                                        <field name="reading_value"/>
+                                        <field name="consumption"/>
+                                        <field name="date_range_id"/>
+                                    </tree>
+                                </field>
+                            </group>
+                        </page>
+
+                        <!-- صفحة 5: الموقع الجغرافي -->
                         <page name="location" string="الموقع الجغرافي">
                             <group>
                                 <field name="gps_latitude"/>

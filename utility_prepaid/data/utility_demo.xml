@@ -35,34 +35,10 @@
       <field name="notes">Demo shift for testing purposes</field>
     </record>
 
-    <record id="demo_sale_1" model="utility.sale">
-      <field name="receipt_number">SALE/2024/000001</field>
-      <field name="customer_id" ref="demo_customer_1"/>
-      <field name="account_id" ref="demo_account_1"/>
-      <field name="meter_id" ref="demo_meter_1"/>
-      <field name="tariff_id" ref="demo_tariff_1"/>
-      <field name="amount_paid">100.00</field>
-      <field name="kwh_purchased">400.0</field>
-      <field name="unit_price">0.25</field>
-      <field name="energy_charge">80.00</field>
-      <field name="fixed_charge">10.00</field>
-      <field name="service_charge">5.00</field>
-      <field name="fuel_adjustment">3.00</field>
-      <field name="tax_amount">2.00</field>
-      <field name="total_charge">100.00</field>
-      <field name="balance_before">500.00</field>
-      <field name="balance_after">600.00</field>
-      <field name="payment_method">cash</field>
-      <field name="operator_id" ref="base.user_admin"/>
-      <field name="state">completed</field>
-      <field name="token_status">generated</field>
-    </record>
-
     <record id="demo_token_1" model="utility.token">
       <field name="token_number">12345678901234567890</field>
       <field name="token_identifier">TID-1-20240627083000</field>
       <field name="sequence_number">1</field>
-      <field name="sale_id" ref="demo_sale_1"/>
       <field name="account_id" ref="demo_account_1"/>
       <field name="meter_id" ref="demo_meter_1"/>
       <field name="customer_id" ref="demo_customer_1"/>
@@ -72,18 +48,6 @@
       <field name="status">success</field>
       <field name="response_code">00</field>
       <field name="response_message">Token generated successfully</field>
-    </record>
-
-    <record id="demo_payment_1" model="utility.payment">
-      <field name="payment_reference">PAY/2024/000001</field>
-      <field name="payment_date">2024-06-27 08:30:00</field>
-      <field name="sale_id" ref="demo_sale_1"/>
-      <field name="customer_id" ref="demo_customer_1"/>
-      <field name="account_id" ref="demo_account_1"/>
-      <field name="amount">100.00</field>
-      <field name="payment_method">cash</field>
-      <field name="state">confirmed</field>
-      <field name="operator_id" ref="base.user_admin"/>
     </record>
   </data>
 </odoo>

@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_transformer_reading_tree" model="ir.ui.view">
+        <field name="name">utility.transformer.reading.tree</field>
+        <field name="model">utility.transformer.reading</field>
+        <field name="arch" type="xml">
+            <tree decoration-danger="state == 'cancelled'"
+                  decoration-success="state == 'confirmed'">
+                <field name="name"/>
+                <field name="transformer_id"/>
+                <field name="meter_id"/>
+                <field name="reading_type"/>
+                <field name="customer_id"/>
+                <field name="reading_date"/>
+                <field name="reading_value"/>
+                <field name="consumption"/>
+                <field name="date_range_id"/>
+                <field name="state" widget="badge"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_utility_transformer_reading_form" model="ir.ui.view">
+        <field name="name">utility.transformer.reading.form</field>
+        <field name="model">utility.transformer.reading</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_confirm" type="object"
+                            string="تأكيد" class="oe_highlight"
+                            states="draft"/>
+                    <button name="action_cancel" type="object"
+                            string="إلغاء" class="btn-danger"
+                            states="draft,confirmed"/>
+                    <button name="action_draft" type="object"
+                            string="إعادة للمسودة"
+                            states="cancelled"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,confirmed"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group string="معلومات القراءة">
+                            <field name="transformer_id" options="{'no_create': True}"/>
+                            <field name="meter_id" options="{'no_create': True}"
+                                   domain="[('transformer_id', '=', transformer_id)]"/>
+                            <field name="reading_type"/>
+                            <field name="customer_id" options="{'no_create': True}"
+                                   attrs="{'invisible': [('reading_type', '!=', 'cell')], 'required': [('reading_type', '=', 'cell')]}"/>
+                        </group>
+                        <group string="بيانات العداد">
+                            <field name="reading_date"/>
+                            <field name="reading_value"/>
+                            <field name="previous_reading" readonly="1"/>
+                            <field name="previous_reading_date" readonly="1"/>
+                            <field name="consumption" readonly="1"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="date_range_id" options="{'no_create': True}"/>
+                        <field name="notes"/>
+                    </group>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" widget="mail_followers"/>
+                    <field name="activity_ids" widget="mail_activity"/>
+                    <field name="message_ids" widget="mail_thread"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_utility_transformer_reading_search" model="ir.ui.view">
+        <field name="name">utility.transformer.reading.search</field>
+        <field name="model">utility.transformer.reading</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="transformer_id"/>
+                <field name="meter_id"/>
+                <field name="customer_id"/>
+                <field name="reading_date"/>
+                <field name="date_range_id"/>
+                <filter name="coupling" string="عدادات الربط"
+                        domain="[('reading_type','=','coupling')]"/>
+                <filter name="cell" string="الخلايا/المشتركين"
+                        domain="[('reading_type','=','cell')]"/>
+                <filter name="confirmed" string="مؤكدة"
+                        domain="[('state','=','confirmed')]"/>
+                <filter name="draft" string="مسودة"
+                        domain="[('state','=','draft')]"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_transformer" string="المحول"
+                            context="{'group_by':'transformer_id'}"/>
+                    <filter name="group_type" string="نوع القراءة"
+                            context="{'group_by':'reading_type'}"/>
+                    <filter name="group_period" string="الفترة"
+                            context="{'group_by':'date_range_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_utility_transformer_reading" model="ir.actions.act_window">
+        <field name="name">قراءات المحولات والخلايا</field>
+        <field name="res_model">utility.transformer.reading</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_utility_transformer_reading_search"/>
+        <field name="help">قراءات عدادات المحولات (الربط) وقراءات الخلايا/المشتركين التابعة للمحول.</field>
+    </record>
+
+    <menuitem id="menu_utility_transformer_readings"
+              name="قراءات المحولات"
+              parent="menu_utility_network"
+              action="action_utility_transformer_reading"
+              sequence="30"
+              groups="utility_core.group_utility_supervisor"/>
+</odoo>

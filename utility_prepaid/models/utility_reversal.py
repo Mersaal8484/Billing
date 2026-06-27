@@ -19,8 +19,7 @@ class UtilityReversal(models.Model):
     customer_id = fields.Many2one('res.partner', string='Customer', required=True)
     account_id = fields.Many2one('utility.customer', string='Account', required=True)
     meter_id = fields.Many2one('utility.meter', string='Meter')
-    sale_id = fields.Many2one('utility.sale', string='Sale')
-    payment_id = fields.Many2one('utility.payment', string='Payment')
+    pos_order_id = fields.Many2one('pos.order', string='POS Order')
     reason = fields.Text(string='Reason', required=True)
     approved_by = fields.Many2one('res.users', string='Approved By')
     operator_id = fields.Many2one('res.users', string='Operator', default=lambda self: self.env.user)
@@ -43,19 +42,13 @@ class UtilityReversal(models.Model):
         if self.state != 'approved':
             raise models.ValidationError(_('Reversal must be approved before completing.'))
         self.account_id._update_balance(-self.amount)
-        if self.sale_id:
-            self.sale_id.write({
-                'state': 'reversed',
-                'reversal_id': self.id,
-            })
-        if self.payment_id:
-            self.payment_id.write({
-                'state': 'reversed',
+        if self.pos_order_id:
+            self.pos_order_id.write({
                 'reversal_id': self.id,
             })
         self.env['utility.transaction'].create_transaction(
             'reversal', self.account_id, self.amount, reversal=self,
-            sale=self.sale_id, payment=self.payment_id,
+            pos_order=self.pos_order_id,
             notes=_('Reversal %s: %s') % (self.reference, self.reason),
         )
         self.state = 'completed'

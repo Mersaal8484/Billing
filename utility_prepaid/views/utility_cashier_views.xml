@@ -25,8 +25,8 @@
       <form>
         <header>
           <field name="state" widget="statusbar" statusbar_visible="open,closed,verified"/>
-          <button name="action_close" string="Close Shift" type="object" states="open" class="btn-primary"/>
-          <button name="action_verify" string="Verify" type="object" states="closed" class="btn-primary"/>
+          <button name="action_close" string="إغلاق الوردية" type="object" states="open" class="btn-primary"/>
+          <button name="action_verify" string="تدقيق" type="object" states="closed" class="btn-primary"/>
         </header>
         <sheet>
           <div class="oe_title">
@@ -47,12 +47,11 @@
               <field name="difference" widget="monetary"/>
             </group>
           </group>
-          <group string="Sales Summary">
+          <group string="ملخص المبيعات">
             <field name="total_sales" widget="monetary"/>
             <field name="total_cash" widget="monetary"/>
-            <field name="total_pos" widget="monetary"/>
           </group>
-          <group string="Notes">
+          <group string="ملاحظات">
             <field name="notes" nolabel="1"/>
           </group>
         </sheet>
@@ -64,7 +63,7 @@
   </record>
 
   <record id="action_utility_cashier_shift" model="ir.actions.act_window">
-    <field name="name">Cashier Shifts</field>
+    <field name="name">الورديات</field>
     <field name="res_model">utility.cashier.shift</field>
     <field name="view_mode">tree,form</field>
   </record>

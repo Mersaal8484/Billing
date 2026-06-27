@@ -32,6 +32,10 @@ class UtilityRegion(models.Model):
         ('yearly', 'سنوي'),
     ], string='نوع دورة الفوترة', default='monthly')
 
+    transformer_origin_id = fields.Many2one('utility.transformer', 'منشأ من محول',
+        readonly=True, copy=False,
+        help='إذا كان هذا الـ zone منشأً تلقائياً من محول، لا يمكن تعديله يدوياً')
+
     _sql_constraints = [
         ('unique_code_parent_company', 'unique(code, parent_id, company_id)', 'Code must be unique per parent/company!'),
     ]

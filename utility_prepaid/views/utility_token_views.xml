@@ -6,7 +6,7 @@
     <field name="arch" type="xml">
       <tree>
         <field name="token_number"/>
-        <field name="sale_id"/>
+        <field name="pos_order_id"/>
         <field name="customer_id"/>
         <field name="meter_id"/>
         <field name="amount" widget="monetary"/>
@@ -38,7 +38,7 @@
             <group>
               <field name="token_identifier"/>
               <field name="sequence_number"/>
-              <field name="sale_id"/>
+              <field name="pos_order_id"/>
               <field name="customer_id"/>
               <field name="account_id"/>
             </group>

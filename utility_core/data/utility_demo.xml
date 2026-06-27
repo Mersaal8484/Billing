@@ -6,6 +6,7 @@
             <field name="name">Central Region</field>
             <field name="code">CENTRAL</field>
             <field name="type">region</field>
+            <field name="recurring_rule_type">monthly</field>
         </record>
 
         <!-- Areas -->
@@ -80,12 +81,35 @@
             <field name="status">active</field>
         </record>
 
+        <!-- Staff -->
+        <record id="demo_staff_inspector" model="utility.staff">
+            <field name="name">Ali Al-Harbi (Inspector)</field>
+            <field name="employee_code">EMP_INSP_01</field>
+            <field name="role">inspector</field>
+            <field name="mobile">+966-50-3333333</field>
+        </record>
+        <record id="demo_staff_cashier" model="utility.staff">
+            <field name="name">Saeed Al-Ghamdi (Cashier)</field>
+            <field name="employee_code">EMP_CASH_01</field>
+            <field name="role">cashier</field>
+            <field name="mobile">+966-50-4444444</field>
+        </record>
+        <record id="demo_staff_supervisor" model="utility.staff">
+            <field name="name">Mohammad Al-Qahtani (Supervisor)</field>
+            <field name="employee_code">EMP_SUPER_01</field>
+            <field name="role">supervisor</field>
+            <field name="mobile">+966-50-5555555</field>
+        </record>
+
         <!-- Route -->
         <record id="demo_route_1" model="utility.route">
             <field name="name">Route 1 - North Residential</field>
             <field name="code">RTE_N_RES_01</field>
             <field name="area_id" ref="demo_area_north"/>
             <field name="zone_id" ref="demo_zone_a"/>
+            <field name="inspector_id" ref="demo_staff_inspector"/>
+            <field name="cashier_id" ref="demo_staff_cashier"/>
+            <field name="supervisor_id" ref="demo_staff_supervisor"/>
         </record>
 
         <!-- Customers (create partners first) -->
@@ -111,6 +135,7 @@
             <field name="region_id" ref="demo_region_central"/>
             <field name="area_id" ref="demo_area_north"/>
             <field name="zone_id" ref="demo_zone_a"/>
+            <field name="route_id" ref="demo_route_1"/>
             <field name="tariff_id" ref="demo_tariff_residential"/>
             <field name="balance">125.50</field>
             <field name="state">active</field>
@@ -124,6 +149,7 @@
             <field name="region_id" ref="demo_region_central"/>
             <field name="area_id" ref="demo_area_south"/>
             <field name="zone_id" ref="demo_zone_b"/>
+            <field name="route_id" ref="demo_route_1"/>
             <field name="tariff_id" ref="demo_tariff_residential"/>
             <field name="balance">450.75</field>
             <field name="state">active</field>
@@ -151,7 +177,6 @@
             <field name="status_id" ref="meter_status_active"/>
             <field name="phase">single</field>
             <field name="customer_id" ref="demo_customer_1"/>
-            <field name="route_id" ref="demo_route_1"/>
             <field name="communication_type">gsm</field>
         </record>
         <record id="demo_meter_2" model="utility.meter">
@@ -162,7 +187,6 @@
             <field name="status_id" ref="meter_status_active"/>
             <field name="phase">single</field>
             <field name="customer_id" ref="demo_customer_2"/>
-            <field name="route_id" ref="demo_route_1"/>
             <field name="communication_type">gsm</field>
         </record>
     </data>

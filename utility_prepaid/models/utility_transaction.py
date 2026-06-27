@@ -11,7 +11,6 @@ class UtilityTransaction(models.Model):
     date = fields.Datetime(default=fields.Datetime.now, string='Date')
     transaction_type = fields.Selection([
         ('sale', 'Sale'),
-        ('payment', 'Payment'),
         ('reversal', 'Reversal'),
         ('adjustment', 'Adjustment'),
         ('emergency_credit', 'Emergency Credit'),
@@ -24,15 +23,14 @@ class UtilityTransaction(models.Model):
     customer_id = fields.Many2one('res.partner', string='Customer')
     account_id = fields.Many2one('utility.customer', string='Account', index=True)
     meter_id = fields.Many2one('utility.meter', string='Meter')
-    sale_id = fields.Many2one('utility.sale', string='Sale')
-    payment_id = fields.Many2one('utility.payment', string='Payment')
+    pos_order_id = fields.Many2one('pos.order', string='POS Order')
     reversal_id = fields.Many2one('utility.reversal', string='Reversal')
     adjustment_id = fields.Many2one('utility.adjustment', string='Adjustment')
     operator_id = fields.Many2one('res.users', string='Operator')
     notes = fields.Text(string='Notes')
 
     @api.model
-    def create_transaction(self, ttype, account, amount, sale=None, payment=None,
+    def create_transaction(self, ttype, account, amount, pos_order=None,
                            reversal=None, adjustment=None, notes=''):
         balance_before = account.balance
         sign = 1.0
@@ -48,8 +46,7 @@ class UtilityTransaction(models.Model):
             'customer_id': account.customer_id.id,
             'account_id': account.id,
             'meter_id': account.meter_id.id if account.meter_id else False,
-            'sale_id': sale.id if sale else False,
-            'payment_id': payment.id if payment else False,
+            'pos_order_id': pos_order.id if pos_order else False,
             'reversal_id': reversal.id if reversal else False,
             'adjustment_id': adjustment.id if adjustment else False,
             'operator_id': self.env.user.id,

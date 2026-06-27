@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_sale_order_tree" model="ir.ui.view">
+        <field name="name">sale.order.utility.tree</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_tree"/>
+        <field name="arch" type="xml">
+            <field name="name" position="after">
+                <field name="customer_id" optional="show"/>
+                <field name="meter_id" optional="show"/>
+                <field name="date_order" string="تاريخ الفاتورة"/>
+                <field name="period_end" optional="show"/>
+                <field name="consumption" optional="show"/>
+                <field name="amount_total" sum="Total"/>
+                <field name="amount_paid" optional="show"/>
+                <field name="balance_due" optional="show"/>
+                <field name="bill_state" widget="badge" decoration-danger="bill_state in ('overdue','cancelled')" decoration-success="bill_state=='paid'" decoration-warning="bill_state=='draft'"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="view_utility_sale_order_form" model="ir.ui.view">
+        <field name="name">sale.order.utility.form</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <field name="partner_id" position="after">
+                <field name="customer_id" options="{'no_create': True}"/>
+                <field name="meter_id" options="{'no_create': True}"/>
+                <field name="date_range_id"/>
+            </field>
+            <xpath expr="//field[@name='order_line']/tree/field[@name='price_unit']" position="after">
+                <field name="is_tax"/>
+            </xpath>
+            <xpath expr="//notebook" position="inside">
+                <page string="تفاصيل القراءة">
+                    <group>
+                        <group>
+                            <field name="reading_id" readonly="1"/>
+                            <field name="period_start"/>
+                            <field name="period_end"/>
+                        </group>
+                        <group>
+                            <field name="previous_reading"/>
+                            <field name="current_reading"/>
+                            <field name="consumption"/>
+                            <field name="tariff_id"/>
+                        </group>
+                    </group>
+                    <group string="صورة العداد" invisible="not meter_image">
+                        <field name="meter_image" widget="image" options="{'size': [200, 150]}"/>
+                    </group>
+                </page>
+                <page string="مبالغ الكهرباء">
+                    <group>
+                        <group>
+                            <field name="amount_energy"/>
+                            <field name="amount_fixed"/>
+                            <field name="amount_service"/>
+                            <field name="amount_penalty"/>
+                        </group>
+                        <group>
+                            <field name="amount_untaxed"/>
+                            <field name="amount_tax"/>
+                            <field name="amount_total"/>
+                            <field name="amount_paid"/>
+                            <field name="balance_due"/>
+                            <field name="is_overdue"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+            <xpath expr="//header" position="inside">
+                <field name="bill_state" widget="statusbar" statusbar_visible="draft,confirmed,sent,paid,overdue"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_utility_sale_order_search" model="ir.ui.view">
+        <field name="name">sale.order.utility.search</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_sale_order_filter"/>
+        <field name="arch" type="xml">
+            <field name="name" position="after">
+                <field name="customer_id"/>
+                <field name="meter_id"/>
+            </field>
+            <filter name="my_orders" position="after">
+                <filter name="overdue" string="متأخرة" domain="[('is_overdue','=',True)]"/>
+                <filter name="paid" string="مدفوعة" domain="[('bill_state','=','paid')]"/>
+                <filter name="draft_bills" string="مسودة" domain="[('bill_state','=','draft')]"/>
+                <separator/>
+                <filter name="group_bill_state" string="حالة الفاتورة" context="{'group_by':'bill_state'}"/>
+            </filter>
+        </field>
+    </record>
+
+    <record id="action_utility_sale_order" model="ir.actions.act_window">
+        <field name="name">فواتير الكهرباء</field>
+        <field name="res_model">sale.order</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('customer_id','!=',False)]</field>
+        <field name="search_view_id" ref="view_utility_sale_order_search"/>
+        <field name="context">{
+            'search_default_my_orders': 0,
+            'default_bill_state': 'draft',
+        }</field>
+    </record>
+</odoo>

@@ -6,11 +6,12 @@
         <field name="inherit_id" ref="account.view_account_payment_form"/>
         <field name="arch" type="xml">
             <xpath expr="//sheet/group" position="inside">
-                <group string="تفاصيل الكهرباء" invisible="not utility_collection_id">
-                    <field name="utility_collection_id" readonly="1"/>
+                <group string="تفاصيل الكهرباء" invisible="not utility_sale_order_id">
+                    <field name="utility_sale_order_id" readonly="1"/>
                     <field name="utility_payment_method" readonly="1"/>
                     <field name="electronic_doc_no" readonly="1"/>
                     <field name="is_invoice_verified" readonly="1"/>
+                    <field name="cashier_shift_id" readonly="1"/>
                 </group>
             </xpath>
         </field>

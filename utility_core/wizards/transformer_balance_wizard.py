@@ -42,17 +42,21 @@ class UtilityTransformerBalanceWizard(models.TransientModel):
                 rec.coupling_meter_ids = False
                 rec.child_meter_ids = False
                 continue
+
+            # إذا كانت الخلية، تشمل المحولات التابعة
+            if transformer.is_cell:
+                trans_ids = transformer.child_ids.ids + [transformer.id]
+            else:
+                trans_ids = [transformer.id]
             
-            # عدادات الربط
             coupling = self.env['utility.meter'].search([
-                ('transformer_id', '=', transformer.id),
+                ('transformer_id', 'in', trans_ids),
                 ('is_coupling_meter', '=', True),
             ])
             rec.coupling_meter_ids = [(6, 0, coupling.ids)]
             
-            # عدادات المشتركين
             children = self.env['utility.meter'].search([
-                ('transformer_id', '=', transformer.id),
+                ('transformer_id', 'in', trans_ids),
                 ('is_coupling_meter', '=', False),
             ])
             rec.child_meter_ids = [(6, 0, children.ids)]

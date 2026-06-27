@@ -11,7 +11,7 @@ class UtilityWriteoff(models.Model):
     writeoff_number = fields.Char('Writeoff Number', required=True, default=lambda self: _('New'))
     customer_id = fields.Many2one('utility.customer', 'Customer')
     account_id = fields.Many2one('utility.customer', 'Account')
-    bill_id = fields.Many2one('utility.bill', 'Bill')
+    sale_order_id = fields.Many2one('sale.order', 'Sale Order')
     amount = fields.Float('Amount')
     reason = fields.Text('Reason')
     approved_by = fields.Many2one('res.users', 'Approved By')

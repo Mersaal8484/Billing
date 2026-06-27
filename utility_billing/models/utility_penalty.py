@@ -8,7 +8,7 @@ class UtilityPenalty(models.Model):
 
     active = fields.Boolean(default=True)
     company_id = fields.Many2one('res.company', 'Company', default=lambda self: self.env.company)
-    bill_id = fields.Many2one('utility.bill', 'Bill')
+    sale_order_id = fields.Many2one('sale.order', 'Sale Order')
     customer_id = fields.Many2one('utility.customer', 'Customer')
     account_id = fields.Many2one('utility.customer', 'Account')
     penalty_type = fields.Selection([
@@ -29,33 +29,28 @@ class UtilityPenalty(models.Model):
 
     @api.model
     def cron_calculate_late_penalties(self):
-        # البحث عن الفواتير المتأخرة المستحقة للغرامة
-        overdue_bills = self.env['utility.bill'].search([
-            ('state', '=', 'overdue'),
+        overdue_orders = self.env['sale.order'].search([
+            ('bill_state', '=', 'overdue'),
             ('balance_due', '>', 0),
         ])
         penalty_percentage = float(self.env['ir.config_parameter'].sudo().get_param('utility.late_penalty_percentage', 1.5))
-        for bill in overdue_bills:
-            # التحقق مما إذا كانت الغرامة قد تم احتسابها اليوم بالفعل لتجنب التكرار
+        for order in overdue_orders:
             already_calculated = self.search([
-                ('bill_id', '=', bill.id),
+                ('sale_order_id', '=', order.id),
                 ('calculated_date', '=', fields.Date.today()),
                 ('penalty_type', '=', 'late_payment')
             ], limit=1)
             if not already_calculated:
-                amount = bill.balance_due * (penalty_percentage / 100.0)
+                amount = order.balance_due * (penalty_percentage / 100.0)
                 if amount > 0:
                     self.create({
-                        'bill_id': bill.id,
-                        'customer_id': bill.customer_id.id,
-                        'account_id': bill.account_id.id,
+                        'sale_order_id': order.id,
+                        'customer_id': order.customer_id.id,
+                        'account_id': order.customer_id.id,
                         'penalty_type': 'late_payment',
                         'amount': amount,
                         'calculated_date': fields.Date.today(),
-                        'reason': f'غرامة تأخير سداد الفاتورة رقم {bill.bill_number}',
+                        'reason': f'غرامة تأخير سداد الفاتورة رقم {order.name}',
                         'state': 'calculated',
                     })
-                    # إضافة الغرامة إلى مبلغ الفاتورة الإجمالي وإعادة حساب المبالغ
-                    bill.amount_penalty += amount
-                    bill.amount_total += amount
-
+                    order.amount_penalty += amount

@@ -16,5 +16,8 @@ from . import utility_subscriber_category
 from . import utility_formula
 from . import utility_contract_template
 from . import utility_settings
+from . import utility_res_users
+from . import utility_date_range
+from . import utility_cell_reading
 from . import account_analytic_account
 

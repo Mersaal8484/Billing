@@ -15,7 +15,7 @@ class UtilityToken(models.Model):
     token_number = fields.Char(string='Token Number', index=True)
     token_identifier = fields.Char(string='Token Identifier (TID)')
     sequence_number = fields.Integer(string='Sequence Number')
-    sale_id = fields.Many2one('utility.sale', string='Sale', required=True, ondelete='cascade')
+    pos_order_id = fields.Many2one('pos.order', string='POS Order', required=True, ondelete='cascade')
     account_id = fields.Many2one('utility.customer', string='Account', required=True)
     meter_id = fields.Many2one('utility.meter', string='Meter', required=True)
     customer_id = fields.Many2one('res.partner', string='Customer', required=True)
@@ -60,11 +60,12 @@ class UtilityToken(models.Model):
 
     def _send_token_request(self):
         self.ensure_one()
-        _logger.info('Simulating STS token request for sale %s', self.sale_id.receipt_number)
+        order_ref = self.pos_order_id.name or str(self.pos_order_id.id)
+        _logger.info('Simulating STS token request for order %s', order_ref)
         dummy_token = ''.join([str((i * 7) % 10) for i in range(20)])
         self.write({
             'token_number': dummy_token,
-            'token_identifier': 'TID-%s-%s' % (self.sale_id.id, fields.Datetime.now().strftime('%Y%m%d%H%M%S')),
+            'token_identifier': 'TID-%s-%s' % (order_ref, fields.Datetime.now().strftime('%Y%m%d%H%M%S')),
             'sequence_number': self.retry_count + 1,
             'response_date': fields.Datetime.now(),
             'response_code': '00',

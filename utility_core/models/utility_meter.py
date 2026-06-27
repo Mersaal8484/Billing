@@ -49,7 +49,8 @@ class UtilityMeter(models.Model):
 
     # خلايا المحولات
     is_coupling_meter = fields.Boolean('عداد ربط', default=False, help='عداد الربط (Coupling Meter) يقيس إجمالي الطاقة الداخلة للمحول')
-    cell_id = fields.Many2one('utility.transformer', 'المحول', help='المحول المرتبط به')
+    cell_id = fields.Many2one('utility.transformer', 'المحول/الخلية',
+        help='المحول أو الخلية المرتبطة به')
 
     _sql_constraints = [
         ('unique_meter_number_company', 'unique(meter_number, company_id)',

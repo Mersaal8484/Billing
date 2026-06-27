@@ -1,16 +1,56 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-  <menuitem id="menu_utility_prepaid_root" name="Utility Prepaid" sequence="20"/>
+    <menuitem id="menu_utility_prepaid_root" name="Utility Prepaid"
+              sequence="15" parent="utility_core.menu_utility_root"/>
 
-  <menuitem id="menu_utility_prepaid_operations" name="Operations" parent="menu_utility_prepaid_root" sequence="10"/>
+    <menuitem id="menu_utility_prepaid_pos" name="Point of Sale"
+              parent="menu_utility_prepaid_root" sequence="10"
+              action="point_of_sale.pos_action"/>
 
-  <menuitem id="menu_utility_prepaid_sales" name="Prepaid Sales" parent="menu_utility_prepaid_operations" sequence="10" action="action_utility_sale"/>
-  <menuitem id="menu_utility_prepaid_payments" name="Payments" parent="menu_utility_prepaid_operations" sequence="20" action="action_utility_payment"/>
-  <menuitem id="menu_utility_prepaid_tokens" name="Tokens" parent="menu_utility_prepaid_operations" sequence="30" action="action_utility_token"/>
-  <menuitem id="menu_utility_prepaid_transactions" name="Transactions" parent="menu_utility_prepaid_operations" sequence="40" action="action_utility_transaction"/>
-  <menuitem id="menu_utility_prepaid_adjustments" name="Adjustments" parent="menu_utility_prepaid_operations" sequence="50" action="action_utility_adjustment"/>
-  <menuitem id="menu_utility_prepaid_reversals" name="Reversals" parent="menu_utility_prepaid_operations" sequence="60" action="action_utility_reversal"/>
+    <menuitem id="menu_utility_prepaid_tokens" name="Tokens"
+              parent="menu_utility_prepaid_root" sequence="15"
+              action="action_utility_token"/>
 
-  <menuitem id="menu_utility_prepaid_cashiering" name="Cashiering" parent="menu_utility_prepaid_root" sequence="20"/>
-  <menuitem id="menu_utility_prepaid_cashier_shifts" name="Cashier Shifts" parent="menu_utility_prepaid_cashiering" sequence="10" action="action_utility_cashier_shift"/>
+    <menuitem id="menu_utility_prepaid_cashiering" name="Cashiering"
+              parent="menu_utility_prepaid_root" sequence="20"/>
+
+    <menuitem id="menu_utility_prepaid_cashier_shifts" name="Cashier Shifts"
+              parent="menu_utility_prepaid_cashiering" sequence="10"
+              action="action_utility_cashier_shift"/>
+
+    <menuitem id="menu_utility_prepaid_adjustments" name="Adjustments"
+              parent="menu_utility_prepaid_root" sequence="25"
+              action="action_utility_adjustment"/>
+
+    <menuitem id="menu_utility_prepaid_reversals" name="Reversals"
+              parent="menu_utility_prepaid_root" sequence="30"
+              action="action_utility_reversal"/>
+
+    <menuitem id="menu_utility_prepaid_transactions" name="Transactions"
+              parent="menu_utility_prepaid_root" sequence="35"
+              action="action_utility_transaction"/>
+
+    <record id="action_utility_token" model="ir.actions.act_window">
+        <field name="name">Tokens</field>
+        <field name="res_model">utility.token</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="action_utility_transaction" model="ir.actions.act_window">
+        <field name="name">Transactions</field>
+        <field name="res_model">utility.transaction</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="action_utility_adjustment" model="ir.actions.act_window">
+        <field name="name">Adjustments</field>
+        <field name="res_model">utility.adjustment</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="action_utility_reversal" model="ir.actions.act_window">
+        <field name="name">Reversals</field>
+        <field name="res_model">utility.reversal</field>
+        <field name="view_mode">tree,form</field>
+    </record>
 </odoo>

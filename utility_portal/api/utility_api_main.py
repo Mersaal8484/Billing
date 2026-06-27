@@ -1,127 +1,9 @@
-from odoo import http
+from odoo import fields, http
 from odoo.http import request
+from datetime import datetime, date
 
 
-class UtilityPortalAPI(http.Controller):
-
-    @http.route('/api/v1/utility/customer/lookup', type='json', auth='user', methods=['POST'])
-    def customer_lookup(self, **kwargs):
-        params = request.jsonrequest
-        domain = []
-        if params.get('customer_number'):
-            domain.append(('customer_number', '=', params['customer_number']))
-        if params.get('national_id'):
-            domain.append(('national_id', '=', params['national_id']))
-        if params.get('mobile'):
-            domain.append(('mobile', '=', params['mobile']))
-        if not domain:
-            return {'error': 'Provide customer_number, national_id, or mobile'}
-        customer = request.env['utility.customer'].search(domain, limit=1)
-        if not customer:
-            return {'error': 'Customer not found'}
-        partner_customers = request.env['utility.customer'].search([('partner_id', '=', customer.partner_id.id)])
-        return {
-            'id': customer.id,
-            'customer_number': customer.customer_number,
-            'name': customer.partner_id.name,
-            'national_id': customer.national_id,
-            'mobile': customer.mobile,
-            'email': customer.partner_id.email,
-            'customer_type': customer.subscriber_category_id.name if customer.subscriber_category_id else None,
-            'connection_status': customer.connection_status,
-            'region': customer.region_id.name if customer.region_id else None,
-            'area': customer.area_id.name if customer.area_id else None,
-            'accounts': [{
-                'id': a.id,
-                'account_number': a.account_number,
-                'balance': a.balance,
-                'state': a.state,
-            } for a in partner_customers],
-        }
-
-    @http.route('/api/v1/utility/meter/lookup', type='json', auth='user', methods=['POST'])
-    def meter_lookup(self, **kwargs):
-        params = request.jsonrequest
-        domain = []
-        if params.get('meter_number'):
-            domain.append(('meter_number', '=', params['meter_number']))
-        if params.get('serial_number'):
-            domain.append(('serial_number', '=', params['serial_number']))
-        if not domain:
-            return {'error': 'Provide meter_number or serial_number'}
-        meter = request.env['utility.meter'].search(domain, limit=1)
-        if not meter:
-            return {'error': 'Meter not found'}
-        return {
-            'id': meter.id,
-            'meter_number': meter.meter_number,
-            'serial_number': meter.serial_number,
-            'status': meter.status_id.name if meter.status_id else None,
-            'type': meter.meter_type_id.name if meter.meter_type_id else None,
-            'phase': meter.phase,
-            'customer': meter.customer_id.partner_id.name if meter.customer_id else None,
-            'account': meter.account_id.account_number if meter.account_id else None,
-            'region': meter.region_id.name if meter.region_id else None,
-            'area': meter.area_id.name if meter.area_id else None,
-            'route': meter.route_id.name if meter.route_id else None,
-            'feeder': meter.feeder_id.name if meter.feeder_id else None,
-            'transformer': meter.transformer_id.name if meter.transformer_id else None,
-        }
-
-    @http.route('/api/v1/utility/prepaid/sale', type='json', auth='user', methods=['POST'])
-    def prepaid_sale(self, **kwargs):
-        params = request.jsonrequest
-        meter_no = params.get('meter_number')
-        amount = params.get('amount')
-        payment_method = params.get('payment_method', 'cash')
-        if not meter_no or not amount:
-            return {'error': 'meter_number and amount are required'}
-        meter = request.env['utility.meter'].search([('meter_number', '=', meter_no)], limit=1)
-        if not meter:
-            return {'error': 'Meter not found'}
-        if not meter.account_id:
-            return {'error': 'Meter has no active account'}
-        account = meter.account_id
-        sale = request.env['utility.sale'].create({
-            'customer_id': account.partner_id.id,
-            'account_id': account.id,
-            'meter_id': meter.id,
-            'tariff_id': account.tariff_id.id if account.tariff_id else False,
-            'amount_paid': amount,
-            'payment_method': payment_method,
-            'operator_id': request.env.user.id,
-        })
-        sale.action_confirm()
-        sale.action_generate_token()
-        sale.action_complete()
-        return {
-            'receipt_number': sale.receipt_number,
-            'amount': sale.amount_paid,
-            'kwh': sale.kwh_purchased,
-            'token': sale.token_id.token_number if sale.token_id else None,
-            'balance_after': sale.balance_after,
-        }
-
-    @http.route('/api/v1/utility/prepaid/token/validate', type='json', auth='user', methods=['POST'])
-    def token_validate(self, **kwargs):
-        params = request.jsonrequest
-        token_number = params.get('token_number')
-        meter_number = params.get('meter_number')
-        if not token_number or not meter_number:
-            return {'error': 'token_number and meter_number are required'}
-        token = request.env['utility.token'].search([
-            ('token_number', '=', token_number),
-            ('meter_id.meter_number', '=', meter_number),
-            ('status', '=', 'success'),
-        ], limit=1)
-        if not token:
-            return {'valid': False}
-        return {
-            'valid': True,
-            'amount': token.amount,
-            'kwh': token.kwh,
-            'date': token.request_date.isoformat() if token.request_date else None,
-        }
+class UtilityAPI(http.Controller):
 
     @http.route('/api/v1/utility/billing/balance', type='json', auth='user', methods=['POST'])
     def billing_balance(self, **kwargs):
@@ -132,11 +14,11 @@ class UtilityPortalAPI(http.Controller):
         account = request.env['utility.customer'].search([('account_number', '=', account_number)], limit=1)
         if not account:
             return {'error': 'Account not found'}
-        bills = request.env['utility.bill'].search([
-            ('account_id', '=', account.id),
-            ('state', 'not in', ('paid', 'cancelled')),
+        orders = request.env['sale.order'].search([
+            ('customer_id', '=', account.id),
+            ('bill_state', 'not in', ('paid', 'cancelled')),
         ])
-        debt = sum(bills.mapped('balance_due'))
+        debt = sum(orders.mapped('balance_due'))
         return {
             'account_number': account.account_number,
             'balance': account.balance,
@@ -155,45 +37,46 @@ class UtilityPortalAPI(http.Controller):
         account = request.env['utility.customer'].search([('account_number', '=', account_number)], limit=1)
         if not account:
             return {'error': 'Account not found'}
-        bills = request.env['utility.bill'].search([
-            ('account_id', '=', account.id),
-        ], order='bill_date desc', limit=limit)
+        orders = request.env['sale.order'].search([
+            ('customer_id', '=', account.id),
+        ], order='date_order desc', limit=limit)
         return {
             'bills': [{
-                'bill_number': b.bill_number,
-                'period': '%s - %s' % (b.period_start, b.period_end) if b.period_start and b.period_end else None,
-                'amount': b.amount_total,
-                'paid': b.amount_paid,
-                'balance': b.balance_due,
-                'due_date': b.due_date.isoformat() if b.due_date else None,
-                'state': b.state,
-            } for b in bills],
+                'bill_number': o.name,
+                'period': '%s - %s' % (o.period_start, o.period_end) if o.period_start and o.period_end else None,
+                'amount': o.amount_total,
+                'paid': o.amount_paid,
+                'balance': o.balance_due,
+                'due_date': o.date_order.date().isoformat() if o.date_order else None,
+                'state': o.bill_state,
+            } for o in orders],
         }
 
     @http.route('/api/v1/utility/billing/pay', type='json', auth='user', methods=['POST'])
     def billing_pay(self, **kwargs):
         params = request.jsonrequest
-        bill_id = params.get('bill_id')
+        order_id = params.get('order_id')
         amount = params.get('amount')
         payment_method = params.get('payment_method', 'cash')
         reference = params.get('reference', '')
-        if not bill_id or not amount:
-            return {'error': 'bill_id and amount are required'}
-        bill = request.env['utility.bill'].browse(int(bill_id))
-        if not bill.exists():
-            return {'error': 'Bill not found'}
-        collection = request.env['utility.collection'].create({
-            'customer_id': bill.customer_id.id,
-            'account_id': bill.account_id.id,
-            'bill_id': bill.id,
+        if not order_id or not amount:
+            return {'error': 'order_id and amount are required'}
+        order = request.env['sale.order'].browse(int(order_id))
+        if not order.exists():
+            return {'error': 'Order not found'}
+        partner = order.partner_id
+        payment = request.env['account.payment'].create({
+            'partner_id': partner.id if partner else request.env.user.partner_id.id,
             'amount': amount,
-            'payment_method': payment_method,
-            'reference_number': reference,
-            'collected_by': request.env.user.id,
+            'payment_type': 'inbound',
+            'partner_type': 'customer',
+            'utility_sale_order_id': order.id,
+            'utility_payment_method': payment_method,
+            'electronic_doc_no': reference,
+            'payment_date': fields.Datetime.now(),
         })
-        collection.state = 'collected'
         return {
-            'collection_number': collection.collection_number,
+            'payment_id': payment.id,
             'success': True,
         }
 
@@ -223,31 +106,28 @@ class UtilityPortalAPI(http.Controller):
         report_date = params.get('date', date.today().isoformat())
         region_id = params.get('region_id')
         area_id = params.get('area_id')
-        sales_domain = [('state', '=', 'completed'), ('date', '>=', '%s 00:00:00' % report_date), ('date', '<=', '%s 23:59:59' % report_date)]
+        pos_domain = [('date_order', '>=', '%s 00:00:00' % report_date), ('date_order', '<=', '%s 23:59:59' % report_date)]
         if region_id:
-            sales_domain.append(('account_id.region_id', '=', int(region_id)))
+            pos_domain.append(('account_id.region_id', '=', int(region_id)))
         if area_id:
-            sales_domain.append(('account_id.area_id', '=', int(area_id)))
-        sales = request.env['utility.sale'].search(sales_domain)
-        bills_domain = [('bill_date', '=', report_date)]
+            pos_domain.append(('account_id.area_id', '=', int(area_id)))
+        pos_orders = request.env['pos.order'].search(pos_domain)
+        bills_domain = [('date_order', '>=', '%s 00:00:00' % report_date), ('date_order', '<=', '%s 23:59:59' % report_date)]
         if region_id:
-            bills_domain.append(('account_id.region_id', '=', int(region_id)))
+            bills_domain.append(('customer_id.region_id', '=', int(region_id)))
         if area_id:
-            bills_domain.append(('account_id.area_id', '=', int(area_id)))
-        bills = request.env['utility.bill'].search(bills_domain)
-        collections_domain = [('payment_date', '>=', '%s 00:00:00' % report_date), ('payment_date', '<=', '%s 23:59:59' % report_date)]
-        if region_id:
-            collections_domain.append(('account_id.region_id', '=', int(region_id)))
-        if area_id:
-            collections_domain.append(('account_id.area_id', '=', int(area_id)))
-        collections = request.env['utility.collection'].search(collections_domain)
+            bills_domain.append(('customer_id.area_id', '=', int(area_id)))
+        orders = request.env['sale.order'].search(bills_domain)
         alarms_domain = [('alarm_date', '>=', '%s 00:00:00' % report_date), ('alarm_date', '<=', '%s 23:59:59' % report_date), ('state', 'not in', ('resolved', 'closed'))]
         alarms = request.env['utility.alarm'].search(alarms_domain)
+        total_collections = sum(request.env['account.payment'].search([
+            ('payment_date', '>=', '%s 00:00:00' % report_date), ('payment_date', '<=', '%s 23:59:59' % report_date),
+            ('utility_sale_order_id', '!=', False),
+        ]).mapped('amount'))
         return {
-            'total_sales': len(sales),
-            'total_revenue': sum(sales.mapped('amount_paid')),
-            'total_kwh': sum(sales.mapped('kwh_purchased')),
-            'total_bills': len(bills),
-            'total_collections': sum(collections.mapped('amount')),
+            'total_pos_sales': len(pos_orders),
+            'total_pos_revenue': sum(pos_orders.mapped('amount_paid')),
+            'total_bills': len(orders),
+            'total_collections': total_collections,
             'active_alarms': len(alarms),
         }
