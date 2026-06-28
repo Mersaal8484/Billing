@@ -1,0 +1,143 @@
+id,name,code,account_type,chart_template_id/id,reconcile
+acc_cash_petty,صندوق النقدية,111001,asset_cash,construction_chart_template,False
+acc_bank_curr_sar,البنك - حساب جاري ريال,112001,asset_cash,construction_chart_template,True
+acc_bank_curr_usd,البنك - حساب جاري دولار,112002,asset_cash,construction_chart_template,True
+acc_bank_investment,البنك - شهادات استثمار,112003,asset_cash,construction_chart_template,False
+acc_ar_trade,عملاء - ذمم مدينة,121001,asset_receivable,construction_chart_template,True
+acc_ar_retention,احتجازات عملاء - ضمان حسن تنفيذ,121002,asset_receivable,construction_chart_template,True
+acc_ar_notes,أوراق قبض,121003,asset_receivable,construction_chart_template,True
+acc_ar_related,ذمم مدينة أطراف ذات علاقة,121004,asset_receivable,construction_chart_template,True
+acc_wip_unbilled_revenue,إيرادات غير مفوترة - أصل عقد (WIP),131001,asset_current,construction_chart_template,False
+acc_wip_unbilled_variation,أوامر تغييرية غير مفوترة,131002,asset_current,construction_chart_template,False
+acc_wip_contract_retention,مبالغ تحت الحجز - عملاء (Retention),132001,asset_current,construction_chart_template,True
+acc_adv_suppliers,سلف ومقدمات موردين,141001,asset_current,construction_chart_template,True
+acc_adv_subcontractors,سلف ومقدمات مقاولي باطن,141002,asset_current,construction_chart_template,True
+acc_adv_employees,سلف الموظفين,141003,asset_current,construction_chart_template,True
+acc_prepaid_insurance,تأمينات مدفوعة مقدماً,142001,asset_prepayments,construction_chart_template,False
+acc_prepaid_rent,إيجارات مدفوعة مقدماً,142002,asset_prepayments,construction_chart_template,False
+acc_prepaid_other,مصاريف مدفوعة مقدماً,142003,asset_prepayments,construction_chart_template,False
+acc_inventory_raw,مواد خام,151001,asset_current,construction_chart_template,False
+acc_inventory_wip,مخزون تحت التشغيل,151002,asset_current,construction_chart_template,False
+acc_inventory_fuel,وقود وزيوت,151003,asset_current,construction_chart_template,False
+acc_inventory_spare,قطع غيار,151004,asset_current,construction_chart_template,False
+acc_inventory_cons,مواد استهلاكية,151005,asset_current,construction_chart_template,False
+acc_fa_land,أراضي,161001,asset_fixed,construction_chart_template,False
+acc_fa_buildings,مباني,161002,asset_fixed,construction_chart_template,False
+acc_fa_equip_construction,معدات تشييد وبناء,161003,asset_fixed,construction_chart_template,False
+acc_fa_equip_heavy,معدات ثقيلة (بلدوزرات - شيولات),161004,asset_fixed,construction_chart_template,False
+acc_fa_vehicles,سيارات وشاحنات,161005,asset_fixed,construction_chart_template,False
+acc_fa_furniture,أثاث وتجهيزات,161006,asset_fixed,construction_chart_template,False
+acc_fa_computers,أجهزة حاسب آلي,161007,asset_fixed,construction_chart_template,False
+acc_fa_software,برمجيات,161008,asset_fixed,construction_chart_template,False
+acc_fa_accum_dep_buildings,مجمع إهلاك المباني,162001,asset_fixed,construction_chart_template,False
+acc_fa_accum_dep_equip,مجمع إهلاك المعدات التشييد,162002,asset_fixed,construction_chart_template,False
+acc_fa_accum_dep_heavy,مجمع إهلاك المعدات الثقيلة,162003,asset_fixed,construction_chart_template,False
+acc_fa_accum_dep_vehicles,مجمع إهلاك السيارات والشاحنات,162004,asset_fixed,construction_chart_template,False
+acc_fa_accum_dep_furniture,مجمع إهلاك الأثاث,162005,asset_fixed,construction_chart_template,False
+acc_fa_accum_dep_computers,مجمع إهلاك الحاسب الآلي,162006,asset_fixed,construction_chart_template,False
+acc_rou_equipment,أصل حق انتفاع - معدات,171001,asset_non_current,construction_chart_template,False
+acc_rou_vehicles,أصل حق انتفاع - سيارات,171002,asset_non_current,construction_chart_template,False
+acc_rou_buildings,أصل حق انتفاع - مباني,171003,asset_non_current,construction_chart_template,False
+acc_other_receivable,ذمم مدينة أخرى,181001,asset_current,construction_chart_template,True
+acc_deposits_guarantees,ودائع وتأمينات,181002,asset_current,construction_chart_template,False
+acc_ap_trade,موردون - ذمم دائنة,211001,liability_payable,construction_chart_template,True
+acc_ap_subcontractors,مقاولو باطن - ذمم دائنة,211002,liability_payable,construction_chart_template,True
+acc_ap_retention,احتجازات مقاولي باطن (ضمان),211003,liability_payable,construction_chart_template,True
+acc_ap_notes,أوراق دفع,211004,liability_payable,construction_chart_template,True
+acc_ap_related,ذمم دائنة أطراف ذات علاقة,211005,liability_payable,construction_chart_template,True
+acc_wip_overbilled_revenue,فوترة زائدة عن الإنجاز - التزام عقد (Overbilling),221001,liability_current,construction_chart_template,False
+acc_adv_customers,سلف ومقدمات العملاء,222001,liability_current,construction_chart_template,True
+acc_unearned_revenue,إيرادات غير مكتسبة (مؤجلة),222002,liability_current,construction_chart_template,False
+acc_accrued_salaries,مخصص الرواتب والأجور,231001,liability_current,construction_chart_template,False
+acc_accrued_leave,مخصص الإجازات,231002,liability_current,construction_chart_template,False
+acc_accrued_bonus,مخصص المكافآت,231003,liability_current,construction_chart_template,False
+acc_provision_esi,مخصص مكافأة نهاية الخدمة,232001,liability_non_current,construction_chart_template,False
+acc_provision_warranty,مخصص ضمان المشاريع,232002,liability_non_current,construction_chart_template,False
+acc_vat_output,ضريبة القيمة المضافة - مخرجات,241001,liability_current,construction_chart_template,False
+acc_vat_input,ضريبة القيمة المضافة - مدخلات,241002,liability_current,construction_chart_template,False
+acc_vat_payable,ضريبة القيمة المضافة - مستحقة للدفع,241003,liability_current,construction_chart_template,False
+acc_wht_payable,ضريبة الاستقطاع - مستحقة للدفع,242001,liability_current,construction_chart_template,False
+acc_cit_payable,ضريبة الدخل - مستحقة,242002,liability_current,construction_chart_template,False
+acc_zakat_payable,زكاة - مستحقة,242003,liability_current,construction_chart_template,False
+acc_loan_short,قروض بنكية قصيرة الأجل,251001,liability_current,construction_chart_template,True
+acc_loan_long,قروض بنكية طويلة الأجل,252001,liability_non_current,construction_chart_template,True
+acc_finance_lease_short,تمويل تأجير تمويلي - قصير الأجل,251002,liability_current,construction_chart_template,True
+acc_finance_lease_long,تمويل تأجير تمويلي - طويل الأجل,252002,liability_non_current,construction_chart_template,True
+acc_other_payable,دائنون متنوعون,261001,liability_current,construction_chart_template,True
+acc_accrued_expenses,مصاريف مستحقة,261002,liability_current,construction_chart_template,False
+acc_equity_capital,رأس المال,311001,equity,construction_chart_template,False
+acc_equity_partner_current,حساب جاري الشركاء,311002,equity,construction_chart_template,True
+acc_equity_legal_reserve,احتياطي قانوني,312001,equity,construction_chart_template,False
+acc_equity_contractual_reserve,احتياطي نظامي,312002,equity,construction_chart_template,False
+acc_equity_retained_earnings,أرباح مبقاة,313001,equity,construction_chart_template,False
+acc_equity_prior_year_adj,تسويات سنوات سابقة,313002,equity,construction_chart_template,False
+acc_equity_curr_pl,أرباح / خسائر العام الجاري,314001,equity_unaffected,construction_chart_template,False
+acc_equity_drawings,مسحوبات الشركاء,314002,equity,construction_chart_template,False
+acc_rev_contract,إيرادات عقود مقاولات,411001,income,construction_chart_template,False
+acc_rev_contract_wip,إيرادات عقود - أعمال تحت التنفيذ,411002,income,construction_chart_template,False
+acc_rev_variation,إيرادات تغييرات وأوامر تغييرية,411003,income,construction_chart_template,False
+acc_rev_claims,إيرادات تعويضات ومطالبات,411004,income_other,construction_chart_template,False
+acc_rev_equip_rental,إيرادات تأجير معدات,412001,income_other,construction_chart_template,False
+acc_rev_material_sales,إيرادات بيع مواد فائضة,412002,income_other,construction_chart_template,False
+acc_rev_penalty,إيرادات غرامات وتعويضات,412003,income_other,construction_chart_template,False
+acc_rev_other,إيرادات متنوعة,413001,income_other,construction_chart_template,False
+acc_cogs_material,تكاليف مواد مباشرة,511001,expense_direct_cost,construction_chart_template,False
+acc_cogs_material_site,تكاليف مواد - صرف موقع,511002,expense_direct_cost,construction_chart_template,False
+acc_cogs_material_import,تكاليف مواد مستوردة,511003,expense_direct_cost,construction_chart_template,False
+acc_cogs_material_transport,مصاريف نقل مواد,511004,expense_direct_cost,construction_chart_template,False
+acc_cogs_material_waste,هالك مواد,511005,expense_direct_cost,construction_chart_template,False
+acc_cogs_sub_structural,مقاولو باطن - أعمال هيكلية,521001,expense_direct_cost,construction_chart_template,False
+acc_cogs_sub_architectural,مقاولو باطن - أعمال معمارية,521002,expense_direct_cost,construction_chart_template,False
+acc_cogs_sub_mep,مقاولو باطن - أعمال كهروميكانيكية,521003,expense_direct_cost,construction_chart_template,False
+acc_cogs_sub_finishing,مقاولو باطن - أعمال تشطيب,521004,expense_direct_cost,construction_chart_template,False
+acc_cogs_sub_infrastructure,مقاولو باطن - بنية تحتية,521005,expense_direct_cost,construction_chart_template,False
+acc_cogs_sub_specialty,مقاولو باطن - أعمال تخصصية,521006,expense_direct_cost,construction_chart_template,False
+acc_cogs_labor_wages,أجور عمال يوميين,531001,expense_direct_cost,construction_chart_template,False
+acc_cogs_labor_salaries,رواتب مهندسين موقع,531002,expense_direct_cost,construction_chart_template,False
+acc_cogs_labor_overtime,أجور إضافي (أوفرتايم),531003,expense_direct_cost,construction_chart_template,False
+acc_cogs_labor_bonus,مكافآت وحوافز موقع,531004,expense_direct_cost,construction_chart_template,False
+acc_cogs_labor_accommodation,سكن وإعاشة عمال,531005,expense_direct_cost,construction_chart_template,False
+acc_cogs_labor_transport,انتقالات عمال,531006,expense_direct_cost,construction_chart_template,False
+acc_cogs_labor_medical,تأمين طبي للعمال,531007,expense_direct_cost,construction_chart_template,False
+acc_cogs_labor_visa,تأشيرات وإقامات عمال,531008,expense_direct_cost,construction_chart_template,False
+acc_cogs_equip_rental,تأجير معدات خارجي,541001,expense_direct_cost,construction_chart_template,False
+acc_cogs_equip_fuel,وقود وزيوت تشغيل معدات,541002,expense_direct_cost,construction_chart_template,False
+acc_cogs_equip_maintenance,صيانة وإصلاح معدات,541003,expense_direct_cost,construction_chart_template,False
+acc_cogs_equip_depreciation,إهلاك معدات تشييد,541004,expense_direct_cost,construction_chart_template,False
+acc_cogs_equip_mobilization,نقل وترحيل معدات (Mobilization),541005,expense_direct_cost,construction_chart_template,False
+acc_cogs_equip_operators,تشغيل معدات - مشغلين,541006,expense_direct_cost,construction_chart_template,False
+acc_cogs_site_security,حراسة وأمن الموقع,551001,expense_direct_cost,construction_chart_template,False
+acc_cogs_site_utilities,خدمات الموقع (كهرباء - مياه),551002,expense_direct_cost,construction_chart_template,False
+acc_cogs_site_permits,رسوم بلدية ورخص بناء,551003,expense_direct_cost,construction_chart_template,False
+acc_cogs_site_testing,اختبارات وفحوصات,551004,expense_direct_cost,construction_chart_template,False
+acc_cogs_site_waste,نفايات ومخلفات موقع,551005,expense_direct_cost,construction_chart_template,False
+acc_cogs_site_survey,مسح وأعمال جيوتقنية,551006,expense_direct_cost,construction_chart_template,False
+acc_cogs_site_insurance,تأمين المشروع,551007,expense_direct_cost,construction_chart_template,False
+acc_cogs_site_safety,سلامة وصحة مهنية,551008,expense_direct_cost,construction_chart_template,False
+acc_exp_admin_salaries,رواتب موظفين إداريين,611001,expense,construction_chart_template,False
+acc_exp_admin_office_rent,إيجار مكاتب إدارية,612001,expense,construction_chart_template,False
+acc_exp_admin_vehicle,مصاريف سيارات إدارية,613001,expense,construction_chart_template,False
+acc_exp_admin_travel,سفر وتنقلات,613002,expense,construction_chart_template,False
+acc_exp_admin_telecom,اتصالات,614001,expense,construction_chart_template,False
+acc_exp_admin_utilities,كهرباء ومياه إدارية,614002,expense,construction_chart_template,False
+acc_exp_admin_stationery,قرطاسية ولوازم مكتبية,614003,expense,construction_chart_template,False
+acc_exp_admin_consulting,استشارات مهنية,615001,expense,construction_chart_template,False
+acc_exp_admin_legal,مصاريف قانونية,615002,expense,construction_chart_template,False
+acc_exp_admin_bank,مصاريف بنكية,616001,expense,construction_chart_template,False
+acc_exp_admin_marketing,دعاية وإعلان,617001,expense,construction_chart_template,False
+acc_exp_admin_training,تدريب وتطوير,617002,expense,construction_chart_template,False
+acc_exp_admin_it,مصاريف تقنية معلومات,618001,expense,construction_chart_template,False
+acc_exp_dep_buildings,إهلاك المباني,621001,expense_depreciation,construction_chart_template,False
+acc_exp_dep_equip,إهلاك معدات التشييد,621002,expense_depreciation,construction_chart_template,False
+acc_exp_dep_heavy,إهلاك معدات ثقيلة,621003,expense_depreciation,construction_chart_template,False
+acc_exp_dep_vehicles,إهلاك سيارات وشاحنات,621004,expense_depreciation,construction_chart_template,False
+acc_exp_dep_furniture,إهلاك أثاث,621005,expense_depreciation,construction_chart_template,False
+acc_exp_dep_computers,إهلاك أجهزة حاسب,621006,expense_depreciation,construction_chart_template,False
+acc_exp_zakat,زكاة,631001,expense,construction_chart_template,False
+acc_exp_cit,ضريبة دخل,631002,expense,construction_chart_template,False
+acc_exp_penalties,غرامات وجزاءات,631003,expense,construction_chart_template,False
+acc_income_fx,فروق عملة,711001,income_other,construction_chart_template,False
+acc_income_interest,إيرادات فوائد بنكية,711002,income_other,construction_chart_template,False
+acc_exp_fx,خسائر فروق عملة,712001,expense,construction_chart_template,False
+acc_exp_interest,مصاريف فوائد وتمويل,712002,expense,construction_chart_template,False
+acc_exp_other,مصاريف متنوعة غير متوقعة,712003,expense,construction_chart_template,False

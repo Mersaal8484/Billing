@@ -1,0 +1,553 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- ==========
+             COST CATEGORY PLAN (خطة تصنيف التكلفة - الطرف المتلقي)
+             ==========
+             Each cost category is an analytic account under this plan.
+             Used as Axis 2 on every transaction.
+             ========== -->
+
+        <record id="analytic_plan_cost_category" model="account.analytic.plan">
+            <field name="name">Cost Category - تصنيف التكلفة</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <record id="analytic_account_materials" model="account.analytic.account">
+            <field name="name">A1 - مواد (Materials)</field>
+            <field name="plan_id" ref="analytic_plan_cost_category"/>
+            <field name="active" eval="True"/>
+        </record>
+        <record id="analytic_account_subcontractors" model="account.analytic.account">
+            <field name="name">A2 - مقاولو باطن (Subcontractors)</field>
+            <field name="plan_id" ref="analytic_plan_cost_category"/>
+            <field name="active" eval="True"/>
+        </record>
+        <record id="analytic_account_labor" model="account.analytic.account">
+            <field name="name">A3 - عمالة مباشرة (Direct Labor)</field>
+            <field name="plan_id" ref="analytic_plan_cost_category"/>
+            <field name="active" eval="True"/>
+        </record>
+        <record id="analytic_account_equipment" model="account.analytic.account">
+            <field name="name">A4 - معدات (Equipment)</field>
+            <field name="plan_id" ref="analytic_plan_cost_category"/>
+            <field name="active" eval="True"/>
+        </record>
+        <record id="analytic_account_site_overhead" model="account.analytic.account">
+            <field name="name">A5 - مصاريف موقع (Site Overhead)</field>
+            <field name="plan_id" ref="analytic_plan_cost_category"/>
+            <field name="active" eval="True"/>
+        </record>
+
+        <!-- ==========
+             ISO 12006-2 WORK RESULT TAGS (وسوم نتائج العمل)
+             ==========
+             Flat tags (no plan_id in Odoo 16 Community).
+             Reference: ISO 12006-2 / UniClass 2015 Table Ff.
+             Used as Axis 3 on every transaction.
+             Prefix colour: 1=red, 2=orange, 3=yellow, 4=green, 5=blue, 6=purple, 7=cyan, 8=grey, 9=pink
+             ========== -->
+
+        <!-- W10: Site Preparation -->
+        <record id="iso_w10_site_prep" model="account.analytic.tag">
+            <field name="name">W10 - تجهيز الموقع (Site Preparation)</field>
+            <field name="active" eval="True"/>
+            <field name="color">1</field>
+        </record>
+        <record id="iso_w11_survey" model="account.analytic.tag">
+            <field name="name">W11 - مساحة ورفع مساحي (Survey &amp; Setting Out)</field>
+            <field name="active" eval="True"/>
+            <field name="color">1</field>
+        </record>
+        <record id="iso_w12_site_fencing" model="account.analytic.tag">
+            <field name="name">W12 - تسوير الموقع (Site Fencing)</field>
+            <field name="active" eval="True"/>
+            <field name="color">1</field>
+        </record>
+        <record id="iso_w13_site_clearing" model="account.analytic.tag">
+            <field name="name">W13 - تنظيف وإزالة نباتات (Clearing &amp; Grubbing)</field>
+            <field name="active" eval="True"/>
+            <field name="color">1</field>
+        </record>
+        <record id="iso_w14_temporary_works" model="account.analytic.tag">
+            <field name="name">W14 - أعمال مؤقتة (Temporary Works)</field>
+            <field name="active" eval="True"/>
+            <field name="color">1</field>
+        </record>
+
+        <!-- W20: Excavation & Groundworks -->
+        <record id="iso_w20_excavation" model="account.analytic.tag">
+            <field name="name">W20 - حفر وأعمال تربة (Excavation &amp; Groundworks)</field>
+            <field name="active" eval="True"/>
+            <field name="color">2</field>
+        </record>
+        <record id="iso_w21_bulk_excavation" model="account.analytic.tag">
+            <field name="name">W21 - حفر عام (Bulk Excavation)</field>
+            <field name="active" eval="True"/>
+            <field name="color">2</field>
+        </record>
+        <record id="iso_w22_trench_excavation" model="account.analytic.tag">
+            <field name="name">W22 - حفر خنادق وقواعد (Trench &amp; Foundation Excavation)</field>
+            <field name="active" eval="True"/>
+            <field name="color">2</field>
+        </record>
+        <record id="iso_w23_backfilling" model="account.analytic.tag">
+            <field name="name">W23 - ردم ودفان (Backfilling &amp; Fill)</field>
+            <field name="active" eval="True"/>
+            <field name="color">2</field>
+        </record>
+        <record id="iso_w24_shoring" model="account.analytic.tag">
+            <field name="name">W24 - تدعيم وسند التربة (Shoring &amp; Soil Retention)</field>
+            <field name="active" eval="True"/>
+            <field name="color">2</field>
+        </record>
+        <record id="iso_w25_dewatering" model="account.analytic.tag">
+            <field name="name">W25 - نزح مياه جوفية (Dewatering)</field>
+            <field name="active" eval="True"/>
+            <field name="color">2</field>
+        </record>
+        <record id="iso_w26_piling" model="account.analytic.tag">
+            <field name="name">W26 - خوازيق وأساسات عميقة (Piling &amp; Deep Foundations)</field>
+            <field name="active" eval="True"/>
+            <field name="color">2</field>
+        </record>
+        <record id="iso_w27_ground_improvement" model="account.analytic.tag">
+            <field name="name">W27 - تحسين التربة (Ground Improvement)</field>
+            <field name="active" eval="True"/>
+            <field name="color">2</field>
+        </record>
+
+        <!-- W30: Concrete Works -->
+        <record id="iso_w30_concrete" model="account.analytic.tag">
+            <field name="name">W30 - أعمال خرسانية (Concrete Works)</field>
+            <field name="active" eval="True"/>
+            <field name="color">3</field>
+        </record>
+        <record id="iso_w31_formwork" model="account.analytic.tag">
+            <field name="name">W31 - شدات وقوالب (Formwork &amp; Falsework)</field>
+            <field name="active" eval="True"/>
+            <field name="color">3</field>
+        </record>
+        <record id="iso_w32_reinforcement" model="account.analytic.tag">
+            <field name="name">W32 - حديد تسليح (Reinforcement Steel)</field>
+            <field name="active" eval="True"/>
+            <field name="color">3</field>
+        </record>
+        <record id="iso_w33_concrete_pouring" model="account.analytic.tag">
+            <field name="name">W33 - صب خرسانة (Concrete Pouring)</field>
+            <field name="active" eval="True"/>
+            <field name="color">3</field>
+        </record>
+        <record id="iso_w34_concrete_finishing" model="account.analytic.tag">
+            <field name="name">W34 - صب ودمك وإنهاء (Pouring, Compaction &amp; Finishing)</field>
+            <field name="active" eval="True"/>
+            <field name="color">3</field>
+        </record>
+        <record id="iso_w35_precast" model="account.analytic.tag">
+            <field name="name">W35 - خرسانة مسبقة الصب (Precast Concrete)</field>
+            <field name="active" eval="True"/>
+            <field name="color">3</field>
+        </record>
+        <record id="iso_w36_grouting" model="account.analytic.tag">
+            <field name="name">W36 - حقن (Grouting &amp; Anchoring)</field>
+            <field name="active" eval="True"/>
+            <field name="color">3</field>
+        </record>
+
+        <!-- W40: Steel & Metal -->
+        <record id="iso_w40_steel" model="account.analytic.tag">
+            <field name="name">W40 - أعمال حديدية ومعدنية (Steel &amp; Metal Works)</field>
+            <field name="active" eval="True"/>
+            <field name="color">4</field>
+        </record>
+        <record id="iso_w41_structural_steel" model="account.analytic.tag">
+            <field name="name">W41 - هيكل حديدي (Structural Steel Frame)</field>
+            <field name="active" eval="True"/>
+            <field name="color">4</field>
+        </record>
+        <record id="iso_w42_metal_roofing" model="account.analytic.tag">
+            <field name="name">W42 - أسقف معدنية (Metal Roofing &amp; Cladding)</field>
+            <field name="active" eval="True"/>
+            <field name="color">4</field>
+        </record>
+        <record id="iso_w43_welding" model="account.analytic.tag">
+            <field name="name">W43 - لحام (Welding &amp; Fabrication)</field>
+            <field name="active" eval="True"/>
+            <field name="color">4</field>
+        </record>
+
+        <!-- W50: Masonry & Blockwork -->
+        <record id="iso_w50_masonry" model="account.analytic.tag">
+            <field name="name">W50 - بناء طابوق وحجر (Masonry &amp; Blockwork)</field>
+            <field name="active" eval="True"/>
+            <field name="color">5</field>
+        </record>
+        <record id="iso_w51_brickwork" model="account.analytic.tag">
+            <field name="name">W51 - طابوق (Brick &amp; Block Laying)</field>
+            <field name="active" eval="True"/>
+            <field name="color">5</field>
+        </record>
+        <record id="iso_w52_stonework" model="account.analytic.tag">
+            <field name="name">W52 - حجر (Stonework &amp; Cladding)</field>
+            <field name="active" eval="True"/>
+            <field name="color">5</field>
+        </record>
+
+        <!-- W60: Waterproofing & Insulation -->
+        <record id="iso_w60_waterproofing" model="account.analytic.tag">
+            <field name="name">W60 - عزل مائي وحراري (Waterproofing &amp; Insulation)</field>
+            <field name="active" eval="True"/>
+            <field name="color">6</field>
+        </record>
+        <record id="iso_w61_damp_proofing" model="account.analytic.tag">
+            <field name="name">W61 - عزل رطوبة (Damp Proofing)</field>
+            <field name="active" eval="True"/>
+            <field name="color">6</field>
+        </record>
+        <record id="iso_w62_thermal_insulation" model="account.analytic.tag">
+            <field name="name">W62 - عزل حراري (Thermal Insulation)</field>
+            <field name="active" eval="True"/>
+            <field name="color">6</field>
+        </record>
+        <record id="iso_w63_acoustic_insulation" model="account.analytic.tag">
+            <field name="name">W63 - عزل صوتي (Acoustic Insulation)</field>
+            <field name="active" eval="True"/>
+            <field name="color">6</field>
+        </record>
+        <record id="iso_w64_fire_proofing" model="account.analytic.tag">
+            <field name="name">W64 - عزل حريق (Fire Proofing)</field>
+            <field name="active" eval="True"/>
+            <field name="color">6</field>
+        </record>
+
+        <!-- W70: Finishes -->
+        <record id="iso_w70_plastering" model="account.analytic.tag">
+            <field name="name">W70 - لياسة وأرضيات وبلاط (Plaster, Flooring &amp; Tiling)</field>
+            <field name="active" eval="True"/>
+            <field name="color">7</field>
+        </record>
+        <record id="iso_w71_plastering" model="account.analytic.tag">
+            <field name="name">W71 - لياسة (Plastering &amp; Rendering)</field>
+            <field name="active" eval="True"/>
+            <field name="color">7</field>
+        </record>
+        <record id="iso_w72_screed" model="account.analytic.tag">
+            <field name="name">W72 - طبقة التسوية (Screed &amp; Underlayment)</field>
+            <field name="active" eval="True"/>
+            <field name="color">7</field>
+        </record>
+        <record id="iso_w73_ceramic_tiling" model="account.analytic.tag">
+            <field name="name">W73 - بلاط وسيراميك (Ceramic &amp; Porcelain Tiling)</field>
+            <field name="active" eval="True"/>
+            <field name="color">7</field>
+        </record>
+        <record id="iso_w74_stone_flooring" model="account.analytic.tag">
+            <field name="name">W74 - أرضيات حجر ورخام (Stone &amp; Marble Flooring)</field>
+            <field name="active" eval="True"/>
+            <field name="color">7</field>
+        </record>
+        <record id="iso_w75_wood_flooring" model="account.analytic.tag">
+            <field name="name">W75 - أرضيات خشبية (Wood &amp; Laminate Flooring)</field>
+            <field name="active" eval="True"/>
+            <field name="color">7</field>
+        </record>
+
+        <!-- W80: Painting & Decorating -->
+        <record id="iso_w80_painting" model="account.analytic.tag">
+            <field name="name">W80 - دهان وتشطيب (Painting &amp; Decorating)</field>
+            <field name="active" eval="True"/>
+            <field name="color">8</field>
+        </record>
+        <record id="iso_w81_emulsion" model="account.analytic.tag">
+            <field name="name">W81 - دهان بلاستيك (Emulsion Painting)</field>
+            <field name="active" eval="True"/>
+            <field name="color">8</field>
+        </record>
+        <record id="iso_w82_oil_painting" model="account.analytic.tag">
+            <field name="name">W82 - دهان زيتي (Oil &amp; Enamel Painting)</field>
+            <field name="active" eval="True"/>
+            <field name="color">8</field>
+        </record>
+        <record id="iso_w83_puttying" model="account.analytic.tag">
+            <field name="name">W83 - معجون (Puttying &amp; Filling)</field>
+            <field name="active" eval="True"/>
+            <field name="color">8</field>
+        </record>
+        <record id="iso_w84_wallpaper" model="account.analytic.tag">
+            <field name="name">W84 - ورق جدران (Wallpaper &amp; Wall Covering)</field>
+            <field name="active" eval="True"/>
+            <field name="color">8</field>
+        </record>
+
+        <!-- W90: Glass, Aluminum, Doors & Windows -->
+        <record id="iso_w90_glazing" model="account.analytic.tag">
+            <field name="name">W90 - زجاج وألمنيوم (Glazing &amp; Aluminum)</field>
+            <field name="active" eval="True"/>
+            <field name="color">9</field>
+        </record>
+        <record id="iso_w91_aluminum_frames" model="account.analytic.tag">
+            <field name="name">W91 - ألمنيوم (Aluminum Frames &amp; Sections)</field>
+            <field name="active" eval="True"/>
+            <field name="color">9</field>
+        </record>
+        <record id="iso_w92_glass" model="account.analytic.tag">
+            <field name="name">W92 - زجاج (Glass &amp; Glazing)</field>
+            <field name="active" eval="True"/>
+            <field name="color">9</field>
+        </record>
+        <record id="iso_w93_doors" model="account.analytic.tag">
+            <field name="name">W93 - أبواب (Doors &amp; Door Sets)</field>
+            <field name="active" eval="True"/>
+            <field name="color">9</field>
+        </record>
+        <record id="iso_w94_windows" model="account.analytic.tag">
+            <field name="name">W94 - شبابيك (Windows &amp; Window Walls)</field>
+            <field name="active" eval="True"/>
+            <field name="color">9</field>
+        </record>
+        <record id="iso_w95_curtain_walls" model="account.analytic.tag">
+            <field name="name">W95 - واجهات زجاجية (Curtain Walls &amp; Glazed Facades)</field>
+            <field name="active" eval="True"/>
+            <field name="color">9</field>
+        </record>
+        <record id="iso_w96_ironmongery" model="account.analytic.tag">
+            <field name="name">W96 - أدوات تثبيت واكسسوارات (Ironmongery &amp; Hardware)</field>
+            <field name="active" eval="True"/>
+            <field name="color">9</field>
+        </record>
+
+        <!-- WA0: Plumbing & Drainage -->
+        <record id="iso_wa0_plumbing" model="account.analytic.tag">
+            <field name="name">WA0 - سباكة وتصريف (Plumbing, Drainage &amp; Fire)</field>
+            <field name="active" eval="True"/>
+            <field name="color">1</field>
+        </record>
+        <record id="iso_wa1_water_supply" model="account.analytic.tag">
+            <field name="name">WA1 - تمديدات مياه (Water Supply Piping)</field>
+            <field name="active" eval="True"/>
+            <field name="color">1</field>
+        </record>
+        <record id="iso_wa2_sanitary" model="account.analytic.tag">
+            <field name="name">WA2 - صرف صحي (Sanitary Drainage)</field>
+            <field name="active" eval="True"/>
+            <field name="color">1</field>
+        </record>
+        <record id="iso_wa3_storm_drainage" model="account.analytic.tag">
+            <field name="name">WA3 - صرف مطر (Stormwater Drainage)</field>
+            <field name="active" eval="True"/>
+            <field name="color">1</field>
+        </record>
+        <record id="iso_wa4_fire_suppression" model="account.analytic.tag">
+            <field name="name">WA4 - إطفاء حريق (Fire Suppression &amp; Sprinklers)</field>
+            <field name="active" eval="True"/>
+            <field name="color">1</field>
+        </record>
+
+        <!-- WB0: HVAC -->
+        <record id="iso_wb0_hvac" model="account.analytic.tag">
+            <field name="name">WB0 - تكييف وتهوية (HVAC Systems)</field>
+            <field name="active" eval="True"/>
+            <field name="color">2</field>
+        </record>
+        <record id="iso_wb1_ac_units" model="account.analytic.tag">
+            <field name="name">WB1 - وحدات تكييف (AC Units &amp; Chillers)</field>
+            <field name="active" eval="True"/>
+            <field name="color">2</field>
+        </record>
+        <record id="iso_wb2_ducting" model="account.analytic.tag">
+            <field name="name">WB2 - مجاري هواء (Ducting &amp; Air Distribution)</field>
+            <field name="active" eval="True"/>
+            <field name="color">2</field>
+        </record>
+        <record id="iso_wb3_ventilation" model="account.analytic.tag">
+            <field name="name">WB3 - تهوية (Ventilation &amp; Exhaust)</field>
+            <field name="active" eval="True"/>
+            <field name="color">2</field>
+        </record>
+        <record id="iso_wb4_controls" model="account.analytic.tag">
+            <field name="name">WB4 - ضوابط وتحكم (HVAC Controls &amp; BMS)</field>
+            <field name="active" eval="True"/>
+            <field name="color">2</field>
+        </record>
+
+        <!-- WC0: Electrical -->
+        <record id="iso_wc0_electrical" model="account.analytic.tag">
+            <field name="name">WC0 - كهرباء (Electrical Systems)</field>
+            <field name="active" eval="True"/>
+            <field name="color">3</field>
+        </record>
+        <record id="iso_wc1_conduiting" model="account.analytic.tag">
+            <field name="name">WC1 - تمديدات كهربائية (Conduiting &amp; Wiring)</field>
+            <field name="active" eval="True"/>
+            <field name="color">3</field>
+        </record>
+        <record id="iso_wc2_power_panels" model="account.analytic.tag">
+            <field name="name">WC2 - لوحات توزيع (Power Panels &amp; Distribution Boards)</field>
+            <field name="active" eval="True"/>
+            <field name="color">3</field>
+        </record>
+        <record id="iso_wc3_lighting" model="account.analytic.tag">
+            <field name="name">WC3 - إنارة (Lighting Fixtures)</field>
+            <field name="active" eval="True"/>
+            <field name="color">3</field>
+        </record>
+        <record id="iso_wc4_generators" model="account.analytic.tag">
+            <field name="name">WC4 - مولدات (Generators &amp; UPS)</field>
+            <field name="active" eval="True"/>
+            <field name="color">3</field>
+        </record>
+        <record id="iso_wc5_switches" model="account.analytic.tag">
+            <field name="name">WC5 - مفاتيح وبرايز (Switches &amp; Sockets)</field>
+            <field name="active" eval="True"/>
+            <field name="color">3</field>
+        </record>
+        <record id="iso_wc6_data_cabling" model="account.analytic.tag">
+            <field name="name">WC6 - شبكات بيانات (Data &amp; Structured Cabling)</field>
+            <field name="active" eval="True"/>
+            <field name="color">3</field>
+        </record>
+        <record id="iso_wc7_security" model="account.analytic.tag">
+            <field name="name">WC7 - أنظمة أمن (CCTV &amp; Access Control)</field>
+            <field name="active" eval="True"/>
+            <field name="color">3</field>
+        </record>
+
+        <!-- WD0: Lifts & Transport -->
+        <record id="iso_wd0_lifts" model="account.analytic.tag">
+            <field name="name">WD0 - مصاعد وسلالم متحركة (Lifts &amp; Escalators)</field>
+            <field name="active" eval="True"/>
+            <field name="color">4</field>
+        </record>
+
+        <!-- WE0: External & Landscaping -->
+        <record id="iso_we0_external_works" model="account.analytic.tag">
+            <field name="name">WE0 - أعمال خارجية وتشجير (External Works &amp; Landscaping)</field>
+            <field name="active" eval="True"/>
+            <field name="color">5</field>
+        </record>
+        <record id="iso_we1_road_base" model="account.analytic.tag">
+            <field name="name">WE1 - طبقات أساس طرق (Road Base &amp; Sub-base)</field>
+            <field name="active" eval="True"/>
+            <field name="color">5</field>
+        </record>
+        <record id="iso_we2_paving" model="account.analytic.tag">
+            <field name="name">WE2 - إنترلوك وبلاط أرصفة (Interlock &amp; Paving Tiles)</field>
+            <field name="active" eval="True"/>
+            <field name="color">5</field>
+        </record>
+        <record id="iso_we3_kerbs" model="account.analytic.tag">
+            <field name="name">WE3 - حواف جزر (Kerbs &amp; Edge Restraints)</field>
+            <field name="active" eval="True"/>
+            <field name="color">5</field>
+        </record>
+        <record id="iso_we4_planting" model="account.analytic.tag">
+            <field name="name">WE4 - تشجير وزراعة (Soft Landscaping &amp; Planting)</field>
+            <field name="active" eval="True"/>
+            <field name="color">5</field>
+        </record>
+        <record id="iso_we5_fencing_gates" model="account.analytic.tag">
+            <field name="name">WE5 - أسوار وبوابات (Fencing &amp; Gates)</field>
+            <field name="active" eval="True"/>
+            <field name="color">5</field>
+        </record>
+        <record id="iso_we6_outdoor_furniture" model="account.analytic.tag">
+            <field name="name">WE6 - أثاث خارجي (Outdoor Furniture &amp; Playground)</field>
+            <field name="active" eval="True"/>
+            <field name="color">5</field>
+        </record>
+        <record id="iso_we7_road_signs" model="account.analytic.tag">
+            <field name="name">WE7 - لوحات إرشادية (Road Signs &amp; Markings)</field>
+            <field name="active" eval="True"/>
+            <field name="color">5</field>
+        </record>
+
+        <!-- WF0: Infrastructure -->
+        <record id="iso_wf0_infrastructure" model="account.analytic.tag">
+            <field name="name">WF0 - بنية تحتية وخدمات (Infrastructure &amp; Utilities)</field>
+            <field name="active" eval="True"/>
+            <field name="color">6</field>
+        </record>
+
+        <!-- ==========
+             ISO 12006-2 ENTITY TYPE TAGS (وسوم نوع الكيان)
+             ==========
+             Reference: ISO 12006-2 / UniClass 2015 Table En.
+             Used as Axis 4 on every transaction.
+             ========== -->
+
+        <record id="iso_entity_building" model="account.analytic.tag">
+            <field name="name">مباني سكنية (Residential Building)</field>
+            <field name="active" eval="True"/>
+            <field name="color">2</field>
+        </record>
+        <record id="iso_entity_commercial" model="account.analytic.tag">
+            <field name="name">مباني تجارية (Commercial Building)</field>
+            <field name="active" eval="True"/>
+            <field name="color">2</field>
+        </record>
+        <record id="iso_entity_industrial" model="account.analytic.tag">
+            <field name="name">مباني صناعية (Industrial Building)</field>
+            <field name="active" eval="True"/>
+            <field name="color">2</field>
+        </record>
+        <record id="iso_entity_roads" model="account.analytic.tag">
+            <field name="name">طرق وجسور (Roads &amp; Bridges)</field>
+            <field name="active" eval="True"/>
+            <field name="color">3</field>
+        </record>
+        <record id="iso_entity_utilities" model="account.analytic.tag">
+            <field name="name">بنية تحتية (Infrastructure &amp; Utilities)</field>
+            <field name="active" eval="True"/>
+            <field name="color">3</field>
+        </record>
+        <record id="iso_entity_recreational" model="account.analytic.tag">
+            <field name="name">مرافق ترفيهية (Recreational &amp; Sports)</field>
+            <field name="active" eval="True"/>
+            <field name="color">4</field>
+        </record>
+        <record id="iso_entity_education" model="account.analytic.tag">
+            <field name="name">مرافق تعليمية (Educational Facility)</field>
+            <field name="active" eval="True"/>
+            <field name="color">4</field>
+        </record>
+        <record id="iso_entity_healthcare" model="account.analytic.tag">
+            <field name="name">مرافق صحية (Healthcare Facility)</field>
+            <field name="active" eval="True"/>
+            <field name="color">4</field>
+        </record>
+        <record id="iso_entity_hospitality" model="account.analytic.tag">
+            <field name="name">فنادق ومنتجعات (Hotels &amp; Resorts)</field>
+            <field name="active" eval="True"/>
+            <field name="color">4</field>
+        </record>
+
+        <!-- ==========
+             DISTRIBUTION MODELS (نماذج التوزيع التحليلي الافتراضية)
+             ==========
+             Auto-suggest the correct cost category based on account prefix.
+             ========== -->
+
+        <record id="distribution_model_materials" model="account.analytic.distribution.model">
+            <field name="analytic_distribution" eval="{str(ref('analytic_account_materials')): 100}"/>
+            <field name="account_prefix">511</field>
+        </record>
+        <record id="distribution_model_subcontractors" model="account.analytic.distribution.model">
+            <field name="analytic_distribution" eval="{str(ref('analytic_account_subcontractors')): 100}"/>
+            <field name="account_prefix">521</field>
+        </record>
+        <record id="distribution_model_labor" model="account.analytic.distribution.model">
+            <field name="analytic_distribution" eval="{str(ref('analytic_account_labor')): 100}"/>
+            <field name="account_prefix">512</field>
+        </record>
+        <record id="distribution_model_equipment" model="account.analytic.distribution.model">
+            <field name="analytic_distribution" eval="{str(ref('analytic_account_equipment')): 100}"/>
+            <field name="account_prefix">514</field>
+        </record>
+        <record id="distribution_model_site_overhead" model="account.analytic.distribution.model">
+            <field name="analytic_distribution" eval="{str(ref('analytic_account_site_overhead')): 100}"/>
+            <field name="account_prefix">513</field>
+        </record>
+
+    </data>
+</odoo>

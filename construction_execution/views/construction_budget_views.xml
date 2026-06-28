@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_construction_budget_tree" model="ir.ui.view">
+        <field name="name">construction.budget.tree</field>
+        <field name="model">construction.budget</field>
+        <field name="arch" type="xml">
+            <tree string="Budgets" decoration-success="state=='approved'" decoration-info="state=='frozen'" decoration-danger="state=='cancelled'">
+                <field name="name"/>
+                <field name="project_id"/>
+                <field name="version"/>
+                <field name="budget_type"/>
+                <field name="state" widget="badge"/>
+                <field name="total_amount" widget="monetary" sum="Total"/>
+                <field name="contingency_amount" widget="monetary" sum="Total"/>
+                <field name="grand_total" widget="monetary" sum="Total"/>
+                <field name="date"/>
+                <field name="approved_by"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_construction_budget_form" model="ir.ui.view">
+        <field name="name">construction.budget.form</field>
+        <field name="model">construction.budget</field>
+        <field name="arch" type="xml">
+            <form string="Budget">
+                <header>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,submitted,approved,frozen" clickable="True"/>
+                    <button type="object" name="action_submit" string="Submit" states="draft" class="btn-primary"/>
+                    <button type="object" name="action_approve" string="Approve" states="submitted" class="btn-success"/>
+                    <button type="object" name="action_freeze" string="Freeze" states="approved" class="btn-primary"/>
+                    <button type="object" name="action_create_crossovered_budget" string="Push to Accounting Budget" states="approved,frozen" class="btn-info"/>
+                    <button type="object" name="action_cancel" string="Cancel" states="draft,submitted,approved" class="btn-danger"/>
+                    <button type="object" name="action_draft" string="Reset to Draft" states="cancelled" class="btn-default"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="project_id"/>
+                            <field name="budget_type"/>
+                            <field name="version"/>
+                            <field name="date"/>
+                        </group>
+                        <group>
+                            <field name="total_amount" widget="monetary"/>
+                            <field name="contingency_percent"/>
+                            <field name="contingency_amount" widget="monetary"/>
+                            <field name="grand_total" widget="monetary"/>
+                        </group>
+                    </group>
+                    <field name="description"/>
+                    <notebook>
+                        <page string="Budget Lines">
+                            <field name="line_ids">
+                                <tree string="Budget Lines" editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name"/>
+                                    <field name="boq_item_id"/>
+                                    <field name="resource_id"/>
+                                    <field name="cost_code"/>
+                                    <field name="quantity"/>
+                                    <field name="unit_cost" widget="monetary"/>
+                                    <field name="amount" widget="monetary" sum="Total"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Notes">
+                            <field name="note"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" widget="mail_followers"/>
+                    <field name="activity_ids" widget="mail_activity"/>
+                    <field name="message_ids" widget="mail_thread"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_construction_budget_search" model="ir.ui.view">
+        <field name="name">construction.budget.search</field>
+        <field name="model">construction.budget</field>
+        <field name="arch" type="xml">
+            <search string="Search Budgets">
+                <field name="name"/>
+                <field name="project_id"/>
+                <filter name="approved" string="Approved" domain="[('state','=','approved')]"/>
+                <filter name="frozen" string="Frozen" domain="[('state','=','frozen')]"/>
+                <filter name="group_by_project" string="Project" context="{'group_by': 'project_id'}"/>
+                <filter name="group_by_type" string="Type" context="{'group_by': 'budget_type'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_construction_budget" model="ir.actions.act_window">
+        <field name="name">Budgets</field>
+        <field name="res_model">construction.budget</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_construction_budget_search"/>
+    </record>
+</odoo>

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!--
+            Contribution Registers link salary rules to third-party partners
+            for accounting entries. The partner_id determines who the payable
+            is owed to (Social Insurance Office, Tax Authority).
+            After installation, replace base.main_partner with the actual
+            partner records for the Yemeni Social Insurance Corporation
+            and the Tax Authority.
+        -->
+        <record id="contrib_register_social_insurance" model="hr.contribution.register">
+            <field name="name">Social Insurance Authority</field>
+            <field name="partner_id" ref="base.main_partner"/>
+        </record>
+
+        <record id="contrib_register_tax_authority" model="hr.contribution.register">
+            <field name="name">Tax Authority</field>
+            <field name="partner_id" ref="base.main_partner"/>
+        </record>
+
+        <record id="contrib_register_employees" model="hr.contribution.register">
+            <field name="name">Employees</field>
+            <field name="partner_id" eval="False"/>
+        </record>
+
+    </data>
+</odoo>

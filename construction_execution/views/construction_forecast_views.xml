@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_construction_forecast_tree" model="ir.ui.view">
+        <field name="name">construction.forecast.tree</field>
+        <field name="model">construction.forecast</field>
+        <field name="arch" type="xml">
+            <tree string="Forecasts">
+                <field name="name"/>
+                <field name="project_id"/>
+                <field name="date"/>
+                <field name="period"/>
+                <field name="forecast_type" widget="badge"/>
+                <field name="planned_amount" widget="monetary" sum="Total"/>
+                <field name="forecast_amount" widget="monetary" sum="Total"/>
+                <field name="actual_amount" widget="monetary" sum="Total"/>
+                <field name="variance" widget="monetary" sum="Total"/>
+                <field name="confidence"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_construction_forecast_form" model="ir.ui.view">
+        <field name="name">construction.forecast.form</field>
+        <field name="model">construction.forecast</field>
+        <field name="arch" type="xml">
+            <form string="Forecast">
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="project_id"/>
+                            <field name="boq_item_id"/>
+                            <field name="date"/>
+                            <field name="period"/>
+                            <field name="forecast_type"/>
+                        </group>
+                        <group>
+                            <field name="planned_amount" widget="monetary"/>
+                            <field name="forecast_amount" widget="monetary"/>
+                            <field name="actual_amount" widget="monetary"/>
+                            <field name="variance" widget="monetary"/>
+                            <field name="confidence"/>
+                        </group>
+                    </group>
+                    <group string="Quantities">
+                        <field name="planned_quantity"/>
+                        <field name="forecast_quantity"/>
+                        <field name="unit_cost" widget="monetary"/>
+                    </group>
+                    <field name="note"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_construction_forecast_search" model="ir.ui.view">
+        <field name="name">construction.forecast.search</field>
+        <field name="model">construction.forecast</field>
+        <field name="arch" type="xml">
+            <search string="Search Forecasts">
+                <field name="project_id"/>
+                <field name="forecast_type"/>
+                <filter name="cost" string="Cost" domain="[('forecast_type','=','cost')]"/>
+                <filter name="revenue" string="Revenue" domain="[('forecast_type','=','revenue')]"/>
+                <filter name="cashflow" string="Cash Flow" domain="[('forecast_type','=','cashflow')]"/>
+                <filter name="group_by_project" string="Project" context="{'group_by': 'project_id'}"/>
+                <filter name="group_by_type" string="Type" context="{'group_by': 'forecast_type'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_construction_forecast_pivot" model="ir.ui.view">
+        <field name="name">construction.forecast.pivot</field>
+        <field name="model">construction.forecast</field>
+        <field name="arch" type="xml">
+            <pivot string="Forecast Analysis" disable_linking="1">
+                <field name="planned_amount" type="measure"/>
+                <field name="forecast_amount" type="measure"/>
+                <field name="actual_amount" type="measure"/>
+                <field name="project_id" type="row"/>
+                <field name="forecast_type" type="col"/>
+                <field name="date" type="row"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="action_construction_forecast" model="ir.actions.act_window">
+        <field name="name">Forecasts</field>
+        <field name="res_model">construction.forecast</field>
+        <field name="view_mode">tree,form,pivot</field>
+        <field name="search_view_id" ref="view_construction_forecast_search"/>
+    </record>
+</odoo>

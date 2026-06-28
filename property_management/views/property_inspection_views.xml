@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_property_inspection_tree" model="ir.ui.view">
+        <field name="name">property.inspection.tree</field>
+        <field name="model">property.inspection</field>
+        <field name="arch" type="xml">
+            <tree string="Inspections" decoration-success="state=='completed'" decoration-info="state=='scheduled'">
+                <field name="name"/>
+                <field name="unit_id"/>
+                <field name="inspection_type"/>
+                <field name="date"/>
+                <field name="inspector_id"/>
+                <field name="state" widget="badge"/>
+                <field name="area_condition"/>
+                <field name="repair_estimate" widget="monetary"/>
+                <field name="tenant_present" widget="boolean_fa"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_property_inspection_form" model="ir.ui.view">
+        <field name="name">property.inspection.form</field>
+        <field name="model">property.inspection</field>
+        <field name="arch" type="xml">
+            <form string="Inspection">
+                <header>
+                    <field name="state" widget="statusbar" clickable="True"/>
+                    <button type="object" name="action_schedule" string="Schedule" states="draft" class="btn-primary"/>
+                    <button type="object" name="action_complete" string="Complete" states="scheduled" class="btn-success"/>
+                    <button type="object" name="action_cancel" string="Cancel" states="draft,scheduled" class="btn-danger"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="unit_id"/>
+                            <field name="lease_id"/>
+                            <field name="inspection_type"/>
+                            <field name="date"/>
+                        </group>
+                        <group>
+                            <field name="inspector_id"/>
+                            <field name="tenant_id"/>
+                            <field name="owner_id"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Findings">
+                            <field name="area_condition"/>
+                            <field name="area_notes"/>
+                            <field name="damages_found"/>
+                            <field name="repair_estimate" widget="monetary"/>
+                        </page>
+                        <page string="Photos">
+                            <field name="damage_photos">
+                                <tree editable="bottom">
+                                    <field name="image" widget="image"/>
+                                    <field name="name"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Signatures">
+                            <group>
+                                <field name="tenant_present"/>
+                                <field name="tenant_signature" widget="image"/>
+                                <field name="owner_present"/>
+                            </group>
+                            <group>
+                                <field name="inspector_signature" widget="image"/>
+                            </group>
+                        </page>
+                        <page string="Summary">
+                            <field name="findings_summary" widget="html"/>
+                            <field name="recommendations"/>
+                        </page>
+                        <page string="Notes">
+                            <field name="notes"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" widget="mail_followers"/>
+                    <field name="activity_ids" widget="mail_activity"/>
+                    <field name="message_ids" widget="mail_thread"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_property_inspection" model="ir.actions.act_window">
+        <field name="name">Inspections</field>
+        <field name="res_model">property.inspection</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

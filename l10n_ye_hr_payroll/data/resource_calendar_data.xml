@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <record id="calendar_ye_48h" model="resource.calendar">
+            <field name="name">Yemen Standard (48h) Saturday–Thursday</field>
+            <field name="company_id" eval="False"/>
+            <field name="hours_per_day" eval="8.0"/>
+            <field name="tz">Asia/Aden</field>
+            <field name="attendance_ids" eval="[
+                (0,0,{'name':'Sat 1','dayofweek':'6','hour_from':8,'hour_to':12,'day_period':'morning','sequence':1}),
+                (0,0,{'name':'Sat 2','dayofweek':'6','hour_from':13,'hour_to':17,'day_period':'afternoon','sequence':2}),
+                (0,0,{'name':'Sun 1','dayofweek':'0','hour_from':8,'hour_to':12,'day_period':'morning','sequence':3}),
+                (0,0,{'name':'Sun 2','dayofweek':'0','hour_from':13,'hour_to':17,'day_period':'afternoon','sequence':4}),
+                (0,0,{'name':'Mon 1','dayofweek':'1','hour_from':8,'hour_to':12,'day_period':'morning','sequence':5}),
+                (0,0,{'name':'Mon 2','dayofweek':'1','hour_from':13,'hour_to':17,'day_period':'afternoon','sequence':6}),
+                (0,0,{'name':'Tue 1','dayofweek':'2','hour_from':8,'hour_to':12,'day_period':'morning','sequence':7}),
+                (0,0,{'name':'Tue 2','dayofweek':'2','hour_from':13,'hour_to':17,'day_period':'afternoon','sequence':8}),
+                (0,0,{'name':'Wed 1','dayofweek':'3','hour_from':8,'hour_to':12,'day_period':'morning','sequence':9}),
+                (0,0,{'name':'Wed 2','dayofweek':'3','hour_from':13,'hour_to':17,'day_period':'afternoon','sequence':10}),
+                (0,0,{'name':'Thu 1','dayofweek':'4','hour_from':8,'hour_to':12,'day_period':'morning','sequence':11}),
+                (0,0,{'name':'Thu 2','dayofweek':'4','hour_from':13,'hour_to':17,'day_period':'afternoon','sequence':12}),
+            ]"/>
+        </record>
+
+        <record id="calendar_ye_40h" model="resource.calendar">
+            <field name="name">Yemen Admin (40h) Sunday–Thursday</field>
+            <field name="company_id" eval="False"/>
+            <field name="hours_per_day" eval="8.0"/>
+            <field name="tz">Asia/Aden</field>
+            <field name="attendance_ids" eval="[
+                (0,0,{'name':'Sun 1','dayofweek':'0','hour_from':8,'hour_to':12,'day_period':'morning','sequence':1}),
+                (0,0,{'name':'Sun 2','dayofweek':'0','hour_from':13,'hour_to':17,'day_period':'afternoon','sequence':2}),
+                (0,0,{'name':'Mon 1','dayofweek':'1','hour_from':8,'hour_to':12,'day_period':'morning','sequence':3}),
+                (0,0,{'name':'Mon 2','dayofweek':'1','hour_from':13,'hour_to':17,'day_period':'afternoon','sequence':4}),
+                (0,0,{'name':'Tue 1','dayofweek':'2','hour_from':8,'hour_to':12,'day_period':'morning','sequence':5}),
+                (0,0,{'name':'Tue 2','dayofweek':'2','hour_from':13,'hour_to':17,'day_period':'afternoon','sequence':6}),
+                (0,0,{'name':'Wed 1','dayofweek':'3','hour_from':8,'hour_to':12,'day_period':'morning','sequence':7}),
+                (0,0,{'name':'Wed 2','dayofweek':'3','hour_from':13,'hour_to':17,'day_period':'afternoon','sequence':8}),
+                (0,0,{'name':'Thu 1','dayofweek':'4','hour_from':8,'hour_to':12,'day_period':'morning','sequence':9}),
+                (0,0,{'name':'Thu 2','dayofweek':'4','hour_from':13,'hour_to':17,'day_period':'afternoon','sequence':10}),
+            ]"/>
+        </record>
+
+    </data>
+</odoo>

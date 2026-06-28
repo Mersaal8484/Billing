@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Resource Types -->
+        <record id="construction_demo_resource_type_material" model="construction.resource.type">
+            <field name="name">Material</field>
+            <field name="code">MAT</field>
+            <field name="sequence">10</field>
+        </record>
+
+        <!-- Resources -->
+        <record id="construction_demo_resource_cement" model="construction.resource">
+            <field name="name">Cement (OPC)</field>
+            <field name="code">CEM-001</field>
+            <field name="resource_type">material</field>
+            <field name="uom_id" ref="uom.product_uom_kgm"/>
+            <field name="unit_cost">350.00</field>
+            <field name="overhead_percent">5.0</field>
+            <field name="profit_percent">10.0</field>
+        </record>
+
+        <record id="construction_demo_resource_rebar" model="construction.resource">
+            <field name="name">Steel Reinforcement (TMT 500)</field>
+            <field name="code">STL-001</field>
+            <field name="resource_type">material</field>
+            <field name="uom_id" ref="uom.product_uom_kgm"/>
+            <field name="unit_cost">3200.00</field>
+        </record>
+
+        <record id="construction_demo_resource_labor" model="construction.resource">
+            <field name="name">Skilled Labor (Mason)</field>
+            <field name="code">LAB-001</field>
+            <field name="resource_type">labor</field>
+            <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="unit_cost">250.00</field>
+            <field name="productivity_rate">8.0</field>
+        </record>
+
+        <record id="construction_demo_resource_excavator" model="construction.resource">
+            <field name="name">Excavator (Caterpillar 320)</field>
+            <field name="code">EQP-001</field>
+            <field name="resource_type">equipment</field>
+            <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="unit_cost">4500.00</field>
+            <field name="productivity_rate">200.0</field>
+        </record>
+
+        <!-- Projects -->
+        <record id="construction_demo_project" model="construction.project">
+            <field name="name">Commercial Tower - Phase 1</field>
+            <field name="code">CT-2024-001</field>
+            <field name="project_type">commercial</field>
+            <field name="project_stage">planning</field>
+            <field name="start_date">2024-01-01</field>
+            <field name="end_date">2025-06-30</field>
+            <field name="contract_amount">50000000.00</field>
+            <field name="contract_type">lumpsum</field>
+        </record>
+
+        <record id="construction_demo_project2" model="construction.project">
+            <field name="name">Al-Madina Road Infrastructure</field>
+            <field name="code">RD-2024-002</field>
+            <field name="project_type">road</field>
+            <field name="project_stage">execution</field>
+            <field name="start_date">2024-03-01</field>
+            <field name="end_date">2025-09-30</field>
+            <field name="contract_amount">75000000.00</field>
+            <field name="contract_type">unit_price</field>
+        </record>
+
+        <!-- BOQs -->
+        <record id="construction_demo_boq" model="construction.boq">
+            <field name="project_id" ref="construction_demo_project"/>
+            <field name="name">Main Building Works</field>
+            <field name="code">BOQ-MAIN-001</field>
+            <field name="state">approved</field>
+        </record>
+
+        <!-- BOQ Sections -->
+        <record id="construction_demo_section_1" model="construction.boq.section">
+            <field name="boq_id" ref="construction_demo_boq"/>
+            <field name="code">A</field>
+            <field name="name">Substructure Works</field>
+            <field name="sequence">10</field>
+        </record>
+
+        <record id="construction_demo_section_2" model="construction.boq.section">
+            <field name="boq_id" ref="construction_demo_boq"/>
+            <field name="code">B</field>
+            <field name="name">Superstructure Works</field>
+            <field name="sequence">20</field>
+        </record>
+
+        <!-- BOQ Items -->
+        <record id="construction_demo_item_1" model="construction.boq.item">
+            <field name="boq_id" ref="construction_demo_boq"/>
+            <field name="section_id" ref="construction_demo_section_1"/>
+            <field name="code">A.1</field>
+            <field name="name">Excavation for Foundation</field>
+            <field name="unit" ref="uom.product_uom_meter"/>
+            <field name="quantity">2500.000</field>
+            <field name="rate">45.00</field>
+        </record>
+
+        <record id="construction_demo_item_2" model="construction.boq.item">
+            <field name="boq_id" ref="construction_demo_boq"/>
+            <field name="section_id" ref="construction_demo_section_1"/>
+            <field name="code">A.2</field>
+            <field name="name">Reinforced Concrete Foundation</field>
+            <field name="unit" ref="uom.product_uom_meter"/>
+            <field name="quantity">1500.000</field>
+            <field name="rate">850.00</field>
+        </record>
+
+        <record id="construction_demo_item_3" model="construction.boq.item">
+            <field name="boq_id" ref="construction_demo_boq"/>
+            <field name="section_id" ref="construction_demo_section_2"/>
+            <field name="code">B.1</field>
+            <field name="name">Reinforced Concrete Columns</field>
+            <field name="unit" ref="uom.product_uom_meter"/>
+            <field name="quantity">800.000</field>
+            <field name="rate">1200.00</field>
+        </record>
+
+        <record id="construction_demo_item_4" model="construction.boq.item">
+            <field name="boq_id" ref="construction_demo_boq"/>
+            <field name="section_id" ref="construction_demo_section_2"/>
+            <field name="code">B.2</field>
+            <field name="name">Reinforced Concrete Slabs</field>
+            <field name="unit" ref="uom.product_uom_meter"/>
+            <field name="quantity">2000.000</field>
+            <field name="rate">950.00</field>
+        </record>
+
+        <!-- Rate Analysis -->
+        <record id="construction_demo_rate_analysis" model="construction.rate.analysis">
+            <field name="boq_item_id" ref="construction_demo_item_1"/>
+            <field name="markup_percent">5.0</field>
+            <field name="profit_percent">10.0</field>
+        </record>
+
+        <record id="construction_demo_rate_line_1" model="construction.rate.analysis.line">
+            <field name="rate_analysis_id" ref="construction_demo_rate_analysis"/>
+            <field name="resource_id" ref="construction_demo_resource_excavator"/>
+            <field name="resource_type">equipment</field>
+            <field name="quantity">0.050</field>
+            <field name="unit_cost">4500.00</field>
+        </record>
+
+        <record id="construction_demo_rate_line_2" model="construction.rate.analysis.line">
+            <field name="rate_analysis_id" ref="construction_demo_rate_analysis"/>
+            <field name="resource_id" ref="construction_demo_resource_labor"/>
+            <field name="resource_type">labor</field>
+            <field name="quantity">0.100</field>
+            <field name="unit_cost">250.00</field>
+        </record>
+
+        <!-- Budget -->
+        <record id="construction_demo_budget" model="construction.budget">
+            <field name="project_id" ref="construction_demo_project"/>
+            <field name="name">Original Budget - Commercial Tower</field>
+            <field name="budget_type">original</field>
+            <field name="state">approved</field>
+            <field name="contingency_percent">5.0</field>
+        </record>
+
+        <record id="construction_demo_budget_line_1" model="construction.budget.line">
+            <field name="budget_id" ref="construction_demo_budget"/>
+            <field name="name">Substructure Works</field>
+            <field name="amount">5000000.00</field>
+        </record>
+
+        <record id="construction_demo_budget_line_2" model="construction.budget.line">
+            <field name="budget_id" ref="construction_demo_budget"/>
+            <field name="name">Superstructure Works</field>
+            <field name="amount">15000000.00</field>
+        </record>
+
+        <record id="construction_demo_budget_line_3" model="construction.budget.line">
+            <field name="budget_id" ref="construction_demo_budget"/>
+            <field name="name">Finishing Works</field>
+            <field name="amount">20000000.00</field>
+        </record>
+
+        <!-- Material Plan -->
+        <record id="construction_demo_mat_plan" model="construction.material.plan">
+            <field name="boq_item_id" ref="construction_demo_item_2"/>
+            <field name="resource_id" ref="construction_demo_resource_cement"/>
+            <field name="date">2024-02-01</field>
+            <field name="planned_quantity">50000.000</field>
+            <field name="unit_cost">350.00</field>
+        </record>
+
+        <!-- Material Request -->
+        <record id="construction_demo_mr" model="construction.material.request">
+            <field name="project_id" ref="construction_demo_project"/>
+            <field name="date">2024-01-15</field>
+            <field name="required_date">2024-02-01</field>
+            <field name="state">approved</field>
+        </record>
+
+        <!-- Progress -->
+        <record id="construction_demo_progress" model="construction.progress">
+            <field name="project_id" ref="construction_demo_project"/>
+            <field name="date">2024-06-01</field>
+            <field name="period">monthly</field>
+            <field name="state">approved</field>
+            <field name="manpower_on_site">45</field>
+            <field name="equipment_on_site">8</field>
+            <field name="work_description">Completed foundation excavation and started reinforcement work. All safety protocols followed.</field>
+        </record>
+
+        <!-- IPC -->
+        <record id="construction_demo_ipc" model="construction.ipc">
+            <field name="project_id" ref="construction_demo_project"/>
+            <field name="date">2024-07-01</field>
+            <field name="period_from">2024-01-01</field>
+            <field name="period_to">2024-06-30</field>
+            <field name="ipc_number">1</field>
+            <field name="state">approved</field>
+            <field name="retention_percent">5.0</field>
+        </record>
+
+        <!-- Cash Flow -->
+        <record id="construction_demo_cf_income" model="construction.cashflow">
+            <field name="project_id" ref="construction_demo_project"/>
+            <field name="date">2024-07-15</field>
+            <field name="flow_type">income</field>
+            <field name="category">client_payment</field>
+            <field name="forecast_amount">5000000.00</field>
+            <field name="actual_amount">5000000.00</field>
+            <field name="is_received">True</field>
+            <field name="ipc_id" ref="construction_demo_ipc"/>
+        </record>
+
+        <record id="construction_demo_cf_expense" model="construction.cashflow">
+            <field name="project_id" ref="construction_demo_project"/>
+            <field name="date">2024-07-01</field>
+            <field name="flow_type">expense</field>
+            <field name="category">material</field>
+            <field name="forecast_amount">3500000.00</field>
+            <field name="actual_amount">3400000.00</field>
+        </record>
+    </data>
+</odoo>

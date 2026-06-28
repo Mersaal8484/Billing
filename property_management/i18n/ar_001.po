@@ -1,0 +1,3840 @@
+# This file contains the translation of the following modules:
+# 	* property_management
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 16.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-06-28 02:02+0000\n"
+"PO-Revision-Date: 2026-06-28 05:07+0300\n"
+"Last-Translator: Auto-generated\n"
+"Language-Team: Arabic (Saudi Arabia)\n"
+"Language: ar_001\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: \n"
+"X-Generator: Poedit 3.9\n"
+
+#. module: property_management
+#: model:ir.actions.report,print_report_name:property_management.action_report_property_lease
+msgid "'Lease - %s' % (object.name)"
+msgstr "'عقد إيجار - %s' % (object.name)"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_unit_form
+msgid "<span class=\"o_stat_text\">Lease History</span>"
+msgstr "<span class=\"o_stat_text\">سجل الإيجارات</span>"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_property_form
+msgid "<span class=\"o_stat_text\">Leases</span>"
+msgstr "<span class=\"o_stat_text\">عقود الإيجار</span>"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_property_form
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_unit_form
+msgid "<span class=\"o_stat_text\">Maintenance</span>"
+msgstr "<span class=\"o_stat_text\">الصيانة</span>"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_owner_form
+msgid "<span class=\"o_stat_text\">Properties</span>"
+msgstr "<span class=\"o_stat_text\">العقارات</span>"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_property_form
+msgid "<span class=\"o_stat_text\">Units</span>"
+msgstr "<span class=\"o_stat_text\">الوحدات</span>"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.report_property_lease
+msgid "<strong>Annual Rent:</strong>"
+msgstr "<strong>الإيجار السنوي:</strong>"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.report_property_lease
+msgid "<strong>Contract Value:</strong>"
+msgstr "<strong>قيمة العقد:</strong>"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.report_property_lease
+msgid "<strong>End Date:</strong>"
+msgstr "<strong>تاريخ الانتهاء:</strong>"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.report_property_lease
+msgid "<strong>Frequency:</strong>"
+msgstr "<strong>التكرار:</strong>"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.report_property_lease
+msgid "<strong>Property:</strong>"
+msgstr "<strong>العقار:</strong>"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.report_property_lease
+msgid "<strong>Rent Amount:</strong>"
+msgstr "<strong>قيمة الإيجار:</strong>"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.report_property_lease
+msgid "<strong>Security Deposit:</strong>"
+msgstr "<strong>تأمين الإيجار:</strong>"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.report_property_lease
+msgid "<strong>Start Date:</strong>"
+msgstr "<strong>تاريخ البداية:</strong>"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.report_property_lease
+msgid "<strong>Status:</strong>"
+msgstr "<strong>الحالة:</strong>"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.report_property_lease
+msgid "<strong>Tenant:</strong>"
+msgstr "<strong>المستأجر:</strong>"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.report_property_lease
+msgid "<strong>Unit:</strong>"
+msgstr "<strong>الوحدة:</strong>"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_utility__account_number
+msgid "Account Number"
+msgstr "رقم الحساب"
+
+#. module: property_management
+#: model:res.groups,name:property_management.group_property_accountant
+msgid "Accountant"
+msgstr "محاسب"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_property_form
+msgid "Accounting"
+msgstr "محاسبة"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_payment__payment_id
+msgid "Accounting Payment"
+msgstr "دفعة محاسبية"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__message_needaction
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__message_needaction
+#: model:ir.model.fields,field_description:property_management.field_property_lease__message_needaction
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__message_needaction
+#: model:ir.model.fields,field_description:property_management.field_property_owner__message_needaction
+#: model:ir.model.fields,field_description:property_management.field_property_payment__message_needaction
+#: model:ir.model.fields,field_description:property_management.field_property_property__message_needaction
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__message_needaction
+msgid "Action Needed"
+msgstr "إجراء مطلوب"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_lease_form
+msgid "Activate Lease"
+msgstr "تفعيل عقد الإيجار"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_building__active
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__active
+#: model:ir.model.fields,field_description:property_management.field_property_document__active
+#: model:ir.model.fields,field_description:property_management.field_property_floor__active
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__active
+#: model:ir.model.fields,field_description:property_management.field_property_lease__active
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__active
+#: model:ir.model.fields,field_description:property_management.field_property_owner__active
+#: model:ir.model.fields,field_description:property_management.field_property_payment__active
+#: model:ir.model.fields,field_description:property_management.field_property_payment_schedule__active
+#: model:ir.model.fields,field_description:property_management.field_property_property__active
+#: model:ir.model.fields,field_description:property_management.field_property_service_charge__active
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__active
+#: model:ir.model.fields,field_description:property_management.field_property_unit__active
+#: model:ir.model.fields,field_description:property_management.field_property_utility__active
+#: model:ir.model.fields.selection,name:property_management.selection__property_lease__state__active
+#: model:property.lease.status,name:property_management.lease_status_active
+#: model:property.property.status,name:property_management.property_status_active
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_lease_search
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_property_search
+msgid "Active"
+msgstr "نشط"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__active_lease_id
+#: model:ir.model.fields,field_description:property_management.field_property_unit__current_lease_id
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_tenant_search
+msgid "Active Lease"
+msgstr "عقد إيجار نشط"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__activity_ids
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__activity_ids
+#: model:ir.model.fields,field_description:property_management.field_property_lease__activity_ids
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__activity_ids
+#: model:ir.model.fields,field_description:property_management.field_property_owner__activity_ids
+#: model:ir.model.fields,field_description:property_management.field_property_payment__activity_ids
+#: model:ir.model.fields,field_description:property_management.field_property_property__activity_ids
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__activity_ids
+msgid "Activities"
+msgstr "الأنشطة"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__activity_exception_decoration
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__activity_exception_decoration
+#: model:ir.model.fields,field_description:property_management.field_property_lease__activity_exception_decoration
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__activity_exception_decoration
+#: model:ir.model.fields,field_description:property_management.field_property_owner__activity_exception_decoration
+#: model:ir.model.fields,field_description:property_management.field_property_payment__activity_exception_decoration
+#: model:ir.model.fields,field_description:property_management.field_property_property__activity_exception_decoration
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__activity_exception_decoration
+msgid "Activity Exception Decoration"
+msgstr "زخرفة استثناء النشاط"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__activity_state
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__activity_state
+#: model:ir.model.fields,field_description:property_management.field_property_lease__activity_state
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__activity_state
+#: model:ir.model.fields,field_description:property_management.field_property_owner__activity_state
+#: model:ir.model.fields,field_description:property_management.field_property_payment__activity_state
+#: model:ir.model.fields,field_description:property_management.field_property_property__activity_state
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__activity_state
+msgid "Activity State"
+msgstr "حالة النشاط"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__activity_type_icon
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__activity_type_icon
+#: model:ir.model.fields,field_description:property_management.field_property_lease__activity_type_icon
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__activity_type_icon
+#: model:ir.model.fields,field_description:property_management.field_property_owner__activity_type_icon
+#: model:ir.model.fields,field_description:property_management.field_property_payment__activity_type_icon
+#: model:ir.model.fields,field_description:property_management.field_property_property__activity_type_icon
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__activity_type_icon
+msgid "Activity Type Icon"
+msgstr "أيقونة نوع النشاط"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_property__address
+msgid "Address"
+msgstr "العنوان"
+
+#. module: property_management
+#: model:res.groups,name:property_management.group_property_admin
+msgid "Administrator"
+msgstr "مدير النظام"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_property__advance_liability_account_id
+msgid "Advance Liability Account"
+msgstr "حساب الالتزام المقدم"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_payment__payment_type__advance
+msgid "Advance Payment"
+msgstr "دفعة مقدمة"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_maintenance_image__image_type__after
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_maintenance_form
+msgid "After"
+msgstr "بعد"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__after_images
+msgid "After Photos"
+msgstr "صور ما بعد"
+
+#. module: property_management
+#: model:ir.ui.menu,name:property_management.menu_property_document_list
+msgid "All Documents"
+msgstr "جميع المستندات"
+
+#. module: property_management
+#: model:ir.ui.menu,name:property_management.menu_property_property_list
+msgid "All Properties"
+msgstr "جميع العقارات"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_service_charge__service_type__amenity
+msgid "Amenity Fee"
+msgstr "رسوم المرافق"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_payment__amount
+#: model:ir.model.fields,field_description:property_management.field_property_payment_register_wizard__amount
+#: model:ir.model.fields,field_description:property_management.field_property_payment_schedule__amount
+#: model:ir.model.fields,field_description:property_management.field_property_service_charge__amount
+msgid "Amount"
+msgstr "المبلغ"
+
+#. module: property_management
+#: model:ir.model.constraint,message:property_management.constraint_property_payment_schedule_check_amount_positive
+msgid "Amount must be positive!"
+msgstr "يجب أن يكون المبلغ موجباً!"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_payment_form
+msgid "Amounts"
+msgstr "المبالغ"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_lease__escalation_frequency__annual
+#: model:ir.model.fields.selection,name:property_management.selection__property_service_charge__frequency__annual
+#: model:property.payment.frequency,name:property_management.payment_freq_annual
+msgid "Annual"
+msgstr "سنوي"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_lease__escalation_percent
+msgid "Annual Escalation %"
+msgstr "نسبة التصعيد السنوي"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_owner__total_annual_income
+msgid "Annual Income"
+msgstr "الدخل السنوي"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_dashboard__annual_rent_income
+#: model:ir.model.fields,field_description:property_management.field_property_lease__annual_rent
+msgid "Annual Rent"
+msgstr "الإيجار السنوي"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_property__annual_rent_income
+msgid "Annual Rent Income"
+msgstr "دخل الإيجار السنوي"
+
+#. module: property_management
+#: model:property.unit.type,name:property_management.unit_type_apartment
+msgid "Apartment"
+msgstr "شقة"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_lease__approved_date
+msgid "Approval Date"
+msgstr "تاريخ الموافقة"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_maintenance_form
+msgid "Approve"
+msgstr "اعتماد"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_maintenance__state__approved
+msgid "Approved"
+msgstr "معتمد"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_lease__approved_by
+msgid "Approved By"
+msgstr "تمت الموافقة بواسطة"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_building__arabic_name
+#: model:ir.model.fields,field_description:property_management.field_property_property__arabic_name
+#: model:ir.model.fields,field_description:property_management.field_property_unit__arabic_name
+msgid "Arabic Name"
+msgstr "الاسم بالعربية"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_document__is_archived
+msgid "Archived"
+msgstr "مؤرشف"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_floor__total_area
+#: model:ir.model.fields,field_description:property_management.field_property_unit__area
+msgid "Area (sqm)"
+msgstr "المساحة (م²)"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__area_notes
+msgid "Area Notes"
+msgstr "ملاحظات المساحة"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__assigned_to
+msgid "Assigned To"
+msgstr "مسند إلى"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__message_attachment_count
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__message_attachment_count
+#: model:ir.model.fields,field_description:property_management.field_property_lease__message_attachment_count
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__message_attachment_count
+#: model:ir.model.fields,field_description:property_management.field_property_owner__message_attachment_count
+#: model:ir.model.fields,field_description:property_management.field_property_payment__message_attachment_count
+#: model:ir.model.fields,field_description:property_management.field_property_property__message_attachment_count
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__message_attachment_count
+msgid "Attachment Count"
+msgstr "عدد المرفقات"
+
+#. module: property_management
+#: model:property.unit.status,name:property_management.unit_status_available
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_unit_search
+msgid "Available"
+msgstr "متاح"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_lease__balance_due
+msgid "Balance Due"
+msgstr "الرصيد المستحق"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_unit__balcony
+msgid "Balcony"
+msgstr "شرفة"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_owner__bank_account
+#: model:ir.model.fields,field_description:property_management.field_property_payment__bank_account
+msgid "Bank Account"
+msgstr "حساب بنكي"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_payment__payment_method__bank_transfer
+#: model:ir.model.fields.selection,name:property_management.selection__property_payment_register_wizard__payment_method__bank_transfer
+msgid "Bank Transfer"
+msgstr "تحويل بنكي"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_owner_form
+msgid "Banking"
+msgstr "بنكي"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_unit__bathrooms
+msgid "Bathrooms"
+msgstr "الحمامات"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_unit__bedrooms
+msgid "Bedrooms"
+msgstr "غرف النوم"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_maintenance_image__image_type__before
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_maintenance_form
+msgid "Before"
+msgstr "قبل"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__before_images
+msgid "Before Photos"
+msgstr "صور ما قبل"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_lease__escalation_frequency__biannual
+msgid "Bi-Annual"
+msgstr "نصف سنوي"
+
+#. module: property_management
+#: model:ir.model,name:property_management.model_property_building
+#: model:ir.model.fields,field_description:property_management.field_property_document__building_id
+#: model:ir.model.fields,field_description:property_management.field_property_floor__building_id
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__building_id
+#: model:ir.model.fields,field_description:property_management.field_property_lease__building_id
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__building_id
+#: model:ir.model.fields,field_description:property_management.field_property_unit__building_id
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_building_form
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_unit_search
+msgid "Building"
+msgstr "مبنى"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_building__code
+msgid "Building Code"
+msgstr "رمز المبنى"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_building__manager_id
+msgid "Building Manager"
+msgstr "مدير المبنى"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_building__name
+msgid "Building Name"
+msgstr "اسم المبنى"
+
+#. module: property_management
+#: model:ir.model.constraint,message:property_management.constraint_property_building_building_code_property_unique
+msgid "Building code must be unique per property!"
+msgstr "يجب أن يكون رمز المبنى فريداً لكل عقار!"
+
+#. module: property_management
+#: model:ir.actions.act_window,name:property_management.action_property_building
+#: model:ir.model.fields,field_description:property_management.field_property_property__building_ids
+#: model:ir.model.fields,field_description:property_management.field_property_property__total_buildings
+#: model:ir.ui.menu,name:property_management.menu_property_building_list
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_building_tree
+msgid "Buildings"
+msgstr "المباني"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_inspection_form
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_lease_form
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_lease_renew_wizard
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_maintenance_form
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_payment_form
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_payment_register_wizard
+msgid "Cancel"
+msgstr "إلغاء"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_inspection__state__cancelled
+#: model:ir.model.fields.selection,name:property_management.selection__property_lease__state__cancelled
+#: model:ir.model.fields.selection,name:property_management.selection__property_maintenance__state__cancelled
+#: model:ir.model.fields.selection,name:property_management.selection__property_payment__state__cancelled
+#: model:ir.model.fields.selection,name:property_management.selection__property_payment_schedule__state__cancelled
+#: model:property.lease.status,name:property_management.lease_status_cancelled
+msgid "Cancelled"
+msgstr "ملغي"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_payment__payment_method__cash
+#: model:ir.model.fields.selection,name:property_management.selection__property_payment_register_wizard__payment_method__cash
+msgid "Cash"
+msgstr "نقداً"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_property__cash_account_id
+msgid "Cash/Clearing Account"
+msgstr "حساب النقد/المقاصة"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_payment__change_amount
+msgid "Change Amount"
+msgstr "مبلغ التغيير"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_payment__payment_method__check
+#: model:ir.model.fields.selection,name:property_management.selection__property_payment_register_wizard__payment_method__check
+msgid "Check"
+msgstr "شيك"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_property__city
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_property_search
+msgid "City"
+msgstr "المدينة"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_lease_form
+msgid "Clauses"
+msgstr "البنود"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_service_charge__service_type__cleaning
+msgid "Cleaning"
+msgstr "تنظيف"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_property__partner_id
+msgid "Client/Owner Contact"
+msgstr "جهة اتصال المالك"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_lease_form
+msgid "Close Lease"
+msgstr "إغلاق عقد الإيجار"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_lease__close_reason
+msgid "Close Reason"
+msgstr "سبب الإغلاق"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_lease__state__closed
+#: model:property.lease.status,name:property_management.lease_status_closed
+msgid "Closed"
+msgstr "مغلق"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_lease__closed_date
+msgid "Closed Date"
+msgstr "تاريخ الإغلاق"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_lease_status__code
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance_type__code
+#: model:ir.model.fields,field_description:property_management.field_property_payment_frequency__code
+#: model:ir.model.fields,field_description:property_management.field_property_property__status_code
+#: model:ir.model.fields,field_description:property_management.field_property_property_status__code
+#: model:ir.model.fields,field_description:property_management.field_property_property_type__code
+#: model:ir.model.fields,field_description:property_management.field_property_unit__status_code
+#: model:ir.model.fields,field_description:property_management.field_property_unit_status__code
+#: model:ir.model.fields,field_description:property_management.field_property_unit_type__code
+#: model:ir.model.fields,field_description:property_management.field_property_utility_type__code
+msgid "Code"
+msgstr "الكود"
+
+#. module: property_management
+#: model:property.property.type,name:property_management.property_type_commercial
+msgid "Commercial"
+msgstr "تجاري"
+
+#. module: property_management
+#: model:ir.model,name:property_management.model_res_company
+msgid "Companies"
+msgstr "الشركات"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_building__company_id
+#: model:ir.model.fields,field_description:property_management.field_property_dashboard__company_id
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__company_id
+#: model:ir.model.fields,field_description:property_management.field_property_document__company_id
+#: model:ir.model.fields,field_description:property_management.field_property_floor__company_id
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__company_id
+#: model:ir.model.fields,field_description:property_management.field_property_lease__company_id
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__company_id
+#: model:ir.model.fields,field_description:property_management.field_property_owner__company_id
+#: model:ir.model.fields,field_description:property_management.field_property_payment__company_id
+#: model:ir.model.fields,field_description:property_management.field_property_payment_schedule__company_id
+#: model:ir.model.fields,field_description:property_management.field_property_property__company_id
+#: model:ir.model.fields,field_description:property_management.field_property_service_charge__company_id
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__company_id
+#: model:ir.model.fields,field_description:property_management.field_property_unit__company_id
+#: model:ir.model.fields,field_description:property_management.field_property_utility__company_id
+#: model:ir.model.fields.selection,name:property_management.selection__property_owner__owner_type__company
+#: model:ir.model.fields.selection,name:property_management.selection__property_tenant__tenant_type__company
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_property_search
+msgid "Company"
+msgstr "شركة"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_payment__company_amount
+#: model:ir.model.fields,field_description:property_management.field_property_payment_schedule__company_amount
+msgid "Company Currency Amount"
+msgstr "قيمة عملة الشركة"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_inspection_form
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_maintenance_form
+msgid "Complete"
+msgstr "اكتمال"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_inspection__state__completed
+msgid "Completed"
+msgstr "مكتمل"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__date_completed
+msgid "Completed Date"
+msgstr "تاريخ الإكمال"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_maintenance_form
+msgid "Completion"
+msgstr "الإنجاز"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__completion_report
+msgid "Completion Report"
+msgstr "تقرير الإنجاز"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_unit__condition
+msgid "Condition"
+msgstr "الحالة"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_document__is_confidential
+msgid "Confidential"
+msgstr "سري"
+
+#. module: property_management
+#: model:ir.model,name:property_management.model_res_config_settings
+msgid "Config Settings"
+msgstr "تهيئة الإعدادات"
+
+#. module: property_management
+#: model:ir.ui.menu,name:property_management.menu_property_config
+msgid "Configuration"
+msgstr "إعدادات"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_payment_form
+msgid "Confirm"
+msgstr "تأكيد"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_payment__state__confirmed
+msgid "Confirmed"
+msgstr "مؤكد"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_property__construction_date
+msgid "Construction Date"
+msgstr "تاريخ الإنشاء"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_meter_reading__consumption
+msgid "Consumption"
+msgstr "الاستهلاك"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_owner__partner_id
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__partner_id
+msgid "Contact"
+msgstr "جهة اتصال"
+
+#. module: property_management
+#: model:ir.ui.menu,name:property_management.menu_property_contacts
+msgid "Contacts"
+msgstr "جهات الاتصال"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_lease_line__content
+msgid "Content"
+msgstr "المحتوى"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_document__document_type__contract
+msgid "Contract"
+msgstr "عقد"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__currency_id
+#: model:ir.model.fields,field_description:property_management.field_property_lease__currency_id
+#: model:ir.model.fields,field_description:property_management.field_property_lease_renew_wizard__currency_id
+#: model:ir.model.fields,field_description:property_management.field_property_payment_register_wizard__currency_id
+#: model:ir.model.fields,field_description:property_management.field_property_payment_schedule__currency_id
+msgid "Contract Currency"
+msgstr "عملة العقد"
+
+#. module: property_management
+#: model:property.maintenance.type,name:property_management.maint_type_corrective
+msgid "Corrective"
+msgstr "تصحيحي"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_meter_reading__cost
+msgid "Cost"
+msgstr "التكلفة"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_maintenance_form
+msgid "Costs"
+msgstr "التكاليف"
+
+#. module: property_management
+#: model:ir.model.constraint,message:property_management.constraint_property_maintenance_check_costs
+msgid "Costs must be positive!"
+msgstr "يجب أن تكون التكاليف موجبة!"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_property__country_id
+msgid "Country"
+msgstr "الدولة"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_unit__image
+msgid "Cover Image"
+msgstr "صورة الغلاف"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_unit__image_small
+msgid "Cover Image (small)"
+msgstr "صورة الغلاف (مصغرة)"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_building__create_uid
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__create_uid
+#: model:ir.model.fields,field_description:property_management.field_property_document__create_uid
+#: model:ir.model.fields,field_description:property_management.field_property_floor__create_uid
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__create_uid
+#: model:ir.model.fields,field_description:property_management.field_property_inspection_image__create_uid
+#: model:ir.model.fields,field_description:property_management.field_property_lease__create_uid
+#: model:ir.model.fields,field_description:property_management.field_property_lease_line__create_uid
+#: model:ir.model.fields,field_description:property_management.field_property_lease_renew_wizard__create_uid
+#: model:ir.model.fields,field_description:property_management.field_property_lease_status__create_uid
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__create_uid
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance_image__create_uid
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance_type__create_uid
+#: model:ir.model.fields,field_description:property_management.field_property_meter_reading__create_uid
+#: model:ir.model.fields,field_description:property_management.field_property_owner__create_uid
+#: model:ir.model.fields,field_description:property_management.field_property_payment__create_uid
+#: model:ir.model.fields,field_description:property_management.field_property_payment_frequency__create_uid
+#: model:ir.model.fields,field_description:property_management.field_property_payment_register_wizard__create_uid
+#: model:ir.model.fields,field_description:property_management.field_property_payment_schedule__create_uid
+#: model:ir.model.fields,field_description:property_management.field_property_property__create_uid
+#: model:ir.model.fields,field_description:property_management.field_property_property_status__create_uid
+#: model:ir.model.fields,field_description:property_management.field_property_property_type__create_uid
+#: model:ir.model.fields,field_description:property_management.field_property_service_charge__create_uid
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__create_uid
+#: model:ir.model.fields,field_description:property_management.field_property_unit__create_uid
+#: model:ir.model.fields,field_description:property_management.field_property_unit_image__create_uid
+#: model:ir.model.fields,field_description:property_management.field_property_unit_status__create_uid
+#: model:ir.model.fields,field_description:property_management.field_property_unit_type__create_uid
+#: model:ir.model.fields,field_description:property_management.field_property_utility__create_uid
+#: model:ir.model.fields,field_description:property_management.field_property_utility_type__create_uid
+msgid "Created by"
+msgstr "تم الإنشاء بواسطة"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_building__create_date
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__create_date
+#: model:ir.model.fields,field_description:property_management.field_property_document__create_date
+#: model:ir.model.fields,field_description:property_management.field_property_floor__create_date
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__create_date
+#: model:ir.model.fields,field_description:property_management.field_property_inspection_image__create_date
+#: model:ir.model.fields,field_description:property_management.field_property_lease__create_date
+#: model:ir.model.fields,field_description:property_management.field_property_lease_line__create_date
+#: model:ir.model.fields,field_description:property_management.field_property_lease_renew_wizard__create_date
+#: model:ir.model.fields,field_description:property_management.field_property_lease_status__create_date
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__create_date
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance_image__create_date
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance_type__create_date
+#: model:ir.model.fields,field_description:property_management.field_property_meter_reading__create_date
+#: model:ir.model.fields,field_description:property_management.field_property_owner__create_date
+#: model:ir.model.fields,field_description:property_management.field_property_payment__create_date
+#: model:ir.model.fields,field_description:property_management.field_property_payment_frequency__create_date
+#: model:ir.model.fields,field_description:property_management.field_property_payment_register_wizard__create_date
+#: model:ir.model.fields,field_description:property_management.field_property_payment_schedule__create_date
+#: model:ir.model.fields,field_description:property_management.field_property_property__create_date
+#: model:ir.model.fields,field_description:property_management.field_property_property_status__create_date
+#: model:ir.model.fields,field_description:property_management.field_property_property_type__create_date
+#: model:ir.model.fields,field_description:property_management.field_property_service_charge__create_date
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__create_date
+#: model:ir.model.fields,field_description:property_management.field_property_unit__create_date
+#: model:ir.model.fields,field_description:property_management.field_property_unit_image__create_date
+#: model:ir.model.fields,field_description:property_management.field_property_unit_status__create_date
+#: model:ir.model.fields,field_description:property_management.field_property_unit_type__create_date
+#: model:ir.model.fields,field_description:property_management.field_property_utility__create_date
+#: model:ir.model.fields,field_description:property_management.field_property_utility_type__create_date
+msgid "Created on"
+msgstr "تم الإنشاء في"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_payment__payment_method__credit_card
+#: model:ir.model.fields.selection,name:property_management.selection__property_payment_register_wizard__payment_method__credit_card
+msgid "Credit Card"
+msgstr "بطاقة ائتمان"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_dashboard__currency_id
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__company_currency_id
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__currency_id
+#: model:ir.model.fields,field_description:property_management.field_property_lease__company_currency_id
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__currency_id
+#: model:ir.model.fields,field_description:property_management.field_property_meter_reading__currency_id
+#: model:ir.model.fields,field_description:property_management.field_property_owner__currency_id
+#: model:ir.model.fields,field_description:property_management.field_property_payment__company_currency_id
+#: model:ir.model.fields,field_description:property_management.field_property_payment_schedule__company_currency_id
+#: model:ir.model.fields,field_description:property_management.field_property_property__currency_id
+#: model:ir.model.fields,field_description:property_management.field_property_service_charge__currency_id
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__currency_id
+#: model:ir.model.fields,field_description:property_management.field_property_unit__currency_id
+#: model:ir.model.fields,field_description:property_management.field_property_utility__currency_id
+msgid "Currency"
+msgstr "العملة"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_lease_renew_wizard__lease_id
+msgid "Current Lease"
+msgstr "عقد الإيجار الحالي"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_property__current_value
+msgid "Current Market Value"
+msgstr "القيمة السوقية الحالية"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_tenant_form
+msgid "Current Status"
+msgstr "الحالة الحالية"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_unit__current_tenant_id
+msgid "Current Tenant"
+msgstr "المستأجر الحالي"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__current_unit_id
+msgid "Current Unit"
+msgstr "الوحدة الحالية"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_inspection_image__image_type__damage
+msgid "Damage"
+msgstr "تلف"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_inspection__inspection_type__damage
+msgid "Damage Assessment"
+msgstr "تقييم الأضرار"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__damage_photos
+msgid "Damage Photos"
+msgstr "صور الأضرار"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_inspection__area_condition__damaged
+msgid "Damaged"
+msgstr "متضرر"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__damages_found
+msgid "Damages Found"
+msgstr "الأضرار الموجودة"
+
+#. module: property_management
+#: model:ir.actions.act_window,name:property_management.action_property_dashboard
+#: model:ir.ui.menu,name:property_management.menu_property_dashboard
+msgid "Dashboard"
+msgstr "لوحة المعلومات"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_dashboard_graph
+msgid "Dashboard Chart"
+msgstr "مخطط لوحة المعلومات"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_dashboard_pivot
+msgid "Dashboard KPIs"
+msgstr "مؤشرات الأداء"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_dashboard__date
+#: model:ir.model.fields,field_description:property_management.field_property_document__date
+#: model:ir.model.fields,field_description:property_management.field_property_service_charge__date
+msgid "Date"
+msgstr "التاريخ"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__date_received
+msgid "Date Received"
+msgstr "تاريخ الاستلام"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_payment_frequency__days
+msgid "Days"
+msgstr "أيام"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__deduction_reason
+msgid "Deduction Reason"
+msgstr "سبب الخصم"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__deductions
+msgid "Deductions"
+msgstr "الخصومات"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_res_company__property_advance_liability_account_id
+#: model:ir.model.fields,field_description:property_management.field_res_config_settings__property_advance_liability_account_id
+msgid "Default Advance Liability Account"
+msgstr "حساب الالتزام المقدم الافتراضي"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_res_company__property_cash_account_id
+#: model:ir.model.fields,field_description:property_management.field_res_config_settings__property_cash_account_id
+msgid "Default Cash/Clearing Account"
+msgstr "حساب النقد/المقاصة الافتراضي"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_res_company__property_currency_id
+#: model:ir.model.fields,field_description:property_management.field_res_config_settings__property_currency_id
+msgid "Default Contract Currency"
+msgstr "عملة العقد الافتراضية"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_res_company__property_deposit_journal_id
+#: model:ir.model.fields,field_description:property_management.field_res_config_settings__property_deposit_journal_id
+msgid "Default Deposit Journal"
+msgstr "دفتر الإيداع الافتراضي"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_res_company__property_deposit_liability_account_id
+#: model:ir.model.fields,field_description:property_management.field_res_config_settings__property_deposit_liability_account_id
+msgid "Default Deposit Liability Account"
+msgstr "حساب التزام الوديعة الافتراضي"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_res_company__property_maintenance_expense_account_id
+#: model:ir.model.fields,field_description:property_management.field_res_config_settings__property_maintenance_expense_account_id
+msgid "Default Maintenance Expense Account"
+msgstr "حساب مصروفات الصيانة الافتراضي"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_res_company__property_maintenance_journal_id
+#: model:ir.model.fields,field_description:property_management.field_res_config_settings__property_maintenance_journal_id
+msgid "Default Maintenance Journal"
+msgstr "دفتر الصيانة الافتراضي"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_res_company__property_receivable_account_id
+#: model:ir.model.fields,field_description:property_management.field_res_config_settings__property_receivable_account_id
+msgid "Default Receivable Account"
+msgstr "حساب المدينين الافتراضي"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_res_company__property_rent_income_account_id
+#: model:ir.model.fields,field_description:property_management.field_res_config_settings__property_rent_income_account_id
+msgid "Default Rent Income Account"
+msgstr "حساب دخل الإيجار الافتراضي"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_res_company__property_rent_journal_id
+#: model:ir.model.fields,field_description:property_management.field_res_config_settings__property_rent_journal_id
+msgid "Default Rent Journal"
+msgstr "دفتر الإيجار الافتراضي"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_res_company__property_service_income_account_id
+#: model:ir.model.fields,field_description:property_management.field_res_config_settings__property_service_income_account_id
+msgid "Default Service Income Account"
+msgstr "حساب دخل الخدمات الافتراضي"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_settings
+msgid "Default cash or clearing account."
+msgstr "حساب النقد أو المقاصة الافتراضي."
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_settings
+msgid "Default currency used for new property contracts."
+msgstr "العملة الافتراضية المستخدمة لعقارات العقود الجديدة."
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_settings
+msgid "Default journal for maintenance and repairs."
+msgstr "الدفتر الافتراضي للصيانة والإصلاحات."
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_settings
+msgid "Default journal for rent collection."
+msgstr "الدفتر الافتراضي لتحصيل الإيجار."
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_settings
+msgid "Default journal for security deposits."
+msgstr "الدفتر الافتراضي للتأمينات."
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_settings
+msgid "Default liability account for advance payments."
+msgstr "حساب الالتزام الافتراضي للمدفوعات المقدمة."
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_settings
+msgid "Default liability account for deposits."
+msgstr "حساب الالتزام الافتراضي للودائع."
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_settings
+msgid "Default maintenance expense account."
+msgstr "حساب مصروفات الصيانة الافتراضي."
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_settings
+msgid "Default receivable account for tenants."
+msgstr "حساب المدينين الافتراضي للمستأجرين."
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_settings
+msgid "Default rent income account."
+msgstr "حساب دخل الإيجار الافتراضي."
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_settings
+msgid "Default service income account."
+msgstr "حساب دخل الخدمات الافتراضي."
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_lease__deposit_months
+msgid "Deposit (Months)"
+msgstr "الوديعة (أشهر)"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__amount
+msgid "Deposit Amount"
+msgstr "مبلغ الوديعة"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_property__deposit_journal_id
+msgid "Deposit Journal"
+msgstr "دفتر الودائع"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_property__deposit_liability_account_id
+msgid "Deposit Liability Account"
+msgstr "حساب التزام الوديعة"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_lease__deposit_id
+msgid "Deposit Record"
+msgstr "سجل الوديعة"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__name
+msgid "Deposit Reference"
+msgstr "مرجع الوديعة"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_building__description
+#: model:ir.model.fields,field_description:property_management.field_property_document__description
+#: model:ir.model.fields,field_description:property_management.field_property_inspection_image__name
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__description
+#: model:ir.model.fields,field_description:property_management.field_property_payment_schedule__name
+#: model:ir.model.fields,field_description:property_management.field_property_property__description
+#: model:ir.model.fields,field_description:property_management.field_property_service_charge__name
+#: model:ir.model.fields,field_description:property_management.field_property_unit__description
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_property_form
+msgid "Description"
+msgstr "الوصف"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_property_form
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_unit_form
+msgid "Details"
+msgstr "التفاصيل"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_building__display_name
+#: model:ir.model.fields,field_description:property_management.field_property_dashboard__display_name
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__display_name
+#: model:ir.model.fields,field_description:property_management.field_property_document__display_name
+#: model:ir.model.fields,field_description:property_management.field_property_floor__display_name
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__display_name
+#: model:ir.model.fields,field_description:property_management.field_property_inspection_image__display_name
+#: model:ir.model.fields,field_description:property_management.field_property_lease__display_name
+#: model:ir.model.fields,field_description:property_management.field_property_lease_line__display_name
+#: model:ir.model.fields,field_description:property_management.field_property_lease_renew_wizard__display_name
+#: model:ir.model.fields,field_description:property_management.field_property_lease_status__display_name
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__display_name
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance_image__display_name
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance_type__display_name
+#: model:ir.model.fields,field_description:property_management.field_property_meter_reading__display_name
+#: model:ir.model.fields,field_description:property_management.field_property_owner__display_name
+#: model:ir.model.fields,field_description:property_management.field_property_payment__display_name
+#: model:ir.model.fields,field_description:property_management.field_property_payment_frequency__display_name
+#: model:ir.model.fields,field_description:property_management.field_property_payment_register_wizard__display_name
+#: model:ir.model.fields,field_description:property_management.field_property_payment_schedule__display_name
+#: model:ir.model.fields,field_description:property_management.field_property_property__display_name
+#: model:ir.model.fields,field_description:property_management.field_property_property_status__display_name
+#: model:ir.model.fields,field_description:property_management.field_property_property_type__display_name
+#: model:ir.model.fields,field_description:property_management.field_property_service_charge__display_name
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__display_name
+#: model:ir.model.fields,field_description:property_management.field_property_unit__display_name
+#: model:ir.model.fields,field_description:property_management.field_property_unit_image__display_name
+#: model:ir.model.fields,field_description:property_management.field_property_unit_status__display_name
+#: model:ir.model.fields,field_description:property_management.field_property_unit_type__display_name
+#: model:ir.model.fields,field_description:property_management.field_property_utility__display_name
+#: model:ir.model.fields,field_description:property_management.field_property_utility_type__display_name
+msgid "Display Name"
+msgstr "الاسم الظاهر"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_document_form
+msgid "Document"
+msgstr "مستند"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_document__name
+msgid "Document Name"
+msgstr "اسم المستند"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_document__document_type
+msgid "Document Type"
+msgstr "نوع المستند"
+
+#. module: property_management
+#: model:ir.actions.act_window,name:property_management.action_property_document
+#: model:ir.model.fields,field_description:property_management.field_property_property__document_ids
+#: model:ir.model.fields,field_description:property_management.field_property_unit__document_ids
+#: model:ir.ui.menu,name:property_management.menu_property_documents
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_document_tree
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_unit_form
+msgid "Documents"
+msgstr "المستندات"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_maintenance__state__done
+msgid "Done"
+msgstr "تم"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_inspection__state__draft
+#: model:ir.model.fields.selection,name:property_management.selection__property_lease__state__draft
+#: model:ir.model.fields.selection,name:property_management.selection__property_maintenance__state__draft
+#: model:ir.model.fields.selection,name:property_management.selection__property_payment__state__draft
+#: model:property.lease.status,name:property_management.lease_status_draft
+msgid "Draft"
+msgstr "مسودة"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_payment_schedule__date
+msgid "Due Date"
+msgstr "تاريخ الاستحقاق"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_lease__duration_months
+msgid "Duration (Months)"
+msgstr "المدة (أشهر)"
+
+#. module: property_management
+#: model:property.utility.type,name:property_management.utility_type_electricity
+msgid "Electricity"
+msgstr "كهرباء"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_owner__email
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__email
+msgid "Email"
+msgstr "البريد الإلكتروني"
+
+#. module: property_management
+#: model:property.maintenance.type,name:property_management.maint_type_emergency
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_tenant_form
+msgid "Emergency"
+msgstr "طوارئ"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__emergency_contact
+msgid "Emergency Contact"
+msgstr "جهة اتصال للطوارئ"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__emergency_phone
+msgid "Emergency Phone"
+msgstr "هاتف الطوارئ"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_lease__end_date
+msgid "End Date"
+msgstr "تاريخ الانتهاء"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_lease_form
+msgid "Escalation & Late Fees"
+msgstr "التصعيد ورسوم التأخير"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_lease__escalation_frequency
+msgid "Escalation Frequency"
+msgstr "وتيرة التصعيد"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_utility__estimated_monthly
+msgid "Estimated Monthly Cost"
+msgstr "التكلفة الشهرية المقدرة"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_meter_reading__estimated
+msgid "Estimated Reading"
+msgstr "القراءة المقدرة"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_inspection__area_condition__excellent
+#: model:ir.model.fields.selection,name:property_management.selection__property_unit__condition__excellent
+msgid "Excellent"
+msgstr "ممتاز"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__exchange_rate
+#: model:ir.model.fields,field_description:property_management.field_property_payment__exchange_rate
+msgid "Exchange Rate"
+msgstr "سعر الصرف"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_lease__state__expired
+#: model:property.lease.status,name:property_management.lease_status_expired
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_lease_search
+msgid "Expired"
+msgstr "منتهي"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_lease_search
+msgid "Expiring Soon (30d)"
+msgstr "سينتهي قريباً (30 يوماً)"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_document__expiry_date
+msgid "Expiry Date"
+msgstr "تاريخ الانتهاء"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_lease__lease_type__extension
+msgid "Extension"
+msgstr "تمديد"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_inspection__area_condition__fair
+#: model:ir.model.fields.selection,name:property_management.selection__property_unit__condition__fair
+msgid "Fair"
+msgstr "جيد"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_tenant__tenant_type__family
+msgid "Family"
+msgstr "عائلة"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_unit__features
+msgid "Features"
+msgstr "الميزات"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_document__file
+msgid "File"
+msgstr "ملف"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_document__file_size
+msgid "File Size (bytes)"
+msgstr "حجم الملف (بايت)"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_document__filename
+msgid "Filename"
+msgstr "اسم الملف"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_owner_form
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_tenant_form
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_unit_form
+msgid "Financial"
+msgstr "المالية"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_property_form
+msgid "Financial Performance"
+msgstr "الأداء المالي"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_property_form
+msgid "Financials"
+msgstr "الماليات"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_inspection_form
+msgid "Findings"
+msgstr "النتائج"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__findings_summary
+msgid "Findings Summary"
+msgstr "ملخص النتائج"
+
+#. module: property_management
+#: model:ir.model,name:property_management.model_property_floor
+#: model:ir.model.fields,field_description:property_management.field_property_unit__floor_id
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_floor_form
+msgid "Floor"
+msgstr "الطابق"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_floor__code
+msgid "Floor Code"
+msgstr "رمز الطابق"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_floor__name
+msgid "Floor Name"
+msgstr "اسم الطابق"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_floor__number
+msgid "Floor Number"
+msgstr "رقم الطابق"
+
+#. module: property_management
+#: model:ir.model.constraint,message:property_management.constraint_property_floor_floor_code_building_unique
+msgid "Floor code must be unique per building!"
+msgstr "يجب أن يكون رمز الطابق فريداً لكل مبنى!"
+
+#. module: property_management
+#: model:ir.actions.act_window,name:property_management.action_property_floor
+#: model:ir.model.fields,field_description:property_management.field_property_building__floor_ids
+#: model:ir.ui.menu,name:property_management.menu_property_floor_list
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_floor_tree
+msgid "Floors"
+msgstr "الطوابق"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__message_follower_ids
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__message_follower_ids
+#: model:ir.model.fields,field_description:property_management.field_property_lease__message_follower_ids
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__message_follower_ids
+#: model:ir.model.fields,field_description:property_management.field_property_owner__message_follower_ids
+#: model:ir.model.fields,field_description:property_management.field_property_payment__message_follower_ids
+#: model:ir.model.fields,field_description:property_management.field_property_property__message_follower_ids
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__message_follower_ids
+msgid "Followers"
+msgstr "المتابعون"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__message_partner_ids
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__message_partner_ids
+#: model:ir.model.fields,field_description:property_management.field_property_lease__message_partner_ids
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__message_partner_ids
+#: model:ir.model.fields,field_description:property_management.field_property_owner__message_partner_ids
+#: model:ir.model.fields,field_description:property_management.field_property_payment__message_partner_ids
+#: model:ir.model.fields,field_description:property_management.field_property_property__message_partner_ids
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__message_partner_ids
+msgid "Followers (Partners)"
+msgstr "المتابعون (الشركاء)"
+
+#. module: property_management
+#: model:ir.model.fields,help:property_management.field_property_deposit__activity_type_icon
+#: model:ir.model.fields,help:property_management.field_property_inspection__activity_type_icon
+#: model:ir.model.fields,help:property_management.field_property_lease__activity_type_icon
+#: model:ir.model.fields,help:property_management.field_property_maintenance__activity_type_icon
+#: model:ir.model.fields,help:property_management.field_property_owner__activity_type_icon
+#: model:ir.model.fields,help:property_management.field_property_payment__activity_type_icon
+#: model:ir.model.fields,help:property_management.field_property_property__activity_type_icon
+#: model:ir.model.fields,help:property_management.field_property_tenant__activity_type_icon
+msgid "Font awesome icon e.g. fa-tasks"
+msgstr "أيقونة Font Awesome مثال fa-tasks"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_deposit_form
+msgid "Forfeit"
+msgstr "مصادرة"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_deposit__state__forfeited
+msgid "Forfeited"
+msgstr "مصادر"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_service_charge__frequency
+msgid "Frequency"
+msgstr "التكرار"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_unit__furnished_type__fully
+msgid "Fully Furnished"
+msgstr "مفروش بالكامل"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_deposit__state__refunded
+msgid "Fully Refunded"
+msgstr "مسترجع بالكامل"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_unit__furnished
+msgid "Furnished"
+msgstr "مفروش"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_unit__furnished_type
+msgid "Furnishing"
+msgstr "التأثيث"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_unit__garden
+msgid "Garden"
+msgstr "حديقة"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_service_charge__service_type__gardening
+msgid "Gardening"
+msgstr "بستنة"
+
+#. module: property_management
+#: model:property.utility.type,name:property_management.utility_type_gas
+msgid "Gas"
+msgstr "غاز"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_inspection_image__image_type__general
+msgid "General"
+msgstr "عام"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_lease_form
+msgid "Generate Schedule"
+msgstr "إنشاء الجدول"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.report_property_lease
+msgid "Generated on"
+msgstr "تم الإنشاء في"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_inspection__area_condition__good
+#: model:ir.model.fields.selection,name:property_management.selection__property_unit__condition__good
+msgid "Good"
+msgstr "جيد"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_property__google_map_link
+msgid "Google Maps Link"
+msgstr "رابط خرائط جوجل"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_lease__grace_period
+msgid "Grace Period (Days)"
+msgstr "فترة السماح (أيام)"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_lease_search
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_property_search
+msgid "Group By"
+msgstr "تجميع حسب"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__has_message
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__has_message
+#: model:ir.model.fields,field_description:property_management.field_property_lease__has_message
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__has_message
+#: model:ir.model.fields,field_description:property_management.field_property_owner__has_message
+#: model:ir.model.fields,field_description:property_management.field_property_payment__has_message
+#: model:ir.model.fields,field_description:property_management.field_property_property__has_message
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__has_message
+msgid "Has Message"
+msgstr "لديه رسالة"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_deposit__state__held
+msgid "Held"
+msgstr "محجوز"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_maintenance__priority__high
+msgid "High"
+msgstr "عالٍ"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_building__id
+#: model:ir.model.fields,field_description:property_management.field_property_dashboard__id
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__id
+#: model:ir.model.fields,field_description:property_management.field_property_document__id
+#: model:ir.model.fields,field_description:property_management.field_property_floor__id
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__id
+#: model:ir.model.fields,field_description:property_management.field_property_inspection_image__id
+#: model:ir.model.fields,field_description:property_management.field_property_lease__id
+#: model:ir.model.fields,field_description:property_management.field_property_lease_line__id
+#: model:ir.model.fields,field_description:property_management.field_property_lease_renew_wizard__id
+#: model:ir.model.fields,field_description:property_management.field_property_lease_status__id
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__id
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance_image__id
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance_type__id
+#: model:ir.model.fields,field_description:property_management.field_property_meter_reading__id
+#: model:ir.model.fields,field_description:property_management.field_property_owner__id
+#: model:ir.model.fields,field_description:property_management.field_property_payment__id
+#: model:ir.model.fields,field_description:property_management.field_property_payment_frequency__id
+#: model:ir.model.fields,field_description:property_management.field_property_payment_register_wizard__id
+#: model:ir.model.fields,field_description:property_management.field_property_payment_schedule__id
+#: model:ir.model.fields,field_description:property_management.field_property_property__id
+#: model:ir.model.fields,field_description:property_management.field_property_property_status__id
+#: model:ir.model.fields,field_description:property_management.field_property_property_type__id
+#: model:ir.model.fields,field_description:property_management.field_property_service_charge__id
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__id
+#: model:ir.model.fields,field_description:property_management.field_property_unit__id
+#: model:ir.model.fields,field_description:property_management.field_property_unit_image__id
+#: model:ir.model.fields,field_description:property_management.field_property_unit_status__id
+#: model:ir.model.fields,field_description:property_management.field_property_unit_type__id
+#: model:ir.model.fields,field_description:property_management.field_property_utility__id
+#: model:ir.model.fields,field_description:property_management.field_property_utility_type__id
+msgid "ID"
+msgstr "المعرف"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__id_document
+msgid "ID Document"
+msgstr "وثيقة هوية"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__activity_exception_icon
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__activity_exception_icon
+#: model:ir.model.fields,field_description:property_management.field_property_lease__activity_exception_icon
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__activity_exception_icon
+#: model:ir.model.fields,field_description:property_management.field_property_owner__activity_exception_icon
+#: model:ir.model.fields,field_description:property_management.field_property_payment__activity_exception_icon
+#: model:ir.model.fields,field_description:property_management.field_property_property__activity_exception_icon
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__activity_exception_icon
+msgid "Icon"
+msgstr "أيقونة"
+
+#. module: property_management
+#: model:ir.model.fields,help:property_management.field_property_deposit__activity_exception_icon
+#: model:ir.model.fields,help:property_management.field_property_inspection__activity_exception_icon
+#: model:ir.model.fields,help:property_management.field_property_lease__activity_exception_icon
+#: model:ir.model.fields,help:property_management.field_property_maintenance__activity_exception_icon
+#: model:ir.model.fields,help:property_management.field_property_owner__activity_exception_icon
+#: model:ir.model.fields,help:property_management.field_property_payment__activity_exception_icon
+#: model:ir.model.fields,help:property_management.field_property_property__activity_exception_icon
+#: model:ir.model.fields,help:property_management.field_property_tenant__activity_exception_icon
+msgid "Icon to indicate an exception activity."
+msgstr "أيقونة للإشارة إلى نشاط استثنائي."
+
+#. module: property_management
+#: model:ir.model.fields,help:property_management.field_property_deposit__message_needaction
+#: model:ir.model.fields,help:property_management.field_property_inspection__message_needaction
+#: model:ir.model.fields,help:property_management.field_property_lease__message_needaction
+#: model:ir.model.fields,help:property_management.field_property_maintenance__message_needaction
+#: model:ir.model.fields,help:property_management.field_property_owner__message_needaction
+#: model:ir.model.fields,help:property_management.field_property_payment__message_needaction
+#: model:ir.model.fields,help:property_management.field_property_property__message_needaction
+#: model:ir.model.fields,help:property_management.field_property_tenant__message_needaction
+msgid "If checked, new messages require your attention."
+msgstr "إذا تم التحديد، الرسائل الجديدة تتطلب انتباهك."
+
+#. module: property_management
+#: model:ir.model.fields,help:property_management.field_property_deposit__message_has_error
+#: model:ir.model.fields,help:property_management.field_property_deposit__message_has_sms_error
+#: model:ir.model.fields,help:property_management.field_property_inspection__message_has_error
+#: model:ir.model.fields,help:property_management.field_property_inspection__message_has_sms_error
+#: model:ir.model.fields,help:property_management.field_property_lease__message_has_error
+#: model:ir.model.fields,help:property_management.field_property_lease__message_has_sms_error
+#: model:ir.model.fields,help:property_management.field_property_maintenance__message_has_error
+#: model:ir.model.fields,help:property_management.field_property_maintenance__message_has_sms_error
+#: model:ir.model.fields,help:property_management.field_property_owner__message_has_error
+#: model:ir.model.fields,help:property_management.field_property_owner__message_has_sms_error
+#: model:ir.model.fields,help:property_management.field_property_payment__message_has_error
+#: model:ir.model.fields,help:property_management.field_property_payment__message_has_sms_error
+#: model:ir.model.fields,help:property_management.field_property_property__message_has_error
+#: model:ir.model.fields,help:property_management.field_property_property__message_has_sms_error
+#: model:ir.model.fields,help:property_management.field_property_tenant__message_has_error
+#: model:ir.model.fields,help:property_management.field_property_tenant__message_has_sms_error
+msgid "If checked, some messages have a delivery error."
+msgstr "إذا تم التحديد، بعض الرسائل بها خطأ في التسليم."
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_building__image
+#: model:ir.model.fields,field_description:property_management.field_property_inspection_image__image
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance_image__image
+#: model:ir.model.fields,field_description:property_management.field_property_owner__image
+#: model:ir.model.fields,field_description:property_management.field_property_property__image
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__image
+#: model:ir.model.fields,field_description:property_management.field_property_unit_image__image
+msgid "Image"
+msgstr "صورة"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_unit__image_ids
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_unit_form
+msgid "Images"
+msgstr "الصور"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_maintenance__state__in_progress
+msgid "In Progress"
+msgstr "قيد التنفيذ"
+
+#. module: property_management
+#: model:property.property.status,name:property_management.property_status_inactive
+msgid "Inactive"
+msgstr "غير نشط"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_lease_renew_wizard__increase_percent
+msgid "Increase %"
+msgstr "نسبة الزيادة"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_owner__owner_type__individual
+#: model:ir.model.fields.selection,name:property_management.selection__property_tenant__tenant_type__individual
+msgid "Individual"
+msgstr "فرد"
+
+#. module: property_management
+#: model:property.property.type,name:property_management.property_type_industrial
+msgid "Industrial"
+msgstr "صناعي"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_utility__initial_reading
+msgid "Initial Reading"
+msgstr "القراءة الأولية"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_inspection_image__inspection_id
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_inspection_form
+msgid "Inspection"
+msgstr "فحص"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__date
+msgid "Inspection Date"
+msgstr "تاريخ الفحص"
+
+#. module: property_management
+#: model:ir.model,name:property_management.model_property_inspection_image
+msgid "Inspection Image"
+msgstr "صورة الفحص"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__notes
+msgid "Inspection Notes"
+msgstr "ملاحظات الفحص"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__name
+msgid "Inspection Reference"
+msgstr "مرجع الفحص"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_document__document_type__inspection
+msgid "Inspection Report"
+msgstr "تقرير الفحص"
+
+#. module: property_management
+#: model:ir.actions.act_window,name:property_management.action_property_inspection
+#: model:ir.model.fields,field_description:property_management.field_property_unit__inspection_ids
+#: model:ir.ui.menu,name:property_management.menu_property_inspection_list
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_inspection_tree
+msgid "Inspections"
+msgstr "الفحوصات"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__inspector_id
+msgid "Inspector"
+msgstr "المفتش"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__inspector_signature
+msgid "Inspector Signature"
+msgstr "توقيع المفتش"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_document__document_type__insurance
+msgid "Insurance"
+msgstr "تأمين"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_lease__internal_notes
+#: model:ir.model.fields,field_description:property_management.field_property_property__internal_note
+msgid "Internal Notes"
+msgstr "ملاحظات داخلية"
+
+#. module: property_management
+#: model:property.utility.type,name:property_management.utility_type_internet
+msgid "Internet"
+msgstr "إنترنت"
+
+#. module: property_management
+#. odoo-python
+#: code:addons/property_management/models/property_payment_schedule.py:0
+#: model:ir.model.fields,field_description:property_management.field_property_payment__invoice_id
+#: model:ir.model.fields,field_description:property_management.field_property_payment_schedule__invoice_id
+#: model:ir.model.fields,field_description:property_management.field_property_service_charge__invoice_id
+#: model:ir.model.fields.selection,name:property_management.selection__property_document__document_type__invoice
+#, python-format
+msgid "Invoice"
+msgstr "فاتورة"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__message_is_follower
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__message_is_follower
+#: model:ir.model.fields,field_description:property_management.field_property_lease__message_is_follower
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__message_is_follower
+#: model:ir.model.fields,field_description:property_management.field_property_owner__message_is_follower
+#: model:ir.model.fields,field_description:property_management.field_property_payment__message_is_follower
+#: model:ir.model.fields,field_description:property_management.field_property_property__message_is_follower
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__message_is_follower
+msgid "Is Follower"
+msgstr "متابع"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_owner__owner_type__joint
+msgid "Joint Ownership"
+msgstr "ملكية مشتركة"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_payment__journal_id
+msgid "Journal"
+msgstr "دفتر اليومية"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_payment__move_id
+msgid "Journal Entry"
+msgstr "قيد اليومية"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__labor_cost
+msgid "Labor Cost"
+msgstr "تكلفة العمالة"
+
+#. module: property_management
+#: model:property.property.type,name:property_management.property_type_land
+msgid "Land"
+msgstr "أرض"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_building____last_update
+#: model:ir.model.fields,field_description:property_management.field_property_dashboard____last_update
+#: model:ir.model.fields,field_description:property_management.field_property_deposit____last_update
+#: model:ir.model.fields,field_description:property_management.field_property_document____last_update
+#: model:ir.model.fields,field_description:property_management.field_property_floor____last_update
+#: model:ir.model.fields,field_description:property_management.field_property_inspection____last_update
+#: model:ir.model.fields,field_description:property_management.field_property_inspection_image____last_update
+#: model:ir.model.fields,field_description:property_management.field_property_lease____last_update
+#: model:ir.model.fields,field_description:property_management.field_property_lease_line____last_update
+#: model:ir.model.fields,field_description:property_management.field_property_lease_renew_wizard____last_update
+#: model:ir.model.fields,field_description:property_management.field_property_lease_status____last_update
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance____last_update
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance_image____last_update
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance_type____last_update
+#: model:ir.model.fields,field_description:property_management.field_property_meter_reading____last_update
+#: model:ir.model.fields,field_description:property_management.field_property_owner____last_update
+#: model:ir.model.fields,field_description:property_management.field_property_payment____last_update
+#: model:ir.model.fields,field_description:property_management.field_property_payment_frequency____last_update
+#: model:ir.model.fields,field_description:property_management.field_property_payment_register_wizard____last_update
+#: model:ir.model.fields,field_description:property_management.field_property_payment_schedule____last_update
+#: model:ir.model.fields,field_description:property_management.field_property_property____last_update
+#: model:ir.model.fields,field_description:property_management.field_property_property_status____last_update
+#: model:ir.model.fields,field_description:property_management.field_property_property_type____last_update
+#: model:ir.model.fields,field_description:property_management.field_property_service_charge____last_update
+#: model:ir.model.fields,field_description:property_management.field_property_tenant____last_update
+#: model:ir.model.fields,field_description:property_management.field_property_unit____last_update
+#: model:ir.model.fields,field_description:property_management.field_property_unit_image____last_update
+#: model:ir.model.fields,field_description:property_management.field_property_unit_status____last_update
+#: model:ir.model.fields,field_description:property_management.field_property_unit_type____last_update
+#: model:ir.model.fields,field_description:property_management.field_property_utility____last_update
+#: model:ir.model.fields,field_description:property_management.field_property_utility_type____last_update
+msgid "Last Modified on"
+msgstr "آخر تعديل في"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_lease__last_payment_date
+msgid "Last Payment Date"
+msgstr "تاريخ آخر دفعة"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_utility__last_reading
+msgid "Last Reading"
+msgstr "آخر قراءة"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_utility__last_reading_date
+msgid "Last Reading Date"
+msgstr "تاريخ آخر قراءة"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_building__write_uid
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__write_uid
+#: model:ir.model.fields,field_description:property_management.field_property_document__write_uid
+#: model:ir.model.fields,field_description:property_management.field_property_floor__write_uid
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__write_uid
+#: model:ir.model.fields,field_description:property_management.field_property_inspection_image__write_uid
+#: model:ir.model.fields,field_description:property_management.field_property_lease__write_uid
+#: model:ir.model.fields,field_description:property_management.field_property_lease_line__write_uid
+#: model:ir.model.fields,field_description:property_management.field_property_lease_renew_wizard__write_uid
+#: model:ir.model.fields,field_description:property_management.field_property_lease_status__write_uid
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__write_uid
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance_image__write_uid
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance_type__write_uid
+#: model:ir.model.fields,field_description:property_management.field_property_meter_reading__write_uid
+#: model:ir.model.fields,field_description:property_management.field_property_owner__write_uid
+#: model:ir.model.fields,field_description:property_management.field_property_payment__write_uid
+#: model:ir.model.fields,field_description:property_management.field_property_payment_frequency__write_uid
+#: model:ir.model.fields,field_description:property_management.field_property_payment_register_wizard__write_uid
+#: model:ir.model.fields,field_description:property_management.field_property_payment_schedule__write_uid
+#: model:ir.model.fields,field_description:property_management.field_property_property__write_uid
+#: model:ir.model.fields,field_description:property_management.field_property_property_status__write_uid
+#: model:ir.model.fields,field_description:property_management.field_property_property_type__write_uid
+#: model:ir.model.fields,field_description:property_management.field_property_service_charge__write_uid
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__write_uid
+#: model:ir.model.fields,field_description:property_management.field_property_unit__write_uid
+#: model:ir.model.fields,field_description:property_management.field_property_unit_image__write_uid
+#: model:ir.model.fields,field_description:property_management.field_property_unit_status__write_uid
+#: model:ir.model.fields,field_description:property_management.field_property_unit_type__write_uid
+#: model:ir.model.fields,field_description:property_management.field_property_utility__write_uid
+#: model:ir.model.fields,field_description:property_management.field_property_utility_type__write_uid
+msgid "Last Updated by"
+msgstr "آخر تحديث بواسطة"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_building__write_date
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__write_date
+#: model:ir.model.fields,field_description:property_management.field_property_document__write_date
+#: model:ir.model.fields,field_description:property_management.field_property_floor__write_date
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__write_date
+#: model:ir.model.fields,field_description:property_management.field_property_inspection_image__write_date
+#: model:ir.model.fields,field_description:property_management.field_property_lease__write_date
+#: model:ir.model.fields,field_description:property_management.field_property_lease_line__write_date
+#: model:ir.model.fields,field_description:property_management.field_property_lease_renew_wizard__write_date
+#: model:ir.model.fields,field_description:property_management.field_property_lease_status__write_date
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__write_date
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance_image__write_date
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance_type__write_date
+#: model:ir.model.fields,field_description:property_management.field_property_meter_reading__write_date
+#: model:ir.model.fields,field_description:property_management.field_property_owner__write_date
+#: model:ir.model.fields,field_description:property_management.field_property_payment__write_date
+#: model:ir.model.fields,field_description:property_management.field_property_payment_frequency__write_date
+#: model:ir.model.fields,field_description:property_management.field_property_payment_register_wizard__write_date
+#: model:ir.model.fields,field_description:property_management.field_property_payment_schedule__write_date
+#: model:ir.model.fields,field_description:property_management.field_property_property__write_date
+#: model:ir.model.fields,field_description:property_management.field_property_property_status__write_date
+#: model:ir.model.fields,field_description:property_management.field_property_property_type__write_date
+#: model:ir.model.fields,field_description:property_management.field_property_service_charge__write_date
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__write_date
+#: model:ir.model.fields,field_description:property_management.field_property_unit__write_date
+#: model:ir.model.fields,field_description:property_management.field_property_unit_image__write_date
+#: model:ir.model.fields,field_description:property_management.field_property_unit_status__write_date
+#: model:ir.model.fields,field_description:property_management.field_property_unit_type__write_date
+#: model:ir.model.fields,field_description:property_management.field_property_utility__write_date
+#: model:ir.model.fields,field_description:property_management.field_property_utility_type__write_date
+msgid "Last Updated on"
+msgstr "آخر تحديث في"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_payment__payment_type__late_fee
+msgid "Late Fee"
+msgstr "رسوم تأخير"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_lease__late_fee_percent
+msgid "Late Fee %"
+msgstr "نسبة رسوم التأخير"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_payment__late_fee_applied
+msgid "Late Fee Applied"
+msgstr "تم تطبيق رسوم التأخير"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_lease__late_fee_fixed
+msgid "Late Fee Fixed Amount"
+msgstr "مبلغ رسوم التأخير الثابت"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_property__latitude
+msgid "Latitude"
+msgstr "خط العرض"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__lease_id
+#: model:ir.model.fields,field_description:property_management.field_property_document__lease_id
+#: model:ir.model.fields,field_description:property_management.field_property_lease_line__lease_id
+#: model:ir.model.fields,field_description:property_management.field_property_payment__lease_id
+#: model:ir.model.fields,field_description:property_management.field_property_payment_schedule__lease_id
+msgid "Lease"
+msgstr "عقد إيجار"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_document__document_type__lease
+msgid "Lease Agreement"
+msgstr "اتفاقية الإيجار"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_lease_pivot
+msgid "Lease Analysis"
+msgstr "تحليل الإيجارات"
+
+#. module: property_management
+#: model:ir.model,name:property_management.model_property_lease_line
+msgid "Lease Clause/Term"
+msgstr "بند/شرط الإيجار"
+
+#. module: property_management
+#: model:ir.actions.report,name:property_management.action_report_property_lease
+#: model:ir.model,name:property_management.model_property_lease
+#: model_terms:ir.ui.view,arch_db:property_management.report_property_lease
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_lease_form
+msgid "Lease Contract"
+msgstr "عقد إيجار"
+
+#. module: property_management
+#: model:ir.model,name:property_management.model_report_property_management_report_property_lease
+msgid "Lease Contract Report"
+msgstr "تقرير عقد الإيجار"
+
+#. module: property_management
+#: model:ir.ui.menu,name:property_management.menu_property_lease_list
+msgid "Lease Contracts"
+msgstr "عقود الإيجار"
+
+#. module: property_management
+#. odoo-python
+#: code:addons/property_management/models/property_unit.py:0
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__lease_ids
+#: model:ir.model.fields,field_description:property_management.field_property_unit__lease_ids
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_tenant_form
+#, python-format
+msgid "Lease History"
+msgstr "سجل الإيجارات"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_lease__name
+msgid "Lease Reference"
+msgstr "مرجع عقد الإيجار"
+
+#. module: property_management
+#: model:ir.model,name:property_management.model_property_lease_renew_wizard
+msgid "Lease Renewal Wizard"
+msgstr "معالج تجديد عقد الإيجار"
+
+#. module: property_management
+#: model:ir.ui.menu,name:property_management.menu_property_report_lease
+msgid "Lease Report"
+msgstr "تقرير الإيجار"
+
+#. module: property_management
+#: model:ir.model,name:property_management.model_property_lease_status
+msgid "Lease Status"
+msgstr "حالة عقد الإيجار"
+
+#. module: property_management
+#: model:ir.actions.act_window,name:property_management.action_property_lease_status
+#: model:ir.ui.menu,name:property_management.menu_property_lease_status_list
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_lease_status_tree
+msgid "Lease Statuses"
+msgstr "حالات عقود الإيجار"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_lease__line_ids
+msgid "Lease Terms & Conditions"
+msgstr "شروط وأحكام الإيجار"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_lease__lease_type
+msgid "Lease Type"
+msgstr "نوع عقد الإيجار"
+
+#. module: property_management
+#. odoo-python
+#: code:addons/property_management/models/property_property.py:0
+#: model:ir.actions.act_window,name:property_management.action_property_lease
+#: model:ir.model.fields,field_description:property_management.field_property_property__lease_count
+#: model:ir.model.fields,field_description:property_management.field_property_property__lease_ids
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_lease_tree
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_tenant_form
+#, python-format
+msgid "Leases"
+msgstr "عقود الإيجار"
+
+#. module: property_management
+#: model:ir.ui.menu,name:property_management.menu_property_leasing
+msgid "Leasing & Rent"
+msgstr "التأجير والإيجار"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_document__document_type__legal
+msgid "Legal Document"
+msgstr "مستند قانوني"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_property_form
+msgid "Location"
+msgstr "الموقع"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_property__longitude
+msgid "Longitude"
+msgstr "خط الطول"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_maintenance__priority__low
+msgid "Low"
+msgstr "منخفض"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__message_main_attachment_id
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__message_main_attachment_id
+#: model:ir.model.fields,field_description:property_management.field_property_lease__message_main_attachment_id
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__message_main_attachment_id
+#: model:ir.model.fields,field_description:property_management.field_property_owner__message_main_attachment_id
+#: model:ir.model.fields,field_description:property_management.field_property_payment__message_main_attachment_id
+#: model:ir.model.fields,field_description:property_management.field_property_property__message_main_attachment_id
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__message_main_attachment_id
+msgid "Main Attachment"
+msgstr "المرفق الرئيسي"
+
+#. module: property_management
+#. odoo-python
+#: code:addons/property_management/models/property_unit.py:0
+#: model:ir.actions.act_window,name:property_management.action_property_maintenance
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance_image__maintenance_id
+#: model:ir.model.fields.selection,name:property_management.selection__property_service_charge__service_type__maintenance
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_unit_search
+#, python-format
+msgid "Maintenance"
+msgstr "صيانة"
+
+#. module: property_management
+#: model:ir.ui.menu,name:property_management.menu_property_maintenance
+msgid "Maintenance & Inspections"
+msgstr "الصيانة والفحوصات"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_maintenance_pivot
+msgid "Maintenance Analysis"
+msgstr "تحليل الصيانة"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_dashboard__total_maintenance_cost
+#: model:ir.model.fields,field_description:property_management.field_property_owner__total_maintenance_cost
+msgid "Maintenance Cost"
+msgstr "تكلفة الصيانة"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_property__maintenance_expense_account_id
+msgid "Maintenance Expense Account"
+msgstr "حساب مصروفات الصيانة"
+
+#. module: property_management
+#: model:ir.model,name:property_management.model_property_maintenance_image
+msgid "Maintenance Image"
+msgstr "صورة الصيانة"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_property__maintenance_journal_id
+msgid "Maintenance Journal"
+msgstr "دفتر الصيانة"
+
+#. module: property_management
+#: model:res.groups,name:property_management.group_property_maintenance
+msgid "Maintenance Manager"
+msgstr "مدير الصيانة"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_document__document_type__maintenance
+msgid "Maintenance Report"
+msgstr "تقرير الصيانة"
+
+#. module: property_management
+#: model:ir.model,name:property_management.model_property_maintenance
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_maintenance_form
+msgid "Maintenance Request"
+msgstr "طلب صيانة"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_property__maintenance_count
+#: model:ir.model.fields,field_description:property_management.field_property_unit__maintenance_ids
+#: model:ir.ui.menu,name:property_management.menu_property_maintenance_list
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_maintenance_tree
+msgid "Maintenance Requests"
+msgstr "طلبات الصيانة"
+
+#. module: property_management
+#: model:ir.model,name:property_management.model_property_maintenance_type
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__maintenance_type
+msgid "Maintenance Type"
+msgstr "نوع الصيانة"
+
+#. module: property_management
+#: model:ir.actions.act_window,name:property_management.action_property_maintenance_type
+#: model:ir.ui.menu,name:property_management.menu_property_maint_type_list
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_maintenance_type_tree
+msgid "Maintenance Types"
+msgstr "أنواع الصيانة"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_service_charge__service_type__management
+msgid "Management Fee"
+msgstr "رسوم الإدارة"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_lease_form
+msgid "Mark Expired"
+msgstr "وضع علامة منتهي"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_payment_form
+msgid "Mark Paid"
+msgstr "وضع علامة مدفوع"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_unit__market_value
+msgid "Market Value"
+msgstr "القيمة السوقية"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__message_has_error
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__message_has_error
+#: model:ir.model.fields,field_description:property_management.field_property_lease__message_has_error
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__message_has_error
+#: model:ir.model.fields,field_description:property_management.field_property_owner__message_has_error
+#: model:ir.model.fields,field_description:property_management.field_property_payment__message_has_error
+#: model:ir.model.fields,field_description:property_management.field_property_property__message_has_error
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__message_has_error
+msgid "Message Delivery error"
+msgstr "خطأ في تسليم الرسالة"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__message_ids
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__message_ids
+#: model:ir.model.fields,field_description:property_management.field_property_lease__message_ids
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__message_ids
+#: model:ir.model.fields,field_description:property_management.field_property_owner__message_ids
+#: model:ir.model.fields,field_description:property_management.field_property_payment__message_ids
+#: model:ir.model.fields,field_description:property_management.field_property_property__message_ids
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__message_ids
+msgid "Messages"
+msgstr "الرسائل"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_meter_reading__meter_id
+msgid "Meter"
+msgstr "عداد"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_utility__meter_number
+msgid "Meter Number"
+msgstr "رقم العداد"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_meter_reading__image
+msgid "Meter Photo"
+msgstr "صورة العداد"
+
+#. module: property_management
+#: model:ir.model,name:property_management.model_property_meter_reading
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_meter_reading_form
+msgid "Meter Reading"
+msgstr "قراءة العداد"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_meter_reading_form
+msgid "Meter Reading -"
+msgstr "قراءة العداد -"
+
+#. module: property_management
+#: model:ir.actions.act_window,name:property_management.action_property_meter_reading
+#: model:ir.ui.menu,name:property_management.menu_property_meter_reading_list
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_meter_reading_tree
+msgid "Meter Readings"
+msgstr "قراءات العداد"
+
+#. module: property_management
+#: model:ir.model.constraint,message:property_management.constraint_property_utility_meter_unique
+msgid "Meter number must be unique per unit!"
+msgstr "يجب أن يكون رقم العداد فريداً لكل وحدة!"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_unit__meter_ids
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_unit_form
+msgid "Meters"
+msgstr "العدادات"
+
+#. module: property_management
+#: model:property.property.type,name:property_management.property_type_mixed
+msgid "Mixed Use"
+msgstr "استخدام مختلط"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_owner__mobile
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__mobile
+msgid "Mobile"
+msgstr "جوال"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_service_charge__frequency__monthly
+#: model:property.payment.frequency,name:property_management.payment_freq_monthly
+msgid "Monthly"
+msgstr "شهري"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_unit__monthly_rent
+msgid "Monthly Rent (Market)"
+msgstr "الإيجار الشهري (السوق)"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_inspection__inspection_type__move_in
+msgid "Move-In"
+msgstr "انتقال - دخول"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_inspection__inspection_type__move_out
+msgid "Move-Out"
+msgstr "انتقال - خروج"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__my_activity_date_deadline
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__my_activity_date_deadline
+#: model:ir.model.fields,field_description:property_management.field_property_lease__my_activity_date_deadline
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__my_activity_date_deadline
+#: model:ir.model.fields,field_description:property_management.field_property_owner__my_activity_date_deadline
+#: model:ir.model.fields,field_description:property_management.field_property_payment__my_activity_date_deadline
+#: model:ir.model.fields,field_description:property_management.field_property_property__my_activity_date_deadline
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__my_activity_date_deadline
+msgid "My Activity Deadline"
+msgstr "الموعد النهائي لنشاطي"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_dashboard__net_operating_income
+msgid "NOI"
+msgstr "صافي الدخل التشغيلي"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_lease_status__name
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance_image__name
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance_type__name
+#: model:ir.model.fields,field_description:property_management.field_property_owner__name
+#: model:ir.model.fields,field_description:property_management.field_property_payment_frequency__name
+#: model:ir.model.fields,field_description:property_management.field_property_property_status__name
+#: model:ir.model.fields,field_description:property_management.field_property_property_type__name
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__name
+#: model:ir.model.fields,field_description:property_management.field_property_unit_image__name
+#: model:ir.model.fields,field_description:property_management.field_property_unit_status__name
+#: model:ir.model.fields,field_description:property_management.field_property_unit_type__name
+#: model:ir.model.fields,field_description:property_management.field_property_utility_type__name
+msgid "Name"
+msgstr "الاسم"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_unit__condition__needs_renovation
+msgid "Needs Renovation"
+msgstr "يحتاج تجديد"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_owner__net_income
+msgid "Net Income"
+msgstr "صافي الدخل"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_property__net_operating_income
+msgid "Net Operating Income"
+msgstr "صافي الدخل التشغيلي"
+
+#. module: property_management
+#. odoo-python
+#: code:addons/property_management/models/property_deposit.py:0
+#: code:addons/property_management/models/property_inspection.py:0
+#: code:addons/property_management/models/property_lease.py:0
+#: code:addons/property_management/models/property_maintenance.py:0
+#: code:addons/property_management/models/property_payment.py:0
+#: code:addons/property_management/wizard/property_wizard.py:0
+#, python-format
+msgid "New"
+msgstr "جديد"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_lease_renew_wizard__new_end_date
+msgid "New End Date"
+msgstr "تاريخ الانتهاء الجديد"
+
+#. module: property_management
+#. odoo-python
+#: code:addons/property_management/wizard/property_wizard.py:0
+#: model:ir.model.fields.selection,name:property_management.selection__property_lease__lease_type__new
+#, python-format
+msgid "New Lease"
+msgstr "عقد إيجار جديد"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_lease_renew_wizard__new_rent
+msgid "New Rent Amount"
+msgstr "مبلغ الإيجار الجديد"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_lease_renew_wizard__new_start_date
+msgid "New Start Date"
+msgstr "تاريخ البداية الجديد"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__activity_calendar_event_id
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__activity_calendar_event_id
+#: model:ir.model.fields,field_description:property_management.field_property_lease__activity_calendar_event_id
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__activity_calendar_event_id
+#: model:ir.model.fields,field_description:property_management.field_property_owner__activity_calendar_event_id
+#: model:ir.model.fields,field_description:property_management.field_property_payment__activity_calendar_event_id
+#: model:ir.model.fields,field_description:property_management.field_property_property__activity_calendar_event_id
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__activity_calendar_event_id
+msgid "Next Activity Calendar Event"
+msgstr "حدث التقويم التالي للنشاط"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__activity_date_deadline
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__activity_date_deadline
+#: model:ir.model.fields,field_description:property_management.field_property_lease__activity_date_deadline
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__activity_date_deadline
+#: model:ir.model.fields,field_description:property_management.field_property_owner__activity_date_deadline
+#: model:ir.model.fields,field_description:property_management.field_property_payment__activity_date_deadline
+#: model:ir.model.fields,field_description:property_management.field_property_property__activity_date_deadline
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__activity_date_deadline
+msgid "Next Activity Deadline"
+msgstr "الموعد النهائي للنشاط التالي"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__activity_summary
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__activity_summary
+#: model:ir.model.fields,field_description:property_management.field_property_lease__activity_summary
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__activity_summary
+#: model:ir.model.fields,field_description:property_management.field_property_owner__activity_summary
+#: model:ir.model.fields,field_description:property_management.field_property_payment__activity_summary
+#: model:ir.model.fields,field_description:property_management.field_property_property__activity_summary
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__activity_summary
+msgid "Next Activity Summary"
+msgstr "ملخص النشاط التالي"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__activity_type_id
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__activity_type_id
+#: model:ir.model.fields,field_description:property_management.field_property_lease__activity_type_id
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__activity_type_id
+#: model:ir.model.fields,field_description:property_management.field_property_owner__activity_type_id
+#: model:ir.model.fields,field_description:property_management.field_property_payment__activity_type_id
+#: model:ir.model.fields,field_description:property_management.field_property_property__activity_type_id
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__activity_type_id
+msgid "Next Activity Type"
+msgstr "نوع النشاط التالي"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_maintenance__priority__normal
+msgid "Normal"
+msgstr "عادي"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__notes
+#: model:ir.model.fields,field_description:property_management.field_property_document__notes
+#: model:ir.model.fields,field_description:property_management.field_property_lease__notes
+#: model:ir.model.fields,field_description:property_management.field_property_meter_reading__notes
+#: model:ir.model.fields,field_description:property_management.field_property_owner__notes
+#: model:ir.model.fields,field_description:property_management.field_property_payment__notes
+#: model:ir.model.fields,field_description:property_management.field_property_payment_schedule__note
+#: model:ir.model.fields,field_description:property_management.field_property_property__note
+#: model:ir.model.fields,field_description:property_management.field_property_service_charge__notes
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__notes
+#: model:ir.model.fields,field_description:property_management.field_property_utility__note
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_inspection_form
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_lease_form
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_owner_form
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_property_form
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_tenant_form
+msgid "Notes"
+msgstr "ملاحظات"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_lease__notice_period
+msgid "Notice Period (Days)"
+msgstr "فترة الإشعار (أيام)"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__message_needaction_counter
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__message_needaction_counter
+#: model:ir.model.fields,field_description:property_management.field_property_lease__message_needaction_counter
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__message_needaction_counter
+#: model:ir.model.fields,field_description:property_management.field_property_owner__message_needaction_counter
+#: model:ir.model.fields,field_description:property_management.field_property_payment__message_needaction_counter
+#: model:ir.model.fields,field_description:property_management.field_property_property__message_needaction_counter
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__message_needaction_counter
+msgid "Number of Actions"
+msgstr "عدد الإجراءات"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__message_has_error_counter
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__message_has_error_counter
+#: model:ir.model.fields,field_description:property_management.field_property_lease__message_has_error_counter
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__message_has_error_counter
+#: model:ir.model.fields,field_description:property_management.field_property_owner__message_has_error_counter
+#: model:ir.model.fields,field_description:property_management.field_property_payment__message_has_error_counter
+#: model:ir.model.fields,field_description:property_management.field_property_property__message_has_error_counter
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__message_has_error_counter
+msgid "Number of errors"
+msgstr "عدد الأخطاء"
+
+#. module: property_management
+#: model:ir.model.fields,help:property_management.field_property_deposit__message_needaction_counter
+#: model:ir.model.fields,help:property_management.field_property_inspection__message_needaction_counter
+#: model:ir.model.fields,help:property_management.field_property_lease__message_needaction_counter
+#: model:ir.model.fields,help:property_management.field_property_maintenance__message_needaction_counter
+#: model:ir.model.fields,help:property_management.field_property_owner__message_needaction_counter
+#: model:ir.model.fields,help:property_management.field_property_payment__message_needaction_counter
+#: model:ir.model.fields,help:property_management.field_property_property__message_needaction_counter
+#: model:ir.model.fields,help:property_management.field_property_tenant__message_needaction_counter
+msgid "Number of messages requiring action"
+msgstr "عدد الرسائل التي تتطلب إجراءً"
+
+#. module: property_management
+#: model:ir.model.fields,help:property_management.field_property_deposit__message_has_error_counter
+#: model:ir.model.fields,help:property_management.field_property_inspection__message_has_error_counter
+#: model:ir.model.fields,help:property_management.field_property_lease__message_has_error_counter
+#: model:ir.model.fields,help:property_management.field_property_maintenance__message_has_error_counter
+#: model:ir.model.fields,help:property_management.field_property_owner__message_has_error_counter
+#: model:ir.model.fields,help:property_management.field_property_payment__message_has_error_counter
+#: model:ir.model.fields,help:property_management.field_property_property__message_has_error_counter
+#: model:ir.model.fields,help:property_management.field_property_tenant__message_has_error_counter
+msgid "Number of messages with delivery error"
+msgstr "عدد الرسائل التي بها خطأ في التسليم"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_property_form
+msgid "Occupancy"
+msgstr "الإشغال"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_dashboard__occupancy_rate
+#: model:ir.model.fields,field_description:property_management.field_property_property__occupancy_rate
+msgid "Occupancy %"
+msgstr "نسبة الإشغال"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_dashboard__occupied_units
+#: model:ir.model.fields,field_description:property_management.field_property_property__occupied_units
+#: model:property.unit.status,name:property_management.unit_status_occupied
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_unit_search
+msgid "Occupied"
+msgstr "مشغول"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_building__occupied_units
+msgid "Occupied Units"
+msgstr "الوحدات المشغولة"
+
+#. module: property_management
+#: model:property.unit.type,name:property_management.unit_type_office
+msgid "Office"
+msgstr "مكتب"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_payment__payment_method__online
+msgid "Online Payment"
+msgstr "دفع إلكتروني"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_maintenance_search
+msgid "Open"
+msgstr "مفتوح"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__outstanding_maintenance
+msgid "Open Maintenance"
+msgstr "صيانة مفتوحة"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_document__document_type__other
+#: model:ir.model.fields.selection,name:property_management.selection__property_payment__payment_type__other
+#: model:ir.model.fields.selection,name:property_management.selection__property_service_charge__service_type__other
+msgid "Other"
+msgstr "أخرى"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__other_cost
+msgid "Other Cost"
+msgstr "تكلفة أخرى"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__outstanding_balance
+msgid "Outstanding Balance"
+msgstr "الرصيد المستحق"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__area_condition
+msgid "Overall Condition"
+msgstr "الحالة العامة"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_payment_schedule__state__overdue
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_payment_schedule_search
+msgid "Overdue"
+msgstr "متأخر"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__override_exchange_rate
+#: model:ir.model.fields,field_description:property_management.field_property_payment__override_exchange_rate
+msgid "Override Exchange Rate"
+msgstr "تجاوز سعر الصرف"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_document__owner_id
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__owner_id
+#: model:ir.model.fields,field_description:property_management.field_property_lease__owner_id
+#: model:ir.model.fields,field_description:property_management.field_property_property__owner_id
+#: model:ir.model.fields,field_description:property_management.field_property_unit__owner_id
+#: model:res.groups,name:property_management.group_property_owner
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_owner_form
+msgid "Owner"
+msgstr "مالك"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_owner__owner_code
+msgid "Owner Code"
+msgstr "رمز المالك"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__owner_present
+msgid "Owner Present"
+msgstr "المالك موجود"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_owner__owner_type
+msgid "Owner Type"
+msgstr "نوع المالك"
+
+#. module: property_management
+#: model:ir.model.constraint,message:property_management.constraint_property_owner_owner_code_unique
+msgid "Owner code must be unique per company!"
+msgstr "يجب أن يكون رمز المالك فريداً لكل شركة!"
+
+#. module: property_management
+#: model:ir.actions.act_window,name:property_management.action_property_owner
+#: model:ir.ui.menu,name:property_management.menu_property_owner_list
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_owner_tree
+msgid "Owners"
+msgstr "المالكون"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_service_charge__paid
+#: model:ir.model.fields.selection,name:property_management.selection__property_payment__state__paid
+#: model:ir.model.fields.selection,name:property_management.selection__property_payment_schedule__state__paid
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_payment_schedule_search
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_payment_search
+msgid "Paid"
+msgstr "مدفوع"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_payment_schedule__paid_amount
+msgid "Paid Amount"
+msgstr "المبلغ المدفوع"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_service_charge__service_type__parking
+msgid "Parking"
+msgstr "موقف سيارات"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_unit__parking
+msgid "Parking Spaces"
+msgstr "أماكن الوقوف"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_payment_schedule__state__partial
+msgid "Partially Paid"
+msgstr "مدفوع جزئياً"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_deposit__state__partial_refund
+msgid "Partially Refunded"
+msgstr "مسترجع جزئياً"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__parts_cost
+msgid "Parts Cost"
+msgstr "تكلفة القطع"
+
+#. module: property_management
+#: model:ir.model,name:property_management.model_property_payment
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_payment_form
+msgid "Payment"
+msgstr "دفعة"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_payment_pivot
+msgid "Payment Analysis"
+msgstr "تحليل المدفوعات"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_payment__date
+#: model:ir.model.fields,field_description:property_management.field_property_payment_register_wizard__payment_date
+msgid "Payment Date"
+msgstr "تاريخ الدفع"
+
+#. module: property_management
+#: model:ir.actions.act_window,name:property_management.action_property_payment_freq
+#: model:ir.ui.menu,name:property_management.menu_property_payment_freq_list
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_payment_freq_tree
+msgid "Payment Frequencies"
+msgstr "ترددات الدفع"
+
+#. module: property_management
+#: model:ir.model,name:property_management.model_property_payment_frequency
+#: model:ir.model.fields,field_description:property_management.field_property_lease__rent_frequency
+msgid "Payment Frequency"
+msgstr "وتيرة الدفع"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_payment__payment_method
+#: model:ir.model.fields,field_description:property_management.field_property_payment_register_wizard__payment_method
+msgid "Payment Method"
+msgstr "طريقة الدفع"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_payment__name
+msgid "Payment Reference"
+msgstr "مرجع الدفع"
+
+#. module: property_management
+#: model:ir.actions.act_window,name:property_management.action_property_payment_schedule
+#: model:ir.model,name:property_management.model_property_payment_schedule
+#: model:ir.model.fields,field_description:property_management.field_property_lease__schedule_ids
+#: model:ir.ui.menu,name:property_management.menu_property_payment_schedule
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_lease_form
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_payment_schedule_tree
+msgid "Payment Schedule"
+msgstr "جدول الدفع"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_payment_schedule_form
+msgid "Payment Schedule Item"
+msgstr "بند جدول الدفع"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_payment__payment_type
+msgid "Payment Type"
+msgstr "نوع الدفع"
+
+#. module: property_management
+#: model:ir.model.constraint,message:property_management.constraint_property_payment_check_amount_positive
+msgid "Payment amount must be positive!"
+msgstr "يجب أن يكون مبلغ الدفع موجباً!"
+
+#. module: property_management
+#: model:ir.actions.act_window,name:property_management.action_property_payment
+#: model:ir.model.fields,field_description:property_management.field_property_lease__payment_ids
+#: model:ir.model.fields,field_description:property_management.field_property_payment_schedule__payment_ids
+#: model:ir.ui.menu,name:property_management.menu_property_payment_list
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_lease_form
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_payment_tree
+msgid "Payments"
+msgstr "المدفوعات"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_payment_schedule__state__pending
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_payment_schedule_search
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_payment_search
+msgid "Pending"
+msgstr "قيد الانتظار"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_property_form
+msgid "Performance"
+msgstr "الأداء"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_inspection__inspection_type__periodic
+msgid "Periodic"
+msgstr "دوري"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_document__document_type__permit
+msgid "Permit/License"
+msgstr "تصريح/رخصة"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_owner__phone
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__phone
+msgid "Phone"
+msgstr "هاتف"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_inspection_form
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_maintenance_form
+msgid "Photos"
+msgstr "الصور"
+
+#. module: property_management
+#. odoo-python
+#: code:addons/property_management/models/property_lease.py:0
+#, python-format
+msgid "Please select a payment frequency first!"
+msgstr "الرجاء تحديد وتيرة الدفع أولاً!"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_inspection__area_condition__poor
+msgid "Poor"
+msgstr "ضعيف"
+
+#. module: property_management
+#: model:property.maintenance.type,name:property_management.maint_type_preventive
+msgid "Preventive"
+msgstr "وقائي"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__priority
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_maintenance_search
+msgid "Priority"
+msgstr "الأولوية"
+
+#. module: property_management
+#. odoo-python
+#: code:addons/property_management/models/property_owner.py:0
+#: model:ir.actions.act_window,name:property_management.action_property_property
+#: model:ir.model.fields,field_description:property_management.field_property_owner__property_ids
+#: model:ir.ui.menu,name:property_management.menu_property_property
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_owner_form
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_property_tree
+#, python-format
+msgid "Properties"
+msgstr "العقارات"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_building__property_id
+#: model:ir.model.fields,field_description:property_management.field_property_dashboard__property_id
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__property_id
+#: model:ir.model.fields,field_description:property_management.field_property_document__property_id
+#: model:ir.model.fields,field_description:property_management.field_property_floor__property_id
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__property_id
+#: model:ir.model.fields,field_description:property_management.field_property_lease__property_id
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__property_id
+#: model:ir.model.fields,field_description:property_management.field_property_meter_reading__property_id
+#: model:ir.model.fields,field_description:property_management.field_property_payment__property_id
+#: model:ir.model.fields,field_description:property_management.field_property_payment_schedule__property_id
+#: model:ir.model.fields,field_description:property_management.field_property_service_charge__property_id
+#: model:ir.model.fields,field_description:property_management.field_property_unit__property_id
+#: model:ir.model.fields,field_description:property_management.field_property_utility__property_id
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_building_search
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_lease_search
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_property_form
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_unit_search
+msgid "Property"
+msgstr "العقار"
+
+#. module: property_management
+#: model:ir.module.category,description:property_management.module_category_property
+msgid "Property & Real Estate Management"
+msgstr "إدارة العقارات"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_property_pivot
+msgid "Property Analysis"
+msgstr "تحليل العقارات"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_property__code
+msgid "Property Code"
+msgstr "رمز العقار"
+
+#. module: property_management
+#: model:ir.model,name:property_management.model_property_dashboard
+msgid "Property Dashboard"
+msgstr "لوحة معلومات العقار"
+
+#. module: property_management
+#: model:ir.model,name:property_management.model_property_document
+msgid "Property Document"
+msgstr "مستند العقار"
+
+#. module: property_management
+#: model:ir.model,name:property_management.model_property_inspection
+msgid "Property Inspection"
+msgstr "فحص العقار"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_settings
+msgid "Property Management"
+msgstr "إدارة العقارات"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_property__manager_id
+#: model:res.groups,name:property_management.group_property_manager
+msgid "Property Manager"
+msgstr "مدير العقار"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_property__name
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_property_form
+msgid "Property Name"
+msgstr "اسم العقار"
+
+#. module: property_management
+#: model:ir.model,name:property_management.model_property_owner
+msgid "Property Owner"
+msgstr "مالك العقار"
+
+#. module: property_management
+#: model:ir.actions.act_window,name:property_management.action_property_settings
+#: model:ir.ui.menu,name:property_management.menu_property_settings
+msgid "Property Settings"
+msgstr "إعدادات العقارات"
+
+#. module: property_management
+#: model:ir.model,name:property_management.model_property_property_status
+msgid "Property Status"
+msgstr "حالة العقار"
+
+#. module: property_management
+#: model:ir.actions.act_window,name:property_management.action_property_property_status
+#: model:ir.ui.menu,name:property_management.menu_property_status_list
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_property_status_tree
+msgid "Property Statuses"
+msgstr "حالات العقارات"
+
+#. module: property_management
+#: model:ir.model,name:property_management.model_property_tenant
+msgid "Property Tenant"
+msgstr "مستأجر العقار"
+
+#. module: property_management
+#: model:ir.model,name:property_management.model_property_property_type
+#: model:ir.model.fields,field_description:property_management.field_property_property__property_type
+msgid "Property Type"
+msgstr "نوع العقار"
+
+#. module: property_management
+#: model:ir.actions.act_window,name:property_management.action_property_property_type
+#: model:ir.ui.menu,name:property_management.menu_property_type_list
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_property_type_tree
+msgid "Property Types"
+msgstr "أنواع العقارات"
+
+#. module: property_management
+#: model:ir.model,name:property_management.model_property_unit
+msgid "Property Unit"
+msgstr "وحدة العقار"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_dashboard__property_value
+#: model:ir.model.fields,field_description:property_management.field_property_property__property_value
+msgid "Property Value"
+msgstr "قيمة العقار"
+
+#. module: property_management
+#: model:ir.model.constraint,message:property_management.constraint_property_property_code_company_unique
+msgid "Property code must be unique per company!"
+msgstr "يجب أن يكون رمز العقار فريداً لكل شركة!"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_utility__provider
+msgid "Provider/Company"
+msgstr "مزود الخدمة/الشركة"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_property__purchase_date
+msgid "Purchase Date"
+msgstr "تاريخ الشراء"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_property__purchase_price
+msgid "Purchase Price"
+msgstr "سعر الشراء"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_unit__qr_code
+msgid "QR Code"
+msgstr "رمز QR"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_service_charge__frequency__quarterly
+#: model:property.payment.frequency,name:property_management.payment_freq_quarterly
+msgid "Quarterly"
+msgstr "ربع سنوي"
+
+#. module: property_management
+#: model:ir.model.fields,help:property_management.field_property_meter_reading__unit_rate
+#: model:ir.model.fields,help:property_management.field_property_utility__unit_rate
+msgid "Rate per unit of consumption"
+msgstr "السعر لكل وحدة استهلاك"
+
+#. module: property_management
+#: model:res.groups,name:property_management.group_property_auditor
+msgid "Read-Only Auditor"
+msgstr "مدقق للقراءة فقط"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_meter_reading__reading
+msgid "Reading"
+msgstr "القراءة"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_meter_reading__date
+msgid "Reading Date"
+msgstr "تاريخ القراءة"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_utility__reading_ids
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_utility_form
+msgid "Reading History"
+msgstr "سجل القراءات"
+
+#. module: property_management
+#: model:ir.module.category,name:property_management.module_category_property
+#: model:ir.ui.menu,name:property_management.menu_property_root
+msgid "Real Estate"
+msgstr "العقارات"
+
+#. module: property_management
+#: model:ir.model,name:property_management.model_property_property
+msgid "Real Estate Property"
+msgstr "عقار"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_document__document_type__receipt
+msgid "Receipt"
+msgstr "إيصال"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__receipt_payment_id
+msgid "Receipt Payment"
+msgstr "دفعة الإيصال"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_property__receivable_account_id
+msgid "Receivable Account"
+msgstr "حساب المدينين"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_payment__received_amount
+msgid "Received Amount"
+msgstr "المبلغ المستلم"
+
+#. module: property_management
+#: model:res.groups,name:property_management.group_property_reception
+msgid "Reception"
+msgstr "استقبال"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__recommendations
+msgid "Recommendations"
+msgstr "التوصيات"
+
+#. module: property_management
+#. odoo-python
+#: code:addons/property_management/models/property_utility.py:0
+#, python-format
+msgid "Record Reading"
+msgstr "تسجيل قراءة"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_service_charge__is_recurring
+msgid "Recurring Charge"
+msgstr "رسوم متكررة"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_payment_register_wizard__reference
+msgid "Reference"
+msgstr "المرجع"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_payment__reference
+msgid "Reference/Check No."
+msgstr "رقم المرجع/الشيك."
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_payment__payment_type__refund
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_deposit_form
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_payment_form
+msgid "Refund"
+msgstr "استرجاع"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__refund_amount
+msgid "Refund Amount"
+msgstr "مبلغ الاسترجاع"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__refund_date
+msgid "Refund Date"
+msgstr "تاريخ الاسترجاع"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_payment__refund_move_id
+msgid "Refund Journal Entry"
+msgstr "قيد استرجاع"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__payment_id
+msgid "Refund Payment"
+msgstr "دفعة الاسترجاع"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_payment__state__refunded
+msgid "Refunded"
+msgstr "مسترجع"
+
+#. module: property_management
+#. odoo-python
+#: code:addons/property_management/models/property_payment_schedule.py:0
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_payment_register_wizard
+#, python-format
+msgid "Register Payment"
+msgstr "تسجيل دفعة"
+
+#. module: property_management
+#: model:ir.model,name:property_management.model_property_payment_register_wizard
+msgid "Register Payment Wizard"
+msgstr "معالج تسجيل الدفع"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__lease_id
+msgid "Related Lease"
+msgstr "عقد الإيجار المرتبط"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_payment_schedule__remaining
+msgid "Remaining"
+msgstr "المتبقي"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_lease_renew_wizard
+msgid "Renew"
+msgstr "تجديد"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_lease_form
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_lease_renew_wizard
+msgid "Renew Lease"
+msgstr "تجديد عقد الإيجار"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_lease__lease_type__renewal
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_lease_form
+msgid "Renewal"
+msgstr "تجديد"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_lease__renewal_notice_days
+msgid "Renewal Notice (Days)"
+msgstr "إشعار التجديد (أيام)"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_lease__renewal_option
+msgid "Renewal Option"
+msgstr "خيار التجديد"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_lease__state__renewed
+#: model:property.lease.status,name:property_management.lease_status_renewed
+msgid "Renewed"
+msgstr "مجدد"
+
+#. module: property_management
+#. odoo-python
+#: code:addons/property_management/models/property_lease.py:0
+#, python-format
+msgid "Renewed Lease"
+msgstr "عقد إيجار مجدد"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_lease_form
+msgid "Rent & Terms"
+msgstr "الإيجار والشروط"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_lease__rent_amount
+msgid "Rent Amount"
+msgstr "مبلغ الإيجار"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.report_property_lease
+msgid "Rent Details"
+msgstr "تفاصيل الإيجار"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_property__rent_income_account_id
+msgid "Rent Income Account"
+msgstr "حساب دخل الإيجار"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_property__rent_journal_id
+msgid "Rent Journal"
+msgstr "دفتر الإيجار"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_payment__payment_type__rent
+msgid "Rent Payment"
+msgstr "دفعة الإيجار"
+
+#. module: property_management
+#: model:ir.model.constraint,message:property_management.constraint_property_lease_check_rent_positive
+msgid "Rent amount must be positive!"
+msgstr "يجب أن يكون مبلغ الإيجار موجباً!"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__repair_estimate
+msgid "Repair Cost Estimate"
+msgstr "تقدير تكلفة الإصلاح"
+
+#. module: property_management
+#: model:ir.ui.menu,name:property_management.menu_property_reports
+msgid "Reports"
+msgstr "التقارير"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__date_requested
+msgid "Request Date"
+msgstr "تاريخ الطلب"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__name
+msgid "Request Reference"
+msgstr "مرجع الطلب"
+
+#. module: property_management
+#: model:property.unit.status,name:property_management.unit_status_reserved
+msgid "Reserved"
+msgstr "محجوز"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_lease_form
+msgid "Reset to Draft"
+msgstr "إعادة إلى المسودة"
+
+#. module: property_management
+#: model:property.property.type,name:property_management.property_type_residential
+msgid "Residential"
+msgstr "سكني"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__resolution
+msgid "Resolution/Notes"
+msgstr "القرار/ملاحظات"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__activity_user_id
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__activity_user_id
+#: model:ir.model.fields,field_description:property_management.field_property_lease__activity_user_id
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__activity_user_id
+#: model:ir.model.fields,field_description:property_management.field_property_owner__activity_user_id
+#: model:ir.model.fields,field_description:property_management.field_property_payment__activity_user_id
+#: model:ir.model.fields,field_description:property_management.field_property_property__activity_user_id
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__activity_user_id
+msgid "Responsible User"
+msgstr "المستخدم المسؤول"
+
+#. module: property_management
+#: model:property.unit.type,name:property_management.unit_type_retail
+msgid "Retail Shop"
+msgstr "متجر تجزئة"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__message_has_sms_error
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__message_has_sms_error
+#: model:ir.model.fields,field_description:property_management.field_property_lease__message_has_sms_error
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__message_has_sms_error
+#: model:ir.model.fields,field_description:property_management.field_property_owner__message_has_sms_error
+#: model:ir.model.fields,field_description:property_management.field_property_payment__message_has_sms_error
+#: model:ir.model.fields,field_description:property_management.field_property_property__message_has_sms_error
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__message_has_sms_error
+msgid "SMS Delivery error"
+msgstr "خطأ في تسليم SMS"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_inspection__inspection_type__safety
+msgid "Safety Inspection"
+msgstr "فحص السلامة"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_inspection_form
+msgid "Schedule"
+msgstr "جدول"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_payment__schedule_id
+#: model:ir.model.fields,field_description:property_management.field_property_payment_register_wizard__schedule_id
+msgid "Schedule Item"
+msgstr "بند الجدول"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_inspection__state__scheduled
+msgid "Scheduled"
+msgstr "مجدول"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__date_scheduled
+msgid "Scheduled Date"
+msgstr "التاريخ المجدول"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_building_search
+msgid "Search Buildings"
+msgstr "بحث في المباني"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_lease_search
+msgid "Search Leases"
+msgstr "بحث في عقود الإيجار"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_maintenance_search
+msgid "Search Maintenance"
+msgstr "بحث في الصيانة"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_payment_search
+msgid "Search Payments"
+msgstr "بحث في المدفوعات"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_property_search
+msgid "Search Properties"
+msgstr "بحث في العقارات"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_payment_schedule_search
+msgid "Search Schedule"
+msgstr "بحث في الجدول"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_tenant_search
+msgid "Search Tenants"
+msgstr "بحث في المستأجرين"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_unit_search
+msgid "Search Units"
+msgstr "بحث في الوحدات"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_service_charge__service_type__security
+msgid "Security"
+msgstr "أمن"
+
+#. module: property_management
+#: model:ir.model,name:property_management.model_property_deposit
+#: model:ir.model.fields,field_description:property_management.field_property_lease__security_deposit
+#: model:ir.model.fields.selection,name:property_management.selection__property_payment__payment_type__deposit
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_deposit_form
+msgid "Security Deposit"
+msgstr "تأمين الإيجار"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_unit__security_deposit
+msgid "Security Deposit (Standard)"
+msgstr "تأمين الإيجار (قياسي)"
+
+#. module: property_management
+#: model:ir.actions.act_window,name:property_management.action_property_deposit
+#: model:ir.ui.menu,name:property_management.menu_property_deposit_list
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_deposit_tree
+msgid "Security Deposits"
+msgstr "تأمينات الإيجار"
+
+#. module: property_management
+#: model:property.payment.frequency,name:property_management.payment_freq_semiannual
+msgid "Semi-Annual"
+msgstr "نصف سنوي"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_unit__furnished_type__semi
+msgid "Semi-Furnished"
+msgstr "نصف مفروش"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_lease_form
+msgid "Send for Review"
+msgstr "إرسال للمراجعة"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_lease_line__sequence
+#: model:ir.model.fields,field_description:property_management.field_property_lease_status__sequence
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance_type__sequence
+#: model:ir.model.fields,field_description:property_management.field_property_payment_frequency__sequence
+#: model:ir.model.fields,field_description:property_management.field_property_payment_schedule__sequence
+#: model:ir.model.fields,field_description:property_management.field_property_property__sequence
+#: model:ir.model.fields,field_description:property_management.field_property_property_status__sequence
+#: model:ir.model.fields,field_description:property_management.field_property_property_type__sequence
+#: model:ir.model.fields,field_description:property_management.field_property_unit_image__sequence
+#: model:ir.model.fields,field_description:property_management.field_property_unit_status__sequence
+#: model:ir.model.fields,field_description:property_management.field_property_unit_type__sequence
+#: model:ir.model.fields,field_description:property_management.field_property_utility_type__sequence
+msgid "Sequence"
+msgstr "الترتيب"
+
+#. module: property_management
+#: model:ir.model,name:property_management.model_property_service_charge
+#: model:ir.model.fields.selection,name:property_management.selection__property_payment__payment_type__service_charge
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_service_charge_form
+msgid "Service Charge"
+msgstr "رسوم الخدمة"
+
+#. module: property_management
+#: model:ir.actions.act_window,name:property_management.action_property_service_charge
+#: model:ir.ui.menu,name:property_management.menu_property_service_charge_list
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_service_charge_tree
+msgid "Service Charges"
+msgstr "رسوم الخدمات"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_property__service_income_account_id
+msgid "Service Income Account"
+msgstr "حساب دخل الخدمات"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_service_charge__service_type
+msgid "Service Type"
+msgstr "نوع الخدمة"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_inspection_form
+msgid "Signatures"
+msgstr "التوقيعات"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_property__image_small
+msgid "Small Image"
+msgstr "صورة مصغرة"
+
+#. module: property_management
+#: model:property.property.status,name:property_management.property_status_sold
+#: model:property.unit.status,name:property_management.unit_status_sold
+msgid "Sold"
+msgstr "مباع"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_lease__start_date
+msgid "Start Date"
+msgstr "تاريخ البداية"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_maintenance_form
+msgid "Start Work"
+msgstr "بدء العمل"
+
+#. module: property_management
+#: model:ir.model.constraint,message:property_management.constraint_property_lease_check_dates
+msgid "Start date must be before end date!"
+msgstr "يجب أن يكون تاريخ البداية قبل تاريخ الانتهاء!"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_property__state_id
+msgid "State"
+msgstr "الولاية"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__state
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__state
+#: model:ir.model.fields,field_description:property_management.field_property_lease__state
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__state
+#: model:ir.model.fields,field_description:property_management.field_property_payment__state
+#: model:ir.model.fields,field_description:property_management.field_property_payment_schedule__state
+#: model:ir.model.fields,field_description:property_management.field_property_property__status
+#: model:ir.model.fields,field_description:property_management.field_property_unit__status
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_lease_search
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_maintenance_search
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_payment_schedule_search
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_property_search
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_unit_search
+msgid "Status"
+msgstr "الحالة"
+
+#. module: property_management
+#: model:ir.model.fields,help:property_management.field_property_deposit__activity_state
+#: model:ir.model.fields,help:property_management.field_property_inspection__activity_state
+#: model:ir.model.fields,help:property_management.field_property_lease__activity_state
+#: model:ir.model.fields,help:property_management.field_property_maintenance__activity_state
+#: model:ir.model.fields,help:property_management.field_property_owner__activity_state
+#: model:ir.model.fields,help:property_management.field_property_payment__activity_state
+#: model:ir.model.fields,help:property_management.field_property_property__activity_state
+#: model:ir.model.fields,help:property_management.field_property_tenant__activity_state
+msgid ""
+"Status based on activities\n"
+"Overdue: Due date is already passed\n"
+"Today: Activity date is today\n"
+"Planned: Future activities."
+msgstr ""
+"الحالة بناءً على الأنشطة\n"
+"متأخر: تاريخ الاستحقاق قد مضى\n"
+"اليوم: تاريخ النشاط هو اليوم\n"
+"مخطط: أنشطة مستقبلية."
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_property__street
+msgid "Street"
+msgstr "الشارع"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_property__street2
+msgid "Street2"
+msgstr "الشارع 2"
+
+#. module: property_management
+#: model:property.unit.type,name:property_management.unit_type_studio
+msgid "Studio"
+msgstr "استوديو"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_maintenance_form
+msgid "Submit"
+msgstr "إرسال"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_maintenance__state__submitted
+msgid "Submitted"
+msgstr "مقدم"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_inspection_form
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_lease_form
+msgid "Summary"
+msgstr "ملخص"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_owner__tax_id
+msgid "Tax ID/VAT"
+msgstr "الرقم الضريبي/ضريبة القيمة المضافة"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__tenant_id
+#: model:ir.model.fields,field_description:property_management.field_property_document__tenant_id
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__tenant_id
+#: model:ir.model.fields,field_description:property_management.field_property_lease__tenant_id
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__tenant_id
+#: model:ir.model.fields,field_description:property_management.field_property_payment__tenant_id
+#: model:ir.model.fields,field_description:property_management.field_property_payment_register_wizard__tenant_id
+#: model:ir.model.fields,field_description:property_management.field_property_payment_schedule__tenant_id
+#: model:ir.model.fields,field_description:property_management.field_property_service_charge__tenant_id
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_lease_search
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_payment_search
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_tenant_form
+msgid "Tenant"
+msgstr "مستأجر"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__tenant_code
+msgid "Tenant Code"
+msgstr "رمز المستأجر"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__tenant_present
+msgid "Tenant Present"
+msgstr "المستأجر موجود"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__tenant_signature
+msgid "Tenant Signature"
+msgstr "توقيع المستأجر"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__tenant_type
+msgid "Tenant Type"
+msgstr "نوع المستأجر"
+
+#. module: property_management
+#: model:ir.model.constraint,message:property_management.constraint_property_tenant_tenant_code_unique
+msgid "Tenant code must be unique per company!"
+msgstr "يجب أن يكون رمز المستأجر فريداً لكل شركة!"
+
+#. module: property_management
+#: model:ir.actions.act_window,name:property_management.action_property_tenant
+#: model:ir.ui.menu,name:property_management.menu_property_tenant_list
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_tenant_tree
+msgid "Tenants"
+msgstr "المستأجرون"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_lease__term_conditions
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_lease_form
+msgid "Terms & Conditions"
+msgstr "الشروط والأحكام"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.report_property_lease
+msgid "Terms &amp; Conditions"
+msgstr "الشروط والأحكام"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_lease_line__title
+msgid "Title"
+msgstr "العنوان"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_document__document_type__title_deed
+msgid "Title Deed"
+msgstr "سند الملكية"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_deposit_tree
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_lease_form
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_lease_tree
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_maintenance_tree
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_meter_reading_tree
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_payment_schedule_tree
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_payment_tree
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_property_tree
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_service_charge_tree
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_tenant_tree
+msgid "Total"
+msgstr "الإجمالي"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_building__total_area
+#: model:ir.model.fields,field_description:property_management.field_property_property__total_area
+msgid "Total Area (sqm)"
+msgstr "المساحة الإجمالية (م²)"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_utility__total_consumption
+msgid "Total Consumption"
+msgstr "إجمالي الاستهلاك"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_lease__total_contract_value
+msgid "Total Contract Value"
+msgstr "إجمالي قيمة العقد"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__total_cost
+msgid "Total Cost"
+msgstr "التكلفة الإجمالية"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_lease__total_due
+msgid "Total Due"
+msgstr "إجمالي المستحق"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_building__total_floors
+msgid "Total Floors"
+msgstr "إجمالي الطوابق"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__total_leases
+msgid "Total Leases"
+msgstr "إجمالي عقود الإيجار"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_property__total_maintenance_cost
+msgid "Total Maintenance Cost"
+msgstr "إجمالي تكلفة الصيانة"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_lease__total_paid
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__total_paid
+msgid "Total Paid"
+msgstr "إجمالي المدفوع"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_owner__total_properties
+msgid "Total Properties"
+msgstr "إجمالي العقارات"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_building__total_units
+#: model:ir.model.fields,field_description:property_management.field_property_dashboard__total_units
+#: model:ir.model.fields,field_description:property_management.field_property_owner__total_units
+msgid "Total Units"
+msgstr "إجمالي الوحدات"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_payment__currency_id
+msgid "Transaction Currency"
+msgstr "عملة المعاملة"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_owner__owner_type__trust
+msgid "Trust/Institution"
+msgstr "صندوق ائتماني/مؤسسة"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__inspection_type
+#: model:ir.model.fields,field_description:property_management.field_property_inspection_image__image_type
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance_image__image_type
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_payment_search
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_property_search
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_unit_search
+msgid "Type"
+msgstr "النوع"
+
+#. module: property_management
+#: model:ir.model.fields,help:property_management.field_property_deposit__activity_exception_decoration
+#: model:ir.model.fields,help:property_management.field_property_inspection__activity_exception_decoration
+#: model:ir.model.fields,help:property_management.field_property_lease__activity_exception_decoration
+#: model:ir.model.fields,help:property_management.field_property_maintenance__activity_exception_decoration
+#: model:ir.model.fields,help:property_management.field_property_owner__activity_exception_decoration
+#: model:ir.model.fields,help:property_management.field_property_payment__activity_exception_decoration
+#: model:ir.model.fields,help:property_management.field_property_property__activity_exception_decoration
+#: model:ir.model.fields,help:property_management.field_property_tenant__activity_exception_decoration
+msgid "Type of the exception activity on record."
+msgstr "نوع نشاط الاستثناء في السجل."
+
+#. module: property_management
+#: model:property.property.status,name:property_management.property_status_under_construction
+msgid "Under Construction"
+msgstr "قيد الإنشاء"
+
+#. module: property_management
+#: model:property.unit.status,name:property_management.unit_status_maintenance
+msgid "Under Maintenance"
+msgstr "قيد الصيانة"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_lease__state__review
+msgid "Under Review"
+msgstr "قيد المراجعة"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_unit__furnished_type__unfurnished
+msgid "Unfurnished"
+msgstr "غير مفروش"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__unit_id
+#: model:ir.model.fields,field_description:property_management.field_property_document__unit_id
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__unit_id
+#: model:ir.model.fields,field_description:property_management.field_property_lease__unit_id
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__unit_id
+#: model:ir.model.fields,field_description:property_management.field_property_meter_reading__unit_id
+#: model:ir.model.fields,field_description:property_management.field_property_payment__unit_id
+#: model:ir.model.fields,field_description:property_management.field_property_payment_schedule__unit_id
+#: model:ir.model.fields,field_description:property_management.field_property_service_charge__unit_id
+#: model:ir.model.fields,field_description:property_management.field_property_unit_image__unit_id
+#: model:ir.model.fields,field_description:property_management.field_property_utility__unit_id
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_unit_form
+msgid "Unit"
+msgstr "وحدة"
+
+#. module: property_management
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_unit_pivot
+msgid "Unit Analysis"
+msgstr "تحليل الوحدات"
+
+#. module: property_management
+#: model:ir.model,name:property_management.model_property_unit_image
+msgid "Unit Image"
+msgstr "صورة الوحدة"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_unit__number
+msgid "Unit Number"
+msgstr "رقم الوحدة"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_meter_reading__unit_rate
+#: model:ir.model.fields,field_description:property_management.field_property_utility__unit_rate
+msgid "Unit Rate"
+msgstr "سعر الوحدة"
+
+#. module: property_management
+#: model:ir.model,name:property_management.model_property_unit_status
+msgid "Unit Status"
+msgstr "حالة الوحدة"
+
+#. module: property_management
+#: model:ir.actions.act_window,name:property_management.action_property_unit_status
+#: model:ir.ui.menu,name:property_management.menu_property_unit_status_list
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_unit_status_tree
+msgid "Unit Statuses"
+msgstr "حالات الوحدات"
+
+#. module: property_management
+#: model:ir.model,name:property_management.model_property_unit_type
+#: model:ir.model.fields,field_description:property_management.field_property_unit__unit_type
+msgid "Unit Type"
+msgstr "نوع الوحدة"
+
+#. module: property_management
+#: model:ir.actions.act_window,name:property_management.action_property_unit_type
+#: model:ir.ui.menu,name:property_management.menu_property_unit_type_list
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_unit_type_tree
+msgid "Unit Types"
+msgstr "أنواع الوحدات"
+
+#. module: property_management
+#: model:ir.model.constraint,message:property_management.constraint_property_unit_unit_number_property_unique
+msgid "Unit number must be unique per property/building!"
+msgstr "يجب أن يكون رقم الوحدة فريداً لكل عقار/مبنى!"
+
+#. module: property_management
+#. odoo-python
+#: code:addons/property_management/models/property_property.py:0
+#: model:ir.actions.act_window,name:property_management.action_property_unit
+#: model:ir.model.fields,field_description:property_management.field_property_building__unit_ids
+#: model:ir.model.fields,field_description:property_management.field_property_floor__total_units
+#: model:ir.model.fields,field_description:property_management.field_property_floor__unit_ids
+#: model:ir.model.fields,field_description:property_management.field_property_owner__unit_ids
+#: model:ir.model.fields,field_description:property_management.field_property_property__total_units
+#: model:ir.model.fields,field_description:property_management.field_property_property__unit_ids
+#: model:ir.ui.menu,name:property_management.menu_property_unit_list
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_unit_tree
+#, python-format
+msgid "Units"
+msgstr "الوحدات"
+
+#. module: property_management
+#: model:ir.actions.server,name:property_management.cron_update_overdue_schedule_ir_actions_server
+#: model:ir.cron,cron_name:property_management.cron_update_overdue_schedule
+msgid "Update Overdue Payment Schedules"
+msgstr "تحديث جداول الدفع المتأخرة"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_maintenance__priority__urgent
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_maintenance_search
+msgid "Urgent"
+msgstr "عاجل"
+
+#. module: property_management
+#: model:ir.ui.menu,name:property_management.menu_property_utilities
+msgid "Utilities & Services"
+msgstr "المرافق والخدمات"
+
+#. module: property_management
+#: model:ir.model.fields.selection,name:property_management.selection__property_document__document_type__utility
+msgid "Utility Bill"
+msgstr "فاتورة مرافق"
+
+#. module: property_management
+#: model:ir.model,name:property_management.model_property_utility
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_utility_form
+msgid "Utility Meter"
+msgstr "عداد المرافق"
+
+#. module: property_management
+#: model:ir.actions.act_window,name:property_management.action_property_utility
+#: model:ir.ui.menu,name:property_management.menu_property_utility_list
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_utility_tree
+msgid "Utility Meters"
+msgstr "عدادات المرافق"
+
+#. module: property_management
+#: model:ir.model,name:property_management.model_property_utility_type
+#: model:ir.model.fields,field_description:property_management.field_property_utility__utility_type
+msgid "Utility Type"
+msgstr "نوع المرافق"
+
+#. module: property_management
+#: model:ir.actions.act_window,name:property_management.action_property_utility_type
+#: model:ir.ui.menu,name:property_management.menu_property_utility_type_list
+#: model_terms:ir.ui.view,arch_db:property_management.view_property_utility_type_tree
+msgid "Utility Types"
+msgstr "أنواع المرافق"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_dashboard__vacant_units
+#: model:ir.model.fields,field_description:property_management.field_property_property__vacant_units
+msgid "Vacant"
+msgstr "شاغر"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__vendor_id
+msgid "Vendor/Contractor"
+msgstr "مورد/مقاول"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_unit__view
+msgid "View"
+msgstr "إطلالة"
+
+#. module: property_management
+#: model:property.unit.type,name:property_management.unit_type_villa
+msgid "Villa"
+msgstr "فيلا"
+
+#. module: property_management
+#: model:property.unit.type,name:property_management.unit_type_warehouse
+msgid "Warehouse"
+msgstr "مستودع"
+
+#. module: property_management
+#: model:property.utility.type,name:property_management.utility_type_water
+msgid "Water"
+msgstr "ماء"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_deposit__website_message_ids
+#: model:ir.model.fields,field_description:property_management.field_property_inspection__website_message_ids
+#: model:ir.model.fields,field_description:property_management.field_property_lease__website_message_ids
+#: model:ir.model.fields,field_description:property_management.field_property_maintenance__website_message_ids
+#: model:ir.model.fields,field_description:property_management.field_property_owner__website_message_ids
+#: model:ir.model.fields,field_description:property_management.field_property_payment__website_message_ids
+#: model:ir.model.fields,field_description:property_management.field_property_property__website_message_ids
+#: model:ir.model.fields,field_description:property_management.field_property_tenant__website_message_ids
+msgid "Website Messages"
+msgstr "رسائل الموقع"
+
+#. module: property_management
+#: model:ir.model.fields,help:property_management.field_property_deposit__website_message_ids
+#: model:ir.model.fields,help:property_management.field_property_inspection__website_message_ids
+#: model:ir.model.fields,help:property_management.field_property_lease__website_message_ids
+#: model:ir.model.fields,help:property_management.field_property_maintenance__website_message_ids
+#: model:ir.model.fields,help:property_management.field_property_owner__website_message_ids
+#: model:ir.model.fields,help:property_management.field_property_payment__website_message_ids
+#: model:ir.model.fields,help:property_management.field_property_property__website_message_ids
+#: model:ir.model.fields,help:property_management.field_property_tenant__website_message_ids
+msgid "Website communication history"
+msgstr "سجل التواصل عبر الموقع"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_building__year_built
+msgid "Year Built"
+msgstr "سنة البناء"
+
+#. module: property_management
+#: model:ir.model.fields,field_description:property_management.field_property_property__zip
+msgid "Zip Code"
+msgstr "الرمز البريدي"

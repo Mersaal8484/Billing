@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_construction_ipc">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2 class="text-center">Interim Payment Certificate</h2>
+                        <h4 class="text-center"><span t-field="doc.name"/></h4>
+                        <hr/>
+                        <table class="table table-bordered">
+                            <tr>
+                                <td><strong>Project:</strong> <span t-field="doc.project_id.name"/></td>
+                                <td><strong>Date:</strong> <span t-field="doc.date"/></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Period:</strong> <span t-field="doc.period_from"/> to <span t-field="doc.period_to"/></td>
+                                <td><strong>IPC Number:</strong> <span t-field="doc.ipc_number"/></td>
+                            </tr>
+                        </table>
+                        <h4>Work Done</h4>
+                        <table class="table table-bordered">
+                            <tr>
+                                <th>Description</th>
+                                <th class="text-right">Prev Qty</th>
+                                <th class="text-right">Curr Qty</th>
+                                <th class="text-right">Total Qty</th>
+                                <th class="text-right">Rate</th>
+                                <th class="text-right">Amount</th>
+                            </tr>
+                            <t t-foreach="doc.line_ids" t-as="line">
+                                <tr>
+                                    <td><span t-field="line.name"/></td>
+                                    <td class="text-right"><span t-field="line.previous_quantity"/></td>
+                                    <td class="text-right"><span t-field="line.current_quantity"/></td>
+                                    <td class="text-right"><span t-field="line.total_quantity"/></td>
+                                    <td class="text-right"><span t-field="line.rate" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
+                                    <td class="text-right"><span t-field="line.amount" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
+                                </tr>
+                            </t>
+                        </table>
+                        <table class="table table-bordered">
+                            <tr>
+                                <td><strong>Previous Work Done:</strong></td>
+                                <td class="text-right"><span t-field="doc.prev_work_done" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Current Work Done:</strong></td>
+                                <td class="text-right"><span t-field="doc.current_work_done" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Total Work Done:</strong></td>
+                                <td class="text-right"><span t-field="doc.total_work_done" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Retention (<span t-field="doc.retention_percent"/>%):</strong></td>
+                                <td class="text-right"><span t-field="doc.retention_amount" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Net Amount:</strong></td>
+                                <td class="text-right"><span t-field="doc.net_amount" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
+                            </tr>
+                        </table>
+                        <p><strong>Status:</strong> <span t-field="doc.state"/></p>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

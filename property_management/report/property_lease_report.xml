@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_property_lease">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2 class="text-center">Lease Contract</h2>
+                        <h4 class="text-center"><span t-field="doc.name"/></h4>
+                        <hr/>
+                        <table class="table table-bordered">
+                            <tr>
+                                <td><strong>Property:</strong> <span t-field="doc.property_id.name"/></td>
+                                <td><strong>Unit:</strong> <span t-field="doc.unit_id.display_name"/></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Tenant:</strong> <span t-field="doc.tenant_id.name"/></td>
+                                <td><strong>Status:</strong> <span t-field="doc.state"/></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Start Date:</strong> <span t-field="doc.start_date"/></td>
+                                <td><strong>End Date:</strong> <span t-field="doc.end_date"/></td>
+                            </tr>
+                        </table>
+                        <h4>Rent Details</h4>
+                        <table class="table table-bordered">
+                            <tr>
+                                <td><strong>Rent Amount:</strong></td>
+                                <td><span t-field="doc.rent_amount" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
+                                <td><strong>Frequency:</strong></td>
+                                <td><span t-field="doc.rent_frequency.name"/></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Annual Rent:</strong></td>
+                                <td><span t-field="doc.annual_rent" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
+                                <td><strong>Contract Value:</strong></td>
+                                <td><span t-field="doc.total_contract_value" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Security Deposit:</strong></td>
+                                <td colspan="3"><span t-field="doc.security_deposit" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
+                            </tr>
+                        </table>
+                        <t t-if="doc.line_ids">
+                            <h4>Terms &amp; Conditions</h4>
+                            <t t-foreach="doc.line_ids" t-as="clause">
+                                <p><strong><span t-field="clause.title"/></strong><br/><span t-field="clause.content"/></p>
+                            </t>
+                        </t>
+                        <p class="text-muted">Generated on <span t-field="datetime.datetime.now()" t-options='{"format": "dd/MM/yyyy HH:mm"}'/></p>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

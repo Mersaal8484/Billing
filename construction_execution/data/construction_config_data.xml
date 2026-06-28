@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+
+    <!-- Default Construction Config Parameters -->
+    <record id="config_auto_create_analytic" model="ir.config_parameter">
+        <field name="key">construction.auto_create_analytic</field>
+        <field name="value">True</field>
+    </record>
+
+    <record id="config_auto_create_project" model="ir.config_parameter">
+        <field name="key">construction.auto_create_project</field>
+        <field name="value">True</field>
+    </record>
+
+    <record id="config_auto_create_tasks" model="ir.config_parameter">
+        <field name="key">construction.auto_create_tasks</field>
+        <field name="value">False</field>
+    </record>
+
+    <record id="config_default_retention" model="ir.config_parameter">
+        <field name="key">construction.default_retention</field>
+        <field name="value">5.0</field>
+    </record>
+
+    <record id="config_default_tax" model="ir.config_parameter">
+        <field name="key">construction.default_tax</field>
+        <field name="value">15.0</field>
+    </record>
+
+    <record id="config_default_analytic_plan" model="ir.config_parameter">
+        <field name="key">construction.default_analytic_plan_id</field>
+        <field name="value" eval="0"/>
+    </record>
+
+    <record id="config_income_account" model="ir.config_parameter">
+        <field name="key">construction.income_account_id</field>
+        <field name="value" eval="0"/>
+    </record>
+
+    <record id="config_expense_account" model="ir.config_parameter">
+        <field name="key">construction.expense_account_id</field>
+        <field name="value" eval="0"/>
+    </record>
+
+</odoo>

@@ -1,0 +1,327 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- BOQ Views -->
+    <record id="view_construction_boq_tree" model="ir.ui.view">
+        <field name="name">construction.boq.tree</field>
+        <field name="model">construction.boq</field>
+        <field name="arch" type="xml">
+            <tree string="Bill of Quantities" decoration-success="state=='approved'" decoration-info="state=='submitted'" decoration-warning="state=='revised'">
+                <field name="code"/>
+                <field name="name"/>
+                <field name="project_id"/>
+                <field name="state" widget="badge"/>
+                <field name="version"/>
+                <field name="total_quantity" sum="Total"/>
+                <field name="total_amount" sum="Total" widget="monetary"/>
+                <field name="item_count"/>
+                <field name="date"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_construction_boq_form" model="ir.ui.view">
+        <field name="name">construction.boq.form</field>
+        <field name="model">construction.boq</field>
+        <field name="arch" type="xml">
+            <form string="Bill of Quantities">
+                <header>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,submitted,approved" clickable="True"/>
+                    <button type="object" name="action_submit" string="Submit" states="draft" class="btn-primary"/>
+                    <button type="object" name="action_approve" string="Approve" states="submitted" class="btn-primary"/>
+                    <button type="object" name="action_create_sale_order" string="Create Sale Order" states="approved" class="btn-primary"/>
+                    <button type="object" name="action_revise" string="Revise" states="approved" class="btn-warning"/>
+                    <button type="object" name="action_draft" string="Set to Draft" states="revised" class="btn-default"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="BOQ Name"/></h1>
+                        <group>
+                            <group>
+                                <field name="code"/>
+                                <field name="project_id"/>
+                                <field name="version"/>
+                            </group>
+                            <group>
+                                <field name="date"/>
+                                <field name="approved_date"/>
+                                <field name="approved_by"/>
+                            </group>
+                        </group>
+                    </div>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_sale_orders" type="object" class="oe_stat_button" icon="fa-shopping-cart">
+                            <div class="o_stat_info">
+                                <field name="sale_order_count" class="o_stat_value"/>
+                                <span class="o_stat_text">Sale Orders</span>
+                            </div>
+                        </button>
+                    </div>
+                    <notebook>
+                        <page string="Sections">
+                            <field name="section_ids">
+                                <tree string="Sections" editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="code"/>
+                                    <field name="name"/>
+                                    <field name="total_quantity" sum="Total"/>
+                                    <field name="total_amount" sum="Total" widget="monetary"/>
+                                    <field name="item_count"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="BOQ Items">
+                            <field name="item_ids" context="{'default_boq_id': active_id}">
+                                <tree string="BOQ Items" editable="bottom" multi_edit="1">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="code"/>
+                                    <field name="name"/>
+                                    <field name="section_id"/>
+                                    <field name="parent_id" optional="hide"/>
+                                    <field name="level" optional="hide"/>
+                                    <field name="unit"/>
+                                    <field name="quantity" sum="Total"/>
+                                    <field name="rate" widget="monetary"/>
+                                    <field name="amount" sum="Total" widget="monetary"/>
+                                    <field name="executed_quantity" sum="Total"/>
+                                    <field name="executed_percent" widget="progressbar"/>
+                                    <field name="remaining_quantity"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Summary">
+                            <group>
+                                <field name="total_quantity"/>
+                                <field name="total_amount" widget="monetary"/>
+                                <field name="item_count"/>
+                            </group>
+                        </page>
+                        <page string="Notes">
+                            <field name="description"/>
+                            <field name="note"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" widget="mail_followers"/>
+                    <field name="activity_ids" widget="mail_activity"/>
+                    <field name="message_ids" widget="mail_thread"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_construction_boq_search" model="ir.ui.view">
+        <field name="name">construction.boq.search</field>
+        <field name="model">construction.boq</field>
+        <field name="arch" type="xml">
+            <search string="Search BOQs">
+                <field name="name"/>
+                <field name="code"/>
+                <field name="project_id"/>
+                <filter name="draft" string="Draft" domain="[('state','=','draft')]"/>
+                <filter name="approved" string="Approved" domain="[('state','=','approved')]"/>
+                <filter name="group_by_project" string="Project" context="{'group_by': 'project_id'}"/>
+                <filter name="group_by_state" string="Status" context="{'group_by': 'state'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_construction_boq" model="ir.actions.act_window">
+        <field name="name">Bill of Quantities</field>
+        <field name="res_model">construction.boq</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_construction_boq_search"/>
+    </record>
+
+    <!-- BOQ Item Views -->
+    <record id="view_construction_boq_item_tree" model="ir.ui.view">
+        <field name="name">construction.boq.item.tree</field>
+        <field name="model">construction.boq.item</field>
+        <field name="arch" type="xml">
+            <tree string="BOQ Items" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="boq_id" optional="hide"/>
+                <field name="section_id"/>
+                <field name="parent_id" optional="hide"/>
+                <field name="level" optional="hide"/>
+                <field name="unit"/>
+                <field name="quantity" sum="Total"/>
+                <field name="rate" widget="monetary"/>
+                <field name="amount" sum="Total" widget="monetary"/>
+                <field name="executed_quantity" sum="Total"/>
+                <field name="executed_percent" widget="progressbar"/>
+                <field name="has_rate_analysis" widget="badge" decoration-success="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_construction_boq_item_form" model="ir.ui.view">
+        <field name="name">construction.boq.item.form</field>
+        <field name="model">construction.boq.item</field>
+        <field name="arch" type="xml">
+            <form string="BOQ Item">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_rate_analysis" type="object" class="oe_stat_button" icon="fa-calculator">
+                            <div class="o_stat_info">
+                                <field name="has_rate_analysis" widget="boolean_fa" options="{'true': 'fa-check', 'false': 'fa-times'}"/>
+                                <span class="o_stat_text">Rate Analysis</span>
+                            </div>
+                        </button>
+                        <button name="action_open_material_plan" type="object" class="oe_stat_button" icon="fa-tasks">
+                            <span class="o_stat_text">Material Plan</span>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="display_name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="boq_id"/>
+                            <field name="section_id"/>
+                            <field name="code"/>
+                            <field name="name"/>
+                            <field name="arabic_name"/>
+                            <field name="parent_id"/>
+                            <field name="level"/>
+                        </group>
+                        <group>
+                            <field name="wbs_code"/>
+                            <field name="cost_code"/>
+                            <field name="activity_code"/>
+                            <field name="unit"/>
+                            <field name="quantity"/>
+                            <field name="rate" widget="monetary"/>
+                            <field name="amount" widget="monetary"/>
+                        </group>
+                    </group>
+                    <group string="Execution">
+                        <field name="executed_quantity"/>
+                        <field name="executed_percent" widget="progressbar"/>
+                        <field name="remaining_quantity"/>
+                    </group>
+                    <notebook>
+                        <page string="Description">
+                            <field name="description"/>
+                        </page>
+                        <page string="Rate Analysis">
+                            <field name="rate_analysis_ids">
+                                <tree string="Rate Analyses">
+                                    <field name="name"/>
+                                    <field name="date"/>
+                                    <field name="version"/>
+                                    <field name="direct_cost" widget="monetary"/>
+                                    <field name="indirect_cost" widget="monetary"/>
+                                    <field name="total_cost" widget="monetary"/>
+                                    <field name="final_rate" widget="monetary"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Notes">
+                            <field name="note"/>
+                            <field name="internal_note"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_construction_boq_item_search" model="ir.ui.view">
+        <field name="name">construction.boq.item.search</field>
+        <field name="model">construction.boq.item</field>
+        <field name="arch" type="xml">
+            <search string="Search Items">
+                <field name="code"/>
+                <field name="name"/>
+                <field name="boq_id"/>
+                <field name="section_id"/>
+                <filter name="group_by_boq" string="BOQ" context="{'group_by': 'boq_id'}"/>
+                <filter name="group_by_section" string="Section" context="{'group_by': 'section_id'}"/>
+            </search>
+        </field>
+    </record>
+
+    <!-- BOQ Section Views -->
+    <record id="view_construction_boq_section_tree" model="ir.ui.view">
+        <field name="name">construction.boq.section.tree</field>
+        <field name="model">construction.boq.section</field>
+        <field name="arch" type="xml">
+            <tree string="BOQ Sections" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="parent_id"/>
+                <field name="total_quantity" sum="Total"/>
+                <field name="total_amount" sum="Total" widget="monetary"/>
+                <field name="item_count"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_construction_boq_section_form" model="ir.ui.view">
+        <field name="name">construction.boq.section.form</field>
+        <field name="model">construction.boq.section</field>
+        <field name="arch" type="xml">
+            <form string="BOQ Section">
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="display_name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="boq_id"/>
+                            <field name="code"/>
+                            <field name="name"/>
+                            <field name="arabic_name"/>
+                            <field name="parent_id"/>
+                            <field name="sequence"/>
+                        </group>
+                        <group>
+                            <field name="wbs_code"/>
+                            <field name="cost_code"/>
+                            <field name="activity_code"/>
+                            <field name="total_quantity"/>
+                            <field name="total_amount" widget="monetary"/>
+                        </group>
+                    </group>
+                    <field name="item_ids">
+                        <tree string="Items">
+                            <field name="code"/>
+                            <field name="name"/>
+                            <field name="unit"/>
+                            <field name="quantity"/>
+                            <field name="rate" widget="monetary"/>
+                            <field name="amount" widget="monetary"/>
+                        </tree>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_construction_boq_item_pivot" model="ir.ui.view">
+        <field name="name">construction.boq.item.pivot</field>
+        <field name="model">construction.boq.item</field>
+        <field name="arch" type="xml">
+            <pivot string="BOQ Analysis" disable_linking="1">
+                <field name="amount" type="measure"/>
+                <field name="quantity" type="measure"/>
+                <field name="executed_percent" type="measure"/>
+                <field name="boq_id" type="row"/>
+                <field name="section_id" type="col"/>
+                <field name="company_id" type="row"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="action_construction_boq_item" model="ir.actions.act_window">
+        <field name="name">BOQ Items</field>
+        <field name="res_model">construction.boq.item</field>
+        <field name="view_mode">tree,form,pivot</field>
+        <field name="search_view_id" ref="view_construction_boq_item_search"/>
+    </record>
+</odoo>

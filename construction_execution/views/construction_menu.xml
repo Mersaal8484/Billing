@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Actions -->
+    <record id="action_construction_boq_section" model="ir.actions.act_window">
+        <field name="name">BOQ Sections</field>
+        <field name="res_model">construction.boq.section</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="action_construction_resource_type" model="ir.actions.act_window">
+        <field name="name">Resource Types</field>
+        <field name="res_model">construction.resource.type</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="action_construction_boq_status" model="ir.actions.act_window">
+        <field name="name">BOQ Statuses</field>
+        <field name="res_model">construction.boq.status</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="action_construction_mr_status" model="ir.actions.act_window">
+        <field name="name">Material Request Statuses</field>
+        <field name="res_model">construction.material.request.status</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="action_construction_ipc_status" model="ir.actions.act_window">
+        <field name="name">IPC Statuses</field>
+        <field name="res_model">construction.ipc.status</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <!-- Top Menu -->
+    <menuitem id="menu_construction_root" name="Construction"
+              web_icon="construction_execution,static/description/icon.png"
+              sequence="10"/>
+
+    <!-- Dashboard -->
+    <menuitem id="menu_construction_dashboard" name="Dashboard"
+              parent="menu_construction_root" sequence="5"
+              action="action_construction_dashboard"/>
+
+    <!-- Projects -->
+    <menuitem id="menu_construction_project" name="Projects"
+              parent="menu_construction_root" sequence="10">
+        <menuitem id="menu_construction_project_list" name="All Projects"
+                  action="action_construction_project" sequence="10"/>
+        <menuitem id="menu_construction_project_tree" name="Project List"
+                  action="action_construction_project_tree" sequence="20"/>
+    </menuitem>
+
+    <!-- Bill of Quantities -->
+    <menuitem id="menu_construction_boq" name="Bill of Quantities"
+              parent="menu_construction_root" sequence="20">
+        <menuitem id="menu_construction_boq_list" name="BOQs"
+                  action="action_construction_boq" sequence="10"/>
+        <menuitem id="menu_construction_boq_items" name="BOQ Items"
+                  action="action_construction_boq_item" sequence="20"/>
+        <menuitem id="menu_construction_section" name="Sections"
+                  action="action_construction_boq_section" sequence="30"/>
+    </menuitem>
+
+    <!-- Resources & Rate Analysis -->
+    <menuitem id="menu_construction_resources" name="Resources &amp; Rate Analysis"
+              parent="menu_construction_root" sequence="30">
+        <menuitem id="menu_construction_resource_list" name="Resources"
+                  action="action_construction_resource" sequence="10"/>
+        <menuitem id="menu_construction_rate_analysis" name="Rate Analysis"
+                  action="action_construction_rate_analysis" sequence="20"/>
+    </menuitem>
+
+    <!-- Materials -->
+    <menuitem id="menu_construction_materials" name="Materials"
+              parent="menu_construction_root" sequence="40">
+        <menuitem id="menu_construction_material_plan" name="Material Plans"
+                  action="action_construction_material_plan" sequence="10"/>
+        <menuitem id="menu_construction_material_request" name="Material Requests"
+                  action="action_construction_material_request" sequence="20"/>
+        <menuitem id="menu_construction_material_issue" name="Material Issues"
+                  action="action_construction_material_issue" sequence="30"/>
+        <menuitem id="menu_construction_material_return" name="Material Returns"
+                  action="action_construction_material_return" sequence="40"/>
+    </menuitem>
+
+    <!-- Progress -->
+    <menuitem id="menu_construction_progress" name="Progress"
+              parent="menu_construction_root" sequence="50">
+        <menuitem id="menu_construction_progress_list" name="Progress Records"
+                  action="action_construction_progress" sequence="10"/>
+    </menuitem>
+
+    <!-- Variations -->
+    <menuitem id="menu_construction_variation" name="Variation Orders"
+              parent="menu_construction_root" sequence="60">
+        <menuitem id="menu_construction_variation_list" name="All Variations"
+                  action="action_construction_variation" sequence="10"/>
+    </menuitem>
+
+    <!-- IPC -->
+    <menuitem id="menu_construction_ipc" name="Payment Certificates"
+              parent="menu_construction_root" sequence="70">
+        <menuitem id="menu_construction_ipc_list" name="All IPCs"
+                  action="action_construction_ipc" sequence="10"/>
+    </menuitem>
+
+    <!-- Cost Control -->
+    <menuitem id="menu_construction_cost" name="Cost Control"
+              parent="menu_construction_root" sequence="80">
+        <menuitem id="menu_construction_cost_control" name="Cost Control"
+                  action="action_construction_cost_control" sequence="10"/>
+        <menuitem id="menu_construction_cost_entry" name="Cost Entries"
+                  action="action_construction_cost_entry" sequence="20"/>
+    </menuitem>
+
+    <!-- Budget -->
+    <menuitem id="menu_construction_budget" name="Budget"
+              parent="menu_construction_root" sequence="90">
+        <menuitem id="menu_construction_budget_list" name="Budgets"
+                  action="action_construction_budget" sequence="10"/>
+    </menuitem>
+
+    <!-- Forecast -->
+    <menuitem id="menu_construction_forecast" name="Forecast"
+              parent="menu_construction_root" sequence="100">
+        <menuitem id="menu_construction_forecast_list" name="Forecasts"
+                  action="action_construction_forecast" sequence="10"/>
+    </menuitem>
+
+    <!-- Cash Flow -->
+    <menuitem id="menu_construction_cashflow" name="Cash Flow"
+              parent="menu_construction_root" sequence="110">
+        <menuitem id="menu_construction_cashflow_list" name="Cash Flow"
+                  action="action_construction_cashflow" sequence="10"/>
+    </menuitem>
+
+    <!-- Reports -->
+    <menuitem id="menu_construction_reports" name="Reports"
+              parent="menu_construction_root" sequence="120">
+        <menuitem id="menu_construction_report_boq" name="BOQ Report"
+                  action="action_report_construction_boq" sequence="10"/>
+        <menuitem id="menu_construction_report_ipc" name="IPC Report"
+                  action="action_report_construction_ipc" sequence="20"/>
+        <menuitem id="menu_construction_report_progress" name="Progress Report"
+                  action="action_report_construction_progress" sequence="30"/>
+    </menuitem>
+
+    <!-- Configuration -->
+    <menuitem id="menu_construction_config" name="Configuration"
+              parent="menu_construction_root" sequence="999">
+        <menuitem id="menu_construction_resource_type" name="Resource Types"
+                  action="action_construction_resource_type" sequence="10"/>
+        <menuitem id="menu_construction_boq_status" name="BOQ Statuses"
+                  action="action_construction_boq_status" sequence="20"/>
+        <menuitem id="menu_construction_mr_status" name="Material Request Statuses"
+                  action="action_construction_mr_status" sequence="30"/>
+        <menuitem id="menu_construction_ipc_status" name="IPC Statuses"
+                  action="action_construction_ipc_status" sequence="40"/>
+    </menuitem>
+</odoo>

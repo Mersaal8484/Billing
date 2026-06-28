@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_ye_tax_bracket_user,ye.tax.bracket.user,model_ye_tax_bracket,om_hr_payroll.group_hr_payroll_user,1,0,0,0
+access_ye_tax_bracket_manager,ye.tax.bracket.manager,model_ye_tax_bracket,om_hr_payroll.group_hr_payroll_manager,1,1,1,1
+access_ye_eos_rule_user,ye.eos.rule.user,model_ye_eos_rule,om_hr_payroll.group_hr_payroll_user,1,0,0,0
+access_ye_eos_rule_manager,ye.eos.rule.manager,model_ye_eos_rule,om_hr_payroll.group_hr_payroll_manager,1,1,1,1

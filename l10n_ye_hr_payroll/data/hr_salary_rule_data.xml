@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+
+        <!-- ================================================ -->
+        <!-- Rule 1: BASIC (Seq 1)                            -->
+        <!-- Pulls the base salary from contract.wage         -->
+        <!-- ================================================ -->
+        <record id="ye_rule_basic" model="hr.salary.rule">
+            <field name="name">Basic Salary</field>
+            <field name="sequence" eval="1"/>
+            <field name="code">BASIC</field>
+            <field name="category_id" ref="ye_basic"/>
+            <field name="condition_select">none</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute"><![CDATA[result = contract.wage]]></field>
+            <field name="appears_on_payslip" eval="True"/>
+        </record>
+
+        <!-- ================================================ -->
+        <!-- Rule 2: HOUSING_ALW (Seq 10)                     -->
+        <!-- Fixed insured allowance from contract            -->
+        <!-- ================================================ -->
+        <record id="ye_rule_housing_alw" model="hr.salary.rule">
+            <field name="name">Housing Allowance</field>
+            <field name="sequence" eval="10"/>
+            <field name="code">HOUSING_ALW</field>
+            <field name="category_id" ref="ye_alw"/>
+            <field name="condition_select">none</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute"><![CDATA[result = contract.housing_allowance or 0.0]]></field>
+        </record>
+
+        <!-- ================================================ -->
+        <!-- Rule 3: TRANSPORT_ALW (Seq 20)                   -->
+        <!-- Fixed insured allowance from contract            -->
+        <!-- ================================================ -->
+        <record id="ye_rule_transport_alw" model="hr.salary.rule">
+            <field name="name">Transport Allowance</field>
+            <field name="sequence" eval="20"/>
+            <field name="code">TRANSPORT_ALW</field>
+            <field name="category_id" ref="ye_alw"/>
+            <field name="condition_select">none</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute"><![CDATA[result = contract.transport_allowance or 0.0]]></field>
+        </record>
+
+        <!-- ================================================ -->
+        <!-- Rule 4: OTHER_ALW (Seq 30)                       -->
+        <!-- Variable non-insured allowance                   -->
+        <!-- ================================================ -->
+        <record id="ye_rule_other_alw" model="hr.salary.rule">
+            <field name="name">Other Variable Allowances</field>
+            <field name="sequence" eval="30"/>
+            <field name="code">OTHER_ALW</field>
+            <field name="category_id" ref="ye_alw"/>
+            <field name="condition_select">none</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute"><![CDATA[result = contract.other_allowance or 0.0]]></field>
+        </record>
+
+        <!-- ================================================ -->
+        <!-- Rule 5: OT_DAY (Seq 40)                          -->
+        <!-- Daylight Overtime at 1.5x hourly rate            -->
+        <!-- hourly_rate = contract.wage / 30 / 8             -->
+        <!-- ================================================ -->
+        <record id="ye_rule_ot_day" model="hr.salary.rule">
+            <field name="name">Daylight Overtime (1.5x)</field>
+            <field name="sequence" eval="40"/>
+            <field name="code">OT_DAY</field>
+            <field name="category_id" ref="ye_alw"/>
+            <field name="condition_select">none</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute"><![CDATA[
+hourly_rate = contract.wage / 30.0 / 8.0
+ot_hours = worked_days.OT_DAY and worked_days.OT_DAY.number_of_hours or 0.0
+result = ot_hours * hourly_rate * 1.5
+            ]]></field>
+        </record>
+
+        <!-- ================================================ -->
+        <!-- Rule 6: OT_NIGHT (Seq 50)                        -->
+        <!-- Nighttime Overtime at 2.0x hourly rate           -->
+        <!-- ================================================ -->
+        <record id="ye_rule_ot_night" model="hr.salary.rule">
+            <field name="name">Nighttime Overtime (2.0x)</field>
+            <field name="sequence" eval="50"/>
+            <field name="code">OT_NIGHT</field>
+            <field name="category_id" ref="ye_alw"/>
+            <field name="condition_select">none</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute"><![CDATA[
+hourly_rate = contract.wage / 30.0 / 8.0
+ot_hours = worked_days.OT_NIGHT and worked_days.OT_NIGHT.number_of_hours or 0.0
+result = ot_hours * hourly_rate * 2.0
+            ]]></field>
+        </record>
+
+        <!-- ================================================ -->
+        <!-- Rule 7: GROSS (Seq 60)                           -->
+        <!-- Sum of BASIC + all Allowances                    -->
+        <!-- ================================================ -->
+        <record id="ye_rule_gross" model="hr.salary.rule">
+            <field name="name">Gross Salary</field>
+            <field name="sequence" eval="60"/>
+            <field name="code">GROSS</field>
+            <field name="category_id" ref="ye_gross"/>
+            <field name="condition_select">none</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute"><![CDATA[result = categories.BASIC + categories.ALW]]></field>
+            <field name="appears_on_payslip" eval="True"/>
+        </record>
+
+        <!-- ================================================ -->
+        <!-- Rule 8: EMP_INS (Seq 70)                         -->
+        <!-- Employee Social Insurance (6%)                   -->
+        <!-- Insurable base = Basic + Housing + Transport     -->
+        <!-- Configurable min/max caps from res.company       -->
+        <!-- Returns NEGATIVE (deduction)                     -->
+        <!-- ================================================ -->
+        <record id="ye_rule_emp_insurance" model="hr.salary.rule">
+            <field name="name">Social Insurance (Employee 6%)</field>
+            <field name="sequence" eval="70"/>
+            <field name="code">EMP_INS</field>
+            <field name="category_id" ref="ye_ded"/>
+            <field name="condition_select">none</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute"><![CDATA[
+company = contract.company_id
+insurable_base = (contract.wage
+                  + (contract.housing_allowance or 0.0)
+                  + (contract.transport_allowance or 0.0))
+min_base = company.social_insurance_min_base or 0.0
+max_base = company.social_insurance_max_base or 0.0
+if insurable_base < min_base:
+    insurable_base = min_base
+if max_base > 0.0 and insurable_base > max_base:
+    insurable_base = max_base
+rate = (company.social_insurance_employee_rate or 6.0) / 100.0
+result = -(insurable_base * rate)
+            ]]></field>
+            <field name="register_id" ref="contrib_register_social_insurance"/>
+        </record>
+
+        <!-- ================================================ -->
+        <!-- Rule 9: TAX (Seq 80)                             -->
+        <!-- Yemeni Progressive Income Tax                    -->
+        <!-- taxable = Gross - exemption - |EMP_INS|          -->
+        <!-- Brackets:                                        -->
+        <!--   0%  : <= 0                                     -->
+        <!--   10% : 1 - 20,000                               -->
+        <!--   15% : 20,001 - 50,000                          -->
+        <!--   20% : above 50,000                             -->
+        <!-- Returns NEGATIVE (deduction)                     -->
+        <!-- ================================================ -->
+        <record id="ye_rule_tax" model="hr.salary.rule">
+            <field name="name">Income Tax (Progressive)</field>
+            <field name="sequence" eval="80"/>
+            <field name="code">TAX</field>
+            <field name="category_id" ref="ye_ded"/>
+            <field name="condition_select">none</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute"><![CDATA[
+company = contract.company_id
+base_amount = categories.GROSS - abs(categories.DED)
+tax = contract.env['ye.tax.bracket'].compute_tax(base_amount, company.id)
+result = -tax
+            ]]></field>
+            <field name="register_id" ref="contrib_register_tax_authority"/>
+        </record>
+
+        <!-- ================================================ -->
+        <!-- Rule 10: UNPAID_DED (Seq 90)                     -->
+        <!-- Deduction for unpaid leave days                  -->
+        <!-- daily_rate = contract.wage / 30                  -->
+        <!-- Returns NEGATIVE (deduction)                     -->
+        <!-- ================================================ -->
+        <record id="ye_rule_unpaid_ded" model="hr.salary.rule">
+            <field name="name">Unpaid Leave Deduction</field>
+            <field name="sequence" eval="90"/>
+            <field name="code">UNPAID_DED</field>
+            <field name="category_id" ref="ye_ded"/>
+            <field name="condition_select">none</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute"><![CDATA[
+unpaid_days = worked_days.LEAVE90 and worked_days.LEAVE90.number_of_days or 0.0
+result = -(unpaid_days * (contract.wage / 30.0))
+            ]]></field>
+        </record>
+
+        <!-- ================================================ -->
+        <!-- Rule 11: NET (Seq 100)                           -->
+        <!-- Net Salary = Gross + Allowances - Deductions     -->
+        <!-- ================================================ -->
+        <record id="ye_rule_net" model="hr.salary.rule">
+            <field name="name">Net Salary</field>
+            <field name="sequence" eval="100"/>
+            <field name="code">NET</field>
+            <field name="category_id" ref="ye_net"/>
+            <field name="condition_select">none</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute"><![CDATA[result = categories.GROSS + categories.DED]]></field>
+            <field name="appears_on_payslip" eval="True"/>
+            <field name="register_id" ref="contrib_register_employees"/>
+        </record>
+
+        <!-- ================================================ -->
+        <!-- Rule 12: COMPANY_INS (Seq 110)                   -->
+        <!-- Employer Social Insurance (9%)                   -->
+        <!-- Same insurable base with min/max caps            -->
+        <!-- Accounting only (appears_on_payslip = False)     -->
+        <!-- ================================================ -->
+        <record id="ye_rule_company_insurance" model="hr.salary.rule">
+            <field name="name">Social Insurance (Employer 9%)</field>
+            <field name="sequence" eval="110"/>
+            <field name="code">COMPANY_INS</field>
+            <field name="category_id" ref="ye_emplr"/>
+            <field name="condition_select">none</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute"><![CDATA[
+company = contract.company_id
+insurable_base = (contract.wage
+                  + (contract.housing_allowance or 0.0)
+                  + (contract.transport_allowance or 0.0))
+min_base = company.social_insurance_min_base or 0.0
+max_base = company.social_insurance_max_base or 0.0
+if insurable_base < min_base:
+    insurable_base = min_base
+if max_base > 0.0 and insurable_base > max_base:
+    insurable_base = max_base
+rate = (company.social_insurance_employer_rate or 9.0) / 100.0
+result = insurable_base * rate
+            ]]></field>
+            <field name="appears_on_payslip" eval="False"/>
+            <field name="register_id" ref="contrib_register_social_insurance"/>
+        </record>
+
+        <!-- ================================================ -->
+        <!-- Rule 13: EOS_PROV (Seq 120)                      -->
+        <!-- End-of-Service Provision Accrual                 -->
+        <!-- Accrued monthly: wage x months_per_year / 12     -->
+        <!-- Accounting only (appears_on_payslip = False)     -->
+        <!-- ================================================ -->
+        <record id="ye_rule_eos_provision" model="hr.salary.rule">
+            <field name="name">End-of-Service Provision</field>
+            <field name="sequence" eval="120"/>
+            <field name="code">EOS_PROV</field>
+            <field name="category_id" ref="ye_emplr"/>
+            <field name="condition_select">none</field>
+            <field name="amount_select">code</field>
+            <field name="amount_python_compute"><![CDATA[
+months_per_year = 1.0
+eos_rule = contract.eos_rule_id
+if eos_rule:
+    months_per_year = eos_rule.months_per_year
+result = contract.wage * months_per_year / 12.0
+            ]]></field>
+            <field name="appears_on_payslip" eval="False"/>
+        </record>
+
+    </data>
+</odoo>

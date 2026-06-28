@@ -1,0 +1,339 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Portal Home My Account Tiles -->
+    <template id="portal_my_home_property" name="Portal My Home: Property Management" inherit_id="portal.portal_my_home" priority="40">
+        <xpath expr="//div[hasclass('o_portal_docs')]" position="inside">
+            <t t-call="portal.portal_docs_entry">
+                <t t-set="title">Lease Contracts</t>
+                <t t-set="url" t-value="'/my/leases'"/>
+                <t t-set="placeholder_count" t-value="'lease_count'"/>
+            </t>
+            <t t-call="portal.portal_docs_entry">
+                <t t-set="title">Maintenance Requests</t>
+                <t t-set="url" t-value="'/my/maintenance'"/>
+                <t t-set="placeholder_count" t-value="'maintenance_count'"/>
+            </t>
+            <t t-if="property_count" t-call="portal.portal_docs_entry">
+                <t t-set="title">My Properties</t>
+                <t t-set="url" t-value="'/my/properties'"/>
+                <t t-set="placeholder_count" t-value="'property_count'"/>
+            </t>
+        </xpath>
+    </template>
+
+    <!-- Portal Breadcrumbs -->
+    <template id="portal_breadcrumbs_property" name="Portal Breadcrumbs: Property Management" inherit_id="portal.portal_breadcrumbs" priority="40">
+        <xpath expr="//ol[hasclass('o_portal_submenu')]" position="inside">
+            <li t-if="page_name == 'lease'" t-attf-class="breadcrumb-item #{'active ' if not lease else ''}">
+                <a t-if="lease" t-attf-href="/my/leases?{{ keep_query() }}">Lease Contracts</a>
+                <t t-else="">Lease Contracts</t>
+            </li>
+            <li t-if="lease" class="breadcrumb-item active">
+                <t t-esc="lease.name"/>
+            </li>
+            <li t-if="page_name == 'maintenance'" t-attf-class="breadcrumb-item #{'active ' if not maintenance else ''}">
+                <a t-if="maintenance" t-attf-href="/my/maintenance?{{ keep_query() }}">Maintenance Requests</a>
+                <t t-else="">Maintenance Requests</t>
+            </li>
+            <li t-if="maintenance" class="breadcrumb-item active">
+                <t t-esc="maintenance.name"/>
+            </li>
+            <li t-if="page_name == 'property'" class="breadcrumb-item active">
+                My Properties
+            </li>
+        </xpath>
+    </template>
+
+    <!-- My Leases List -->
+    <template id="portal_my_leases" name="My Leases">
+        <t t-call="portal.portal_layout">
+            <t t-set="breadcrumbs_searchbar" t-value="True"/>
+            <t t-call="portal.portal_table">
+                <thead>
+                    <tr class="active">
+                        <th>Lease Reference</th>
+                        <th>Property / Unit</th>
+                        <th>Start Date</th>
+                        <th>End Date</th>
+                        <th>Rent Amount</th>
+                        <th class="text-right">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr t-foreach="leases" t-as="lease">
+                        <td>
+                            <a t-attf-href="/my/leases/#{lease.id}">
+                                <t t-esc="lease.name"/>
+                            </a>
+                        </td>
+                        <td><t t-esc="lease.unit_id.display_name"/></td>
+                        <td><span t-field="lease.start_date"/></td>
+                        <td><span t-field="lease.end_date"/></td>
+                        <td><span t-field="lease.rent_amount" t-options='{"widget": "monetary", "display_currency": lease.currency_id}'/></td>
+                        <td class="text-right">
+                            <span t-attf-class="badge #{'badge-success' if lease.state == 'active' else 'badge-info'}">
+                                <t t-esc="dict(lease._fields['state'].selection).get(lease.state)"/>
+                            </span>
+                        </td>
+                    </tr>
+                </tbody>
+            </t>
+        </t>
+    </template>
+
+    <!-- Lease Detail View -->
+    <template id="portal_my_lease_detail" name="Lease Contract Details">
+        <t t-call="portal.portal_layout">
+            <div id="optional_subtotal" class="o_portal_html_view shadow p-3 mb-5 bg-white rounded">
+                <div class="container">
+                    <div class="row mb-4">
+                        <div class="col-12 col-md-6">
+                            <h3>Lease Contract: <t t-esc="lease.name"/></h3>
+                            <p class="text-muted">Property: <t t-esc="lease.property_id.name"/> | Unit: <t t-esc="lease.unit_id.number"/></p>
+                        </div>
+                        <div class="col-12 col-md-6 text-md-right">
+                            <span t-attf-class="badge badge-lg #{'badge-success' if lease.state == 'active' else 'badge-info'}">
+                                <t t-esc="dict(lease._fields['state'].selection).get(lease.state)"/>
+                            </span>
+                        </div>
+                    </div>
+                    <hr/>
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <strong>Contract Period:</strong>
+                            <p><span t-field="lease.start_date"/> to <span t-field="lease.end_date"/></p>
+                            <strong>Payment Frequency:</strong>
+                            <p><t t-esc="lease.rent_frequency.name"/></p>
+                        </div>
+                        <div class="col-md-6 text-md-right">
+                            <strong>Rent Amount:</strong>
+                            <p class="text-primary h4"><span t-field="lease.rent_amount" t-options='{"widget": "monetary", "display_currency": lease.currency_id}'/></p>
+                            <strong>Security Deposit:</strong>
+                            <p><span t-field="lease.security_deposit" t-options='{"widget": "monetary", "display_currency": lease.currency_id}'/></p>
+                        </div>
+                    </div>
+                    <h4 class="mt-5 mb-3">Payment Schedule &amp; Outstanding Balance</h4>
+                    <table class="table table-sm table-striped">
+                        <thead>
+                            <tr>
+                                <th>Description</th>
+                                <th>Due Date</th>
+                                <th>Amount</th>
+                                <th>Paid</th>
+                                <th>Remaining</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="lease.schedule_ids" t-as="sched">
+                                <td><t t-esc="sched.name"/></td>
+                                <td><span t-field="sched.date"/></td>
+                                <td><span t-field="sched.amount" t-options='{"widget": "monetary", "display_currency": lease.currency_id}'/></td>
+                                <td><span t-field="sched.paid_amount" t-options='{"widget": "monetary", "display_currency": lease.currency_id}'/></td>
+                                <td><span t-field="sched.remaining" t-options='{"widget": "monetary", "display_currency": lease.currency_id}'/></td>
+                                <td>
+                                    <span t-attf-class="badge #{'badge-success' if sched.state == 'paid' else ('badge-danger' if sched.state == 'overdue' else 'badge-warning')}">
+                                        <t t-esc="dict(sched._fields['state'].selection).get(sched.state)"/>
+                                    </span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- My Maintenance Requests List -->
+    <template id="portal_my_maintenance" name="My Maintenance Requests">
+        <t t-call="portal.portal_layout">
+            <t t-set="breadcrumbs_searchbar" t-value="True"/>
+            <div class="text-right mb-3">
+                <a href="/my/maintenance/new" class="btn btn-primary" role="button">Submit New Maintenance Request</a>
+            </div>
+            <t t-call="portal.portal_table">
+                <thead>
+                    <tr class="active">
+                        <th>Reference</th>
+                        <th>Type</th>
+                        <th>Unit</th>
+                        <th>Request Date</th>
+                        <th>Priority</th>
+                        <th class="text-right">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr t-foreach="maintenance_requests" t-as="maint">
+                        <td>
+                            <a t-attf-href="/my/maintenance/#{maint.id}">
+                                <t t-esc="maint.name"/>
+                            </a>
+                        </td>
+                        <td><t t-esc="maint.maintenance_type.name"/></td>
+                        <td><t t-esc="maint.unit_id.display_name"/></td>
+                        <td><span t-field="maint.date_requested"/></td>
+                        <td>
+                            <span t-attf-class="badge #{'badge-danger' if maint.priority in ('high', 'urgent') else 'badge-secondary'}">
+                                <t t-esc="dict(maint._fields['priority'].selection).get(maint.priority)"/>
+                            </span>
+                        </td>
+                        <td class="text-right">
+                            <span t-attf-class="badge #{'badge-success' if maint.state == 'done' else 'badge-info'}">
+                                <t t-esc="dict(maint._fields['state'].selection).get(maint.state)"/>
+                            </span>
+                        </td>
+                    </tr>
+                </tbody>
+            </t>
+        </t>
+    </template>
+
+    <!-- Maintenance Detail View -->
+    <template id="portal_my_maintenance_detail" name="Maintenance Request Details">
+        <t t-call="portal.portal_layout">
+            <div id="optional_subtotal" class="o_portal_html_view shadow p-3 mb-5 bg-white rounded">
+                <div class="container">
+                    <div class="row mb-4">
+                        <div class="col-12 col-md-6">
+                            <h3>Maintenance Request: <t t-esc="maintenance.name"/></h3>
+                            <p class="text-muted">Unit: <t t-esc="maintenance.unit_id.display_name"/></p>
+                        </div>
+                        <div class="col-12 col-md-6 text-md-right">
+                            <span t-attf-class="badge badge-lg #{'badge-success' if maintenance.state == 'done' else 'badge-info'}">
+                                <t t-esc="dict(maintenance._fields['state'].selection).get(maintenance.state)"/>
+                            </span>
+                        </div>
+                    </div>
+                    <hr/>
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <strong>Type:</strong>
+                            <p><t t-esc="maintenance.maintenance_type.name"/></p>
+                            <strong>Priority:</strong>
+                            <p><t t-esc="dict(maintenance._fields['priority'].selection).get(maintenance.priority)"/></p>
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Date Requested:</strong>
+                            <p><span t-field="maintenance.date_requested"/></p>
+                            <strong>Scheduled Date:</strong>
+                            <p><span t-field="maintenance.date_scheduled"/></p>
+                        </div>
+                    </div>
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <strong>Description:</strong>
+                            <div class="card p-3 mt-2 bg-light">
+                                <t t-esc="maintenance.description"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- Submit New Maintenance Request Form -->
+    <template id="portal_my_maintenance_new" name="Submit Maintenance Request">
+        <t t-call="portal.portal_layout">
+            <div class="container mb-5">
+                <div class="row">
+                    <div class="col-md-8 offset-md-2 shadow p-4 bg-white rounded">
+                        <h3 class="mb-4">Submit New Maintenance Request</h3>
+                        <form action="/my/maintenance/new" method="post">
+                            <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                            <div class="form-group mb-3">
+                                <label for="unit_id" class="font-weight-bold">Select Unit</label>
+                                <select name="unit_id" id="unit_id" class="form-control" required="1">
+                                    <option value="">-- Choose Unit --</option>
+                                    <t t-foreach="units" t-as="unit">
+                                        <option t-att-value="unit.id"><t t-esc="unit.display_name"/></option>
+                                    </t>
+                                </select>
+                            </div>
+                            <div class="form-group mb-3">
+                                <label for="maintenance_type_id" class="font-weight-bold">Maintenance Type</label>
+                                <select name="maintenance_type_id" id="maintenance_type_id" class="form-control" required="1">
+                                    <option value="">-- Choose Type --</option>
+                                    <t t-foreach="maintenance_types" t-as="mtype">
+                                        <option t-att-value="mtype.id"><t t-esc="mtype.name"/></option>
+                                    </t>
+                                </select>
+                            </div>
+                            <div class="form-group mb-3">
+                                <label for="priority" class="font-weight-bold">Priority</label>
+                                <select name="priority" id="priority" class="form-control">
+                                    <option value="low">Low</option>
+                                    <option value="normal" selected="1">Normal</option>
+                                    <option value="high">High</option>
+                                    <option value="urgent">Urgent</option>
+                                </select>
+                            </div>
+                            <div class="form-group mb-4">
+                                <label for="description" class="font-weight-bold">Problem Description</label>
+                                <textarea name="description" id="description" class="form-control" rows="5" required="1" placeholder="Describe the issue in detail..."></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-lg btn-block">Submit Request</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </t>
+    </template>
+
+    <!-- My Properties (Owner View) -->
+    <template id="portal_my_properties" name="My Properties">
+        <t t-call="portal.portal_layout">
+            <t t-set="breadcrumbs_searchbar" t-value="True"/>
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card bg-light p-3 shadow-sm">
+                        <div class="row text-center">
+                            <div class="col-sm-4">
+                                <strong>Total Annual Income</strong>
+                                <h4 class="text-success mt-1"><span t-field="owner.total_annual_income" t-options='{"widget": "monetary", "display_currency": owner.currency_id}'/></h4>
+                            </div>
+                            <div class="col-sm-4">
+                                <strong>Maintenance Expenses</strong>
+                                <h4 class="text-danger mt-1"><span t-field="owner.total_maintenance_cost" t-options='{"widget": "monetary", "display_currency": owner.currency_id}'/></h4>
+                            </div>
+                            <div class="col-sm-4">
+                                <strong>Net Income</strong>
+                                <h4 class="text-primary mt-1"><span t-field="owner.net_income" t-options='{"widget": "monetary", "display_currency": owner.currency_id}'/></h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <t t-call="portal.portal_table">
+                <thead>
+                    <tr class="active">
+                        <th>Property Code</th>
+                        <th>Name</th>
+                        <th>Status</th>
+                        <th>Total Units</th>
+                        <th>Occupied</th>
+                        <th class="text-right">Occupancy Rate</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr t-foreach="properties" t-as="prop">
+                        <td><strong><t t-esc="prop.code"/></strong></td>
+                        <td><t t-esc="prop.name"/></td>
+                        <td>
+                            <span class="badge badge-info"><t t-esc="prop.status.name"/></span>
+                        </td>
+                        <td><t t-esc="prop.total_units"/></td>
+                        <td><t t-esc="prop.occupied_units"/></td>
+                        <td class="text-right">
+                            <div class="progress">
+                                <div class="progress-bar bg-success" role="progressbar" t-attf-style="width: #{prop.occupancy_rate}%;" t-att-aria-valuenow="prop.occupancy_rate" aria-valuemin="0" aria-valuemax="100">
+                                    <t t-esc="prop.occupancy_rate"/>%
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </t>
+        </t>
+    </template>
+</odoo>

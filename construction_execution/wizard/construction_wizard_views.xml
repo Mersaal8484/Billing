@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_construction_boq_import_wizard" model="ir.ui.view">
+        <field name="name">construction.boq.import.wizard</field>
+        <field name="model">construction.boq.import.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Import BOQ Items">
+                <group>
+                    <field name="boq_id"/>
+                    <field name="data" placeholder="Code,Description,Unit,Quantity,Rate&#10;1.1,Excavation,m3,1000,25.50&#10;1.2,Concrete,m3,500,450.00"/>
+                </group>
+                <footer>
+                    <button name="action_import" string="Import" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-default" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_construction_boq_import_wizard" model="ir.actions.act_window">
+        <field name="name">Import BOQ Items</field>
+        <field name="res_model">construction.boq.import.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <record id="view_construction_progress_generate_wizard" model="ir.ui.view">
+        <field name="name">Generate Progress Lines</field>
+        <field name="model">construction.progress.generate.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Generate Progress Lines">
+                <group>
+                    <field name="progress_id"/>
+                    <field name="include_completed"/>
+                </group>
+                <footer>
+                    <button name="action_generate" string="Generate" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-default" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_construction_ipc_generate_wizard" model="ir.ui.view">
+        <field name="name">Generate IPC Lines</field>
+        <field name="model">construction.ipc.generate.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Generate IPC Lines from Progress">
+                <group>
+                    <field name="project_id" invisible="1"/>
+                    <field name="ipc_id"/>
+                    <field name="progress_id" domain="[('project_id','=',project_id)]"/>
+                </group>
+                <footer>
+                    <button name="action_generate" string="Generate" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-default" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_construction_progress">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2 class="text-center">Progress Report</h2>
+                        <h4 class="text-center"><span t-field="doc.name"/></h4>
+                        <hr/>
+                        <table class="table table-bordered">
+                            <tr>
+                                <td><strong>Project:</strong> <span t-field="doc.project_id.name"/></td>
+                                <td><strong>Date:</strong> <span t-field="doc.date"/></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Period:</strong> <span t-field="doc.period"/></td>
+                                <td><strong>Progress:</strong> <span t-field="doc.executed_percent"/>%</td>
+                            </tr>
+                        </table>
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th class="text-right">Total Qty</th>
+                                    <th class="text-right">Prev</th>
+                                    <th class="text-right">Current</th>
+                                    <th class="text-right">Executed</th>
+                                    <th class="text-right">%</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="doc.line_ids" t-as="line">
+                                    <tr>
+                                        <td><span t-field="line.name"/></td>
+                                        <td class="text-right"><span t-field="line.total_quantity"/></td>
+                                        <td class="text-right"><span t-field="line.previous_quantity"/></td>
+                                        <td class="text-right"><span t-field="line.current_quantity"/></td>
+                                        <td class="text-right"><span t-field="line.total_executed"/></td>
+                                        <td class="text-right"><span t-field="line.executed_percent"/>%</td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                        <t t-if="doc.work_description">
+                            <h4>Work Description</h4>
+                            <p><span t-field="doc.work_description"/></p>
+                        </t>
+                        <t t-if="doc.challenges">
+                            <h4>Challenges</h4>
+                            <p><span t-field="doc.challenges"/></p>
+                        </t>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

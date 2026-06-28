@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_construction_resource_tree" model="ir.ui.view">
+        <field name="name">construction.resource.tree</field>
+        <field name="model">construction.resource</field>
+        <field name="arch" type="xml">
+            <tree string="Construction Resources">
+                <field name="code"/>
+                <field name="name"/>
+                <field name="resource_type" widget="badge"/>
+                <field name="uom_id"/>
+                <field name="unit_cost" widget="monetary" sum="Total"/>
+                <field name="total_cost" widget="monetary"/>
+                <field name="productivity_rate"/>
+                <field name="lead_time"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_construction_resource_form" model="ir.ui.view">
+        <field name="name">construction.resource.form</field>
+        <field name="model">construction.resource</field>
+        <field name="arch" type="xml">
+            <form string="Construction Resource">
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="display_name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="code"/>
+                            <field name="name"/>
+                            <field name="arabic_name"/>
+                            <field name="resource_type"/>
+                            <field name="product_id"/>
+                            <field name="uom_id"/>
+                        </group>
+                        <group>
+                            <field name="unit_cost" widget="monetary"/>
+                            <field name="overhead_percent"/>
+                            <field name="profit_percent"/>
+                            <field name="total_cost" widget="monetary"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Productivity">
+                            <group>
+                                <field name="productivity_rate"/>
+                                <field name="productivity_uom"/>
+                                <field name="lead_time"/>
+                            </group>
+                        </page>
+                        <page string="Suppliers">
+                            <field name="supplier_ids" widget="many2many_tags"/>
+                        </page>
+                        <page string="Inventory">
+                            <group>
+                                <field name="stock_available"/>
+                                <field name="stock_reserved"/>
+                                <field name="stock_forecast"/>
+                            </group>
+                            <group string="Equipment">
+                                <field name="is_rental"/>
+                                <field name="rental_cost" widget="monetary" attrs="{'invisible': [('is_rental','=',False)]}"/>
+                                <field name="operator_required"/>
+                                <field name="operator_cost" widget="monetary" attrs="{'invisible': [('operator_required','=',False)]}"/>
+                            </group>
+                        </page>
+                        <page string="Notes">
+                            <field name="description"/>
+                            <field name="note"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_construction_resource_search" model="ir.ui.view">
+        <field name="name">construction.resource.search</field>
+        <field name="model">construction.resource</field>
+        <field name="arch" type="xml">
+            <search string="Search Resources">
+                <field name="name"/>
+                <field name="code"/>
+                <field name="product_id"/>
+                <filter name="material" string="Material" domain="[('resource_type','=','material')]"/>
+                <filter name="labor" string="Labor" domain="[('resource_type','=','labor')]"/>
+                <filter name="equipment" string="Equipment" domain="[('resource_type','=','equipment')]"/>
+                <filter name="subcontract" string="Subcontract" domain="[('resource_type','=','subcontract')]"/>
+                <filter name="group_by_type" string="Type" context="{'group_by': 'resource_type'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_construction_resource" model="ir.actions.act_window">
+        <field name="name">Resources</field>
+        <field name="res_model">construction.resource</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_construction_resource_search"/>
+    </record>
+
+    <!-- Rate Analysis Views -->
+    <record id="view_construction_rate_analysis_tree" model="ir.ui.view">
+        <field name="name">construction.rate.analysis.tree</field>
+        <field name="model">construction.rate.analysis</field>
+        <field name="arch" type="xml">
+            <tree string="Rate Analyses">
+                <field name="name"/>
+                <field name="boq_item_id"/>
+                <field name="version"/>
+                <field name="direct_cost" widget="monetary" sum="Total"/>
+                <field name="indirect_cost" widget="monetary" sum="Total"/>
+                <field name="total_cost" widget="monetary" sum="Total"/>
+                <field name="final_rate" widget="monetary" sum="Total"/>
+                <field name="date"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_construction_rate_analysis_form" model="ir.ui.view">
+        <field name="name">construction.rate.analysis.form</field>
+        <field name="model">construction.rate.analysis</field>
+        <field name="arch" type="xml">
+            <form string="Rate Analysis">
+                <header>
+                    <button type="object" name="action_apply_rate" string="Apply Rate to BOQ" class="btn-primary"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="boq_item_id"/>
+                            <field name="version"/>
+                            <field name="date"/>
+                            <field name="sequence"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Analysis Lines">
+                            <field name="line_ids">
+                                <tree string="Resources" editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="resource_id"/>
+                                    <field name="resource_type"/>
+                                    <field name="name"/>
+                                    <field name="uom_id"/>
+                                    <field name="quantity"/>
+                                    <field name="wastage_percent"/>
+                                    <field name="net_quantity"/>
+                                    <field name="unit_cost" widget="monetary"/>
+                                    <field name="total_cost" widget="monetary"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Cost Summary">
+                            <group>
+                                <group>
+                                    <field name="direct_cost" widget="monetary"/>
+                                    <field name="indirect_cost" widget="monetary"/>
+                                    <field name="total_cost" widget="monetary"/>
+                                </group>
+                                <group>
+                                    <field name="markup_percent"/>
+                                    <field name="markup_amount" widget="monetary"/>
+                                    <field name="profit_percent"/>
+                                    <field name="profit_amount" widget="monetary"/>
+                                    <field name="final_rate" widget="monetary"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Notes">
+                            <field name="note"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_construction_rate_analysis_search" model="ir.ui.view">
+        <field name="name">construction.rate.analysis.search</field>
+        <field name="model">construction.rate.analysis</field>
+        <field name="arch" type="xml">
+            <search string="Search Rate Analyses">
+                <field name="name"/>
+                <field name="boq_item_id"/>
+                <field name="boq_item_id"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_construction_rate_analysis" model="ir.actions.act_window">
+        <field name="name">Rate Analysis</field>
+        <field name="res_model">construction.rate.analysis</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_construction_rate_analysis_search"/>
+    </record>
+</odoo>

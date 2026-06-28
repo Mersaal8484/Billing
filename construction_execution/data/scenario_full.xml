@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Full end-to-end scenario: CRM → Project → 42% completion with accounting -->
+        <function model="construction.project" name="_demo_create_full_scenario"/>
+    </data>
+</odoo>

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- Demo Department -->
+        <record id="ye_dept_it" model="hr.department">
+            <field name="name">إدارة تقنية المعلومات</field>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+
+        <!-- Demo Employee: Ahmed Al-Hashedi -->
+        <record id="ye_employee_ahmed" model="hr.employee">
+            <field name="name">أحمد محمد الحاشدي</field>
+            <field name="job_title">Senior Software Engineer</field>
+            <field name="gender">male</field>
+            <field name="department_id" ref="ye_dept_it"/>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+
+        <!-- Demo Contract for Ahmed -->
+        <record id="ye_contract_ahmed" model="hr.contract">
+            <field name="name">عقد عمل - أحمد الحاشدي</field>
+            <field name="employee_id" ref="ye_employee_ahmed"/>
+            <field name="structure_type_id" ref="l10n_ye_hr_payroll.ye_structure_type"/>
+            <field name="resource_calendar_id" ref="l10n_ye_hr_payroll.calendar_ye_40h"/>
+            <field name="wage" eval="450000"/>
+            <field name="housing_allowance" eval="80000"/>
+            <field name="transport_allowance" eval="40000"/>
+            <field name="other_allowance" eval="30000"/>
+            <field name="social_insurance_number">987654321</field>
+            <field name="date_start">2026-01-01</field>
+            <field name="state">open</field>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+
+        <!-- Demo Payslip for Ahmed -->
+        <record id="ye_payslip_ahmed" model="hr.payslip">
+            <field name="name">مسير رواتب - أحمد محمد الحاشدي - يونيو 2026</field>
+            <field name="employee_id" ref="ye_employee_ahmed"/>
+            <field name="contract_id" ref="ye_contract_ahmed"/>
+            <field name="struct_id" ref="l10n_ye_hr_payroll.ye_structure_base"/>
+            <field name="date_from">2026-06-01</field>
+            <field name="date_to">2026-06-30</field>
+        </record>
+
+    </data>
+</odoo>

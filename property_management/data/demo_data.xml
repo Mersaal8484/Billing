@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Partners -->
+        <record id="demo_partner_owner" model="res.partner">
+            <field name="name">Abdullah Al-Rashid</field>
+            <field name="email">abdullah@example.com</field>
+            <field name="phone">+966 50 123 4567</field>
+        </record>
+
+        <record id="demo_partner_tenant" model="res.partner">
+            <field name="name">Mohammed Al-Saud</field>
+            <field name="email">mohammed@example.com</field>
+            <field name="phone">+966 55 987 6543</field>
+        </record>
+
+        <!-- Owner & Tenant Records -->
+        <record id="demo_owner" model="property.owner">
+            <field name="partner_id" ref="demo_partner_owner"/>
+            <field name="owner_code">OWN-001</field>
+            <field name="owner_type">individual</field>
+        </record>
+
+        <record id="demo_tenant" model="property.tenant">
+            <field name="partner_id" ref="demo_partner_tenant"/>
+            <field name="tenant_code">TNT-001</field>
+        </record>
+
+        <!-- Real Estate Property with Dynamic Financial Account Lookups -->
+        <record id="demo_property" model="property.property">
+            <field name="name">Al-Amal Tower (برج الأمل)</field>
+            <field name="code">PR-00001</field>
+            <field name="property_type" ref="property_management.property_type_residential"/>
+            <field name="status" ref="property_management.property_status_active"/>
+            <field name="owner_id" ref="demo_owner"/>
+            <field name="city">Sanaa</field>
+            <field name="country_id" ref="base.ye"/>
+            <field name="purchase_price">150000000.00</field>
+            <field name="current_value">180000000.00</field>
+            <field name="total_area">2500.00</field>
+            <!-- Dynamic lookup of journals and accounts from existing chart of accounts -->
+            <field name="rent_journal_id" search="[('type', '=', 'sale')]"/>
+            <field name="deposit_journal_id" search="[('type', 'in', ('cash', 'bank'))]"/>
+            <field name="maintenance_journal_id" search="[('type', '=', 'purchase')]"/>
+            <field name="receivable_account_id" search="[('account_type', '=', 'asset_receivable')]"/>
+            <field name="rent_income_account_id" search="[('account_type', '=', 'income')]"/>
+            <field name="service_income_account_id" search="[('account_type', '=', 'income')]"/>
+            <field name="deposit_liability_account_id" search="[('account_type', 'in', ('liability_current', 'liability'))]"/>
+            <field name="advance_liability_account_id" search="[('account_type', 'in', ('liability_current', 'liability'))]"/>
+            <field name="maintenance_expense_account_id" search="[('account_type', '=', 'expense')]"/>
+            <field name="cash_account_id" search="[('account_type', 'in', ('asset_cash', 'asset_current'))]"/>
+        </record>
+
+        <!-- Buildings and Floors -->
+        <record id="demo_building" model="property.building">
+            <field name="property_id" ref="demo_property"/>
+            <field name="name">Building A</field>
+            <field name="code">BLD-A</field>
+            <field name="total_floors">5</field>
+            <field name="total_area">1500.00</field>
+        </record>
+
+        <record id="demo_floor_1" model="property.floor">
+            <field name="building_id" ref="demo_building"/>
+            <field name="name">First Floor</field>
+            <field name="code">FL-01</field>
+            <field name="number">1</field>
+        </record>
+
+        <!-- Units -->
+        <record id="demo_unit_101" model="property.unit">
+            <field name="property_id" ref="demo_property"/>
+            <field name="building_id" ref="demo_building"/>
+            <field name="floor_id" ref="demo_floor_1"/>
+            <field name="number">101</field>
+            <field name="unit_type" ref="property_management.unit_type_apartment"/>
+            <field name="status" ref="property_management.unit_status_available"/>
+            <field name="area">120.00</field>
+            <field name="bedrooms">2</field>
+            <field name="bathrooms">2</field>
+            <field name="parking">1</field>
+            <field name="balcony">True</field>
+            <field name="monthly_rent">100000.00</field>
+            <field name="market_value">15000000.00</field>
+        </record>
+
+        <!-- Lease Contract -->
+        <record id="demo_lease" model="property.lease">
+            <field name="property_id" ref="demo_property"/>
+            <field name="unit_id" ref="demo_unit_101"/>
+            <field name="tenant_id" ref="demo_tenant"/>
+            <field name="start_date">2026-01-01</field>
+            <field name="end_date">2026-12-31</field>
+            <field name="rent_amount">100000.00</field>
+            <field name="rent_frequency" ref="property_management.payment_freq_monthly"/>
+            <field name="security_deposit">100000.00</field>
+            <field name="state">active</field>
+        </record>
+    </data>
+</odoo>

@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_property_tenant_tree" model="ir.ui.view">
+        <field name="name">property.tenant.tree</field>
+        <field name="model">property.tenant</field>
+        <field name="arch" type="xml">
+            <tree string="Tenants">
+                <field name="tenant_code"/>
+                <field name="name"/>
+                <field name="email"/>
+                <field name="phone"/>
+                <field name="current_unit_id"/>
+                <field name="total_leases"/>
+                <field name="outstanding_balance" widget="monetary" sum="Total"/>
+                <field name="outstanding_maintenance"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_property_tenant_form" model="ir.ui.view">
+        <field name="name">property.tenant.form</field>
+        <field name="model">property.tenant</field>
+        <field name="arch" type="xml">
+            <form string="Tenant">
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="partner_id"/>
+                            <field name="tenant_code"/>
+                            <field name="tenant_type"/>
+                        </group>
+                        <group>
+                            <field name="email"/>
+                            <field name="phone"/>
+                            <field name="mobile"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Current Status">
+                            <group>
+                                <field name="active_lease_id"/>
+                                <field name="current_unit_id"/>
+                            </group>
+                            <group string="Financial">
+                                <field name="total_paid" widget="monetary"/>
+                                <field name="outstanding_balance" widget="monetary"/>
+                            </group>
+                        </page>
+                        <page string="Lease History">
+                            <field name="lease_ids">
+                                <tree string="Leases">
+                                    <field name="name"/>
+                                    <field name="unit_id"/>
+                                    <field name="start_date"/>
+                                    <field name="end_date"/>
+                                    <field name="state"/>
+                                    <field name="rent_amount" widget="monetary"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Emergency">
+                            <group>
+                                <field name="emergency_contact"/>
+                                <field name="emergency_phone"/>
+                            </group>
+                        </page>
+                        <page string="Notes">
+                            <field name="notes"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" widget="mail_followers"/>
+                    <field name="activity_ids" widget="mail_activity"/>
+                    <field name="message_ids" widget="mail_thread"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_property_tenant_search" model="ir.ui.view">
+        <field name="name">property.tenant.search</field>
+        <field name="model">property.tenant</field>
+        <field name="arch" type="xml">
+            <search string="Search Tenants">
+                <field name="name"/>
+                <field name="tenant_code"/>
+                <field name="email"/>
+                <field name="current_unit_id"/>
+                <filter name="active_lease" string="Active Lease" domain="[('active_lease_id','!=',False)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_property_tenant" model="ir.actions.act_window">
+        <field name="name">Tenants</field>
+        <field name="res_model">property.tenant</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_property_tenant_search"/>
+    </record>
+</odoo>

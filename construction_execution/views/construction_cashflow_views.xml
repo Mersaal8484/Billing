@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_construction_cashflow_tree" model="ir.ui.view">
+        <field name="name">construction.cashflow.tree</field>
+        <field name="model">construction.cashflow</field>
+        <field name="arch" type="xml">
+            <tree string="Cash Flow" decoration-success="flow_type=='income'" decoration-danger="flow_type=='expense'">
+                <field name="name"/>
+                <field name="project_id"/>
+                <field name="date"/>
+                <field name="period"/>
+                <field name="flow_type" widget="badge"/>
+                <field name="category"/>
+                <field name="forecast_amount" widget="monetary" sum="Total"/>
+                <field name="actual_amount" widget="monetary" sum="Total"/>
+                <field name="variance" widget="monetary" sum="Total"/>
+                <field name="is_received" widget="boolean_fa"/>
+                <field name="partner_id"/>
+                <field name="source_doc_name" optional="show"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_construction_cashflow_form" model="ir.ui.view">
+        <field name="name">construction.cashflow.form</field>
+        <field name="model">construction.cashflow</field>
+        <field name="arch" type="xml">
+            <form string="Cash Flow">
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="project_id"/>
+                            <field name="date"/>
+                            <field name="period"/>
+                            <field name="flow_type"/>
+                            <field name="category"/>
+                            <field name="source_doc_name" attrs="{'invisible': [('has_source', '=', False)]}"/>
+                        </group>
+                        <group>
+                            <field name="forecast_amount" widget="monetary"/>
+                            <field name="actual_amount" widget="monetary"
+                                   attrs="{'readonly': [('has_source', '=', True)]}"/>
+                            <field name="variance" widget="monetary"/>
+                            <field name="is_received"/>
+                        </group>
+                    </group>
+                    <group string="Details">
+                        <group>
+                            <field name="planned_date"/>
+                            <field name="actual_date"/>
+                            <field name="reference"/>
+                            <field name="partner_id"/>
+                        </group>
+                        <group string="Source Documents">
+                            <field name="has_source" invisible="1"/>
+                            <field name="ipc_id" options="{'no_create': True}" attrs="{'invisible': [('ipc_id', '=', False)]}"/>
+                            <button name="action_open_ipc" type="object" string="Open IPC" attrs="{'invisible': [('ipc_id', '=', False)]}" icon="fa-external-link"/>
+                            <field name="invoice_id" options="{'no_create': True}" attrs="{'invisible': [('invoice_id', '=', False)]}"/>
+                            <button name="action_open_invoice" type="object" string="Open Invoice" attrs="{'invisible': [('invoice_id', '=', False)]}" icon="fa-external-link"/>
+                            <field name="payment_id" options="{'no_create': True}" attrs="{'invisible': [('payment_id', '=', False)]}"/>
+                            <button name="action_open_payment" type="object" string="Open Payment" attrs="{'invisible': [('payment_id', '=', False)]}" icon="fa-external-link"/>
+                            <button name="action_sync_from_source" type="object"
+                                    string="Sync Amount from Source"
+                                    attrs="{'invisible': [('has_source', '=', False)]}"
+                                    icon="fa-refresh"/>
+                        </group>
+                    </group>
+                    <field name="note"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_construction_cashflow_search" model="ir.ui.view">
+        <field name="name">construction.cashflow.search</field>
+        <field name="model">construction.cashflow</field>
+        <field name="arch" type="xml">
+            <search string="Search Cash Flow">
+                <field name="project_id"/>
+                <field name="category"/>
+                <filter name="income" string="Income" domain="[('flow_type','=','income')]"/>
+                <filter name="expense" string="Expense" domain="[('flow_type','=','expense')]"/>
+                <filter name="received" string="Received" domain="[('is_received','=',True)]"/>
+                <filter name="pending" string="Pending" domain="[('is_received','=',False)]"/>
+                <filter name="group_by_project" string="Project" context="{'group_by': 'project_id'}"/>
+                <filter name="group_by_month" string="Month" context="{'group_by': 'date:month'}"/>
+                <filter name="group_by_quarter" string="Quarter" context="{'group_by': 'date:quarter'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_construction_cashflow_pivot" model="ir.ui.view">
+        <field name="name">construction.cashflow.pivot</field>
+        <field name="model">construction.cashflow</field>
+        <field name="arch" type="xml">
+            <pivot string="Cash Flow Analysis" disable_linking="1">
+                <field name="forecast_amount" type="measure"/>
+                <field name="actual_amount" type="measure"/>
+                <field name="variance" type="measure"/>
+                <field name="project_id" type="row"/>
+                <field name="flow_type" type="col"/>
+                <field name="date" type="row"/>
+                <field name="category" type="row"/>
+                <field name="has_source" type="col"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_construction_cashflow_graph" model="ir.ui.view">
+        <field name="name">construction.cashflow.graph</field>
+        <field name="model">construction.cashflow</field>
+        <field name="arch" type="xml">
+            <graph string="Cash Flow Chart" type="bar" stacked="1">
+                <field name="forecast_amount" type="measure"/>
+                <field name="actual_amount" type="measure"/>
+                <field name="flow_type" type="row"/>
+                <field name="date" type="col"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="action_construction_cashflow" model="ir.actions.act_window">
+        <field name="name">Cash Flow</field>
+        <field name="res_model">construction.cashflow</field>
+        <field name="view_mode">tree,form,pivot,graph</field>
+        <field name="search_view_id" ref="view_construction_cashflow_search"/>
+    </record>
+</odoo>

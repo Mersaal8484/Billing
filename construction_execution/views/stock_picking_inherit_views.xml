@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_stock_picking_form_inherit_construction" model="ir.ui.view">
+        <field name="name">stock.picking.form.inherit.construction</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <field name="partner_id" position="after">
+                <field name="is_construction_picking" invisible="1"/>
+                <field name="construction_project_id"/>
+                <field name="construction_material_issue_id"/>
+                <field name="construction_material_return_id"/>
+            </field>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Property Types -->
+        <record id="property_type_residential" model="property.property.type">
+            <field name="name">Residential</field>
+            <field name="code">RES</field>
+            <field name="sequence">10</field>
+        </record>
+        <record id="property_type_commercial" model="property.property.type">
+            <field name="name">Commercial</field>
+            <field name="code">COM</field>
+            <field name="sequence">20</field>
+        </record>
+        <record id="property_type_industrial" model="property.property.type">
+            <field name="name">Industrial</field>
+            <field name="code">IND</field>
+            <field name="sequence">30</field>
+        </record>
+        <record id="property_type_mixed" model="property.property.type">
+            <field name="name">Mixed Use</field>
+            <field name="code">MIX</field>
+            <field name="sequence">40</field>
+        </record>
+        <record id="property_type_land" model="property.property.type">
+            <field name="name">Land</field>
+            <field name="code">LAND</field>
+            <field name="sequence">50</field>
+        </record>
+
+        <!-- Property Statuses -->
+        <record id="property_status_active" model="property.property.status">
+            <field name="name">Active</field>
+            <field name="code">ACTIVE</field>
+            <field name="sequence">10</field>
+        </record>
+        <record id="property_status_inactive" model="property.property.status">
+            <field name="name">Inactive</field>
+            <field name="code">INACTIVE</field>
+            <field name="sequence">20</field>
+        </record>
+        <record id="property_status_under_construction" model="property.property.status">
+            <field name="name">Under Construction</field>
+            <field name="code">CONSTRUCTION</field>
+            <field name="sequence">30</field>
+        </record>
+        <record id="property_status_sold" model="property.property.status">
+            <field name="name">Sold</field>
+            <field name="code">SOLD</field>
+            <field name="sequence">40</field>
+        </record>
+
+        <!-- Unit Types -->
+        <record id="unit_type_apartment" model="property.unit.type">
+            <field name="name">Apartment</field>
+            <field name="code">APT</field>
+            <field name="sequence">10</field>
+        </record>
+        <record id="unit_type_studio" model="property.unit.type">
+            <field name="name">Studio</field>
+            <field name="code">STD</field>
+            <field name="sequence">20</field>
+        </record>
+        <record id="unit_type_office" model="property.unit.type">
+            <field name="name">Office</field>
+            <field name="code">OFF</field>
+            <field name="sequence">30</field>
+        </record>
+        <record id="unit_type_retail" model="property.unit.type">
+            <field name="name">Retail Shop</field>
+            <field name="code">RTL</field>
+            <field name="sequence">40</field>
+        </record>
+        <record id="unit_type_villa" model="property.unit.type">
+            <field name="name">Villa</field>
+            <field name="code">VIL</field>
+            <field name="sequence">50</field>
+        </record>
+        <record id="unit_type_warehouse" model="property.unit.type">
+            <field name="name">Warehouse</field>
+            <field name="code">WH</field>
+            <field name="sequence">60</field>
+        </record>
+
+        <!-- Unit Statuses -->
+        <record id="unit_status_available" model="property.unit.status">
+            <field name="name">Available</field>
+            <field name="code">AVAILABLE</field>
+            <field name="sequence">10</field>
+        </record>
+        <record id="unit_status_reserved" model="property.unit.status">
+            <field name="name">Reserved</field>
+            <field name="code">RESERVED</field>
+            <field name="sequence">20</field>
+        </record>
+        <record id="unit_status_occupied" model="property.unit.status">
+            <field name="name">Occupied</field>
+            <field name="code">OCCUPIED</field>
+            <field name="sequence">30</field>
+        </record>
+        <record id="unit_status_maintenance" model="property.unit.status">
+            <field name="name">Under Maintenance</field>
+            <field name="code">MAINTENANCE</field>
+            <field name="sequence">40</field>
+        </record>
+        <record id="unit_status_sold" model="property.unit.status">
+            <field name="name">Sold</field>
+            <field name="code">SOLD</field>
+            <field name="sequence">50</field>
+        </record>
+
+        <!-- Lease Statuses -->
+        <record id="lease_status_draft" model="property.lease.status">
+            <field name="name">Draft</field>
+            <field name="code">DRAFT</field>
+            <field name="sequence">10</field>
+        </record>
+        <record id="lease_status_active" model="property.lease.status">
+            <field name="name">Active</field>
+            <field name="code">ACTIVE</field>
+            <field name="sequence">20</field>
+        </record>
+        <record id="lease_status_expired" model="property.lease.status">
+            <field name="name">Expired</field>
+            <field name="code">EXPIRED</field>
+            <field name="sequence">30</field>
+        </record>
+        <record id="lease_status_renewed" model="property.lease.status">
+            <field name="name">Renewed</field>
+            <field name="code">RENEWED</field>
+            <field name="sequence">40</field>
+        </record>
+        <record id="lease_status_closed" model="property.lease.status">
+            <field name="name">Closed</field>
+            <field name="code">CLOSED</field>
+            <field name="sequence">50</field>
+        </record>
+        <record id="lease_status_cancelled" model="property.lease.status">
+            <field name="name">Cancelled</field>
+            <field name="code">CANCELLED</field>
+            <field name="sequence">60</field>
+        </record>
+
+        <!-- Payment Frequencies -->
+        <record id="payment_freq_monthly" model="property.payment.frequency">
+            <field name="name">Monthly</field>
+            <field name="code">MONTHLY</field>
+            <field name="days">30</field>
+            <field name="sequence">10</field>
+        </record>
+        <record id="payment_freq_quarterly" model="property.payment.frequency">
+            <field name="name">Quarterly</field>
+            <field name="code">QUARTERLY</field>
+            <field name="days">90</field>
+            <field name="sequence">20</field>
+        </record>
+        <record id="payment_freq_semiannual" model="property.payment.frequency">
+            <field name="name">Semi-Annual</field>
+            <field name="code">SEMI</field>
+            <field name="days">180</field>
+            <field name="sequence">30</field>
+        </record>
+        <record id="payment_freq_annual" model="property.payment.frequency">
+            <field name="name">Annual</field>
+            <field name="code">ANNUAL</field>
+            <field name="days">365</field>
+            <field name="sequence">40</field>
+        </record>
+
+        <!-- Maintenance Types -->
+        <record id="maint_type_corrective" model="property.maintenance.type">
+            <field name="name">Corrective</field>
+            <field name="code">CORRECTIVE</field>
+            <field name="sequence">10</field>
+        </record>
+        <record id="maint_type_preventive" model="property.maintenance.type">
+            <field name="name">Preventive</field>
+            <field name="code">PREVENTIVE</field>
+            <field name="sequence">20</field>
+        </record>
+        <record id="maint_type_emergency" model="property.maintenance.type">
+            <field name="name">Emergency</field>
+            <field name="code">EMERGENCY</field>
+            <field name="sequence">30</field>
+        </record>
+
+        <!-- Utility Types -->
+        <record id="utility_type_electricity" model="property.utility.type">
+            <field name="name">Electricity</field>
+            <field name="code">ELEC</field>
+            <field name="sequence">10</field>
+        </record>
+        <record id="utility_type_water" model="property.utility.type">
+            <field name="name">Water</field>
+            <field name="code">WATER</field>
+            <field name="sequence">20</field>
+        </record>
+        <record id="utility_type_gas" model="property.utility.type">
+            <field name="name">Gas</field>
+            <field name="code">GAS</field>
+            <field name="sequence">30</field>
+        </record>
+        <record id="utility_type_internet" model="property.utility.type">
+            <field name="name">Internet</field>
+            <field name="code">NET</field>
+            <field name="sequence">40</field>
+        </record>
+    </data>
+</odoo>

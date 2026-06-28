@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="view_hr_contract_form_inherit_ye" model="ir.ui.view">
+            <field name="name">hr.contract.view.form.inherit.ye</field>
+            <field name="model">hr.contract</field>
+            <field name="inherit_id" ref="hr_contract.hr_contract_view_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//notebook" position="inside">
+                    <page string="Yemeni Payroll" name="ye_payroll">
+                        <group>
+                            <group string="Social Insurance">
+                                <field name="social_insurance_number"/>
+                            </group>
+                            <group string="Allowances">
+                                <field name="housing_allowance" widget="monetary"/>
+                                <field name="transport_allowance" widget="monetary"/>
+                                <field name="other_allowance" widget="monetary"/>
+                            </group>
+                            <group string="End-of-Service">
+                                <field name="eos_rule_id" groups="hr.group_hr_manager"/>
+                            </group>
+                        </group>
+                    </page>
+                </xpath>
+            </field>
+        </record>
+
+    </data>
+</odoo>

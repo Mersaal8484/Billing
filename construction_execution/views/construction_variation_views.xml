@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_construction_variation_tree" model="ir.ui.view">
+        <field name="name">construction.variation.tree</field>
+        <field name="model">construction.variation</field>
+        <field name="arch" type="xml">
+            <tree string="Variation Orders" decoration-success="state=='approved'" decoration-danger="state=='rejected'" decoration-warning="state=='submitted'" decoration-info="state=='implemented'">
+                <field name="name"/>
+                <field name="project_id"/>
+                <field name="date"/>
+                <field name="variation_type" widget="badge"/>
+                <field name="priority" widget="badge"/>
+                <field name="state" widget="badge"/>
+                <field name="original_amount" widget="monetary" sum="Total"/>
+                <field name="revised_amount" widget="monetary" sum="Total"/>
+                <field name="net_change" widget="monetary" sum="Total"/>
+                <field name="impact_percent"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_construction_variation_form" model="ir.ui.view">
+        <field name="name">construction.variation.form</field>
+        <field name="model">construction.variation</field>
+        <field name="arch" type="xml">
+            <form string="Variation Order">
+                <header>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,submitted,review,approved,implemented" clickable="True"/>
+                    <button type="object" name="action_submit" string="Submit" states="draft" class="btn-primary"/>
+                    <button type="object" name="action_review" string="Review" states="submitted" class="btn-primary"/>
+                    <button type="object" name="action_approve" string="Approve" states="review" class="btn-success"/>
+                    <button type="object" name="action_reject" string="Reject" states="review" class="btn-danger"/>
+                    <button type="object" name="action_implement" string="Implement" states="approved" class="btn-primary"/>
+                    <button type="object" name="action_cancel" string="Cancel" states="draft,submitted,review" class="btn-danger"/>
+                    <button type="object" name="action_draft" string="Reset to Draft" states="cancelled,rejected" class="btn-default"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="project_id"/>
+                            <field name="date"/>
+                            <field name="variation_type"/>
+                            <field name="priority"/>
+                        </group>
+                        <group>
+                            <field name="submitted_by"/>
+                            <field name="approved_by"/>
+                            <field name="approved_date"/>
+                            <field name="implemented_date"/>
+                        </group>
+                    </group>
+                    <group string="Description">
+                        <field name="description" nolabel="True"/>
+                        <field name="reason"/>
+                    </group>
+                    <notebook>
+                        <page string="Variation Lines">
+                            <field name="line_ids">
+                                <tree string="Variation Lines" editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="boq_item_id"/>
+                                    <field name="name"/>
+                                    <field name="change_type"/>
+                                    <field name="original_quantity"/>
+                                    <field name="revised_quantity"/>
+                                    <field name="original_rate" widget="monetary"/>
+                                    <field name="revised_rate" widget="monetary"/>
+                                    <field name="original_amount" widget="monetary" sum="Total"/>
+                                    <field name="revised_amount" widget="monetary" sum="Total"/>
+                                    <field name="net_change" widget="monetary" sum="Total"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Impact Analysis">
+                            <group string="Financial Impact">
+                                <field name="original_amount" widget="monetary"/>
+                                <field name="revised_amount" widget="monetary"/>
+                                <field name="net_change" widget="monetary"/>
+                                <field name="impact_percent"/>
+                            </group>
+                            <group string="Impact Notes">
+                                <field name="budget_impact"/>
+                                <field name="cost_impact"/>
+                                <field name="schedule_impact"/>
+                            </group>
+                        </page>
+                        <page string="Notes">
+                            <field name="note"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" widget="mail_followers"/>
+                    <field name="activity_ids" widget="mail_activity"/>
+                    <field name="message_ids" widget="mail_thread"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_construction_variation_search" model="ir.ui.view">
+        <field name="name">construction.variation.search</field>
+        <field name="model">construction.variation</field>
+        <field name="arch" type="xml">
+            <search string="Search Variations">
+                <field name="name"/>
+                <field name="project_id"/>
+                <field name="description"/>
+                <filter name="approved" string="Approved" domain="[('state','=','approved')]"/>
+                <filter name="pending" string="Pending Review" domain="[('state','in',('draft','submitted','review'))]"/>
+                <filter name="implemented" string="Implemented" domain="[('state','=','implemented')]"/>
+                <filter name="group_by_project" string="Project" context="{'group_by': 'project_id'}"/>
+                <filter name="group_by_type" string="Type" context="{'group_by': 'variation_type'}"/>
+                <filter name="group_by_priority" string="Priority" context="{'group_by': 'priority'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_construction_variation_pivot" model="ir.ui.view">
+        <field name="name">construction.variation.pivot</field>
+        <field name="model">construction.variation</field>
+        <field name="arch" type="xml">
+            <pivot string="Variation Analysis" disable_linking="1">
+                <field name="net_change" type="measure"/>
+                <field name="impact_percent" type="measure"/>
+                <field name="project_id" type="row"/>
+                <field name="variation_type" type="col"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="action_construction_variation" model="ir.actions.act_window">
+        <field name="name">Variation Orders</field>
+        <field name="res_model">construction.variation</field>
+        <field name="view_mode">tree,form,pivot</field>
+        <field name="search_view_id" ref="view_construction_variation_search"/>
+    </record>
+</odoo>

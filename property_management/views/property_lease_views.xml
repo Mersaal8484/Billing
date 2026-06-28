@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_property_lease_tree" model="ir.ui.view">
+        <field name="name">property.lease.tree</field>
+        <field name="model">property.lease</field>
+        <field name="arch" type="xml">
+            <tree string="Leases" decoration-success="state=='active'" decoration-info="state=='review'" decoration-warning="state=='expired'" decoration-danger="state=='cancelled'" decoration-muted="state in ('closed','renewed')">
+                <field name="name"/>
+                <field name="unit_id"/>
+                <field name="tenant_id"/>
+                <field name="start_date"/>
+                <field name="end_date"/>
+                <field name="duration_months"/>
+                <field name="currency_id" optional="hide"/>
+                <field name="rent_amount" widget="monetary"/>
+                <field name="state" widget="badge"/>
+                <field name="total_paid" widget="monetary" sum="Total"/>
+                <field name="balance_due" widget="monetary" sum="Total"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_property_lease_form" model="ir.ui.view">
+        <field name="name">property.lease.form</field>
+        <field name="model">property.lease</field>
+        <field name="arch" type="xml">
+            <form string="Lease Contract">
+                <header>
+                    <button type="object" name="action_review" string="Send for Review" states="draft" class="btn-primary"/>
+                    <button type="object" name="action_activate" string="Activate Lease" states="review" class="btn-success"/>
+                    <button type="object" name="action_generate_schedule" string="Generate Schedule" states="draft,active" class="btn-primary"/>
+                    <button type="object" name="action_expire" string="Mark Expired" states="active" class="btn-warning"/>
+                    <button type="object" name="action_renew" string="Renew Lease" states="active,expired" class="btn-primary"/>
+                    <button type="object" name="action_close" string="Close Lease" states="active,expired" class="btn-danger"/>
+                    <button type="object" name="action_cancel" string="Cancel" states="draft,review" class="btn-danger"/>
+                    <button type="object" name="action_draft" string="Reset to Draft" states="cancelled" class="btn-default"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,review,active,expired" clickable="True"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="unit_id"/>
+                            <field name="property_id"/>
+                            <field name="tenant_id"/>
+                            <field name="owner_id"/>
+                            <field name="lease_type"/>
+                        </group>
+                        <group>
+                            <field name="start_date"/>
+                            <field name="end_date"/>
+                            <field name="duration_months"/>
+                            <field name="state"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Rent &amp; Terms">
+                            <group>
+                                <group>
+                                    <field name="rent_amount" widget="monetary"/>
+                                    <field name="rent_frequency"/>
+                                    <field name="annual_rent" widget="monetary"/>
+                                    <field name="total_contract_value" widget="monetary"/>
+                                </group>
+                                <group>
+                                    <field name="security_deposit" widget="monetary"/>
+                                    <field name="deposit_months"/>
+                                    <field name="deposit_id"/>
+                                </group>
+                            </group>
+                            <group string="Escalation &amp; Late Fees">
+                                <field name="escalation_percent"/>
+                                <field name="escalation_frequency"/>
+                                <field name="grace_period"/>
+                                <field name="late_fee_percent"/>
+                                <field name="late_fee_fixed" widget="monetary"/>
+                            </group>
+                            <group string="Renewal">
+                                <field name="renewal_option"/>
+                                <field name="renewal_notice_days" attrs="{'invisible':[('renewal_option','=',False)]}"/>
+                                <field name="notice_period"/>
+                            </group>
+                        </page>
+                        <page string="Payment Schedule">
+                            <field name="schedule_ids">
+                                <tree string="Payment Schedule" decoration-danger="state=='overdue'" decoration-success="state=='paid'">
+                                    <field name="sequence"/>
+                                    <field name="name"/>
+                                    <field name="date"/>
+                                    <field name="currency_id" optional="hide"/>
+                                    <field name="amount" widget="monetary" sum="Total"/>
+                                    <field name="paid_amount" widget="monetary" sum="Total"/>
+                                    <field name="remaining" widget="monetary" sum="Total"/>
+                                    <field name="invoice_id" optional="show"/>
+                                    <field name="state" widget="badge"/>
+                                    <button name="action_generate_invoice" string="Generate Invoice" type="object" icon="fa-file-text-o" attrs="{'invisible': [('invoice_id', '!=', False)]}"/>
+                                    <button name="action_register_payment" string="Register Payment" type="object" icon="fa-money" attrs="{'invisible': [('state', '=', 'paid')]}"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Payments">
+                            <field name="payment_ids">
+                                <tree string="Payments">
+                                    <field name="name"/>
+                                    <field name="date"/>
+                                    <field name="currency_id" optional="hide"/>
+                                    <field name="amount" widget="monetary" sum="Total"/>
+                                    <field name="company_amount" widget="monetary" sum="Total" optional="hide"/>
+                                    <field name="payment_type"/>
+                                    <field name="payment_method"/>
+                                    <field name="state"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Summary">
+                            <group>
+                                <field name="total_paid" widget="monetary"/>
+                                <field name="total_due" widget="monetary"/>
+                                <field name="balance_due" widget="monetary"/>
+                                <field name="last_payment_date"/>
+                            </group>
+                        </page>
+                        <page string="Terms &amp; Conditions">
+                            <field name="line_ids">
+                                <tree string="Clauses" editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="title"/>
+                                    <field name="content"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Notes">
+                            <field name="term_conditions" widget="html"/>
+                            <field name="notes"/>
+                            <field name="internal_notes"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" widget="mail_followers"/>
+                    <field name="activity_ids" widget="mail_activity"/>
+                    <field name="message_ids" widget="mail_thread"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_property_lease_search" model="ir.ui.view">
+        <field name="name">property.lease.search</field>
+        <field name="model">property.lease</field>
+        <field name="arch" type="xml">
+            <search string="Search Leases">
+                <field name="name"/>
+                <field name="tenant_id"/>
+                <field name="unit_id"/>
+                <field name="property_id"/>
+                <filter name="active" string="Active" domain="[('state','=','active')]"/>
+                <filter name="expiring" string="Expiring Soon (30d)" domain="[('end_date','&lt;=',context_today().add(days=30).date()),('state','=','active')]"/>
+                <filter name="expired" string="Expired" domain="[('state','=','expired')]"/>
+                <separator/>
+                <filter name="group_by_state" string="Status" context="{'group_by': 'state'}"/>
+                <filter name="group_by_property" string="Property" context="{'group_by': 'property_id'}"/>
+                <filter name="group_by_tenant" string="Tenant" context="{'group_by': 'tenant_id'}"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_by_state_menu" string="Status" context="{'group_by': 'state'}"/>
+                    <filter name="group_by_property_menu" string="Property" context="{'group_by': 'property_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_property_lease_pivot" model="ir.ui.view">
+        <field name="name">property.lease.pivot</field>
+        <field name="model">property.lease</field>
+        <field name="arch" type="xml">
+            <pivot string="Lease Analysis" disable_linking="1">
+                <field name="rent_amount" type="measure"/>
+                <field name="annual_rent" type="measure"/>
+                <field name="duration_months" type="measure"/>
+                <field name="property_id" type="row"/>
+                <field name="state" type="col"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="action_property_lease" model="ir.actions.act_window">
+        <field name="name">Leases</field>
+        <field name="res_model">property.lease</field>
+        <field name="view_mode">tree,form,pivot</field>
+        <field name="search_view_id" ref="view_property_lease_search"/>
+    </record>
+</odoo>

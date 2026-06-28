@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <record id="ye_leave_type_annual" model="hr.leave.type">
+            <field name="name">Annual Leave</field>
+            <field name="requires_allocation">yes</field>
+            <field name="employee_requests">no</field>
+            <field name="leave_validation_type">both</field>
+            <field name="allocation_validation_type">officer</field>
+            <field name="request_unit">day</field>
+            <field name="color">2</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <record id="ye_leave_type_sick" model="hr.leave.type">
+            <field name="name">Sick Leave</field>
+            <field name="requires_allocation">no</field>
+            <field name="leave_validation_type">both</field>
+            <field name="request_unit">day</field>
+            <field name="color">3</field>
+            <field name="support_document">True</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <record id="ye_leave_type_unpaid" model="hr.leave.type">
+            <field name="name">Unpaid Leave</field>
+            <field name="requires_allocation">no</field>
+            <field name="leave_validation_type">both</field>
+            <field name="request_unit">day</field>
+            <field name="color">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <record id="ye_leave_type_eid" model="hr.leave.type">
+            <field name="name">Eid Holiday</field>
+            <field name="requires_allocation">no</field>
+            <field name="leave_validation_type">manager</field>
+            <field name="request_unit">day</field>
+            <field name="unpaid">False</field>
+            <field name="color">6</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+    </data>
+</odoo>

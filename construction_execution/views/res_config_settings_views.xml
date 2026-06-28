@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_construction_config_settings" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.construction</field>
+        <field name="model">res.config.settings</field>
+        <field name="priority" eval="60"/>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[hasclass('settings')]" position="inside">
+                <div class="app_settings_block"
+                    string="Construction"
+                    data-string="Construction"
+                    data-key="construction_execution"
+                    groups="construction_execution.group_construction_admin">
+                    <h2>Automation</h2>
+                    <div class="row mt16 o_settings_container">
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="construction_auto_create_analytic"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="construction_auto_create_analytic"
+                                       string="Auto-create Analytic Account"/>
+                                <div class="text-muted">
+                                    Create analytic account automatically when a
+                                    new construction project is created.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="construction_auto_create_project"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="construction_auto_create_project"
+                                       string="Auto-create Odoo Project"/>
+                                <div class="text-muted">
+                                    Create Odoo project automatically when a
+                                    construction project reaches Execution stage.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="construction_auto_create_tasks"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="construction_auto_create_tasks"
+                                       string="Auto-create Tasks from BOQ"/>
+                                <div class="text-muted">
+                                    Create project tasks automatically from BOQ
+                                    items when a BOQ is approved.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <h2>Default Values</h2>
+                    <div class="row mt16 o_settings_container">
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane"/>
+                            <div class="o_setting_right_pane">
+                                <label for="construction_default_analytic_plan_id"
+                                       string="Default Analytic Plan"/>
+                                <div class="text-muted">
+                                    Analytic plan used when auto-creating
+                                    analytic accounts for projects.
+                                </div>
+                                <div class="mt-4">
+                                    <field name="construction_default_analytic_plan_id"
+                                           class="o_light_label"
+                                           placeholder="Select plan..."
+                                           context="{'default_company_id': company_id}"/>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane"/>
+                            <div class="o_setting_right_pane">
+                                <label for="construction_default_retention"
+                                       string="Default Retention %"/>
+                                <div class="text-muted">
+                                    Default retention percentage for new
+                                    Interim Payment Certificates (IPCs).
+                                </div>
+                                <div class="mt-4">
+                                    <field name="construction_default_retention"
+                                           class="o_light_label"/>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane"/>
+                            <div class="o_setting_right_pane">
+                                <label for="construction_default_tax"
+                                       string="Default Tax %"/>
+                                <div class="text-muted">
+                                    Default tax percentage for new IPCs.
+                                </div>
+                                <div class="mt-4">
+                                    <field name="construction_default_tax"
+                                           class="o_light_label"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <h2>Default Accounts</h2>
+                    <div class="row mt16 o_settings_container">
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane"/>
+                            <div class="o_setting_right_pane">
+                                <label for="construction_income_account_id"
+                                       string="Default Income Account"/>
+                                <div class="text-muted">
+                                    Default income account used when creating
+                                    customer invoices from IPCs.
+                                </div>
+                                <div class="mt-4">
+                                    <field name="construction_income_account_id"
+                                           class="o_light_label"
+                                           placeholder="Select account..."
+                                           context="{'default_company_id': company_id}"/>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane"/>
+                            <div class="o_setting_right_pane">
+                                <label for="construction_expense_account_id"
+                                       string="Default Expense Account"/>
+                                <div class="text-muted">
+                                    Default expense account used when creating
+                                    cost entries from material issues.
+                                </div>
+                                <div class="mt-4">
+                                    <field name="construction_expense_account_id"
+                                           class="o_light_label"
+                                           placeholder="Select account..."
+                                           context="{'default_company_id': company_id}"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>

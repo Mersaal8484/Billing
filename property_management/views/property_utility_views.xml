@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_property_utility_tree" model="ir.ui.view">
+        <field name="name">property.utility.tree</field>
+        <field name="model">property.utility</field>
+        <field name="arch" type="xml">
+            <tree string="Utility Meters">
+                <field name="unit_id"/>
+                <field name="utility_type"/>
+                <field name="meter_number"/>
+                <field name="provider"/>
+                <field name="initial_reading"/>
+                <field name="last_reading"/>
+                <field name="total_consumption"/>
+                <field name="last_reading_date"/>
+                <field name="estimated_monthly" widget="monetary"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_property_utility_form" model="ir.ui.view">
+        <field name="name">property.utility.form</field>
+        <field name="model">property.utility</field>
+        <field name="arch" type="xml">
+            <form string="Utility Meter">
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="meter_number"/> - <field name="utility_type"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="unit_id"/>
+                            <field name="utility_type"/>
+                            <field name="meter_number"/>
+                            <field name="provider"/>
+                            <field name="account_number"/>
+                        </group>
+                        <group>
+                            <field name="initial_reading"/>
+                            <field name="last_reading"/>
+                            <field name="last_reading_date"/>
+                            <field name="total_consumption"/>
+                            <field name="pricing_method"/>
+                            <field name="unit_rate" widget="monetary" attrs="{'invisible': [('pricing_method', '=', 'tiered')]}"/>
+                            <field name="estimated_monthly" widget="monetary"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Reading History">
+                            <field name="reading_ids">
+                                <tree string="Reading History">
+                                    <field name="date"/>
+                                    <field name="reading"/>
+                                    <field name="consumption"/>
+                                    <field name="cost" widget="monetary"/>
+                                    <field name="estimated" widget="boolean_fa"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Pricing Tiers" attrs="{'invisible': [('pricing_method', '!=', 'tiered')]}">
+                            <field name="tier_ids">
+                                <tree string="Tiers" editable="bottom">
+                                    <field name="min_consumption"/>
+                                    <field name="max_consumption"/>
+                                    <field name="rate" widget="monetary"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Notes">
+                            <field name="note"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_property_utility" model="ir.actions.act_window">
+        <field name="name">Utility Meters</field>
+        <field name="res_model">property.utility</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_property_meter_reading_tree" model="ir.ui.view">
+        <field name="name">property.meter.reading.tree</field>
+        <field name="model">property.meter.reading</field>
+        <field name="arch" type="xml">
+            <tree string="Meter Readings">
+                <field name="meter_id"/>
+                <field name="unit_id"/>
+                <field name="date"/>
+                <field name="reading"/>
+                <field name="consumption"/>
+                <field name="cost" widget="monetary" sum="Total"/>
+                <field name="estimated" widget="boolean_fa"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_property_meter_reading_form" model="ir.ui.view">
+        <field name="name">property.meter.reading.form</field>
+        <field name="model">property.meter.reading</field>
+        <field name="arch" type="xml">
+            <form string="Meter Reading">
+                <header>
+                    <button name="action_generate_utility_invoice" string="Generate Invoice" type="object" class="btn-primary" attrs="{'invisible': [('invoice_id', '!=', False)]}"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>Meter Reading - <field name="meter_id"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="meter_id"/>
+                            <field name="unit_id"/>
+                            <field name="date"/>
+                            <field name="invoice_id" attrs="{'invisible': [('invoice_id', '=', False)]}"/>
+                        </group>
+                        <group>
+                            <field name="reading"/>
+                            <field name="consumption"/>
+                            <field name="cost" widget="monetary"/>
+                            <field name="estimated"/>
+                        </group>
+                    </group>
+                    <field name="image" widget="image"/>
+                    <field name="notes"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_property_meter_reading" model="ir.actions.act_window">
+        <field name="name">Meter Readings</field>
+        <field name="res_model">property.meter.reading</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_property_service_charge_tree" model="ir.ui.view">
+        <field name="name">property.service.charge.tree</field>
+        <field name="model">property.service.charge</field>
+        <field name="arch" type="xml">
+            <tree string="Service Charges">
+                <field name="name"/>
+                <field name="property_id"/>
+                <field name="unit_id"/>
+                <field name="service_type"/>
+                <field name="amount" widget="monetary" sum="Total"/>
+                <field name="date"/>
+                <field name="is_recurring" widget="boolean_fa"/>
+                <field name="paid" widget="boolean_fa"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_property_service_charge_form" model="ir.ui.view">
+        <field name="name">property.service.charge.form</field>
+        <field name="model">property.service.charge</field>
+        <field name="arch" type="xml">
+            <form string="Service Charge">
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="property_id"/>
+                            <field name="unit_id"/>
+                            <field name="tenant_id"/>
+                            <field name="service_type"/>
+                        </group>
+                        <group>
+                            <field name="date"/>
+                            <field name="amount" widget="monetary"/>
+                            <field name="is_recurring"/>
+                            <field name="frequency" attrs="{'invisible':[('is_recurring','=',False)]}"/>
+                            <field name="paid"/>
+                        </group>
+                    </group>
+                    <field name="notes"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_property_service_charge" model="ir.actions.act_window">
+        <field name="name">Service Charges</field>
+        <field name="res_model">property.service.charge</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_construction_ipc_tree" model="ir.ui.view">
+        <field name="name">construction.ipc.tree</field>
+        <field name="model">construction.ipc</field>
+        <field name="arch" type="xml">
+            <tree string="Interim Payment Certificates" decoration-success="state=='paid'" decoration-info="state=='approved'" decoration-warning="state=='certified'" decoration-primary="state=='submitted'" decoration-danger="state=='cancelled'">
+                <field name="name"/>
+                <field name="project_id"/>
+                <field name="ipc_number"/>
+                <field name="date"/>
+                <field name="period_from"/>
+                <field name="period_to"/>
+                <field name="state" widget="badge"/>
+                <field name="current_work_done" widget="monetary" sum="Total"/>
+                <field name="retention_amount" widget="monetary" sum="Total"/>
+                <field name="net_amount" widget="monetary" sum="Total"/>
+                <field name="total_approved_amount" widget="monetary" sum="Total"/>
+                <field name="invoice_id"/>
+                <field name="paid_date"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_construction_ipc_form" model="ir.ui.view">
+        <field name="name">construction.ipc.form</field>
+        <field name="model">construction.ipc</field>
+        <field name="arch" type="xml">
+            <form string="Interim Payment Certificate">
+                <header>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,submitted,reviewed,certified,approved,paid" clickable="True"/>
+                    <button type="object" name="action_submit" string="Submit" states="draft" class="btn-primary"/>
+                    <button type="object" name="action_review" string="Review" states="submitted" class="btn-primary"/>
+                    <button type="object" name="action_certify" string="Certify" states="reviewed" class="btn-success"/>
+                    <button type="object" name="action_approve" string="Approve" states="certified" class="btn-primary"/>
+                    <button type="object" name="action_create_sale_order" string="Create Sale Order" states="approved" class="btn-primary"/>
+                    <button type="object" name="action_create_invoice" string="Create Invoice" states="approved" class="btn-primary"/>
+                    <button type="object" name="action_paid" string="Mark Paid" states="approved" class="btn-success"/>
+                    <button type="object" name="action_cancel" string="Cancel" states="draft,submitted,reviewed" class="btn-danger"/>
+                    <button type="object" name="action_draft" string="Reset to Draft" states="cancelled" class="btn-default"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="project_id"/>
+                            <field name="ipc_number"/>
+                            <field name="date"/>
+                        </group>
+                        <group>
+                            <field name="period_from"/>
+                            <field name="period_to"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="IPC Lines">
+                            <field name="line_ids">
+                                <tree string="IPC Lines" editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="boq_item_id"/>
+                                    <field name="name"/>
+                                    <field name="previous_quantity"/>
+                                    <field name="current_quantity"/>
+                                    <field name="total_quantity"/>
+                                    <field name="rate" widget="monetary"/>
+                                    <field name="previous_amount" widget="monetary"/>
+                                    <field name="current_amount" widget="monetary"/>
+                                    <field name="amount" widget="monetary" sum="Total"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Financial Summary">
+                            <group>
+                                <group string="Work Done">
+                                    <field name="prev_work_done" widget="monetary"/>
+                                    <field name="current_work_done" widget="monetary"/>
+                                    <field name="total_work_done" widget="monetary"/>
+                                </group>
+                                <group string="Deductions">
+                                    <field name="retention_percent"/>
+                                    <field name="retention_amount" widget="monetary"/>
+                                    <field name="retention_release" widget="monetary"/>
+                                </group>
+                                <group string="Advances">
+                                    <field name="advance_paid" widget="monetary"/>
+                                    <field name="advance_recovery" widget="monetary"/>
+                                    <field name="advance_balance" widget="monetary"/>
+                                </group>
+                                <group string="Net Amount">
+                                    <field name="gross_amount" widget="monetary"/>
+                                    <field name="tax_percent"/>
+                                    <field name="tax_amount" widget="monetary"/>
+                                    <field name="net_amount" widget="monetary"/>
+                                    <field name="previous_paid" widget="monetary"/>
+                                    <field name="total_approved_amount" widget="monetary"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Payment">
+                            <group>
+                                <group>
+                                    <field name="sale_order_id"/>
+                                    <field name="invoice_id"/>
+                                </group>
+                                <group>
+                                    <field name="payment_id"/>
+                                    <field name="paid_date"/>
+                                    <field name="payment_reference"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Notes">
+                            <field name="note"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" widget="mail_followers"/>
+                    <field name="activity_ids" widget="mail_activity"/>
+                    <field name="message_ids" widget="mail_thread"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_construction_ipc_search" model="ir.ui.view">
+        <field name="name">construction.ipc.search</field>
+        <field name="model">construction.ipc</field>
+        <field name="arch" type="xml">
+            <search string="Search IPCs">
+                <field name="name"/>
+                <field name="project_id"/>
+                <filter name="draft" string="Draft" domain="[('state','=','draft')]"/>
+                <filter name="certified" string="Certified" domain="[('state','=','certified')]"/>
+                <filter name="approved" string="Approved" domain="[('state','=','approved')]"/>
+                <filter name="paid" string="Paid" domain="[('state','=','paid')]"/>
+                <filter name="group_by_project" string="Project" context="{'group_by': 'project_id'}"/>
+                <filter name="group_by_state" string="Status" context="{'group_by': 'state'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_construction_ipc_pivot" model="ir.ui.view">
+        <field name="name">construction.ipc.pivot</field>
+        <field name="model">construction.ipc</field>
+        <field name="arch" type="xml">
+            <pivot string="IPC Analysis" disable_linking="1">
+                <field name="current_work_done" type="measure"/>
+                <field name="net_amount" type="measure"/>
+                <field name="retention_amount" type="measure"/>
+                <field name="project_id" type="row"/>
+                <field name="state" type="col"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="action_construction_ipc" model="ir.actions.act_window">
+        <field name="name">Interim Payment Certificates</field>
+        <field name="res_model">construction.ipc</field>
+        <field name="view_mode">tree,form,pivot</field>
+        <field name="search_view_id" ref="view_construction_ipc_search"/>
+    </record>
+</odoo>

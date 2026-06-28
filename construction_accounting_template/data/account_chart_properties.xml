@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- Link default accounts to the chart template -->
+        <record id="construction_chart_template" model="account.chart.template">
+            <!-- Receivable & Payable -->
+            <field name="property_account_receivable_id" ref="acc_ar_trade"/>
+            <field name="property_account_payable_id" ref="acc_ap_trade"/>
+
+            <!-- Inventory -->
+            <field name="property_account_expense_categ_id" ref="acc_cogs_material_site"/>
+            <field name="property_account_income_categ_id" ref="acc_rev_contract"/>
+            <field name="property_stock_account_input_categ_id" ref="acc_inventory_raw"/>
+            <field name="property_stock_account_output_categ_id" ref="acc_cogs_material_site"/>
+            <field name="property_stock_valuation_account_id" ref="acc_inventory_raw"/>
+
+            <!-- Tax accounts -->
+            <field name="property_tax_payable_account_id" ref="acc_vat_payable"/>
+            <field name="property_tax_receivable_account_id" ref="acc_vat_input"/>
+
+            <!-- Exchange rate -->
+            <field name="income_currency_exchange_account_id" ref="acc_income_fx"/>
+            <field name="expense_currency_exchange_account_id" ref="acc_exp_fx"/>
+
+            <!-- POS & Journals -->
+            <field name="default_pos_receivable_account_id" ref="acc_ar_trade"/>
+            <field name="account_journal_suspense_account_id" ref="acc_other_receivable"/>
+            <field name="account_journal_payment_debit_account_id" ref="acc_other_receivable"/>
+            <field name="account_journal_payment_credit_account_id" ref="acc_other_payable"/>
+
+            <!-- Transfer account (auto-generated) prefix -->
+            <field name="transfer_account_code_prefix">110</field>
+        </record>
+
+        <!-- Account Groups for financial statement hierarchy -->
+        <record id="acc_group_current_assets" model="account.group.template">
+            <field name="name">الأصول المتداولة</field>
+            <field name="code_prefix_start">111</field>
+            <field name="code_prefix_end">182</field>
+            <field name="chart_template_id" ref="construction_chart_template"/>
+        </record>
+        <record id="acc_group_non_current_assets" model="account.group.template">
+            <field name="name">الأصول غير المتداولة</field>
+            <field name="code_prefix_start">161</field>
+            <field name="code_prefix_end">172</field>
+            <field name="chart_template_id" ref="construction_chart_template"/>
+        </record>
+        <record id="acc_group_current_liabilities" model="account.group.template">
+            <field name="name">الخصوم المتداولة</field>
+            <field name="code_prefix_start">221</field>
+            <field name="code_prefix_end">262</field>
+            <field name="chart_template_id" ref="construction_chart_template"/>
+        </record>
+        <record id="acc_group_non_current_liabilities" model="account.group.template">
+            <field name="name">الخصوم غير المتداولة</field>
+            <field name="code_prefix_start">232</field>
+            <field name="code_prefix_end">252</field>
+            <field name="chart_template_id" ref="construction_chart_template"/>
+        </record>
+        <record id="acc_group_revenue" model="account.group.template">
+            <field name="name">الإيرادات</field>
+            <field name="code_prefix_start">411</field>
+            <field name="code_prefix_end">413</field>
+            <field name="chart_template_id" ref="construction_chart_template"/>
+        </record>
+        <record id="acc_group_direct_costs" model="account.group.template">
+            <field name="name">تكاليف المشاريع المباشرة</field>
+            <field name="code_prefix_start">511</field>
+            <field name="code_prefix_end">551</field>
+            <field name="chart_template_id" ref="construction_chart_template"/>
+        </record>
+        <record id="acc_group_admin_expenses" model="account.group.template">
+            <field name="name">المصاريف الإدارية والعمومية</field>
+            <field name="code_prefix_start">611</field>
+            <field name="code_prefix_end">631</field>
+            <field name="chart_template_id" ref="construction_chart_template"/>
+        </record>
+
+    </data>
+</odoo>

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_sale_order_form_inherit_construction" model="ir.ui.view">
+        <field name="name">sale.order.form.inherit.construction</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <field name="partner_id" position="after">
+                <field name="is_construction_order" invisible="1"/>
+                <field name="construction_project_id"/>
+                <field name="construction_boq_id"/>
+                <field name="construction_ipc_id"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="view_sale_order_line_tree_inherit_construction" model="ir.ui.view">
+        <field name="name">sale.order.line.tree.inherit.construction</field>
+        <field name="model">sale.order.line</field>
+        <field name="inherit_id" ref="sale.view_order_line_tree"/>
+        <field name="arch" type="xml">
+            <field name="price_subtotal" position="after">
+                <field name="construction_boq_item_id" optional="hide"/>
+            </field>
+        </field>
+    </record>
+
+</odoo>

@@ -1,0 +1,633 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- ========================================== -->
+        <!-- SAUDI CONSTRUCTION DEMO DATA              -->
+        <!-- ========================================== -->
+
+        <!-- Cement Products -->
+        <record id="saudi_resource_cement_opc" model="construction.resource">
+            <field name="name">أسمنت بورتلاندي عادي (OPC)</field>
+            <field name="arabic_name">أسمنت بورتلاندي عادي</field>
+            <field name="code">SA-MAT-001</field>
+            <field name="resource_type">material</field>
+            <field name="uom_id" ref="uom.product_uom_ton"/>
+            <field name="unit_cost">280.00</field>
+            <field name="overhead_percent">5.0</field>
+            <field name="profit_percent">10.0</field>
+            <field name="lead_time">7</field>
+        </record>
+
+        <record id="saudi_resource_cement_src" model="construction.resource">
+            <field name="name">أسمنت مقاوم للكبريتات (SRC)</field>
+            <field name="arabic_name">أسمنت مقاوم للكبريتات</field>
+            <field name="code">SA-MAT-002</field>
+            <field name="resource_type">material</field>
+            <field name="uom_id" ref="uom.product_uom_ton"/>
+            <field name="unit_cost">320.00</field>
+            <field name="overhead_percent">5.0</field>
+            <field name="profit_percent">10.0</field>
+            <field name="lead_time">10</field>
+        </record>
+
+        <!-- Steel Reinforcement -->
+        <record id="saudi_resource_rebar_12" model="construction.resource">
+            <field name="name">حديد تسليح قطر 12مم</field>
+            <field name="arabic_name">حديد تسليح 12مم</field>
+            <field name="code">SA-MAT-010</field>
+            <field name="resource_type">material</field>
+            <field name="uom_id" ref="uom.product_uom_ton"/>
+            <field name="unit_cost">2850.00</field>
+            <field name="lead_time">14</field>
+        </record>
+
+        <record id="saudi_resource_rebar_16" model="construction.resource">
+            <field name="name">حديد تسليح قطر 16مم</field>
+            <field name="arabic_name">حديد تسليح 16مم</field>
+            <field name="code">SA-MAT-011</field>
+            <field name="resource_type">material</field>
+            <field name="uom_id" ref="uom.product_uom_ton"/>
+            <field name="unit_cost">2800.00</field>
+            <field name="lead_time">14</field>
+        </record>
+
+        <record id="saudi_resource_rebar_20" model="construction.resource">
+            <field name="name">حديد تسليح قطر 20مم</field>
+            <field name="arabic_name">حديد تسليح 20مم</field>
+            <field name="code">SA-MAT-012</field>
+            <field name="resource_type">material</field>
+            <field name="uom_id" ref="uom.product_uom_ton"/>
+            <field name="unit_cost">2750.00</field>
+            <field name="lead_time">14</field>
+        </record>
+
+        <record id="saudi_resource_rebar_25" model="construction.resource">
+            <field name="name">حديد تسليح قطر 25مم</field>
+            <field name="arabic_name">حديد تسليح 25مم</field>
+            <field name="code">SA-MAT-013</field>
+            <field name="resource_type">material</field>
+            <field name="uom_id" ref="uom.product_uom_ton"/>
+            <field name="unit_cost">2700.00</field>
+            <field name="lead_time">14</field>
+        </record>
+
+        <!-- Aggregates -->
+        <record id="saudi_resource_sand" model="construction.resource">
+            <field name="name">رمل نظيف</field>
+            <field name="arabic_name">رمل نظيف</field>
+            <field name="code">SA-MAT-020</field>
+            <field name="resource_type">material</field>
+            <field name="uom_id" ref="uom.product_uom_meter"/>
+            <field name="unit_cost">85.00</field>
+            <field name="lead_time">3</field>
+        </record>
+
+        <record id="saudi_resource_aggregate_20mm" model="construction.resource">
+            <field name="name">ركام حجمي 20مم</field>
+            <field name="arabic_name">ركام 20مم</field>
+            <field name="code">SA-MAT-021</field>
+            <field name="resource_type">material</field>
+            <field name="uom_id" ref="uom.product_uom_meter"/>
+            <field name="unit_cost">95.00</field>
+            <field name="lead_time">3</field>
+        </record>
+
+        <record id="saudi_resource_aggregate_10mm" model="construction.resource">
+            <field name="name">ركام حجمي 10مم</field>
+            <field name="arabic_name">ركام 10مم</field>
+            <field name="code">SA-MAT-022</field>
+            <field name="resource_type">material</field>
+            <field name="uom_id" ref="uom.product_uom_meter"/>
+            <field name="unit_cost">100.00</field>
+            <field name="lead_time">3</field>
+        </record>
+
+        <!-- Concrete Blocks -->
+        <record id="saudi_resource_block_20cm" model="construction.resource">
+            <field name="name">بلوك خرساني 20سم</field>
+            <field name="arabic_name">بلوك 20سم</field>
+            <field name="code">SA-MAT-030</field>
+            <field name="resource_type">material</field>
+            <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="unit_cost">3.50</field>
+            <field name="lead_time">5</field>
+        </record>
+
+        <record id="saudi_resource_block_15cm" model="construction.resource">
+            <field name="name">بلوك خرساني 15سم</field>
+            <field name="arabic_name">بلوك 15سم</field>
+            <field name="code">SA-MAT-031</field>
+            <field name="resource_type">material</field>
+            <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="unit_cost">2.80</field>
+            <field name="lead_time">5</field>
+        </record>
+
+        <!-- Insulation Materials -->
+        <record id="saudi_resource_waterproofing" model="construction.resource">
+            <field name="name">عزل مائي (بيتومين)</field>
+            <field name="arabic_name">عزل مائي</field>
+            <field name="code">SA-MAT-040</field>
+            <field name="resource_type">material</field>
+            <field name="uom_id" ref="uom.product_uom_meter"/>
+            <field name="unit_cost">45.00</field>
+            <field name="lead_time">7</field>
+        </record>
+
+        <record id="saudi_resource_thermal_insulation" model="construction.resource">
+            <field name="name">عزل حراري (بوليسترين)</field>
+            <field name="arabic_name">عزل حراري</field>
+            <field name="code">SA-MAT-041</field>
+            <field name="resource_type">material</field>
+            <field name="uom_id" ref="uom.product_uom_meter"/>
+            <field name="unit_cost">65.00</field>
+            <field name="lead_time">10</field>
+        </record>
+
+        <!-- Tiles and Flooring -->
+        <record id="saudi_resource_ceramic_tiles" model="construction.resource">
+            <field name="name">بلاط سيراميك 60x60</field>
+            <field name="arabic_name">سيراميك 60x60</field>
+            <field name="code">SA-MAT-050</field>
+            <field name="resource_type">material</field>
+            <field name="uom_id" ref="uom.product_uom_meter"/>
+            <field name="unit_cost">85.00</field>
+            <field name="lead_time">14</field>
+        </record>
+
+        <record id="saudi_resource_marble" model="construction.resource">
+            <field name="name">رخام سعودي</field>
+            <field name="arabic_name">رخام سعودي</field>
+            <field name="code">SA-MAT-051</field>
+            <field name="resource_type">material</field>
+            <field name="uom_id" ref="uom.product_uom_meter"/>
+            <field name="unit_cost">350.00</field>
+            <field name="lead_time">21</field>
+        </record>
+
+        <!-- Paints -->
+        <record id="saudi_resource_paint_interior" model="construction.resource">
+            <field name="name">دهان داخلي</field>
+            <field name="arabic_name">دهان داخلي</field>
+            <field name="code">SA-MAT-060</field>
+            <field name="resource_type">material</field>
+            <field name="uom_id" ref="uom.product_uom_liter"/>
+            <field name="unit_cost">18.00</field>
+            <field name="lead_time">5</field>
+        </record>
+
+        <record id="saudi_resource_paint_exterior" model="construction.resource">
+            <field name="name">دهان خارجي مقاوم</field>
+            <field name="arabic_name">دهان خارجي</field>
+            <field name="code">SA-MAT-061</field>
+            <field name="resource_type">material</field>
+            <field name="uom_id" ref="uom.product_uom_liter"/>
+            <field name="unit_cost">28.00</field>
+            <field name="lead_time">5</field>
+        </record>
+
+        <!-- Electrical Materials -->
+        <record id="saudi_resource_cable_4mm" model="construction.resource">
+            <field name="name">سلك كهربائي 4مم</field>
+            <field name="arabic_name">سلك 4مم</field>
+            <field name="code">SA-MAT-070</field>
+            <field name="resource_type">material</field>
+            <field name="uom_id" ref="uom.product_uom_meter"/>
+            <field name="unit_cost">8.50</field>
+            <field name="lead_time">7</field>
+        </record>
+
+        <record id="saudi_resource_switch_socket" model="construction.resource">
+            <field name="name">مفتاح ومقبس كهربائي</field>
+            <field name="arabic_name">مفتاح ومقبس</field>
+            <field name="code">SA-MAT-071</field>
+            <field name="resource_type">material</field>
+            <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="unit_cost">45.00</field>
+            <field name="lead_time">7</field>
+        </record>
+
+        <!-- Plumbing Materials -->
+        <record id="saudi_resource_pipe_pvc_110" model="construction.resource">
+            <field name="name">مواسير PVC 110مم</field>
+            <field name="arabic_name">ماسورة PVC 110مم</field>
+            <field name="code">SA-MAT-080</field>
+            <field name="resource_type">material</field>
+            <field name="uom_id" ref="uom.product_uom_meter"/>
+            <field name="unit_cost">35.00</field>
+            <field name="lead_time">5</field>
+        </record>
+
+        <record id="saudi_resource_pipe_ppr_25" model="construction.resource">
+            <field name="name">مواسير PPR 25مم</field>
+            <field name="arabic_name">ماسورة PPR 25مم</field>
+            <field name="code">SA-MAT-081</field>
+            <field name="resource_type">material</field>
+            <field name="uom_id" ref="uom.product_uom_meter"/>
+            <field name="unit_cost">12.00</field>
+            <field name="lead_time">5</field>
+        </record>
+
+        <!-- ========================================== -->
+        <!-- LABOR RESOURCES                            -->
+        <!-- ========================================== -->
+
+        <record id="saudi_resource_labor_mason" model="construction.resource">
+            <field name="name">بناء/نقاش</field>
+            <field name="arabic_name">بناء/نقاش</field>
+            <field name="code">SA-LAB-001</field>
+            <field name="resource_type">labor</field>
+            <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="unit_cost">180.00</field>
+            <field name="productivity_rate">3.5</field>
+            <field name="productivity_uom">day</field>
+        </record>
+
+        <record id="saudi_resource_labor_carpenter" model="construction.resource">
+            <field name="name">نجار</field>
+            <field name="arabic_name">نجار</field>
+            <field name="code">SA-LAB-002</field>
+            <field name="resource_type">labor</field>
+            <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="unit_cost">200.00</field>
+            <field name="productivity_rate">2.5</field>
+            <field name="productivity_uom">day</field>
+        </record>
+
+        <record id="saudi_resource_labor_steel_fixer" model="construction.resource">
+            <field name="name">حداد تسليح</field>
+            <field name="arabic_name">حداد تسليح</field>
+            <field name="code">SA-LAB-003</field>
+            <field name="resource_type">labor</field>
+            <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="unit_cost">190.00</field>
+            <field name="productivity_rate">0.5</field>
+            <field name="productivity_uom">day</field>
+        </record>
+
+        <record id="saudi_resource_labor_electrician" model="construction.resource">
+            <field name="name">كهربائي</field>
+            <field name="arabic_name">كهربائي</field>
+            <field name="code">SA-LAB-004</field>
+            <field name="resource_type">labor</field>
+            <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="unit_cost">220.00</field>
+            <field name="productivity_rate">15.0</field>
+            <field name="productivity_uom">day</field>
+        </record>
+
+        <record id="saudi_resource_labor_plumber" model="construction.resource">
+            <field name="name">سباك</field>
+            <field name="arabic_name">سباك</field>
+            <field name="code">SA-LAB-005</field>
+            <field name="resource_type">labor</field>
+            <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="unit_cost">200.00</field>
+            <field name="productivity_rate">20.0</field>
+            <field name="productivity_uom">day</field>
+        </record>
+
+        <record id="saudi_resource_labor_painter" model="construction.resource">
+            <field name="name">نقاش دهان</field>
+            <field name="arabic_name">نقاش دهان</field>
+            <field name="code">SA-LAB-006</field>
+            <field name="resource_type">labor</field>
+            <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="unit_cost">170.00</field>
+            <field name="productivity_rate">50.0</field>
+            <field name="productivity_uom">day</field>
+        </record>
+
+        <record id="saudi_resource_labor_helper" model="construction.resource">
+            <field name="name">مساعد بناء</field>
+            <field name="arabic_name">مساعد بناء</field>
+            <field name="code">SA-LAB-007</field>
+            <field name="resource_type">labor</field>
+            <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="unit_cost">120.00</field>
+            <field name="productivity_rate">5.0</field>
+            <field name="productivity_uom">day</field>
+        </record>
+
+        <record id="saudi_resource_labor_foreman" model="construction.resource">
+            <field name="name">مراقب موقع</field>
+            <field name="arabic_name">مراقب موقع</field>
+            <field name="code">SA-LAB-010</field>
+            <field name="resource_type">labor</field>
+            <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="unit_cost">350.00</field>
+        </record>
+
+        <!-- ========================================== -->
+        <!-- EQUIPMENT RESOURCES                        -->
+        <!-- ========================================== -->
+
+        <record id="saudi_resource_excavator" model="construction.resource">
+            <field name="name">حفارة هيدروليكية</field>
+            <field name="arabic_name">حفارة هيدروليكية</field>
+            <field name="code">SA-EQP-001</field>
+            <field name="resource_type">equipment</field>
+            <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="unit_cost">1200.00</field>
+            <field name="is_rental">True</field>
+            <field name="rental_cost">1200.00</field>
+            <field name="operator_required">True</field>
+            <field name="operator_cost">200.00</field>
+            <field name="productivity_rate">250.0</field>
+            <field name="productivity_uom">day</field>
+        </record>
+
+        <record id="saudi_resource_loader" model="construction.resource">
+            <field name="name">لودر (JCB)</field>
+            <field name="arabic_name">لودر</field>
+            <field name="code">SA-EQP-002</field>
+            <field name="resource_type">equipment</field>
+            <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="unit_cost">800.00</field>
+            <field name="is_rental">True</field>
+            <field name="rental_cost">800.00</field>
+            <field name="operator_required">True</field>
+            <field name="operator_cost">180.00</field>
+            <field name="productivity_rate">300.0</field>
+            <field name="productivity_uom">day</field>
+        </record>
+
+        <record id="saudi_resource_crane" model="construction.resource">
+            <field name="name">رافعة برجية</field>
+            <field name="arabic_name">رافعة برجية</field>
+            <field name="code">SA-EQP-003</field>
+            <field name="resource_type">equipment</field>
+            <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="unit_cost">2500.00</field>
+            <field name="is_rental">True</field>
+            <field name="rental_cost">2500.00</field>
+            <field name="operator_required">True</field>
+            <field name="operator_cost">300.00</field>
+        </record>
+
+        <record id="saudi_resource_concrete_pump" model="construction.resource">
+            <field name="name">مضخة خرسانة</field>
+            <field name="arabic_name">مضخة خرسانة</field>
+            <field name="code">SA-EQP-004</field>
+            <field name="resource_type">equipment</field>
+            <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="unit_cost">1500.00</field>
+            <field name="is_rental">True</field>
+            <field name="rental_cost">1500.00</field>
+            <field name="operator_required">True</field>
+            <field name="operator_cost">250.00</field>
+            <field name="productivity_rate">150.0</field>
+            <field name="productivity_uom">day</field>
+        </record>
+
+        <record id="saudi_resource_concrete_mixer" model="construction.resource">
+            <field name="name">خلاطة خرسانة متنقلة</field>
+            <field name="arabic_name">خلاطة خرسانة</field>
+            <field name="code">SA-EQP-005</field>
+            <field name="resource_type">equipment</field>
+            <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="unit_cost">500.00</field>
+            <field name="is_rental">True</field>
+            <field name="rental_cost">500.00</field>
+            <field name="operator_required">True</field>
+            <field name="operator_cost">150.00</field>
+            <field name="productivity_rate">30.0</field>
+            <field name="productivity_uom">day</field>
+        </record>
+
+        <record id="saudi_resource_compactor" model="construction.resource">
+            <field name="name">دحادة تربة</field>
+            <field name="arabic_name">دحادة تربة</field>
+            <field name="code">SA-EQP-006</field>
+            <field name="resource_type">equipment</field>
+            <field name="uom_id" ref="uom.product_uom_unit"/>
+            <field name="unit_cost">400.00</field>
+            <field name="is_rental">True</field>
+            <field name="rental_cost">400.00</field>
+            <field name="operator_required">True</field>
+            <field name="operator_cost">150.00</field>
+            <field name="productivity_rate">500.0</field>
+            <field name="productivity_uom">day</field>
+        </record>
+
+        <record id="saudi_resource_scaffolding" model="construction.resource">
+            <field name="name">سقالات معدنية</field>
+            <field name="arabic_name">سقالات معدنية</field>
+            <field name="code">SA-EQP-010</field>
+            <field name="resource_type">equipment</field>
+            <field name="uom_id" ref="uom.product_uom_meter"/>
+            <field name="unit_cost">15.00</field>
+            <field name="is_rental">True</field>
+            <field name="rental_cost">15.00</field>
+        </record>
+
+        <!-- ========================================== -->
+        <!-- PROJECTS - Saudi Projects                  -->
+        <!-- ========================================== -->
+
+        <record id="saudi_project_residential" model="construction.project">
+            <field name="name">مجمع سكني - حي الملقا، الرياض</field>
+            <field name="arabic_name">مجمع سكني - حي الملقا</field>
+            <field name="code">SA-PRJ-2024-001</field>
+            <field name="project_type">residential</field>
+            <field name="project_stage">execution</field>
+            <field name="start_date">2024-01-15</field>
+            <field name="end_date">2025-12-31</field>
+            <field name="contract_amount">85000000.00</field>
+            <field name="contract_type">lumpsum</field>
+            <field name="location">حي الملقا، الرياض</field>
+            <field name="city">الرياض</field>
+            <field name="latitude">24.7254</field>
+            <field name="longitude">46.6380</field>
+            <field name="description">مجمع سكني متكامل يضم 120 وحدة سكنية مع مرافق خدمية</field>
+        </record>
+
+        <record id="saudi_project_commercial" model="construction.project">
+            <field name="name">مركز تجاري - طريق الملك، جدة</field>
+            <field name="arabic_name">مركز تجاري - طريق الملك</field>
+            <field name="code">SA-PRJ-2024-002</field>
+            <field name="project_type">commercial</field>
+            <field name="project_stage">planning</field>
+            <field name="start_date">2024-03-01</field>
+            <field name="end_date">2026-06-30</field>
+            <field name="contract_amount">150000000.00</field>
+            <field name="contract_type">lumpsum</field>
+            <field name="location">طريق الملك عبدالعزيز، جدة</field>
+            <field name="city">جدة</field>
+            <field name="latitude">21.5433</field>
+            <field name="longitude">39.1728</field>
+            <field name="description">مركز تسوق ومكاتب تجارية بمساحة 45,000 متر مربع</field>
+        </record>
+
+        <record id="saudi_project_road" model="construction.project">
+            <field name="name">تطوير طريق الظهران - الدمام</field>
+            <field name="arabic_name">تطوير طريق الظهران</field>
+            <field name="code">SA-PRJ-2024-003</field>
+            <field name="project_type">road</field>
+            <field name="project_stage">execution</field>
+            <field name="start_date">2024-02-01</field>
+            <field name="end_date">2025-08-31</field>
+            <field name="contract_amount">45000000.00</field>
+            <field name="contract_type">unit_price</field>
+            <field name="location">طريق الظهران، الدمام</field>
+            <field name="city">الدمام</field>
+            <field name="latitude">26.4207</field>
+            <field name="longitude">50.0888</field>
+            <field name="description">تطوير وتوسعة طريق بطول 15 كم مع إنارة وجسور</field>
+        </record>
+
+        <record id="saudi_project_hospital" model="construction.project">
+            <field name="name">مستشفى تخصصي - المدينة المنورة</field>
+            <field name="arabic_name">مستشفى تخصصي - المدينة</field>
+            <field name="code">SA-PRJ-2024-004</field>
+            <field name="project_type">building</field>
+            <field name="project_stage">awarded</field>
+            <field name="start_date">2024-06-01</field>
+            <field name="end_date">2027-03-31</field>
+            <field name="contract_amount">320000000.00</field>
+            <field name="contract_type">design_build</field>
+            <field name="location">طريق الملك فهد، المدينة المنورة</field>
+            <field name="city">المدينة المنورة</field>
+            <field name="latitude">24.4672</field>
+            <field name="longitude">39.6024</field>
+            <field name="description">مستشفى تخصصي بسعة 300 سرير مع مرافق مساندة</field>
+        </record>
+
+        <record id="saudi_project_industrial" model="construction.project">
+            <field name="name">مصنع صناعي - الجبيل الصناعية</field>
+            <field name="arabic_name">مصنع صناعي - الجبيل</field>
+            <field name="code">SA-PRJ-2024-005</field>
+            <field name="project_type">industrial</field>
+            <field name="project_stage">execution</field>
+            <field name="start_date">2023-09-01</field>
+            <field name="end_date">2025-02-28</field>
+            <field name="contract_amount">78000000.00</field>
+            <field name="contract_type">lumpsum</field>
+            <field name="location">مدينة الجبيل الصناعية</field>
+            <field name="city">الجبيل</field>
+            <field name="latitude">27.0047</field>
+            <field name="longitude">49.6186</field>
+            <field name="description">مصنع للصناعات البتروكيميائية</field>
+        </record>
+
+        <!-- ========================================== -->
+        <!-- BOQ - Bill of Quantities                   -->
+        <!-- ========================================== -->
+
+        <record id="saudi_boq_residential" model="construction.boq">
+            <field name="project_id" ref="saudi_project_residential"/>
+            <field name="name">كميات الأعمال الرئيسية</field>
+            <field name="code">BOQ-RES-001</field>
+            <field name="state">approved</field>
+            <field name="date">2024-01-01</field>
+        </record>
+
+        <!-- BOQ Sections -->
+        <record id="saudi_boq_section_a" model="construction.boq.section">
+            <field name="boq_id" ref="saudi_boq_residential"/>
+            <field name="code">A</field>
+            <field name="name">أعمال الحفر والأساسات</field>
+            <field name="sequence">10</field>
+        </record>
+
+        <record id="saudi_boq_section_b" model="construction.boq.section">
+            <field name="boq_id" ref="saudi_boq_residential"/>
+            <field name="code">B</field>
+            <field name="name">أعمال الهيكل الخرساني</field>
+            <field name="sequence">20</field>
+        </record>
+
+        <record id="saudi_boq_section_c" model="construction.boq.section">
+            <field name="boq_id" ref="saudi_boq_residential"/>
+            <field name="code">C</field>
+            <field name="name">أعمال البناء والبلوك</field>
+            <field name="sequence">30</field>
+        </record>
+
+        <record id="saudi_boq_section_d" model="construction.boq.section">
+            <field name="boq_id" ref="saudi_boq_residential"/>
+            <field name="code">D</field>
+            <field name="name">أعمال التشطيبات</field>
+            <field name="sequence">40</field>
+        </record>
+
+        <record id="saudi_boq_section_e" model="construction.boq.section">
+            <field name="boq_id" ref="saudi_boq_residential"/>
+            <field name="code">E</field>
+            <field name="name">أعمال الكهرباء والميكانيكا</field>
+            <field name="sequence">50</field>
+        </record>
+
+        <!-- BOQ Items - Section A (Excavation & Foundations) -->
+        <record id="saudi_boq_item_a1" model="construction.boq.item">
+            <field name="boq_id" ref="saudi_boq_residential"/>
+            <field name="section_id" ref="saudi_boq_section_a"/>
+            <field name="code">A.1</field>
+            <field name="name">حفر عادي للأساسات</field>
+            <field name="unit" ref="uom.product_uom_meter"/>
+            <field name="quantity">8500.000</field>
+            <field name="rate">35.00</field>
+        </record>
+
+        <record id="saudi_boq_item_a2" model="construction.boq.item">
+            <field name="boq_id" ref="saudi_boq_residential"/>
+            <field name="section_id" ref="saudi_boq_section_a"/>
+            <field name="code">A.2</field>
+            <field name="name">نقل مخلفات الحفر</field>
+            <field name="unit" ref="uom.product_uom_meter"/>
+            <field name="quantity">8500.000</field>
+            <field name="rate">25.00</field>
+        </record>
+
+        <record id="saudi_boq_item_a3" model="construction.boq.item">
+            <field name="boq_id" ref="saudi_boq_residential"/>
+            <field name="section_id" ref="saudi_boq_section_a"/>
+            <field name="code">A.3</field>
+            <field name="name">ردم وتسوية بالرمل</field>
+            <field name="unit" ref="uom.product_uom_meter"/>
+            <field name="quantity">4200.000</field>
+            <field name="rate">45.00</field>
+        </record>
+
+        <record id="saudi_boq_item_a4" model="construction.boq.item">
+            <field name="boq_id" ref="saudi_boq_residential"/>
+            <field name="section_id" ref="saudi_boq_section_a"/>
+            <field name="code">A.4</field>
+            <field name="name">خرسانة عادية للأساسات</field>
+            <field name="unit" ref="uom.product_uom_meter"/>
+            <field name="quantity">650.000</field>
+            <field name="rate">380.00</field>
+        </record>
+
+        <record id="saudi_boq_item_a5" model="construction.boq.item">
+            <field name="boq_id" ref="saudi_boq_residential"/>
+            <field name="section_id" ref="saudi_boq_section_a"/>
+            <field name="code">A.5</field>
+            <field name="name">خرسانة مسلحة للقواعد</field>
+            <field name="unit" ref="uom.product_uom_meter"/>
+            <field name="quantity">1200.000</field>
+            <field name="rate">850.00</field>
+        </record>
+
+        <record id="saudi_boq_item_a6" model="construction.boq.item">
+            <field name="boq_id" ref="saudi_boq_residential"/>
+            <field name="section_id" ref="saudi_boq_section_a"/>
+            <field name="code">A.6</field>
+            <field name="name">حديد تسليح للأساسات</field>
+            <field name="unit" ref="uom.product_uom_ton"/>
+            <field name="quantity">180.000</field>
+            <field name="rate">5500.00</field>
+        </record>
+
+        <record id="saudi_boq_item_a7" model="construction.boq.item">
+            <field name="boq_id" ref="saudi_boq_residential"/>
+            <field name="section_id" ref="saudi_boq_section_a"/>
+            <field name="code">A.7</field>
+            <field name="name">عزل مائي للأساسات</field>
+            <field name="unit" ref="uom.product_uom_meter"/>
+            <field name="quantity">2500.000</field>
+            <field name="rate">65.00</field>
+
+        </record>
+    </data>
+</odoo>

@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_property_unit_tree" model="ir.ui.view">
+        <field name="name">property.unit.tree</field>
+        <field name="model">property.unit</field>
+        <field name="arch" type="xml">
+            <tree string="Units" decoration-success="status_code == 'OCCUPIED'" decoration-info="status_code == 'AVAILABLE'" decoration-warning="status_code == 'MAINTENANCE'" decoration-muted="status_code == 'SOLD'">
+                <field name="status_code" invisible="1"/>
+                <field name="display_name"/>
+                <field name="property_id"/>
+                <field name="building_id"/>
+                <field name="floor_id"/>
+                <field name="unit_type"/>
+                <field name="status"/>
+                <field name="area"/>
+                <field name="bedrooms"/>
+                <field name="bathrooms"/>
+                <field name="monthly_rent" widget="monetary"/>
+                <field name="current_tenant_id"/>
+                <field name="analytic_account_id" optional="hide"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_property_unit_form" model="ir.ui.view">
+        <field name="name">property.unit.form</field>
+        <field name="model">property.unit</field>
+        <field name="arch" type="xml">
+            <form string="Unit">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_leases" type="object" class="oe_stat_button" icon="fa-file-text">
+                            <span class="o_stat_text">Lease History</span>
+                        </button>
+                        <button name="action_open_maintenance" type="object" class="oe_stat_button" icon="fa-wrench">
+                            <span class="o_stat_text">Maintenance</span>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="display_name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="property_id"/>
+                            <field name="building_id"/>
+                            <field name="floor_id"/>
+                            <field name="number"/>
+                            <field name="unit_type"/>
+                            <field name="status"/>
+                        </group>
+                        <group>
+                            <field name="owner_id"/>
+                            <field name="current_tenant_id"/>
+                            <field name="current_lease_id"/>
+                            <field name="condition"/>
+                            <field name="furnished_type"/>
+                            <field name="analytic_account_id"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Details">
+                            <group>
+                                <group>
+                                    <field name="area"/>
+                                    <field name="bedrooms"/>
+                                    <field name="bathrooms"/>
+                                    <field name="parking"/>
+                                </group>
+                                <group>
+                                    <field name="balcony"/>
+                                    <field name="garden"/>
+                                    <field name="view"/>
+                                    <field name="furnished"/>
+                                </group>
+                            </group>
+                            <group string="Financial">
+                                <field name="monthly_rent" widget="monetary"/>
+                                <field name="market_value" widget="monetary"/>
+                                <field name="security_deposit" widget="monetary"/>
+                            </group>
+                            <field name="description"/>
+                            <field name="features"/>
+                        </page>
+                        <page string="Images">
+                            <field name="image_ids">
+                                <tree string="Images" editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="image" widget="image"/>
+                                    <field name="name"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Meters">
+                            <field name="meter_ids">
+                                <tree string="Meters">
+                                    <field name="utility_type"/>
+                                    <field name="meter_number"/>
+                                    <field name="last_reading"/>
+                                    <field name="total_consumption"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Documents">
+                            <field name="document_ids">
+                                <tree string="Documents">
+                                    <field name="name"/>
+                                    <field name="document_type"/>
+                                    <field name="date"/>
+                                    <field name="expiry_date"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_property_unit_search" model="ir.ui.view">
+        <field name="name">property.unit.search</field>
+        <field name="model">property.unit</field>
+        <field name="arch" type="xml">
+            <search string="Search Units">
+                <field name="number"/>
+                <field name="property_id"/>
+                <field name="building_id"/>
+                <field name="floor_id"/>
+                <field name="current_tenant_id"/>
+                <filter name="available" string="Available" domain="[('status','=',1)]"/>
+                <filter name="occupied" string="Occupied" domain="[('status','=',2)]"/>
+                <filter name="maintenance" string="Maintenance" domain="[('status','=',3)]"/>
+                <separator/>
+                <filter name="group_by_property" string="Property" context="{'group_by': 'property_id'}"/>
+                <filter name="group_by_type" string="Type" context="{'group_by': 'unit_type'}"/>
+                <filter name="group_by_status" string="Status" context="{'group_by': 'status'}"/>
+                <filter name="group_by_building" string="Building" context="{'group_by': 'building_id'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_property_unit_pivot" model="ir.ui.view">
+        <field name="name">property.unit.pivot</field>
+        <field name="model">property.unit</field>
+        <field name="arch" type="xml">
+            <pivot string="Unit Analysis" disable_linking="1">
+                <field name="monthly_rent" type="measure"/>
+                <field name="area" type="measure"/>
+                <field name="property_id" type="row"/>
+                <field name="unit_type" type="col"/>
+                <field name="status" type="row"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="action_property_unit" model="ir.actions.act_window">
+        <field name="name">Units</field>
+        <field name="res_model">property.unit</field>
+        <field name="view_mode">tree,form,pivot</field>
+        <field name="search_view_id" ref="view_property_unit_search"/>
+    </record>
+</odoo>

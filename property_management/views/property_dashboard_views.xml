@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_property_dashboard_pivot" model="ir.ui.view">
+        <field name="name">property.dashboard.pivot</field>
+        <field name="model">property.dashboard</field>
+        <field name="arch" type="xml">
+            <pivot string="Dashboard KPIs" disable_linking="1">
+                <field name="total_units" type="measure"/>
+                <field name="occupied_units" type="measure"/>
+                <field name="vacant_units" type="measure"/>
+                <field name="occupancy_rate" type="measure"/>
+                <field name="annual_rent_income" type="measure"/>
+                <field name="total_maintenance_cost" type="measure"/>
+                <field name="net_operating_income" type="measure"/>
+                <field name="property_value" type="measure"/>
+                <field name="total_receivables" type="measure"/>
+                <field name="expected_cashflow_30d" type="measure"/>
+                <field name="expiring_leases_30d" type="measure"/>
+                <field name="maintenance_open_count" type="measure"/>
+                <field name="property_id" type="row"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_property_dashboard_graph" model="ir.ui.view">
+        <field name="name">property.dashboard.graph</field>
+        <field name="model">property.dashboard</field>
+        <field name="arch" type="xml">
+            <graph string="Dashboard Chart" type="bar">
+                <field name="annual_rent_income" type="measure"/>
+                <field name="net_operating_income" type="measure"/>
+                <field name="expected_cashflow_30d" type="measure"/>
+                <field name="total_receivables" type="measure"/>
+                <field name="property_id" type="row"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="action_property_dashboard" model="ir.actions.act_window">
+        <field name="name">Dashboard</field>
+        <field name="res_model">property.dashboard</field>
+        <field name="view_mode">pivot,graph</field>
+        <field name="context">{'search_default_group_by_property': 1}</field>
+    </record>
+</odoo>

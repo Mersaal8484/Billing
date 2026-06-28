@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="ye_eos_rule_tree_view" model="ir.ui.view">
+            <field name="name">ye.eos.rule.tree</field>
+            <field name="model">ye.eos.rule</field>
+            <field name="arch" type="xml">
+                <tree>
+                    <field name="name"/>
+                    <field name="months_per_year"/>
+                    <field name="active"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="ye_eos_rule_form_view" model="ir.ui.view">
+            <field name="name">ye.eos.rule.form</field>
+            <field name="model">ye.eos.rule</field>
+            <field name="arch" type="xml">
+                <form>
+                    <sheet>
+                        <group>
+                            <field name="name"/>
+                            <field name="months_per_year"/>
+                            <field name="active"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="ye_eos_rule_action" model="ir.actions.act_window">
+            <field name="name">EOS Provision Rules</field>
+            <field name="res_model">ye.eos.rule</field>
+            <field name="view_mode">tree,form</field>
+            <field name="help" type="html">
+                <p>Define End-of-Service provision formulas per contract type or company.</p>
+            </field>
+        </record>
+
+        <menuitem id="menu_ye_eos_rules" name="EOS Provision Rules"
+            parent="om_hr_payroll.menu_hr_payroll_configuration"
+            sequence="60" action="ye_eos_rule_action"/>
+
+    </data>
+</odoo>

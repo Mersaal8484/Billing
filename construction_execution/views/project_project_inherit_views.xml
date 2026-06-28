@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_project_project_form_inherit_construction" model="ir.ui.view">
+        <field name="name">project.project.form.inherit.construction</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.edit_project"/>
+        <field name="arch" type="xml">
+            <field name="analytic_account_id" position="after">
+                <field name="construction_project_id" readonly="1"/>
+            </field>
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_open_construction_project" type="object"
+                    class="oe_stat_button" icon="fa-building-o"
+                    attrs="{'invisible': [('construction_project_id', '=', False)]}">
+                    <div class="o_stat_info">
+                        <field name="boq_item_count" class="o_stat_value"/>
+                        <span class="o_stat_text">BOQ Items</span>
+                    </div>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_project_task_form_inherit_construction" model="ir.ui.view">
+        <field name="name">project.task.form.inherit.construction</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="project.view_task_form2"/>
+        <field name="arch" type="xml">
+            <field name="user_ids" position="after">
+                <group string="Construction">
+                    <field name="construction_project_id" readonly="1" widget="many2one"/>
+                    <field name="boq_item_id" readonly="1"/>
+                    <field name="boq_code" readonly="1"/>
+                    <field name="boq_amount" widget="monetary" readonly="1"/>
+                </group>
+            </field>
+        </field>
+    </record>
+
+</odoo>

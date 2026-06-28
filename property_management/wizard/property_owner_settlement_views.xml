@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_property_owner_settlement_wizard_form" model="ir.ui.view">
+        <field name="name">property.owner.settlement.wizard.form</field>
+        <field name="model">property.owner.settlement.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Owner Settlement">
+                <sheet>
+                    <group string="Settlement Period">
+                        <group>
+                            <field name="owner_id" readonly="1"/>
+                            <field name="journal_id"/>
+                        </group>
+                        <group>
+                            <field name="start_date"/>
+                            <field name="end_date"/>
+                        </group>
+                    </group>
+                    <group string="Financial Breakdown">
+                        <group>
+                            <field name="total_rent_collected" widget="monetary"/>
+                            <field name="management_fee_percentage"/>
+                            <field name="management_fee_amount" widget="monetary"/>
+                        </group>
+                        <group>
+                            <field name="total_maintenance_cost" widget="monetary"/>
+                            <field name="net_payable" widget="monetary" class="oe_subtotal_footer_separator"/>
+                        </group>
+                    </group>
+                    <field name="notes" placeholder="Additional Notes/Deductions..."/>
+                </sheet>
+                <footer>
+                    <button name="action_confirm_settlement" string="Confirm Settlement" type="object" class="btn-primary" icon="fa-check"/>
+                    <button string="Cancel" class="btn-default" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

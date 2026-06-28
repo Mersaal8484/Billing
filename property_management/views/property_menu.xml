@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Configuration Views -->
+    <!-- 1. Property Type -->
+    <record id="view_property_property_type_tree" model="ir.ui.view">
+        <field name="name">property.property.type.tree</field>
+        <field name="model">property.property.type</field>
+        <field name="arch" type="xml">
+            <tree string="Property Types" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="code"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- 2. Property Status -->
+    <record id="view_property_property_status_tree" model="ir.ui.view">
+        <field name="name">property.property.status.tree</field>
+        <field name="model">property.property.status</field>
+        <field name="arch" type="xml">
+            <tree string="Property Statuses" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="code"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- 3. Unit Type -->
+    <record id="view_property_unit_type_tree" model="ir.ui.view">
+        <field name="name">property.unit.type.tree</field>
+        <field name="model">property.unit.type</field>
+        <field name="arch" type="xml">
+            <tree string="Unit Types" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="code"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- 4. Unit Status -->
+    <record id="view_property_unit_status_tree" model="ir.ui.view">
+        <field name="name">property.unit.status.tree</field>
+        <field name="model">property.unit.status</field>
+        <field name="arch" type="xml">
+            <tree string="Unit Statuses" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="code"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- 5. Lease Status -->
+    <record id="view_property_lease_status_tree" model="ir.ui.view">
+        <field name="name">property.lease.status.tree</field>
+        <field name="model">property.lease.status</field>
+        <field name="arch" type="xml">
+            <tree string="Lease Statuses" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="code"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- 6. Payment Frequency -->
+    <record id="view_property_payment_freq_tree" model="ir.ui.view">
+        <field name="name">property.payment.frequency.tree</field>
+        <field name="model">property.payment.frequency</field>
+        <field name="arch" type="xml">
+            <tree string="Payment Frequencies" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="days"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- 7. Maintenance Type -->
+    <record id="view_property_maintenance_type_tree" model="ir.ui.view">
+        <field name="name">property.maintenance.type.tree</field>
+        <field name="model">property.maintenance.type</field>
+        <field name="arch" type="xml">
+            <tree string="Maintenance Types" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="code"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- 8. Utility Type -->
+    <record id="view_property_utility_type_tree" model="ir.ui.view">
+        <field name="name">property.utility.type.tree</field>
+        <field name="model">property.utility.type</field>
+        <field name="arch" type="xml">
+            <tree string="Utility Types" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="code"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Config Actions -->
+    <record id="action_property_property_type" model="ir.actions.act_window">
+        <field name="name">Property Types</field>
+        <field name="res_model">property.property.type</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+    <record id="action_property_property_status" model="ir.actions.act_window">
+        <field name="name">Property Statuses</field>
+        <field name="res_model">property.property.status</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+    <record id="action_property_unit_type" model="ir.actions.act_window">
+        <field name="name">Unit Types</field>
+        <field name="res_model">property.unit.type</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+    <record id="action_property_unit_status" model="ir.actions.act_window">
+        <field name="name">Unit Statuses</field>
+        <field name="res_model">property.unit.status</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+    <record id="action_property_lease_status" model="ir.actions.act_window">
+        <field name="name">Lease Statuses</field>
+        <field name="res_model">property.lease.status</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+    <record id="action_property_payment_freq" model="ir.actions.act_window">
+        <field name="name">Payment Frequencies</field>
+        <field name="res_model">property.payment.frequency</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+    <record id="action_property_maintenance_type" model="ir.actions.act_window">
+        <field name="name">Maintenance Types</field>
+        <field name="res_model">property.maintenance.type</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+    <record id="action_property_utility_type" model="ir.actions.act_window">
+        <field name="name">Utility Types</field>
+        <field name="res_model">property.utility.type</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <!-- Menus -->
+    <menuitem id="menu_property_root" name="Real Estate"
+              web_icon="property_management,static/description/icon.png"
+              sequence="15"/>
+
+    <menuitem id="menu_property_dashboard" name="Dashboard"
+              parent="menu_property_root" sequence="5"
+              action="action_property_dashboard"/>
+
+    <menuitem id="menu_property_property" name="Properties"
+              parent="menu_property_root" sequence="10">
+        <menuitem id="menu_property_property_list" name="All Properties"
+                  action="action_property_property" sequence="10"/>
+        <menuitem id="menu_property_building_list" name="Buildings"
+                  action="action_property_building" sequence="20"/>
+        <menuitem id="menu_property_floor_list" name="Floors"
+                  action="action_property_floor" sequence="30"/>
+        <menuitem id="menu_property_unit_list" name="Units"
+                  action="action_property_unit" sequence="40"/>
+    </menuitem>
+
+    <menuitem id="menu_property_contacts" name="Contacts"
+              parent="menu_property_root" sequence="20">
+        <menuitem id="menu_property_owner_list" name="Owners"
+                  action="action_property_owner" sequence="10"/>
+        <menuitem id="menu_property_tenant_list" name="Tenants"
+                  action="action_property_tenant" sequence="20"/>
+    </menuitem>
+
+    <menuitem id="menu_property_leasing" name="Leasing &amp; Rent"
+              parent="menu_property_root" sequence="30">
+        <menuitem id="menu_property_lease_list" name="Lease Contracts"
+                  action="action_property_lease" sequence="10"/>
+        <menuitem id="menu_property_payment_schedule" name="Payment Schedule"
+                  action="action_property_payment_schedule" sequence="20"/>
+        <menuitem id="menu_property_payment_list" name="Payments"
+                  action="action_property_payment" sequence="30"/>
+        <menuitem id="menu_property_deposit_list" name="Security Deposits"
+                  action="action_property_deposit" sequence="40"/>
+    </menuitem>
+
+    <menuitem id="menu_property_maintenance" name="Maintenance &amp; Inspections"
+              parent="menu_property_root" sequence="40">
+        <menuitem id="menu_property_maintenance_list" name="Maintenance Requests"
+                  action="action_property_maintenance" sequence="10"/>
+        <menuitem id="menu_property_inspection_list" name="Inspections"
+                  action="action_property_inspection" sequence="20"/>
+    </menuitem>
+
+    <menuitem id="menu_property_utilities" name="Utilities &amp; Services"
+              parent="menu_property_root" sequence="50">
+        <menuitem id="menu_property_utility_list" name="Utility Meters"
+                  action="action_property_utility" sequence="10"/>
+        <menuitem id="menu_property_meter_reading_list" name="Meter Readings"
+                  action="action_property_meter_reading" sequence="20"/>
+        <menuitem id="menu_property_service_charge_list" name="Service Charges"
+                  action="action_property_service_charge" sequence="30"/>
+        <menuitem id="menu_property_split_billing_wizard" name="Split Billing / CAM"
+                  action="action_property_split_billing_wizard" sequence="40"/>
+    </menuitem>
+
+    <menuitem id="menu_property_documents" name="Documents"
+              parent="menu_property_root" sequence="60">
+        <menuitem id="menu_property_document_list" name="All Documents"
+                  action="action_property_document" sequence="10"/>
+    </menuitem>
+
+    <menuitem id="menu_property_reports" name="Reports"
+              parent="menu_property_root" sequence="70">
+        <menuitem id="menu_property_report_lease" name="Lease Report"
+                  action="action_report_property_lease" sequence="10"/>
+    </menuitem>
+
+    <menuitem id="menu_property_config" name="Configuration"
+              parent="menu_property_root" sequence="999">
+        <menuitem id="menu_property_settings" name="Property Settings"
+                  action="action_property_settings" sequence="5"/>
+        <menuitem id="menu_property_type_list" name="Property Types"
+                  action="action_property_property_type" sequence="10"/>
+        <menuitem id="menu_property_status_list" name="Property Statuses"
+                  action="action_property_property_status" sequence="20"/>
+        <menuitem id="menu_property_unit_type_list" name="Unit Types"
+                  action="action_property_unit_type" sequence="30"/>
+        <menuitem id="menu_property_unit_status_list" name="Unit Statuses"
+                  action="action_property_unit_status" sequence="40"/>
+        <menuitem id="menu_property_lease_status_list" name="Lease Statuses"
+                  action="action_property_lease_status" sequence="50"/>
+        <menuitem id="menu_property_payment_freq_list" name="Payment Frequencies"
+                  action="action_property_payment_freq" sequence="60"/>
+        <menuitem id="menu_property_maint_type_list" name="Maintenance Types"
+                  action="action_property_maintenance_type" sequence="70"/>
+        <menuitem id="menu_property_utility_type_list" name="Utility Types"
+                  action="action_property_utility_type" sequence="80"/>
+    </menuitem>
+</odoo>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_report_property_lease" model="ir.actions.report">
+        <field name="name">Lease Contract</field>
+        <field name="model">property.lease</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">property_management.report_property_lease</field>
+        <field name="report_file">property_management.report_property_lease</field>
+        <field name="binding_model_id" ref="model_property_lease"/>
+        <field name="binding_type">report</field>
+        <field name="print_report_name">'Lease - %s' % (object.name)</field>
+    </record>
+</odoo>

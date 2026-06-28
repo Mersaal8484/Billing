@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_property_deposit_tree" model="ir.ui.view">
+        <field name="name">property.deposit.tree</field>
+        <field name="model">property.deposit</field>
+        <field name="arch" type="xml">
+            <tree string="Security Deposits" decoration-info="state=='held'" decoration-success="state=='refunded'">
+                <field name="name"/>
+                <field name="tenant_id"/>
+                <field name="unit_id"/>
+                <field name="lease_id"/>
+                <field name="currency_id" optional="hide"/>
+                <field name="amount" widget="monetary" sum="Total"/>
+                <field name="refund_amount" widget="monetary" sum="Total"/>
+                <field name="deductions" widget="monetary" sum="Total"/>
+                <field name="date_received"/>
+                <field name="refund_date"/>
+                <field name="state" widget="badge"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_property_deposit_form" model="ir.ui.view">
+        <field name="name">property.deposit.form</field>
+        <field name="model">property.deposit</field>
+        <field name="arch" type="xml">
+            <form string="Security Deposit">
+                <header>
+                    <field name="state" widget="statusbar" clickable="True"/>
+                    <button type="object" name="action_refund" string="Refund" states="held" class="btn-primary"/>
+                    <button type="object" name="action_forfeit" string="Forfeit" states="held" class="btn-danger"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="lease_id"/>
+                            <field name="tenant_id"/>
+                            <field name="unit_id"/>
+                            <field name="date_received"/>
+                        </group>
+                        <group>
+                            <field name="currency_id"/>
+                            <field name="override_exchange_rate"/>
+                            <field name="exchange_rate" attrs="{'invisible': [('override_exchange_rate', '=', False)], 'required': [('override_exchange_rate', '=', True)]}"/>
+                            <field name="amount" widget="monetary"/>
+                            <field name="refund_amount" widget="monetary"/>
+                            <field name="deductions" widget="monetary"/>
+                            <field name="refund_date"/>
+                        </group>
+                    </group>
+                    <group string="Accounting" attrs="{'invisible': [('receipt_payment_id', '=', False), ('payment_id', '=', False)]}">
+                        <field name="receipt_payment_id" readonly="1"/>
+                        <field name="payment_id" readonly="1" attrs="{'invisible': [('payment_id', '=', False)]}"/>
+                    </group>
+                    <field name="deduction_reason"/>
+                    <field name="notes"/>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" widget="mail_followers"/>
+                    <field name="activity_ids" widget="mail_activity"/>
+                    <field name="message_ids" widget="mail_thread"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_property_deposit" model="ir.actions.act_window">
+        <field name="name">Security Deposits</field>
+        <field name="res_model">property.deposit</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- Salary Structure -->
+        <record id="ye_structure_base" model="hr.payroll.structure">
+            <field name="code">YE_BASE</field>
+            <field name="name">Yemeni Employee Salary Structure</field>
+            <field name="rule_ids" eval="[(6, 0, [
+                ref('ye_rule_basic'),
+                ref('ye_rule_housing_alw'),
+                ref('ye_rule_transport_alw'),
+                ref('ye_rule_other_alw'),
+                ref('ye_rule_ot_day'),
+                ref('ye_rule_ot_night'),
+                ref('ye_rule_gross'),
+                ref('ye_rule_emp_insurance'),
+                ref('ye_rule_tax'),
+                ref('ye_rule_unpaid_ded'),
+                ref('ye_rule_net'),
+                ref('ye_rule_company_insurance'),
+                ref('ye_rule_eos_provision'),
+            ])]"/>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+
+        <!--
+            Structure Type linked to Yemen country.
+            This auto-selects the Yemen calendar on new contracts
+            when the company country is Yemen.
+            Uses a search on country code since base.ye may not have
+            an XML ID in all Odoo installations.
+        -->
+        <record id="ye_structure_type" model="hr.payroll.structure.type">
+            <field name="name">Yemeni Employee</field>
+            <field name="country_id" search="[('code', '=', 'YE')]"/>
+            <field name="default_resource_calendar_id" ref="calendar_ye_48h"/>
+        </record>
+
+    </data>
+</odoo>

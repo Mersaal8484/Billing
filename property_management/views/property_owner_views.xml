@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_property_owner_tree" model="ir.ui.view">
+        <field name="name">property.owner.tree</field>
+        <field name="model">property.owner</field>
+        <field name="arch" type="xml">
+            <tree string="Owners">
+                <field name="owner_code"/>
+                <field name="name"/>
+                <field name="email"/>
+                <field name="phone"/>
+                <field name="owner_type"/>
+                <field name="total_properties"/>
+                <field name="total_units"/>
+                <field name="net_income" widget="monetary"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_property_owner_form" model="ir.ui.view">
+        <field name="name">property.owner.form</field>
+        <field name="model">property.owner</field>
+        <field name="arch" type="xml">
+            <form string="Owner">
+                <header>
+                    <button name="action_open_settlement_wizard" type="object" string="Owner Settlement" class="btn-primary" icon="fa-money"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_properties" type="object" class="oe_stat_button" icon="fa-building">
+                            <div class="o_stat_info">
+                                <field name="total_properties" class="o_stat_value"/>
+                                <span class="o_stat_text">Properties</span>
+                            </div>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="partner_id"/>
+                            <field name="owner_code"/>
+                            <field name="owner_type"/>
+                        </group>
+                        <group>
+                            <field name="email"/>
+                            <field name="phone"/>
+                            <field name="mobile"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Financial">
+                            <group>
+                                <group string="Income &amp; Expenses">
+                                    <field name="total_annual_income" widget="monetary"/>
+                                    <field name="total_maintenance_cost" widget="monetary"/>
+                                    <field name="net_income" widget="monetary"/>
+                                </group>
+                                <group string="Management Fees">
+                                    <field name="management_fee_percentage"/>
+                                    <field name="last_settlement_date" readonly="1"/>
+                                </group>
+                            </group>
+                            <group string="Banking">
+                                <field name="bank_account"/>
+                                <field name="tax_id"/>
+                            </group>
+                        </page>
+                        <page string="Properties">
+                            <field name="property_ids">
+                                <tree string="Properties">
+                                    <field name="code"/>
+                                    <field name="name"/>
+                                    <field name="status"/>
+                                    <field name="total_units"/>
+                                    <field name="occupancy_rate" widget="progressbar"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Notes">
+                            <field name="notes"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" widget="mail_followers"/>
+                    <field name="activity_ids" widget="mail_activity"/>
+                    <field name="message_ids" widget="mail_thread"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_property_owner" model="ir.actions.act_window">
+        <field name="name">Owners</field>
+        <field name="res_model">property.owner</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_property_floor_tree" model="ir.ui.view">
+        <field name="name">property.floor.tree</field>
+        <field name="model">property.floor</field>
+        <field name="arch" type="xml">
+            <tree string="Floors">
+                <field name="name"/>
+                <field name="code"/>
+                <field name="building_id"/>
+                <field name="number"/>
+                <field name="total_units"/>
+                <field name="total_area"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_property_floor_form" model="ir.ui.view">
+        <field name="name">property.floor.form</field>
+        <field name="model">property.floor</field>
+        <field name="arch" type="xml">
+            <form string="Floor">
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="display_name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="building_id"/>
+                            <field name="code"/>
+                            <field name="name"/>
+                            <field name="number"/>
+                        </group>
+                        <group>
+                            <field name="total_units"/>
+                            <field name="total_area"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_property_floor" model="ir.actions.act_window">
+        <field name="name">Floors</field>
+        <field name="res_model">property.floor</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

@@ -1,0 +1,244 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- ============================================================
+             VAT 15% - Sales Tax (ضريبة القيمة المضافة 15% - مبيعات)
+             ============================================================ -->
+        <record id="tax_sale_vat_15" model="account.tax.template">
+            <field name="name">VAT 15% (مبيعات)</field>
+            <field name="type_tax_use">sale</field>
+            <field name="amount">15</field>
+            <field name="amount_type">percent</field>
+            <field name="description">VAT 15%</field>
+            <field name="tax_group_id" ref="tax_group_vat"/>
+            <field name="chart_template_id" ref="construction_chart_template"/>
+            <field name="price_include" eval="False"/>
+            <field name="invoice_repartition_line_ids" eval="[
+                (5, 0, 0),
+                (0, 0, {
+                    'repartition_type': 'base',
+                    'factor_percent': 100,
+                }),
+                (0, 0, {
+                    'repartition_type': 'tax',
+                    'account_id': ref('acc_vat_output'),
+                    'factor_percent': 100,
+                }),
+            ]"/>
+            <field name="refund_repartition_line_ids" eval="[
+                (5, 0, 0),
+                (0, 0, {
+                    'repartition_type': 'base',
+                    'factor_percent': 100,
+                }),
+                (0, 0, {
+                    'repartition_type': 'tax',
+                    'account_id': ref('acc_vat_output'),
+                    'factor_percent': -100,
+                }),
+            ]"/>
+        </record>
+
+        <!-- ============================================================
+             VAT 15% - Purchase Tax (ضريبة القيمة المضافة 15% - مشتريات)
+             ============================================================ -->
+        <record id="tax_purchase_vat_15" model="account.tax.template">
+            <field name="name">VAT 15% (مشتريات)</field>
+            <field name="type_tax_use">purchase</field>
+            <field name="amount">15</field>
+            <field name="amount_type">percent</field>
+            <field name="description">VAT 15%</field>
+            <field name="tax_group_id" ref="tax_group_vat"/>
+            <field name="chart_template_id" ref="construction_chart_template"/>
+            <field name="price_include" eval="True"/>
+            <field name="invoice_repartition_line_ids" eval="[
+                (5, 0, 0),
+                (0, 0, {
+                    'repartition_type': 'base',
+                    'factor_percent': 100,
+                }),
+                (0, 0, {
+                    'repartition_type': 'tax',
+                    'account_id': ref('acc_vat_input'),
+                    'factor_percent': 100,
+                }),
+            ]"/>
+            <field name="refund_repartition_line_ids" eval="[
+                (5, 0, 0),
+                (0, 0, {
+                    'repartition_type': 'base',
+                    'factor_percent': 100,
+                }),
+                (0, 0, {
+                    'repartition_type': 'tax',
+                    'account_id': ref('acc_vat_input'),
+                    'factor_percent': -100,
+                }),
+            ]"/>
+        </record>
+
+        <!-- ============================================================
+             Withholding Tax 5% - Contracts (ضريبة استقطاع 5% - عقود)
+             ============================================================ -->
+        <record id="tax_wht_5_contract" model="account.tax.template">
+            <field name="name">WHT 5% (عقود مقاولات)</field>
+            <field name="type_tax_use">purchase</field>
+            <field name="amount">5</field>
+            <field name="amount_type">percent</field>
+            <field name="description">WHT 5%</field>
+            <field name="tax_group_id" ref="tax_group_wht"/>
+            <field name="chart_template_id" ref="construction_chart_template"/>
+            <field name="price_include" eval="True"/>
+            <field name="invoice_repartition_line_ids" eval="[
+                (5, 0, 0),
+                (0, 0, {
+                    'repartition_type': 'base',
+                    'factor_percent': 100,
+                }),
+                (0, 0, {
+                    'repartition_type': 'tax',
+                    'factor_percent': 100,
+                }),
+                (0, 0, {
+                    'repartition_type': 'tax',
+                    'factor_percent': -100,
+                    'account_id': ref('acc_wht_payable'),
+                }),
+            ]"/>
+            <field name="refund_repartition_line_ids" eval="[
+                (5, 0, 0),
+                (0, 0, {
+                    'repartition_type': 'base',
+                    'factor_percent': 100,
+                }),
+                (0, 0, {
+                    'repartition_type': 'tax',
+                    'factor_percent': -100,
+                }),
+                (0, 0, {
+                    'repartition_type': 'tax',
+                    'factor_percent': 100,
+                    'account_id': ref('acc_wht_payable'),
+                }),
+            ]"/>
+        </record>
+
+        <!-- ============================================================
+             Withholding Tax 5% - Rentals (ضريبة استقطاع 5% - إيجارات)
+             ============================================================ -->
+        <record id="tax_wht_5_rental" model="account.tax.template">
+            <field name="name">WHT 5% (إيجار معدات)</field>
+            <field name="type_tax_use">purchase</field>
+            <field name="amount">5</field>
+            <field name="amount_type">percent</field>
+            <field name="description">WHT 5% Rent</field>
+            <field name="tax_group_id" ref="tax_group_wht"/>
+            <field name="chart_template_id" ref="construction_chart_template"/>
+            <field name="price_include" eval="True"/>
+            <field name="invoice_repartition_line_ids" eval="[
+                (5, 0, 0),
+                (0, 0, {
+                    'repartition_type': 'base',
+                    'factor_percent': 100,
+                }),
+                (0, 0, {
+                    'repartition_type': 'tax',
+                    'factor_percent': 100,
+                }),
+                (0, 0, {
+                    'repartition_type': 'tax',
+                    'factor_percent': -100,
+                    'account_id': ref('acc_wht_payable'),
+                }),
+            ]"/>
+            <field name="refund_repartition_line_ids" eval="[
+                (5, 0, 0),
+                (0, 0, {
+                    'repartition_type': 'base',
+                    'factor_percent': 100,
+                }),
+                (0, 0, {
+                    'repartition_type': 'tax',
+                    'factor_percent': -100,
+                }),
+                (0, 0, {
+                    'repartition_type': 'tax',
+                    'factor_percent': 100,
+                    'account_id': ref('acc_wht_payable'),
+                }),
+            ]"/>
+        </record>
+
+        <!-- ============================================================
+             Withholding Tax 20% - Consulting (ضريبة استقطاع 20% - استشارات)
+             ============================================================ -->
+        <record id="tax_wht_20_consulting" model="account.tax.template">
+            <field name="name">WHT 20% (استشارات مهنية)</field>
+            <field name="type_tax_use">purchase</field>
+            <field name="amount">20</field>
+            <field name="amount_type">percent</field>
+            <field name="description">WHT 20%</field>
+            <field name="tax_group_id" ref="tax_group_wht"/>
+            <field name="chart_template_id" ref="construction_chart_template"/>
+            <field name="price_include" eval="True"/>
+            <field name="invoice_repartition_line_ids" eval="[
+                (5, 0, 0),
+                (0, 0, {
+                    'repartition_type': 'base',
+                    'factor_percent': 100,
+                }),
+                (0, 0, {
+                    'repartition_type': 'tax',
+                    'factor_percent': 100,
+                }),
+                (0, 0, {
+                    'repartition_type': 'tax',
+                    'factor_percent': -100,
+                    'account_id': ref('acc_wht_payable'),
+                }),
+            ]"/>
+            <field name="refund_repartition_line_ids" eval="[
+                (5, 0, 0),
+                (0, 0, {
+                    'repartition_type': 'base',
+                    'factor_percent': 100,
+                }),
+                (0, 0, {
+                    'repartition_type': 'tax',
+                    'factor_percent': -100,
+                }),
+                (0, 0, {
+                    'repartition_type': 'tax',
+                    'factor_percent': 100,
+                    'account_id': ref('acc_wht_payable'),
+                }),
+            ]"/>
+        </record>
+
+        <!-- ============================================================
+             Zero-Rated VAT (VAT 0% - صفرية)
+             ============================================================ -->
+        <record id="tax_sale_vat_0" model="account.tax.template">
+            <field name="name">VAT 0% (مبيعات)</field>
+            <field name="type_tax_use">sale</field>
+            <field name="amount">0</field>
+            <field name="amount_type">percent</field>
+            <field name="description">VAT 0%</field>
+            <field name="tax_group_id" ref="tax_group_vat"/>
+            <field name="chart_template_id" ref="construction_chart_template"/>
+            <field name="price_include" eval="False"/>
+        </record>
+        <record id="tax_purchase_vat_0" model="account.tax.template">
+            <field name="name">VAT 0% (مشتريات)</field>
+            <field name="type_tax_use">purchase</field>
+            <field name="amount">0</field>
+            <field name="amount_type">percent</field>
+            <field name="description">VAT 0%</field>
+            <field name="tax_group_id" ref="tax_group_vat"/>
+            <field name="chart_template_id" ref="construction_chart_template"/>
+            <field name="price_include" eval="False"/>
+        </record>
+
+    </data>
+</odoo>

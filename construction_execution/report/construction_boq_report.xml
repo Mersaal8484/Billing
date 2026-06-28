@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_construction_boq">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2 class="text-center">Bill of Quantities</h2>
+                        <h4 class="text-center"><span t-field="doc.name"/></h4>
+                        <h5 class="text-center">Project: <span t-field="doc.project_id.name"/></h5>
+                        <hr/>
+                        <table class="table table-bordered" style="font-size: 10px;">
+                            <thead>
+                                <tr>
+                                    <th>Code</th>
+                                    <th>Description</th>
+                                    <th>Unit</th>
+                                    <th class="text-right">Qty</th>
+                                    <th class="text-right">Rate</th>
+                                    <th class="text-right">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="doc.item_ids" t-as="item">
+                                    <tr>
+                                        <td><span t-field="item.code"/></td>
+                                        <td><span t-field="item.name"/></td>
+                                        <td><span t-field="item.unit.name"/></td>
+                                        <td class="text-right"><span t-field="item.quantity"/></td>
+                                        <td class="text-right"><span t-field="item.rate" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
+                                        <td class="text-right"><span t-field="item.amount" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <th colspan="3" class="text-right">Total</th>
+                                    <th class="text-right"><span t-field="doc.total_quantity"/></th>
+                                    <th></th>
+                                    <th class="text-right"><span t-field="doc.total_amount" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                        <p><strong>Status:</strong> <span t-field="doc.state"/></p>
+                        <p><strong>Version:</strong> <span t-field="doc.version"/></p>
+                        <p><strong>Date:</strong> <span t-field="doc.date"/></p>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

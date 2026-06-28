@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Daily Cost Update Cron -->
+        <record id="cron_update_cost_control" model="ir.cron">
+            <field name="name">Update Cost Control Records</field>
+            <field name="model_id" ref="model_construction_cost_control"/>
+            <field name="state">code</field>
+            <field name="code">model.cron_update_costs()</field>
+            <field name="user_id" ref="base.user_root"/>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="numbercall">-1</field>
+            <field name="active">True</field>
+        </record>
+
+        <!-- Weekly IPC Reminder Cron -->
+        <record id="cron_ipc_reminder" model="ir.cron">
+            <field name="name">IPC Submission Reminder</field>
+            <field name="model_id" ref="model_construction_ipc"/>
+            <field name="state">code</field>
+            <field name="code">model.cron_send_ipc_reminder()</field>
+            <field name="user_id" ref="base.user_root"/>
+            <field name="interval_number">1</field>
+            <field name="interval_type">weeks</field>
+            <field name="numbercall">-1</field>
+            <field name="active">True</field>
+        </record>
+
+        <!-- Monthly Progress Snapshot -->
+        <record id="cron_monthly_progress" model="ir.cron">
+            <field name="name">Monthly Progress Snapshot</field>
+            <field name="model_id" ref="model_construction_progress"/>
+            <field name="state">code</field>
+            <field name="code">model.cron_create_monthly_snapshot()</field>
+            <field name="user_id" ref="base.user_root"/>
+            <field name="interval_number">1</field>
+            <field name="interval_type">months</field>
+            <field name="numbercall">-1</field>
+            <field name="active">True</field>
+        </record>
+
+        <!-- Forecast Update Cron -->
+        <record id="cron_forecast_update" model="ir.cron">
+            <field name="name">Update Forecast from Actuals</field>
+            <field name="model_id" ref="model_construction_forecast"/>
+            <field name="state">code</field>
+            <field name="code">model.cron_update_from_actuals()</field>
+            <field name="user_id" ref="base.user_root"/>
+            <field name="interval_number">1</field>
+            <field name="interval_type">weeks</field>
+            <field name="numbercall">-1</field>
+            <field name="active">True</field>
+        </record>
+    </data>
+</odoo>

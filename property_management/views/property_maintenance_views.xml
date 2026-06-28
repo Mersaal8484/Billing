@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_property_maintenance_tree" model="ir.ui.view">
+        <field name="name">property.maintenance.tree</field>
+        <field name="model">property.maintenance</field>
+        <field name="arch" type="xml">
+            <tree string="Maintenance Requests" decoration-danger="priority=='urgent'" decoration-warning="priority=='high'" decoration-success="state=='done'" decoration-info="state in ('approved','in_progress')">
+                <field name="name"/>
+                <field name="unit_id"/>
+                <field name="maintenance_type"/>
+                <field name="priority" widget="priority"/>
+                <field name="state" widget="badge"/>
+                <field name="date_requested"/>
+                <field name="date_scheduled"/>
+                <field name="assigned_to"/>
+                <field name="total_cost" widget="monetary" sum="Total"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_property_maintenance_form" model="ir.ui.view">
+        <field name="name">property.maintenance.form</field>
+        <field name="model">property.maintenance</field>
+        <field name="arch" type="xml">
+            <form string="Maintenance Request">
+                <header>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,submitted,approved,in_progress,done" clickable="True"/>
+                    <button type="object" name="action_submit" string="Submit" states="draft" class="btn-primary"/>
+                    <button type="object" name="action_approve" string="Approve" states="submitted" class="btn-primary"/>
+                    <button type="object" name="action_start" string="Start Work" states="approved" class="btn-success"/>
+                    <button type="object" name="action_done" string="Complete" states="in_progress" class="btn-success"/>
+                    <button type="object" name="action_cancel" string="Cancel" states="draft,submitted,approved" class="btn-danger"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="unit_id"/>
+                            <field name="property_id"/>
+                            <field name="tenant_id"/>
+                            <field name="maintenance_type"/>
+                            <field name="priority"/>
+                        </group>
+                        <group>
+                            <field name="date_requested"/>
+                            <field name="date_scheduled"/>
+                            <field name="date_completed"/>
+                            <field name="assigned_to"/>
+                            <field name="vendor_id"/>
+                        </group>
+                    </group>
+                    <field name="description"/>
+                    <notebook>
+                        <page string="Costs">
+                            <group>
+                                <field name="parts_cost" widget="monetary"/>
+                                <field name="labor_cost" widget="monetary"/>
+                                <field name="other_cost" widget="monetary"/>
+                                <field name="total_cost" widget="monetary"/>
+                            </group>
+                        </page>
+                        <page string="Photos">
+                            <group string="Before">
+                                <field name="before_images">
+                                    <tree editable="bottom">
+                                        <field name="image" widget="image"/>
+                                        <field name="name"/>
+                                    </tree>
+                                </field>
+                            </group>
+                            <group string="After">
+                                <field name="after_images">
+                                    <tree editable="bottom">
+                                        <field name="image" widget="image"/>
+                                        <field name="name"/>
+                                    </tree>
+                                </field>
+                            </group>
+                        </page>
+                        <page string="Completion">
+                            <field name="resolution"/>
+                            <field name="completion_report"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" widget="mail_followers"/>
+                    <field name="activity_ids" widget="mail_activity"/>
+                    <field name="message_ids" widget="mail_thread"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_property_maintenance_search" model="ir.ui.view">
+        <field name="name">property.maintenance.search</field>
+        <field name="model">property.maintenance</field>
+        <field name="arch" type="xml">
+            <search string="Search Maintenance">
+                <field name="name"/>
+                <field name="unit_id"/>
+                <field name="assigned_to"/>
+                <filter name="open" string="Open" domain="[('state','not in',('done','cancelled'))]"/>
+                <filter name="urgent" string="Urgent" domain="[('priority','=','urgent')]"/>
+                <filter name="group_by_state" string="Status" context="{'group_by': 'state'}"/>
+                <filter name="group_by_priority" string="Priority" context="{'group_by': 'priority'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_property_maintenance_pivot" model="ir.ui.view">
+        <field name="name">property.maintenance.pivot</field>
+        <field name="model">property.maintenance</field>
+        <field name="arch" type="xml">
+            <pivot string="Maintenance Analysis" disable_linking="1">
+                <field name="total_cost" type="measure"/>
+                <field name="maintenance_type" type="row"/>
+                <field name="priority" type="col"/>
+                <field name="state" type="row"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="action_property_maintenance" model="ir.actions.act_window">
+        <field name="name">Maintenance</field>
+        <field name="res_model">property.maintenance</field>
+        <field name="view_mode">tree,form,pivot</field>
+        <field name="search_view_id" ref="view_property_maintenance_search"/>
+    </record>
+</odoo>

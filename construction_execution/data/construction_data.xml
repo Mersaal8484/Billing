@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Resource Types -->
+        <record id="resource_type_material" model="construction.resource.type">
+            <field name="name">Material</field>
+            <field name="code">MAT</field>
+            <field name="sequence">10</field>
+        </record>
+        <record id="resource_type_labor" model="construction.resource.type">
+            <field name="name">Labor</field>
+            <field name="code">LAB</field>
+            <field name="sequence">20</field>
+        </record>
+        <record id="resource_type_equipment" model="construction.resource.type">
+            <field name="name">Equipment</field>
+            <field name="code">EQP</field>
+            <field name="sequence">30</field>
+        </record>
+        <record id="resource_type_subcontract" model="construction.resource.type">
+            <field name="name">Subcontract</field>
+            <field name="code">SUB</field>
+            <field name="sequence">40</field>
+        </record>
+        <record id="resource_type_overhead" model="construction.resource.type">
+            <field name="name">Overhead</field>
+            <field name="code">OVH</field>
+            <field name="sequence">50</field>
+        </record>
+        <record id="resource_type_profit" model="construction.resource.type">
+            <field name="name">Profit</field>
+            <field name="code">PRF</field>
+            <field name="sequence">60</field>
+        </record>
+        <record id="resource_type_misc" model="construction.resource.type">
+            <field name="name">Miscellaneous</field>
+            <field name="code">MISC</field>
+            <field name="sequence">70</field>
+        </record>
+
+        <!-- BOQ Statuses -->
+        <record id="boq_status_draft" model="construction.boq.status">
+            <field name="name">Draft</field>
+            <field name="code">DRAFT</field>
+            <field name="sequence">10</field>
+        </record>
+        <record id="boq_status_submitted" model="construction.boq.status">
+            <field name="name">Submitted</field>
+            <field name="code">SUBMITTED</field>
+            <field name="sequence">20</field>
+        </record>
+        <record id="boq_status_approved" model="construction.boq.status">
+            <field name="name">Approved</field>
+            <field name="code">APPROVED</field>
+            <field name="sequence">30</field>
+        </record>
+        <record id="boq_status_revised" model="construction.boq.status">
+            <field name="name">Revised</field>
+            <field name="code">REVISED</field>
+            <field name="sequence">40</field>
+        </record>
+
+        <!-- Material Request Statuses -->
+        <record id="material_request_status_draft" model="construction.material.request.status">
+            <field name="name">Draft</field>
+            <field name="code">DRAFT</field>
+            <field name="sequence">10</field>
+        </record>
+        <record id="material_request_status_submitted" model="construction.material.request.status">
+            <field name="name">Submitted</field>
+            <field name="code">SUBMITTED</field>
+            <field name="sequence">20</field>
+        </record>
+        <record id="material_request_status_approved" model="construction.material.request.status">
+            <field name="name">Approved</field>
+            <field name="code">APPROVED</field>
+            <field name="sequence">30</field>
+        </record>
+        <record id="material_request_status_ordered" model="construction.material.request.status">
+            <field name="name">Ordered</field>
+            <field name="code">ORDERED</field>
+            <field name="sequence">40</field>
+        </record>
+        <record id="material_request_status_received" model="construction.material.request.status">
+            <field name="name">Received</field>
+            <field name="code">RECEIVED</field>
+            <field name="sequence">50</field>
+        </record>
+        <record id="material_request_status_cancelled" model="construction.material.request.status">
+            <field name="name">Cancelled</field>
+            <field name="code">CANCELLED</field>
+            <field name="sequence">60</field>
+        </record>
+
+        <!-- IPC Statuses -->
+        <record id="ipc_status_draft" model="construction.ipc.status">
+            <field name="name">Draft</field>
+            <field name="code">DRAFT</field>
+            <field name="sequence">10</field>
+        </record>
+        <record id="ipc_status_submitted" model="construction.ipc.status">
+            <field name="name">Submitted</field>
+            <field name="code">SUBMITTED</field>
+            <field name="sequence">20</field>
+        </record>
+        <record id="ipc_status_reviewed" model="construction.ipc.status">
+            <field name="name">Reviewed</field>
+            <field name="code">REVIEWED</field>
+            <field name="sequence">30</field>
+        </record>
+        <record id="ipc_status_certified" model="construction.ipc.status">
+            <field name="name">Certified</field>
+            <field name="code">CERTIFIED</field>
+            <field name="sequence">40</field>
+        </record>
+        <record id="ipc_status_approved" model="construction.ipc.status">
+            <field name="name">Approved</field>
+            <field name="code">APPROVED</field>
+            <field name="sequence">50</field>
+        </record>
+        <record id="ipc_status_paid" model="construction.ipc.status">
+            <field name="name">Paid</field>
+            <field name="code">PAID</field>
+            <field name="sequence">60</field>
+        </record>
+        <record id="ipc_status_cancelled" model="construction.ipc.status">
+            <field name="name">Cancelled</field>
+            <field name="code">CANCELLED</field>
+            <field name="sequence">70</field>
+        </record>
+    </data>
+</odoo>

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_property_lease_renew_wizard" model="ir.ui.view">
+        <field name="name">property.lease.renew.wizard</field>
+        <field name="model">property.lease.renew.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Renew Lease">
+                <group>
+                    <field name="lease_id"/>
+                    <field name="increase_percent"/>
+                    <field name="new_rent" widget="monetary"/>
+                    <field name="new_start_date"/>
+                    <field name="new_end_date"/>
+                </group>
+                <footer>
+                    <button name="action_renew" string="Renew" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-default" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_property_payment_register_wizard" model="ir.ui.view">
+        <field name="name">property.payment.register.wizard</field>
+        <field name="model">property.payment.register.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Register Payment">
+                <group>
+                    <field name="schedule_id"/>
+                    <field name="tenant_id"/>
+                    <field name="amount" widget="monetary"/>
+                    <field name="payment_date"/>
+                    <field name="payment_method"/>
+                    <field name="journal_id" options="{'no_create': True}"/>
+                    <field name="reference"/>
+                </group>
+                <footer>
+                    <button name="action_register" string="Register Payment" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-default" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

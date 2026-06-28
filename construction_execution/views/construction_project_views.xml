@@ -1,0 +1,279 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_construction_project_tree" model="ir.ui.view">
+        <field name="name">construction.project.tree</field>
+        <field name="model">construction.project</field>
+        <field name="arch" type="xml">
+            <tree string="Construction Projects" decoration-info="project_stage=='planning'" decoration-success="project_stage=='completed'" decoration-warning="project_stage=='on_hold'" decoration-danger="project_stage=='cancelled'">
+                <field name="code"/>
+                <field name="name"/>
+                <field name="partner_id"/>
+                <field name="project_manager_id"/>
+                <field name="project_stage"/>
+                <field name="contract_amount" sum="Total"/>
+                <field name="progress_percent" widget="progressbar"/>
+                <field name="start_date"/>
+                <field name="end_date"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_construction_project_form" model="ir.ui.view">
+        <field name="name">construction.project.form</field>
+        <field name="model">construction.project</field>
+        <field name="arch" type="xml">
+            <form string="Construction Project">
+                <header>
+                    <field name="project_stage" widget="statusbar" clickable="True"/>
+                    <button type="object" name="action_create_analytic_account" string="Create Analytic Account" states="planning,tender" class="btn-primary"/>
+                    <button type="object" name="action_create_project_project" string="Create Odoo Project" states="planning,awarded" class="btn-primary"/>
+                    <button type="object" name="action_create_tasks_from_boq" string="Create Tasks from BOQ" states="execution" class="btn-primary"/>
+                    <button type="object" name="action_open_boq" string="BOQ" class="oe_stat_button" icon="fa-list"/>
+                    <button type="object" name="action_open_variations" string="Variations" class="oe_stat_button" icon="fa-exchange"/>
+                    <button type="object" name="action_open_progress" string="Progress" class="oe_stat_button" icon="fa-line-chart"/>
+                    <button type="object" name="action_open_ipc" string="IPCs" class="oe_stat_button" icon="fa-file-text"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_boq" type="object" class="oe_stat_button" icon="fa-list">
+                            <div class="o_stat_info">
+                                <field name="boq_count" class="o_stat_value"/>
+                                <span class="o_stat_text">BOQs</span>
+                            </div>
+                        </button>
+                        <button name="action_open_variations" type="object" class="oe_stat_button" icon="fa-exchange">
+                            <div class="o_stat_info">
+                                <field name="variation_count" class="o_stat_value"/>
+                                <span class="o_stat_text">Variations</span>
+                            </div>
+                        </button>
+                        <button name="action_open_progress" type="object" class="oe_stat_button" icon="fa-line-chart">
+                            <div class="o_stat_info">
+                                <field name="progress_count" class="o_stat_value"/>
+                                <span class="o_stat_text">Progress</span>
+                            </div>
+                        </button>
+                        <button name="action_open_ipc" type="object" class="oe_stat_button" icon="fa-file-text">
+                            <div class="o_stat_info">
+                                <field name="ipc_count" class="o_stat_value"/>
+                                <span class="o_stat_text">IPCs</span>
+                            </div>
+                        </button>
+                        <button name="action_open_ipc" type="object" class="oe_stat_button" icon="fa-truck">
+                            <div class="o_stat_info">
+                                <field name="material_request_count" class="o_stat_value"/>
+                                <span class="o_stat_text">Mat. Requests</span>
+                            </div>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name" placeholder="Project Name"/></h1>
+                        <group>
+                            <group>
+                                <field name="code"/>
+                                <field name="project_type"/>
+                                <field name="project_stage"/>
+                            </group>
+                            <group>
+                                <field name="partner_id"/>
+                                <field name="user_id"/>
+                                <field name="project_manager_id"/>
+                            </group>
+                        </group>
+                    </div>
+                    <notebook>
+                        <page string="Details">
+                            <group>
+                                <group>
+                                    <field name="description"/>
+                                    <field name="arabic_name"/>
+                                    <field name="arabic_description"/>
+                                    <field name="contract_type"/>
+                                    <field name="contract_amount" widget="monetary"/>
+                                </group>
+                                <group>
+                                    <field name="start_date"/>
+                                    <field name="end_date"/>
+                                    <field name="duration_days"/>
+                                    <field name="remaining_days"/>
+                                    <field name="progress_percent" widget="progressbar"/>
+                                </group>
+                            </group>
+                            <group string="Location">
+                                <field name="location"/>
+                                <field name="city"/>
+                                <field name="country_id"/>
+                                <field name="latitude"/>
+                                <field name="longitude"/>
+                            </group>
+                            <group string="Partners">
+                                <field name="consultant_id"/>
+                                <field name="contractor_id"/>
+                                <field name="subcontractor_ids" widget="many2many_tags"/>
+                            </group>
+                        </page>
+                        <page string="Financials">
+                            <group>
+                                <group>
+                                    <field name="project_value" widget="monetary"/>
+                                    <field name="executed_value" widget="monetary"/>
+                                    <field name="remaining_value" widget="monetary"/>
+                                </group>
+                                <group>
+                                    <field name="budget_cost" widget="monetary"/>
+                                    <field name="actual_cost" widget="monetary"/>
+                                    <field name="cost_variance" widget="monetary"/>
+                                </group>
+                            </group>
+                            <group string="Earned Value">
+                                <field name="spi"/>
+                                <field name="cpi"/>
+                                <field name="eac" widget="monetary"/>
+                                <field name="etc" widget="monetary"/>
+                                <field name="vac" widget="monetary"/>
+                            </group>
+                        </page>
+                        <page string="Integration">
+                            <group string="Odoo Integration">
+                                <group>
+                                    <field name="analytic_account_id"/>
+                                    <field name="project_project_id"/>
+                                    <field name="total_hours_spent"/>
+                                    <field name="total_timesheet_cost" widget="monetary"/>
+                                </group>
+                                <group>
+                                    <field name="sale_order_ids" readonly="1"/>
+                                </group>
+                            </group>
+                            <group string="Timesheet Lines" colspan="2">
+                                <field name="timesheet_line_ids" readonly="1">
+                                    <tree string="Timesheet Entries" editable="false">
+                                        <field name="date"/>
+                                        <field name="name"/>
+                                        <field name="unit_amount"/>
+                                        <field name="amount"/>
+                                    </tree>
+                                </field>
+                            </group>
+                        </page>
+                        <page string="Notes">
+                            <field name="note" widget="html"/>
+                            <field name="internal_note"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" widget="mail_followers"/>
+                    <field name="activity_ids" widget="mail_activity"/>
+                    <field name="message_ids" widget="mail_thread"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_construction_project_search" model="ir.ui.view">
+        <field name="name">construction.project.search</field>
+        <field name="model">construction.project</field>
+        <field name="arch" type="xml">
+            <search string="Search Projects">
+                <field name="name"/>
+                <field name="code"/>
+                <field name="partner_id"/>
+                <field name="project_manager_id"/>
+                <filter name="my_projects" string="My Projects" domain="[('user_id','=',uid)]"/>
+                <filter name="active" string="Active" domain="[('active','=',True)]"/>
+                <separator/>
+                <filter name="stage_planning" string="Planning" domain="[('project_stage','=','planning')]"/>
+                <filter name="stage_execution" string="Execution" domain="[('project_stage','=','execution')]"/>
+                <filter name="stage_completed" string="Completed" domain="[('project_stage','=','completed')]"/>
+                <separator/>
+                <filter name="group_by_stage" string="Stage" context="{'group_by': 'project_stage'}"/>
+                <filter name="group_by_type" string="Type" context="{'group_by': 'project_type'}"/>
+                <filter name="group_by_manager" string="Manager" context="{'group_by': 'user_id'}"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_by_stage_menu" string="Stage" context="{'group_by': 'project_stage'}"/>
+                    <filter name="group_by_company" string="Company" context="{'group_by': 'company_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_construction_project_kanban" model="ir.ui.view">
+        <field name="name">construction.project.kanban</field>
+        <field name="model">construction.project</field>
+        <field name="arch" type="xml">
+            <kanban class="o_kanban_mobile">
+                <field name="name"/>
+                <field name="code"/>
+                <field name="project_stage"/>
+                <field name="progress_percent"/>
+                <field name="contract_amount"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="oe_kanban_global_click">
+                            <div class="oe_kanban_content">
+                                <div class="o_kanban_card_header">
+                                    <h4><field name="code"/> - <field name="name"/></h4>
+                                </div>
+                                <div class="o_kanban_card_content">
+                                    <field name="project_stage" widget="badge"/>
+                                    <div class="o_progressbar" role="progressbar" aria-valuenow="record.progress_percent.raw_value" aria-valuemin="0" aria-valuemax="100">
+                                        <div class="o_progress" style="width: 100%">
+                                            <span t-att-style="'width: ' + record.progress_percent.raw_value + '%'" class="o_progressbar_complete bg-success"/>
+                                        </div>
+                                        <span class="o_progressbar_value"><t t-esc="record.progress_percent.value"/>%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="view_construction_project_pivot" model="ir.ui.view">
+        <field name="name">construction.project.pivot</field>
+        <field name="model">construction.project</field>
+        <field name="arch" type="xml">
+            <pivot string="Project Analysis" disable_linking="1">
+                <field name="contract_amount" type="measure" string="Contract Amount"/>
+                <field name="progress_percent" type="measure" string="Progress"/>
+                <field name="boq_count" type="measure" string="BOQ Count"/>
+                <field name="project_stage" type="row"/>
+                <field name="project_type" type="col"/>
+                <field name="company_id" type="row"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_construction_project_graph" model="ir.ui.view">
+        <field name="name">construction.project.graph</field>
+        <field name="model">construction.project</field>
+        <field name="arch" type="xml">
+            <graph string="Project Graph" type="bar">
+                <field name="contract_amount" type="measure"/>
+                <field name="project_stage" type="row"/>
+                <field name="project_type" type="col"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="action_construction_project" model="ir.actions.act_window">
+        <field name="name">Projects</field>
+        <field name="res_model">construction.project</field>
+        <field name="view_mode">tree,form,kanban,pivot,graph</field>
+        <field name="search_view_id" ref="view_construction_project_search"/>
+        <field name="help" type="html">
+            <p>Manage construction projects from planning to closeout.</p>
+        </field>
+    </record>
+
+    <record id="action_construction_project_tree" model="ir.actions.act_window">
+        <field name="name">All Projects</field>
+        <field name="res_model">construction.project</field>
+        <field name="view_mode">tree,form</field>
+        <field name="view_id" ref="view_construction_project_tree"/>
+    </record>
+</odoo>

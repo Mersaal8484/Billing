@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="ye_tax_bracket_tree_view" model="ir.ui.view">
+            <field name="name">ye.tax.bracket.tree</field>
+            <field name="model">ye.tax.bracket</field>
+            <field name="arch" type="xml">
+                <tree>
+                    <field name="name"/>
+                    <field name="from_amount" sum="Total"/>
+                    <field name="to_amount"/>
+                    <field name="rate"/>
+                    <field name="fixed_amount"/>
+                    <field name="active"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="ye_tax_bracket_form_view" model="ir.ui.view">
+            <field name="name">ye.tax.bracket.form</field>
+            <field name="model">ye.tax.bracket</field>
+            <field name="arch" type="xml">
+                <form>
+                    <sheet>
+                        <group>
+                            <field name="name"/>
+                            <field name="from_amount"/>
+                            <field name="to_amount"/>
+                            <field name="rate"/>
+                            <field name="fixed_amount"/>
+                            <field name="active"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="ye_tax_bracket_action" model="ir.actions.act_window">
+            <field name="name">Yemeni Tax Brackets</field>
+            <field name="res_model">ye.tax.bracket</field>
+            <field name="view_mode">tree,form</field>
+            <field name="help" type="html">
+                <p>Configure the progressive income tax brackets for Yemeni payroll.</p>
+            </field>
+        </record>
+
+        <menuitem id="menu_ye_tax_brackets" name="Yemeni Tax Brackets"
+            parent="om_hr_payroll.menu_hr_payroll_configuration"
+            sequence="50" action="ye_tax_bracket_action"/>
+
+    </data>
+</odoo>

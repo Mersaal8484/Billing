@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="view_res_config_settings_inherit_ye" model="ir.ui.view">
+            <field name="name">res.config.settings.view.inherit.ye</field>
+            <field name="model">res.config.settings</field>
+            <field name="inherit_id" ref="om_hr_payroll.res_config_settings_view_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//div[@id='om_hr_payroll_account']" position="after">
+                    <div class="col-12 col-lg-6 o_setting_box" id="ye_social_insurance">
+                        <div class="o_setting_left_pane"/>
+                        <div class="o_setting_right_pane">
+                            <span class="o_form_label">Social Insurance</span>
+                            <div class="text-muted">
+                                Configure Yemeni social insurance rates and limits.
+                            </div>
+                            <div class="mt16">
+                                <label for="social_insurance_employee_rate"/>
+                                <field name="social_insurance_employee_rate" class="oe_inline"/> %
+                                <label for="social_insurance_employer_rate"/>
+                                <field name="social_insurance_employer_rate" class="oe_inline"/> %
+                            </div>
+                            <div>
+                                <label for="social_insurance_min_base"/>
+                                <field name="social_insurance_min_base" class="oe_inline"/>
+                                <label for="social_insurance_max_base"/>
+                                <field name="social_insurance_max_base" class="oe_inline"/>
+                            </div>
+                            <div>
+                                <label for="social_insurance_payable_account_id"/>
+                                <field name="social_insurance_payable_account_id"
+                                    context="{'default_account_type': 'liability_current'}"/>
+                            </div>
+                            <div>
+                                <label for="social_insurance_expense_account_id"/>
+                                <field name="social_insurance_expense_account_id"
+                                    context="{'default_account_type': 'expense'}"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-lg-6 o_setting_box" id="ye_income_tax">
+                        <div class="o_setting_left_pane"/>
+                        <div class="o_setting_right_pane">
+                            <span class="o_form_label">Income Tax</span>
+                            <div class="text-muted">
+                                Configure Yemeni income tax exemption and payable account.
+                            </div>
+                            <div class="mt16">
+                                <label for="tax_exemption_amount"/>
+                                <field name="tax_exemption_amount" class="oe_inline"/> YER/month
+                            </div>
+                            <div>
+                                <label for="tax_payable_account_id"/>
+                                <field name="tax_payable_account_id"
+                                    context="{'default_account_type': 'liability_current'}"/>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-lg-6 o_setting_box" id="ye_eos_provision">
+                        <div class="o_setting_left_pane"/>
+                        <div class="o_setting_right_pane">
+                            <span class="o_form_label">End-of-Service Provision</span>
+                            <div class="text-muted">
+                                Configure EOS provision accounts.
+                            </div>
+                            <div class="mt16">
+                                <label for="eos_provision_account_id"/>
+                                <field name="eos_provision_account_id"
+                                    context="{'default_account_type': 'liability_non_current'}"/>
+                            </div>
+                            <div>
+                                <label for="eos_expense_account_id"/>
+                                <field name="eos_expense_account_id"
+                                    context="{'default_account_type': 'expense'}"/>
+                            </div>
+                        </div>
+                    </div>
+                </xpath>
+            </field>
+        </record>
+
+    </data>
+</odoo>

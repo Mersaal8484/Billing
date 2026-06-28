@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_property_document_tree" model="ir.ui.view">
+        <field name="name">property.document.tree</field>
+        <field name="model">property.document</field>
+        <field name="arch" type="xml">
+            <tree string="Documents">
+                <field name="name"/>
+                <field name="document_type"/>
+                <field name="property_id"/>
+                <field name="unit_id"/>
+                <field name="date"/>
+                <field name="expiry_date"/>
+                <field name="is_confidential" widget="boolean_fa"/>
+                <field name="is_archived" widget="boolean_fa"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_property_document_form" model="ir.ui.view">
+        <field name="name">property.document.form</field>
+        <field name="model">property.document</field>
+        <field name="arch" type="xml">
+            <form string="Document">
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="document_type"/>
+                            <field name="property_id"/>
+                            <field name="unit_id"/>
+                            <field name="owner_id"/>
+                            <field name="tenant_id"/>
+                            <field name="lease_id"/>
+                        </group>
+                        <group>
+                            <field name="date"/>
+                            <field name="expiry_date"/>
+                            <field name="file" widget="binary" filename="filename"/>
+                            <field name="filename"/>
+                            <field name="is_confidential"/>
+                            <field name="is_archived"/>
+                        </group>
+                    </group>
+                    <field name="description"/>
+                    <field name="notes"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_property_document" model="ir.actions.act_window">
+        <field name="name">Documents</field>
+        <field name="res_model">property.document</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

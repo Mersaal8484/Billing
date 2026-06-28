@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="seq_construction_project" model="ir.sequence">
+            <field name="name">Construction Project</field>
+            <field name="code">construction.project</field>
+            <field name="prefix">PRJ-</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <record id="seq_construction_boq" model="ir.sequence">
+            <field name="name">Construction BOQ</field>
+            <field name="code">construction.boq</field>
+            <field name="prefix">BOQ-</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <record id="seq_construction_material_request" model="ir.sequence">
+            <field name="name">Construction Material Request</field>
+            <field name="code">construction.material.request</field>
+            <field name="prefix">MR-</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <record id="seq_construction_material_issue" model="ir.sequence">
+            <field name="name">Construction Material Issue</field>
+            <field name="code">construction.material.issue</field>
+            <field name="prefix">MI-</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <record id="seq_construction_material_return" model="ir.sequence">
+            <field name="name">Construction Material Return</field>
+            <field name="code">construction.material.return</field>
+            <field name="prefix">MRT-</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <record id="seq_construction_variation" model="ir.sequence">
+            <field name="name">Construction Variation</field>
+            <field name="code">construction.variation</field>
+            <field name="prefix">VO-</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <record id="seq_construction_progress" model="ir.sequence">
+            <field name="name">Construction Progress</field>
+            <field name="code">construction.progress</field>
+            <field name="prefix">PRG-</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <record id="seq_construction_ipc" model="ir.sequence">
+            <field name="name">Construction IPC</field>
+            <field name="code">construction.ipc</field>
+            <field name="prefix">IPC-</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+    </data>
+</odoo>

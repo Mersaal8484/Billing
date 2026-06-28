@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_property_payment_schedule_tree" model="ir.ui.view">
+        <field name="name">property.payment.schedule.tree</field>
+        <field name="model">property.payment.schedule</field>
+        <field name="arch" type="xml">
+            <tree string="Payment Schedule" decoration-danger="state=='overdue'" decoration-success="state=='paid'" decoration-info="state=='pending'">
+                <field name="name"/>
+                <field name="lease_id"/>
+                <field name="tenant_id"/>
+                <field name="date"/>
+                <field name="currency_id" optional="hide"/>
+                <field name="amount" widget="monetary" sum="Total"/>
+                <field name="paid_amount" widget="monetary" sum="Total"/>
+                <field name="remaining" widget="monetary" sum="Total"/>
+                <field name="invoice_id" optional="show"/>
+                <field name="state" widget="badge"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_property_payment_schedule_form" model="ir.ui.view">
+        <field name="name">property.payment.schedule.form</field>
+        <field name="model">property.payment.schedule</field>
+        <field name="arch" type="xml">
+            <form string="Payment Schedule Item">
+                <header>
+                    <button name="action_generate_invoice" string="Generate Invoice" type="object" class="btn-primary" attrs="{'invisible': [('invoice_id', '!=', False)]}"/>
+                    <button name="action_register_payment" string="Register Payment" type="object" class="btn-success" attrs="{'invisible': [('state', '=', 'paid')]}"/>
+                    <field name="state" widget="statusbar" statusbar_visible="pending,partial,paid"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="lease_id"/>
+                            <field name="tenant_id"/>
+                            <field name="unit_id"/>
+                            <field name="date"/>
+                            <field name="invoice_id"/>
+                        </group>
+                        <group>
+                            <field name="currency_id"/>
+                            <field name="amount" widget="monetary"/>
+                            <field name="paid_amount" widget="monetary"/>
+                            <field name="remaining" widget="monetary"/>
+                            <field name="company_amount" widget="monetary"/>
+                        </group>
+                    </group>
+                    <field name="note"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_property_payment_schedule_search" model="ir.ui.view">
+        <field name="name">property.payment.schedule.search</field>
+        <field name="model">property.payment.schedule</field>
+        <field name="arch" type="xml">
+            <search string="Search Schedule">
+                <field name="lease_id"/>
+                <field name="tenant_id"/>
+                <field name="state"/>
+                <filter name="pending" string="Pending" domain="[('state','=','pending')]"/>
+                <filter name="overdue" string="Overdue" domain="[('state','=','overdue')]"/>
+                <filter name="paid" string="Paid" domain="[('state','=','paid')]"/>
+                <filter name="group_by_state" string="Status" context="{'group_by': 'state'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_property_payment_schedule" model="ir.actions.act_window">
+        <field name="name">Payment Schedule</field>
+        <field name="res_model">property.payment.schedule</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_property_payment_schedule_search"/>
+    </record>
+
+    <record id="view_property_payment_tree" model="ir.ui.view">
+        <field name="name">property.payment.tree</field>
+        <field name="model">property.payment</field>
+        <field name="arch" type="xml">
+            <tree string="Payments" decoration-success="state=='paid'" decoration-danger="state=='cancelled'" decoration-info="state=='confirmed'">
+                <field name="name"/>
+                <field name="date"/>
+                <field name="tenant_id"/>
+                <field name="lease_id"/>
+                <field name="currency_id" optional="hide"/>
+                <field name="amount" widget="monetary" sum="Total"/>
+                <field name="company_amount" widget="monetary" sum="Total" optional="hide"/>
+                <field name="received_amount" widget="monetary" sum="Total"/>
+                <field name="payment_type"/>
+                <field name="payment_method"/>
+                <field name="state" widget="badge"/>
+                <field name="reference"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_property_payment_form" model="ir.ui.view">
+        <field name="name">property.payment.form</field>
+        <field name="model">property.payment</field>
+        <field name="arch" type="xml">
+            <form string="Payment">
+                <header>
+                    <field name="state" widget="statusbar" clickable="True"/>
+                    <button type="object" name="action_confirm" string="Confirm" states="draft" class="btn-primary"/>
+                    <button type="object" name="action_paid" string="Mark Paid" states="confirmed" class="btn-success"/>
+                    <button type="object" name="action_refund" string="Refund" states="paid" class="btn-warning"/>
+                    <button type="object" name="action_cancel" string="Cancel" states="draft,confirmed" class="btn-danger"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="lease_id"/>
+                            <field name="schedule_id"/>
+                            <field name="tenant_id"/>
+                            <field name="unit_id"/>
+                        </group>
+                        <group>
+                            <field name="date"/>
+                            <field name="payment_type"/>
+                            <field name="payment_method"/>
+                            <field name="reference"/>
+                        </group>
+                    </group>
+                    <group string="Amounts">
+                        <field name="currency_id"/>
+                        <field name="override_exchange_rate"/>
+                        <field name="exchange_rate" attrs="{'invisible': [('override_exchange_rate', '=', False)], 'required': [('override_exchange_rate', '=', True)]}"/>
+                        <field name="amount" widget="monetary"/>
+                        <field name="received_amount" widget="monetary"/>
+                        <field name="change_amount" widget="monetary"/>
+                        <field name="company_amount" widget="monetary"/>
+                        <field name="late_fee_applied" widget="monetary"/>
+                        <field name="journal_id"/>
+                    </group>
+                    <group string="Accounting" attrs="{'invisible': [('move_id', '=', False), ('refund_move_id', '=', False)]}">
+                        <field name="move_id" readonly="1"/>
+                        <field name="refund_move_id" readonly="1" attrs="{'invisible': [('refund_move_id', '=', False)]}"/>
+                    </group>
+                    <field name="notes"/>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" widget="mail_followers"/>
+                    <field name="activity_ids" widget="mail_activity"/>
+                    <field name="message_ids" widget="mail_thread"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_property_payment_search" model="ir.ui.view">
+        <field name="name">property.payment.search</field>
+        <field name="model">property.payment</field>
+        <field name="arch" type="xml">
+            <search string="Search Payments">
+                <field name="name"/>
+                <field name="tenant_id"/>
+                <field name="lease_id"/>
+                <field name="payment_type"/>
+                <filter name="paid" string="Paid" domain="[('state','=','paid')]"/>
+                <filter name="pending" string="Pending" domain="[('state','in',('draft','confirmed'))]"/>
+                <filter name="group_by_tenant" string="Tenant" context="{'group_by': 'tenant_id'}"/>
+                <filter name="group_by_type" string="Type" context="{'group_by': 'payment_type'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_property_payment_pivot" model="ir.ui.view">
+        <field name="name">property.payment.pivot</field>
+        <field name="model">property.payment</field>
+        <field name="arch" type="xml">
+            <pivot string="Payment Analysis" disable_linking="1">
+                <field name="amount" type="measure"/>
+                <field name="payment_type" type="row"/>
+                <field name="state" type="col"/>
+                <field name="date" type="row"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="action_property_payment" model="ir.actions.act_window">
+        <field name="name">Payments</field>
+        <field name="res_model">property.payment</field>
+        <field name="view_mode">tree,form,pivot</field>
+        <field name="search_view_id" ref="view_property_payment_search"/>
+    </record>
+</odoo>

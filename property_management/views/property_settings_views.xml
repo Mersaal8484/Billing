@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_property_settings" model="ir.ui.view">
+        <field name="name">res.config.settings.view.form.inherit.property.management</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[contains(@class, 'settings')]" position="inside">
+                <div class="app_settings_block" data-string="Property Management" string="Property Management">
+                    <h2>Property Management</h2>
+                    <div class="mt16 mb16">
+                        <button name="action_create_property_custom_accounts" type="object" string="Generate Custom Property Accounts &amp; Journals" class="btn btn-primary" icon="fa-cogs"/>
+                        <span class="text-muted ml-2">Automatically create and assign default custom accounts and journals for property management.</span>
+                    </div>
+                    <div class="row mt16 o_settings_container">
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane"/>
+                            <div class="o_setting_right_pane">
+                                <label for="property_currency_id"/>
+                                <div class="text-muted">Default currency used for new property contracts.</div>
+                                <field name="property_currency_id"/>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane"/>
+                            <div class="o_setting_right_pane">
+                                <label for="property_rent_journal_id"/>
+                                <div class="text-muted">Default journal for rent collection.</div>
+                                <field name="property_rent_journal_id"/>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane"/>
+                            <div class="o_setting_right_pane">
+                                <label for="property_deposit_journal_id"/>
+                                <div class="text-muted">Default journal for security deposits.</div>
+                                <field name="property_deposit_journal_id"/>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane"/>
+                            <div class="o_setting_right_pane">
+                                <label for="property_maintenance_journal_id"/>
+                                <div class="text-muted">Default journal for maintenance and repairs.</div>
+                                <field name="property_maintenance_journal_id"/>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane"/>
+                            <div class="o_setting_right_pane">
+                                <label for="property_cash_journal_id"/>
+                                <div class="text-muted">Default journal for cash payments.</div>
+                                <field name="property_cash_journal_id"/>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane"/>
+                            <div class="o_setting_right_pane">
+                                <label for="property_bank_journal_id"/>
+                                <div class="text-muted">Default journal for bank payments.</div>
+                                <field name="property_bank_journal_id"/>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane"/>
+                            <div class="o_setting_right_pane">
+                                <label for="property_receivable_account_id"/>
+                                <div class="text-muted">Default receivable account for tenants.</div>
+                                <field name="property_receivable_account_id"/>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane"/>
+                            <div class="o_setting_right_pane">
+                                <label for="property_rent_income_account_id"/>
+                                <div class="text-muted">Default rent income account.</div>
+                                <field name="property_rent_income_account_id"/>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane"/>
+                            <div class="o_setting_right_pane">
+                                <label for="property_service_income_account_id"/>
+                                <div class="text-muted">Default service income account.</div>
+                                <field name="property_service_income_account_id"/>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane"/>
+                            <div class="o_setting_right_pane">
+                                <label for="property_deposit_liability_account_id"/>
+                                <div class="text-muted">Default liability account for deposits.</div>
+                                <field name="property_deposit_liability_account_id"/>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane"/>
+                            <div class="o_setting_right_pane">
+                                <label for="property_advance_liability_account_id"/>
+                                <div class="text-muted">Default liability account for advance payments.</div>
+                                <field name="property_advance_liability_account_id"/>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane"/>
+                            <div class="o_setting_right_pane">
+                                <label for="property_maintenance_expense_account_id"/>
+                                <div class="text-muted">Default maintenance expense account.</div>
+                                <field name="property_maintenance_expense_account_id"/>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane"/>
+                            <div class="o_setting_right_pane">
+                                <label for="property_cash_account_id"/>
+                                <div class="text-muted">Default cash or clearing account.</div>
+                                <field name="property_cash_account_id"/>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane"/>
+                            <div class="o_setting_right_pane">
+                                <label for="property_analytic_plan_id"/>
+                                <div class="text-muted">Default analytic plan for unit cost centers.</div>
+                                <field name="property_analytic_plan_id"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_property_settings" model="ir.actions.act_window">
+        <field name="name">Property Settings</field>
+        <field name="res_model">res.config.settings</field>
+        <field name="view_mode">form</field>
+        <field name="target">current</field>
+        <field name="context">{'module': 'property_management'}</field>
+    </record>
+</odoo>

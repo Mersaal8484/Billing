@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_construction_progress_tree" model="ir.ui.view">
+        <field name="name">construction.progress.tree</field>
+        <field name="model">construction.progress</field>
+        <field name="arch" type="xml">
+            <tree string="Progress Records" decoration-success="state=='approved'" decoration-info="state=='submitted'" decoration-danger="state=='cancelled'">
+                <field name="name"/>
+                <field name="project_id"/>
+                <field name="date"/>
+                <field name="period"/>
+                <field name="state" widget="badge"/>
+                <field name="executed_percent" widget="progressbar"/>
+                <field name="total_executed" widget="monetary" sum="Total"/>
+                <field name="total_remaining" widget="monetary" sum="Total"/>
+                <field name="manpower_on_site"/>
+                <field name="approved_by"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_construction_progress_form" model="ir.ui.view">
+        <field name="name">construction.progress.form</field>
+        <field name="model">construction.progress</field>
+        <field name="arch" type="xml">
+            <form string="Progress Measurement">
+                <header>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,submitted,approved" clickable="True"/>
+                    <button type="object" name="action_generate_lines" string="Generate Lines from BOQ" states="draft" class="btn-primary"/>
+                    <button type="object" name="action_submit" string="Submit" states="draft" class="btn-primary"/>
+                    <button type="object" name="action_approve" string="Approve" states="submitted" class="btn-success"/>
+                    <button type="object" name="action_cancel" string="Cancel" states="draft,submitted" class="btn-danger"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="project_id"/>
+                            <field name="date"/>
+                            <field name="period"/>
+                        </group>
+                        <group>
+                            <field name="submitted_by"/>
+                            <field name="approved_by"/>
+                            <field name="approved_date"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Progress Lines">
+                            <field name="line_ids">
+                                <tree string="Progress Lines" editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="boq_item_id"/>
+                                    <field name="name"/>
+                                    <field name="total_quantity"/>
+                                    <field name="previous_quantity"/>
+                                    <field name="current_quantity"/>
+                                    <field name="total_executed"/>
+                                    <field name="remaining_quantity"/>
+                                    <field name="executed_percent" widget="progressbar"/>
+                                    <field name="unit_rate" widget="monetary"/>
+                                    <field name="previous_amount" widget="monetary"/>
+                                    <field name="current_amount" widget="monetary"/>
+                                    <field name="executed_amount" widget="monetary" sum="Total"/>
+                                    <field name="remaining_amount" widget="monetary" sum="Total"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Summary">
+                            <group>
+                                <field name="executed_percent" widget="progressbar"/>
+                                <field name="total_executed" widget="monetary"/>
+                                <field name="total_remaining" widget="monetary"/>
+                            </group>
+                        </page>
+                        <page string="Site Information">
+                            <group>
+                                <field name="manpower_on_site"/>
+                                <field name="equipment_on_site"/>
+                                <field name="weather_conditions"/>
+                            </group>
+                            <group string="Work Description">
+                                <field name="work_description"/>
+                                <field name="challenges"/>
+                                <field name="plan_next_period"/>
+                            </group>
+                        </page>
+                        <page string="Notes">
+                            <field name="note"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" widget="mail_followers"/>
+                    <field name="activity_ids" widget="mail_activity"/>
+                    <field name="message_ids" widget="mail_thread"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_construction_progress_search" model="ir.ui.view">
+        <field name="name">construction.progress.search</field>
+        <field name="model">construction.progress</field>
+        <field name="arch" type="xml">
+            <search string="Search Progress">
+                <field name="name"/>
+                <field name="project_id"/>
+                <filter name="daily" string="Daily" domain="[('period','=','daily')]"/>
+                <filter name="weekly" string="Weekly" domain="[('period','=','weekly')]"/>
+                <filter name="monthly" string="Monthly" domain="[('period','=','monthly')]"/>
+                <filter name="approved" string="Approved" domain="[('state','=','approved')]"/>
+                <filter name="group_by_project" string="Project" context="{'group_by': 'project_id'}"/>
+                <filter name="group_by_period" string="Period" context="{'group_by': 'period'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_construction_progress_pivot" model="ir.ui.view">
+        <field name="name">construction.progress.pivot</field>
+        <field name="model">construction.progress</field>
+        <field name="arch" type="xml">
+            <pivot string="Progress Analysis" disable_linking="1">
+                <field name="executed_percent" type="measure"/>
+                <field name="total_executed" type="measure"/>
+                <field name="project_id" type="row"/>
+                <field name="period" type="col"/>
+                <field name="state" type="row"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_construction_progress_graph" model="ir.ui.view">
+        <field name="name">construction.progress.graph</field>
+        <field name="model">construction.progress</field>
+        <field name="arch" type="xml">
+            <graph string="Progress Chart" type="line">
+                <field name="executed_percent" type="measure"/>
+                <field name="project_id" type="row"/>
+                <field name="date" type="col"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="action_construction_progress" model="ir.actions.act_window">
+        <field name="name">Progress Records</field>
+        <field name="res_model">construction.progress</field>
+        <field name="view_mode">tree,form,pivot,graph</field>
+        <field name="search_view_id" ref="view_construction_progress_search"/>
+    </record>
+</odoo>
