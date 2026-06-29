@@ -142,7 +142,7 @@ class ConstructionBudget(models.Model):
         ], limit=1)
         if not bpost:
             account = self.env['account.account'].search([
-                ('account_type', '=', 'income'),
+                ('account_type', 'in', ['expense', 'expense_direct_cost']),
                 ('company_id', '=', self.company_id.id),
             ], limit=1)
             bpost = self.env['account.budget.post'].create({

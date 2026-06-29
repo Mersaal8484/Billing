@@ -68,9 +68,11 @@ class PropertyTenant(models.Model):
                 ('state', '=', 'paid'),
             ])
             rec.total_paid = sum(payments.mapped('amount'))
+            # Calculate only overdue/delayed payments (date <= today), excluding future scheduled payments
             pending = self.env['property.payment.schedule'].search([
                 ('tenant_id', '=', rec.id),
-                ('state', '=', 'pending'),
+                ('state', 'in', ('pending', 'overdue')),
+                ('date', '<=', fields.Date.today()),
             ])
             rec.outstanding_balance = sum(pending.mapped('amount'))
 

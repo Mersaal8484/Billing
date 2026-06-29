@@ -173,8 +173,12 @@
               parent="menu_property_root" sequence="20">
         <menuitem id="menu_property_owner_list" name="Owners"
                   action="action_property_owner" sequence="10"/>
+        <menuitem id="menu_property_wizard_create_owner" name="Create Owner &amp; Partner (Wizard)"
+                  action="action_wizard_create_owner" sequence="15"/>
         <menuitem id="menu_property_tenant_list" name="Tenants"
                   action="action_property_tenant" sequence="20"/>
+        <menuitem id="menu_property_wizard_create_tenant" name="Create Tenant &amp; Partner (Wizard)"
+                  action="action_wizard_create_tenant" sequence="25"/>
     </menuitem>
 
     <menuitem id="menu_property_leasing" name="Leasing &amp; Rent"

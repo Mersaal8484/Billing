@@ -61,6 +61,7 @@
                                     <field name="boq_item_id"/>
                                     <field name="resource_id"/>
                                     <field name="cost_code"/>
+                                    <field name="budget_post_id"/>
                                     <field name="quantity"/>
                                     <field name="unit_cost" widget="monetary"/>
                                     <field name="amount" widget="monetary" sum="Total"/>

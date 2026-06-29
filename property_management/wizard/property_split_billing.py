@@ -49,8 +49,9 @@ class PropertySplitBillingWizard(models.TransientModel):
         total_area = sum(occupied_units.mapped('area'))
         if self.split_method == 'area' and total_area <= 0:
             raise UserError(_("Total area of occupied units is zero. Cannot split by area."))
-
-        journal = self.journal_id or self.property_id._get_journal_for_method('other') or self.env['account.journal'].search([('company_id', '=', self.company_id.id), ('type', '=', 'sale')], limit=1)
+        journal = self.journal_id or self.property_id._get_journal_for_method('rent') or self.env['account.journal'].search([('company_id', '=', self.company_id.id), ('type', '=', 'sale')], limit=1)
+        if not journal or journal.type != 'sale':
+            journal = self.env['account.journal'].search([('company_id', '=', self.company_id.id), ('type', '=', 'sale')], limit=1)
         income_account = self.property_id._get_service_income_account() or self.env['account.account'].search([('account_type', '=', 'income'), ('company_id', '=', self.company_id.id)], limit=1)
 
         created_charges = self.env['property.service.charge']

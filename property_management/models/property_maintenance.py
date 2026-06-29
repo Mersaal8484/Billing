@@ -17,6 +17,9 @@ class PropertyMaintenance(models.Model):
     building_id = fields.Many2one('property.building', string='Building', index=True)
     unit_id = fields.Many2one('property.unit', string='Unit', index=True)
     tenant_id = fields.Many2one('property.tenant', string='Tenant', index=True)
+    owner_id = fields.Many2one('property.owner', string='Property Owner', related='property_id.owner_id', store=True, readonly=False)
+    analytic_account_id = fields.Many2one('account.analytic.account', string='Analytic Account (Unit Cost Center)', related='unit_id.analytic_account_id', store=True, readonly=False)
+    move_id = fields.Many2one('account.move', string='Maintenance Journal Entry', readonly=True, tracking=True)
 
     maintenance_type = fields.Many2one('property.maintenance.type',
                                        string='Maintenance Type', required=True)
@@ -82,6 +85,40 @@ class PropertyMaintenance(models.Model):
         })
 
     def action_done(self):
+        for rec in self:
+            if rec.total_cost > 0 and not rec.move_id:
+                journal = rec.property_id.maintenance_journal_id or rec.env['account.journal'].search([('type', '=', 'general'), ('company_id', '=', rec.company_id.id)], limit=1)
+                expense_account = rec.property_id.maintenance_expense_account_id or rec.env['account.account'].search([('internal_group', '=', 'expense'), ('company_id', '=', rec.company_id.id)], limit=1)
+                credit_account = rec.property_id.cash_account_id or rec.env['account.account'].search([('internal_group', 'in', ('asset', 'liability')), ('company_id', '=', rec.company_id.id)], limit=1)
+                
+                if journal and expense_account and credit_account:
+                    partner_id = rec.owner_id.partner_id.id if rec.owner_id else False
+                    move_vals = {
+                        'journal_id': journal.id,
+                        'date': fields.Date.today(),
+                        'ref': f'Maintenance Expense: {rec.name} - {rec.unit_id.display_name or rec.property_id.name}',
+                        'line_ids': [
+                            (0, 0, {
+                                'name': f'Maintenance Expense - {rec.name}',
+                                'account_id': expense_account.id,
+                                'partner_id': partner_id,
+                                'debit': rec.total_cost,
+                                'credit': 0.0,
+                                'analytic_distribution': {str(rec.analytic_account_id.id): 100} if rec.analytic_account_id else False,
+                            }),
+                            (0, 0, {
+                                'name': f'Maintenance Payable/Cash - {rec.name}',
+                                'account_id': credit_account.id,
+                                'partner_id': partner_id,
+                                'debit': 0.0,
+                                'credit': rec.total_cost,
+                            }),
+                        ]
+                    }
+                    move = rec.env['account.move'].create(move_vals)
+                    move.action_post()
+                    rec.move_id = move.id
+
         self.write({
             'state': 'done',
             'date_completed': fields.Date.today(),

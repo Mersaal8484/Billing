@@ -70,7 +70,34 @@ class ConstructionMaterialIssue(models.Model):
         self.write({'state': 'confirmed'})
 
     def action_done(self):
-        self.write({'state': 'done'})
+        for rec in self:
+            if not rec.picking_id:
+                if not rec.location_id:
+                    prod_location = self.env['stock.location'].search([('usage', '=', 'production')], limit=1)
+                    if prod_location:
+                        rec.location_id = prod_location.id
+                    else:
+                        raise UserError(_('Please set a site location first!'))
+                rec.action_create_stock_picking()
+            if rec.picking_id and rec.picking_id.state not in ['done', 'cancel']:
+                rec.picking_id.action_confirm()
+                rec.picking_id.action_assign()
+                for move in rec.picking_id.move_ids_without_package:
+                    move.quantity_done = move.product_uom_qty
+                rec.picking_id.button_validate()
+            rec.state = 'done'
+
+    def action_view_picking(self):
+        self.ensure_one()
+        if not self.picking_id:
+            raise UserError(_('No stock picking is linked to this material issue.'))
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Stock Picking'),
+            'res_model': 'stock.picking',
+            'view_mode': 'form',
+            'res_id': self.picking_id.id,
+        }
 
     def action_cancel(self):
         self.write({'state': 'cancelled'})
@@ -181,3 +208,17 @@ class ConstructionMaterialIssueLine(models.Model):
     def _compute_total_cost(self):
         for rec in self:
             rec.total_cost = rec.quantity * rec.unit_cost
+
+    def write(self, vals):
+        if not self.env.context.get('install_mode') and not self.env.context.get('module') and not self.env.context.get('import_file'):
+            for rec in self:
+                if rec.issue_id.state == 'done':
+                    raise UserError(_('You cannot modify lines of a material issue that is already marked as done!'))
+        return super().write(vals)
+
+    def unlink(self):
+        if not self.env.context.get('install_mode') and not self.env.context.get('module') and not self.env.context.get('import_file'):
+            for rec in self:
+                if rec.issue_id.state == 'done':
+                    raise UserError(_('You cannot delete lines of a material issue that is already marked as done!'))
+        return super().unlink()

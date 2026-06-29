@@ -6,6 +6,7 @@ class PropertyUtility(models.Model):
     _name = 'property.utility'
     _description = 'Utility Meter'
     _order = 'unit_id, utility_type'
+    _rec_name = 'meter_number'
 
     active = fields.Boolean(default=True)
     company_id = fields.Many2one('res.company', related='unit_id.company_id', store=True)
@@ -140,10 +141,15 @@ class PropertyMeterReading(models.Model):
             ('account_type', '=', 'income'),
             ('company_id', '=', self.unit_id.company_id.id),
         ], limit=1)
-        journal = property_rec._get_journal_for_method('other') if property_rec else self.env['account.journal'].search([
+        journal = property_rec._get_journal_for_method('rent') if property_rec else self.env['account.journal'].search([
             ('company_id', '=', self.unit_id.company_id.id),
             ('type', '=', 'sale'),
         ], limit=1)
+        if not journal or journal.type != 'sale':
+            journal = self.env['account.journal'].search([
+                ('company_id', '=', self.unit_id.company_id.id),
+                ('type', '=', 'sale'),
+            ], limit=1)
 
         invoice = self.env['account.move'].create({
             'move_type': 'out_invoice',

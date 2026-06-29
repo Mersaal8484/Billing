@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_property_owner_tenant_wizard_form" model="ir.ui.view">
+        <field name="name">property.owner.tenant.wizard.form</field>
+        <field name="model">property.owner.tenant.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Create Owner/Tenant &amp; Partner">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="creation_type" widget="radio"/>
+                            <field name="name"/>
+                            <field name="is_company"/>
+                            <field name="tax_id"/>
+                            <field name="owner_code" attrs="{'invisible': [('creation_type', '!=', 'owner')]}"/>
+                            <field name="tenant_code" attrs="{'invisible': [('creation_type', '!=', 'tenant')]}"/>
+                        </group>
+                        <group>
+                            <field name="email"/>
+                            <field name="phone"/>
+                            <field name="mobile"/>
+                            <field name="street"/>
+                            <field name="city"/>
+                            <field name="country_id"/>
+                            <field name="company_id" invisible="1"/>
+                        </group>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_create" string="Create &amp; Open" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_wizard_create_owner" model="ir.actions.act_window">
+        <field name="name">Create Owner &amp; Partner</field>
+        <field name="res_model">property.owner.tenant.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="context">{'default_creation_type': 'owner'}</field>
+    </record>
+
+    <record id="action_wizard_create_tenant" model="ir.actions.act_window">
+        <field name="name">Create Tenant &amp; Partner</field>
+        <field name="res_model">property.owner.tenant.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="context">{'default_creation_type': 'tenant'}</field>
+    </record>
+</odoo>

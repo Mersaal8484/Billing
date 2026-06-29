@@ -22,6 +22,7 @@ class PropertyPayment(models.Model):
     tenant_id = fields.Many2one('property.tenant', string='Tenant', required=True, index=True)
     unit_id = fields.Many2one('property.unit', string='Unit', index=True)
     property_id = fields.Many2one('property.property', string='Property', index=True)
+    analytic_account_id = fields.Many2one('account.analytic.account', string='Analytic Account (Unit Cost Center)', related='unit_id.analytic_account_id', store=True, readonly=False)
 
     date = fields.Date(string='Payment Date', required=True, default=fields.Date.today, tracking=True)
     amount = fields.Monetary(string='Amount', required=True, tracking=True)
@@ -149,7 +150,7 @@ class PropertyPayment(models.Model):
         is_refund = self.payment_type == 'refund'
         amount_currency = self.amount if self.currency_id and self.currency_id != self.company_currency_id else 0.0
         currency_id = self.currency_id.id if amount_currency else False
-        analytic_dist = {str(self.unit_id.analytic_account_id.id): 100.0} if self.unit_id and self.unit_id.analytic_account_id else False
+        analytic_dist = {str(self.analytic_account_id.id): 100.0} if self.analytic_account_id else False
         debit_line = {
             'name': self.name,
             'partner_id': self.tenant_id.partner_id.id if self.tenant_id and self.tenant_id.partner_id else False,
@@ -220,6 +221,8 @@ class PropertyPayment(models.Model):
                         'debit': line.credit,
                         'credit': line.debit,
                     }
+                    if line.analytic_distribution:
+                        reversal_vals['analytic_distribution'] = line.analytic_distribution
                     if line.currency_id:
                         reversal_vals['currency_id'] = line.currency_id.id
                         reversal_vals['amount_currency'] = -(line.amount_currency or 0.0)

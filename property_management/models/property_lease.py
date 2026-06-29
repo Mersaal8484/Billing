@@ -58,7 +58,8 @@ class PropertyLease(models.Model):
     total_contract_value = fields.Monetary(string='Total Contract Value',
                                            compute='_compute_annual_rent', store=True)
 
-    security_deposit = fields.Monetary(string='Security Deposit', default=0.0)
+    security_deposit = fields.Monetary(string='Security Deposit', default=0.0,
+                                       compute='_compute_security_deposit', store=True, readonly=False)
     deposit_months = fields.Integer(string='Deposit (Months)', default=1)
     deposit_id = fields.Many2one('property.deposit', string='Deposit Record')
 
@@ -108,11 +109,22 @@ class PropertyLease(models.Model):
          'Rent amount must be positive!'),
     ]
 
+    @api.depends('unit_id', 'rent_amount', 'deposit_months')
+    def _compute_security_deposit(self):
+        for rec in self:
+            if rec.unit_id and rec.unit_id.security_deposit:
+                rec.security_deposit = rec.unit_id.security_deposit
+            elif rec.rent_amount and rec.deposit_months:
+                rec.security_deposit = rec.rent_amount * rec.deposit_months
+            else:
+                rec.security_deposit = rec.security_deposit or 0.0
+
     @api.depends('start_date', 'end_date')
     def _compute_duration(self):
         for rec in self:
             if rec.start_date and rec.end_date:
-                delta = relativedelta(rec.end_date, rec.start_date)
+                # Add 1 day to end_date to make it inclusive (e.g. Jan 1 to Dec 31 becomes exactly 1 year / 12 months)
+                delta = relativedelta(rec.end_date + relativedelta(days=1), rec.start_date)
                 rec.duration_months = delta.years * 12 + delta.months
             else:
                 rec.duration_months = 0

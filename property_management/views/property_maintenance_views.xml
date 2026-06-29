@@ -39,6 +39,8 @@
                         <group>
                             <field name="unit_id"/>
                             <field name="property_id"/>
+                            <field name="owner_id"/>
+                            <field name="analytic_account_id"/>
                             <field name="tenant_id"/>
                             <field name="maintenance_type"/>
                             <field name="priority"/>
@@ -49,6 +51,7 @@
                             <field name="date_completed"/>
                             <field name="assigned_to"/>
                             <field name="vendor_id"/>
+                            <field name="move_id"/>
                         </group>
                     </group>
                     <field name="description"/>
