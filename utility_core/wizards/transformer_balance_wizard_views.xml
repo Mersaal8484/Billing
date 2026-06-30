@@ -17,9 +17,10 @@
                         </group>
                     </group>
                     
-                    <!-- تنبيه باللون الأحمر إذا تجاوز الفاقد الحد المسموح به متوافق مع Odoo 17/18 -->
+                    <!-- تنبيه باللون الأحمر إذا تجاوز الفاقد الحد المسموح به -->
+                    <field name="is_loss_warning" invisible="1"/>
                     <div class="alert alert-danger" role="alert" style="margin-top: 15px;"
-                         invisible="loss_percentage &lt; show_loss_threshold">
+                         attrs="{'invisible': [('is_loss_warning', '=', False)]}">
                         <strong>⚠️ تحذير:</strong> لقد تجاوز الفاقد في هذا المحول الحد الأقصى المسموح به وهو (<field name="show_loss_threshold" class="oe_inline"/>%)!
                     </div>
 

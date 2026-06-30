@@ -51,9 +51,11 @@
             <field name="total_sales" widget="monetary"/>
             <field name="total_cash" widget="monetary"/>
           </group>
-          <group string="ملاحظات">
-            <field name="notes" nolabel="1"/>
-          </group>
+          <notebook>
+            <page name="notes" string="ملاحظات">
+              <field name="notes" nolabel="1"/>
+            </page>
+          </notebook>
         </sheet>
         <div class="oe_chatter">
           <field name="message_ids" widget="mail_thread"/>

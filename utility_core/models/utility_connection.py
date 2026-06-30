@@ -10,7 +10,7 @@ class UtilityConnection(models.Model):
     company_id = fields.Many2one('res.company', 'Company', default=lambda self: self.env.company)
     name = fields.Char('Connection Number', default=lambda self: _('New'))
     customer_id = fields.Many2one('utility.customer', 'Customer', required=True)
-    account_id = fields.Many2one('utility.customer', 'Account')
+    account_id = fields.Many2one('utility.customer', 'Account', related='customer_id', store=True)
     connection_type = fields.Many2one('utility.connection.type', 'Connection Type')
     meter_id = fields.Many2one('utility.meter', 'Meter')
     connection_date = fields.Date('Connection Date')

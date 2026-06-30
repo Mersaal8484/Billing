@@ -4,7 +4,6 @@
     <menuitem id="menu_utility_customer_management" name="Customers" sequence="10" parent="menu_utility_root"/>
 
     <menuitem id="menu_utility_customer" name="Customers" parent="menu_utility_customer_management" action="action_utility_customer" sequence="10"/>
-
     <menuitem id="menu_utility_connection" name="Connections" parent="menu_utility_customer_management" action="action_utility_connection" sequence="30"/>
-    <menuitem id="menu_utility_meter" name="Meters" parent="menu_utility_customer_management" action="action_utility_meter" sequence="40"/>
+    <menuitem id="menu_utility_customer_wizard" name="تسجيل مشترك وعداد (موحد)" parent="menu_utility_customer_management" action="action_utility_customer_wizard" sequence="50"/>
 </odoo>

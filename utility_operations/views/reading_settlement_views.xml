@@ -28,7 +28,7 @@
                 <header>
                     <button name="action_apply_settlement" type="object"
                             string="تطبيق التسوية" class="oe_highlight"
-                            invisible="state == 'done'"/>
+                            attrs="{'invisible': [('state', '=', 'done')]}"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,done"/>
                 </header>
                 <sheet>

@@ -50,7 +50,7 @@
                 <field name="employee_code"/>
                 <field name="role"/>
                 <field name="team_id"/>
-                <filter name="active" string="Active" domain="[('active','=',True)]" default="1"/>
+                <filter name="active" string="Active" domain="[('active','=',True)]"/>
                 <group expand="0" string="Group By">
                     <filter name="group_role" string="Role" context="{'group_by':'role'}"/>
                     <filter name="group_team" string="Team" context="{'group_by':'team_id'}"/>

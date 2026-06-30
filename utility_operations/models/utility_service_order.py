@@ -4,6 +4,7 @@ from odoo import api, fields, models, _
 class UtilityServiceOrder(models.Model):
     _name = 'utility.service.order'
     _description = 'Utility Service Order'
+    _rec_name = 'order_number'
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'date_requested desc, id desc'
 
@@ -33,7 +34,7 @@ class UtilityServiceOrder(models.Model):
         ('urgent', 'Urgent'),
     ], string='Priority', default='normal')
     customer_id = fields.Many2one('utility.customer', 'Customer', index=True)
-    account_id = fields.Many2one('utility.customer', 'Account', index=True)
+    account_id = fields.Many2one('utility.customer', 'Account', related='customer_id', store=True, index=True)
     meter_id = fields.Many2one('utility.meter', 'Meter', index=True)
     region_id = fields.Many2one('utility.region', 'Region', related='customer_id.region_id', store=True)
     area_id = fields.Many2one('utility.region', 'Area', related='customer_id.area_id', store=True)

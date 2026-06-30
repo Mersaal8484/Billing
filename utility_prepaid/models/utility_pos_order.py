@@ -7,14 +7,13 @@ class PosOrder(models.Model):
 
     account_id = fields.Many2one('utility.customer', string='حساب الكهرباء', index=True)
     meter_id = fields.Many2one('utility.meter', string='العداد')
-    tariff_id = fields.Many2one('utility.tariff', string='التعرفة')
+    contract_template_id = fields.Many2one('utility.contract.template', string='قالب العقد')
 
     amount_paid = fields.Monetary(string='المدفوع')
     kwh_purchased = fields.Float(string='kWh المشتراة')
     unit_price = fields.Float(string='سعر الوحدة')
     energy_charge = fields.Monetary(string='قيمة الطاقة')
     service_charge = fields.Monetary(string='رسم الخدمة')
-    fuel_adjustment = fields.Monetary(string='تسعيرة الوقود')
     tax_amount = fields.Monetary(string='الضريبة')
 
     balance_before = fields.Monetary(string='الرصيد قبل')
@@ -39,7 +38,7 @@ class PosOrder(models.Model):
             'account_id': self.account_id.id,
             'meter_id': self.meter_id.id,
             'customer_id': self.partner_id.id,
-            'tariff_id': self.tariff_id.id,
+            'contract_template_id': self.contract_template_id.id,
             'amount': self.amount_paid,
             'kwh': self.kwh_purchased,
         })

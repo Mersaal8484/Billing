@@ -14,6 +14,11 @@ class UtilityMeter(models.Model):
     serial_number = fields.Char('Serial Number', index=True)
     manufacturer = fields.Char('Manufacturer')
     model_id = fields.Many2one('utility.meter.model', 'Model')
+    payment_type = fields.Selection([
+        ('postpaid', 'آجل الدفع (عن بُعد / ذكي)'),
+        ('prepaid', 'دفع مسبق (Prepaid)'),
+        ('manual', 'يدوي (Manual)')
+    ], string='نظام العداد', default='manual', required=True)
     meter_type_id = fields.Many2one('utility.meter.type', 'Meter Type')
     status_id = fields.Many2one('utility.meter.status', 'Status')
     phase = fields.Selection([

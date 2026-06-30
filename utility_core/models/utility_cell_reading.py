@@ -6,12 +6,13 @@ from odoo.exceptions import ValidationError
 class UtilityTransformerReading(models.Model):
     _name = 'utility.transformer.reading'
     _description = 'Transformer / Cell Reading'
-    _inherit = ['mail.thread']
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'reading_date desc'
 
     active = fields.Boolean(default=True)
     company_id = fields.Many2one('res.company', 'Company', default=lambda self: self.env.company)
     name = fields.Char('رقم القراءة', default=lambda self: _('New'), readonly=True)
+    reading_id = fields.Char(related='name', string='Reading ID')
 
     transformer_id = fields.Many2one(
         'utility.transformer', 'المحول', required=True, index=True)
@@ -34,6 +35,14 @@ class UtilityTransformerReading(models.Model):
     previous_reading_date = fields.Datetime('تاريخ القراءة السابقة')
 
     date_range_id = fields.Many2one('date.range', 'الفترة', index=True)
+
+    coupling_meter_image = fields.Binary('صورة عداد الربط/الخلية', attachment=True, help='صورة العداد الإجمالي للمحول أو الخلية')
+    image_state = fields.Selection([
+        ('clear', 'واضحة'),
+        ('not_clear', 'غير واضحة'),
+        ('none', 'بدون صورة'),
+    ], string='حالة الصورة', default='none', tracking=True)
+    attachment_id = fields.Many2one('ir.attachment', string='ملف المرفق الرسمي')
 
     state = fields.Selection([
         ('draft', 'مسودة'),
@@ -70,6 +79,16 @@ class UtilityTransformerReading(models.Model):
         for r in self:
             if r.state != 'draft':
                 raise ValidationError(_('يمكن تأكيد القراءات المسودة فقط!'))
+            if r.coupling_meter_image and not r.attachment_id:
+                # إنشاء ملف المرفق الرسمي في ir.attachment
+                attach = self.env['ir.attachment'].create({
+                    'name': f'transformer_meter_{r.name}.png',
+                    'type': 'binary',
+                    'datas': r.coupling_meter_image,
+                    'res_model': 'utility.transformer.reading',
+                    'res_id': r.id,
+                })
+                r.attachment_id = attach.id
             r.state = 'confirmed'
 
     def action_cancel(self):

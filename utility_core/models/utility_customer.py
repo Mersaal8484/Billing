@@ -15,17 +15,26 @@ class UtilityCustomer(models.Model):
     active = fields.Boolean(default=True)
     company_id = fields.Many2one('res.company', 'Company', default=lambda self: self.env.company)
     customer_number = fields.Char('Customer Number', required=True, index=True, default=lambda self: _('New'))
+    account_number = fields.Char(related='customer_number', string='Account Number', store=True)
+    customer_id = fields.Many2one('utility.customer', compute='_compute_self_customer', string='Customer')
     partner_id = fields.Many2one('res.partner', 'العميل (شخص)', required=True, domain=[('is_company', '=', False)])
-    account_type = fields.Selection([
-        ('residential', 'سكني'),
-        ('commercial', 'تجاري'),
-        ('industrial', 'صناعي'),
-        ('agricultural', 'زراعي'),
-        ('government', 'حكومي'),
-    ], string='نوع الحساب', default='residential')
+
+    def _compute_self_customer(self):
+        for rec in self:
+            rec.customer_id = rec.id
+    category_id = fields.Many2one('utility.subscriber.category', string='الفئة (نوع الحساب)')
     phone = fields.Char(related='partner_id.phone', string='رقم الجوال')
+    mobile = fields.Char(related='partner_id.mobile', string='الجوال')
     email = fields.Char(related='partner_id.email', string='البريد الإلكتروني')
-    subscriber_category_id = fields.Many2one('utility.subscriber.category', string='فئة المشترك')
+    national_id = fields.Char(string='الهوية الوطنية')
+    subscriber_id = fields.Many2one('utility.subscriber', string='نوع المشترك')
+    state = fields.Selection([
+        ('draft', 'مسودة'),
+        ('active', 'فعال'),
+        ('suspended', 'موقوف'),
+        ('disconnected', 'مفصول'),
+        ('closed', 'مغلق'),
+    ], string='الحالة', default='draft', tracking=True)
 
     # العقود
     contract_state = fields.Selection([
@@ -37,17 +46,22 @@ class UtilityCustomer(models.Model):
         help='حالة الاشتراك الحالية للمشترك')
     contract_template_id = fields.Many2one('utility.contract.template',
         string='نموذج العقد',
-        domain="[('subscriber_category_ids', '=', subscriber_category_id)]")
+        domain="[('subscriber_ids', '=', subscriber_id)]")
     contract_start_date = fields.Date('تاريخ بداية العقد')
     contract_end_date = fields.Date('تاريخ نهاية العقد')
+    date_contract = fields.Date(string='تاريخ العقد')
+    date_sub_start = fields.Date(string='بداية الاشتراك')
+    date_end = fields.Date(string='نهاية الاشتراك')
+    recurring_next_date = fields.Date(string='تاريخ التكرار القادم')
 
-    # التعرفة
-    tariff_id = fields.Many2one('utility.tariff', 'التعرفة', domain="[('category_ids', '=', subscriber_category_id)]")
-    tariff_segment_id = fields.Many2one(related='tariff_id.segment_id', string='شريحة التعرفة')
+    analytic_account_id = fields.Many2one('account.analytic.account', string='الحساب التحليلي')
+    company_currency_id = fields.Many2one(related='company_id.currency_id', string='العملة')
 
     # المحول (Cell)
     cell_id = fields.Many2one('utility.transformer', string='المحول/الخلية',
         domain="[('is_cell', '=', True), ('active', '=', True)]")
+    is_private_transformer = fields.Boolean(related='cell_id.is_private', string='محول خاص')
+    distribution_percentage = fields.Float(related='cell_id.distribution_percentage', string='نسبة التوزيع')
 
     # عداد المحول (لربط قراءات الربط)
     cell_coupling_meter_id = fields.Many2one('utility.meter', 'عداد الخلية',
@@ -57,14 +71,21 @@ class UtilityCustomer(models.Model):
     region_id = fields.Many2one(related='partner_id.region_id', store=True, string='المنطقة')
     area_id = fields.Many2one(related='partner_id.area_id', store=True, string='المنطقة الفرعية')
     zone_id = fields.Many2one(related='partner_id.zone_id', store=True, string='المنطقة التفصيلية')
+    office_id = fields.Many2one('utility.office', string='المكتب')
+    route_id = fields.Many2one('utility.route', string='خط السير', index=True)
+    gps_latitude = fields.Float(string='خط العرض')
+    gps_longitude = fields.Float(string='خط الطول')
 
     # العداد
     meter_id = fields.Many2one('utility.meter', 'العداد', tracking=True)
 
-    # الرصيد
+    # الرصيد والمشتريات
     balance = fields.Float('الرصيد', default=0.0, help='الرصيد الحالي للمشترك')
     emergency_credit = fields.Float('رصيد الطوارئ', default=0.0)
     credit_limit = fields.Float('حد الائتمان', default=0.0)
+    total_purchases = fields.Float(string='إجمالي المشتريات')
+    total_kwh_purchased = fields.Float(string='إجمالي الكيلووات المشترى')
+    last_purchase_date = fields.Date(string='تاريخ آخر شراء')
 
     # آخر قراءة
     last_reading_date = fields.Datetime('آخر تاريخ قراءة')
@@ -72,15 +93,17 @@ class UtilityCustomer(models.Model):
     last_invoice_date = fields.Datetime('آخر تاريخ فاتورة')
     last_invoice_reading = fields.Float('قراءة آخر فاتورة')
 
-    # الشرائح المحسوبة للفوترة
-    tariff_block_ids = fields.One2many('utility.tariff.block', compute='_compute_tariff_blocks',
-        string='شرائح التعرفة')
+
 
     # قراءات الربط
     coupling_reading_ids = fields.One2many('utility.transformer.reading', 'customer_id',
         string='قراءات الربط', domain=[('reading_type', '=', 'coupling')])
     cell_reading_ids = fields.One2many('utility.transformer.reading', 'customer_id',
         string='قراءات الخلية', domain=[('reading_type', '=', 'cell')])
+    uploaded_reading_ids = fields.One2many('utility.transformer.reading', 'customer_id',
+        domain=[('state', 'in', ['draft', 'confirmed'])], string='Uploaded Readings')
+    billed_reading_ids = fields.One2many('utility.transformer.reading', 'customer_id',
+        domain=[('state', '=', 'confirmed')], string='Billed Readings')
 
     # الأزرار الذكية
     invoice_count = fields.Integer('عدد الفواتير', compute='_compute_smart_buttons')
@@ -92,20 +115,28 @@ class UtilityCustomer(models.Model):
          'Customer number must be unique per company!'),
     ]
 
-    @api.depends('tariff_id', 'tariff_id.block_ids', 'tariff_id.block_ids.block_sequence')
-    def _compute_tariff_blocks(self):
-        for rec in self:
-            if rec.tariff_id:
-                rec.tariff_block_ids = rec.tariff_id.block_ids.sorted('block_sequence')
-            else:
-                rec.tariff_block_ids = False
+
 
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
             if vals.get('customer_number', _('New')) == _('New'):
                 vals['customer_number'] = self.env['ir.sequence'].next_by_code('utility.customer') or _('New')
-        return super().create(vals_list)
+        
+        customers = super().create(vals_list)
+        
+        # Create analytic accounts automatically for each customer
+        for customer in customers:
+            if not customer.analytic_account_id:
+                partner_name = customer.partner_id.name or customer.customer_number
+                analytic_account = self.env['account.analytic.account'].create({
+                    'name': f"{partner_name} - {customer.customer_number}",
+                    'partner_id': customer.partner_id.id,
+                    'plan_id': self.env.ref('analytic.analytic_plan_projects', raise_if_not_found=False).id if self.env.ref('analytic.analytic_plan_projects', raise_if_not_found=False) else False
+                })
+                customer.write({'analytic_account_id': analytic_account.id})
+                
+        return customers
 
     @api.constrains('cell_id', 'meter_id')
     def _check_cell_meter_consistency(self):
@@ -117,6 +148,32 @@ class UtilityCustomer(models.Model):
                     raise ValidationError(
                         f"العداد {rec.meter_id.meter_number} لا يتبع المحول/الخلية {cell.name}! "
                         "يرجى اختيار عداد مرتبط بهذا المحول."
+                    )
+
+    @api.onchange('subscriber_id')
+    def _onchange_subscriber_id(self):
+        if self.subscriber_id:
+            # التنسيق مع قالب العقد
+            if not self.contract_template_id or (self.contract_template_id.subscriber_ids and self.subscriber_id not in self.contract_template_id.subscriber_ids):
+                matching_template = self.env['utility.contract.template'].search([('subscriber_ids', 'in', self.subscriber_id.id)], limit=1)
+                if not matching_template:
+                    matching_template = self.subscriber_id.default_contract_template_id
+                self.contract_template_id = matching_template
+
+    @api.constrains('contract_template_id', 'subscriber_id')
+    def _check_contract_subscriber_compatibility(self):
+        strict_compatibility = self.env['ir.config_parameter'].sudo().get_param('utility.strict_contract_tariff_compatibility', 'False') == 'True'
+        
+        for rec in self:
+            if not strict_compatibility:
+                continue
+                
+            template = rec.contract_template_id
+            if template:
+                if template.subscriber_ids and rec.subscriber_id and rec.subscriber_id not in template.subscriber_ids:
+                    raise ValidationError(
+                        f"آلية التناغم الصارمة: قالب العقد '{template.name}' لا يدعم المشترك من نوع '{rec.subscriber_id.name}'. "
+                        f"يرجى اختيار قالب عقد متوافق."
                     )
 
     def name_get(self):
@@ -175,3 +232,14 @@ class UtilityCustomer(models.Model):
             'domain': [('utility_sale_order_id.customer_id', '=', self.id)],
             'views': [(False, 'tree'), (False, 'form')],
         }
+
+    def action_create_analytic_account(self):
+        for rec in self:
+            if not rec.analytic_account_id:
+                analytic = self.env['account.analytic.account'].create({
+                    'name': f'[{rec.customer_number}] {rec.partner_id.name}',
+                    'partner_id': rec.partner_id.id,
+                    'company_id': rec.company_id.id,
+                    'utility_customer_id': rec.id,
+                })
+                rec.analytic_account_id = analytic.id

@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_penalty_tree" model="ir.ui.view">
+        <field name="name">utility.penalty.tree</field>
+        <field name="model">utility.penalty</field>
+        <field name="arch" type="xml">
+            <tree decoration-info="state=='calculated'" decoration-success="state=='applied'" decoration-muted="state=='waived'">
+                <field name="name"/>
+                <field name="customer_id"/>
+                <field name="penalty_type_id"/>
+                <field name="calculated_date"/>
+                <field name="amount" sum="Total"/>
+                <field name="state"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_utility_penalty_form" model="ir.ui.view">
+        <field name="name">utility.penalty.form</field>
+        <field name="model">utility.penalty</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_apply_penalty" type="object" string="تطبيق وإصدار فاتورة" class="oe_highlight" attrs="{'invisible': [('state', '!=', 'calculated')]}"/>
+                    <button name="action_waive_penalty" type="object" string="إعفاء من الغرامة" attrs="{'invisible': [('state', '!=', 'calculated')]}"/>
+                    <field name="state" widget="statusbar" statusbar_visible="calculated,applied,waived"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name" string="اسم الغرامة"/>
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group string="بيانات المشترك">
+                            <field name="customer_id"/>
+                            <field name="account_id"/>
+                            <field name="sale_order_id"/>
+                        </group>
+                        <group string="التفاصيل المالية">
+                            <field name="amount" widget="monetary" decoration-bf="1" decoration-danger="1"/>
+                            <field name="penalty_type_id" options="{'no_create': True, 'no_open': True}"/>
+                            <field name="calculated_date"/>
+                        </group>
+                    </group>
+                    <group string="المحاسبة والإعفاء">
+                        <group>
+                            <field name="move_id" attrs="{'invisible': [('move_id', '=', False)]}"/>
+                            <field name="waived" attrs="{'invisible': [('waived', '=', False)]}"/>
+                            <field name="waived_by" attrs="{'invisible': [('waived_by', '=', False)]}"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="السبب والملاحظات">
+                            <field name="reason" placeholder="سبب الغرامة..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>

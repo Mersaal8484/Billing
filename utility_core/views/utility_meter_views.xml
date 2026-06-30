@@ -28,48 +28,76 @@
                         <h1><field name="meter_number"/></h1>
                     </div>
                     <group>
-                        <group>
+                        <group string="معلومات أساسية">
+                            <field name="payment_type"/>
+                            <field name="meter_type_id" options="{'no_create': True, 'no_open': True}"/>
                             <field name="serial_number"/>
                             <field name="manufacturer"/>
-                            <field name="model_id"/>
-                            <field name="meter_type_id"/>
-                            <field name="status_id"/>
+                            <field name="model_id" options="{'no_create': True, 'no_open': True}"/>
+                            <field name="status_id" options="{'no_create': True}"/>
                             <field name="phase"/>
-                            <field name="active"/>
+                            <field name="active" invisible="1"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
-                        <group>
+                        <group string="المواصفات الفنية">
                             <field name="voltage"/>
                             <field name="current_rating"/>
                             <field name="power_rating"/>
-                            <field name="sts_key_revision"/>
-                            <field name="communication_type"/>
-                            <field name="sim_number"/>
                         </group>
                     </group>
-                    <group string="Assignment">
-                        <group>
-                            <field name="account_id"/>
-                            <field name="customer_id"/>
-                            <field name="route_id"/>
-                        </group>
-                        <group>
-                            <field name="region_id"/>
-                            <field name="area_id"/>
-                            <field name="zone_id"/>
-                            <field name="feeder_id"/>
-                            <field name="transformer_id"/>
-                            <field name="cell_id"/>
-                            <field name="is_coupling_meter"/>
-                            <field name="substation_id"/>
-                        </group>
-                    </group>
-                    <group>
-                        <field name="installation_date"/>
-                        <field name="gps_latitude"/>
-                        <field name="gps_longitude"/>
-                        <field name="last_read_date"/>
-                    </group>
+                    <notebook>
+                        <page name="specific_data" string="بيانات العداد المخصصة">
+                            <group>
+                                <!-- Prepaid Data -->
+                                <group string="بيانات الدفع المسبق (STS)" attrs="{'invisible': [('payment_type', '!=', 'prepaid')]}">
+                                    <field name="sts_key_revision" attrs="{'required': [('payment_type', '=', 'prepaid')]}"/>
+                                </group>
+                                <!-- Postpaid Data (AMI/Smart) -->
+                                <group string="بيانات العداد الذكي (عن بُعد)" attrs="{'invisible': [('payment_type', '!=', 'postpaid')]}">
+                                    <field name="communication_type" attrs="{'required': [('payment_type', '=', 'postpaid')]}"/>
+                                    <field name="sim_number" attrs="{'invisible': [('communication_type', 'not in', ('gsm', 'nbiot'))]}"/>
+                                    <field name="last_read_date"/>
+                                </group>
+                                <!-- Manual Data -->
+                                <group string="بيانات العداد اليدوي" attrs="{'invisible': [('payment_type', '!=', 'manual')]}">
+                                    <field name="last_read_date" string="تاريخ آخر قراءة"/>
+                                    <div class="text-muted" colspan="2">
+                                        يتم إدخال قراءات هذا العداد يدوياً عبر شاشة القراءات الدورية.
+                                    </div>
+                                </group>
+                            </group>
+                        </page>
+                        <page name="assignment" string="التعيين والموقع">
+                            <group>
+                                <group>
+                                    <field name="account_id"/>
+                                    <field name="customer_id"/>
+                                    <field name="route_id"/>
+                                </group>
+                                <group>
+                                    <field name="region_id"/>
+                                    <field name="area_id"/>
+                                    <field name="zone_id"/>
+                                    <field name="substation_id"/>
+                                    <field name="feeder_id"/>
+                                    <field name="transformer_id"/>
+                                    <field name="cell_id"/>
+                                    <field name="is_coupling_meter"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page name="location" string="التركيب والإحداثيات">
+                            <group>
+                                <group>
+                                    <field name="installation_date"/>
+                                </group>
+                                <group>
+                                    <field name="gps_latitude"/>
+                                    <field name="gps_longitude"/>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
                 </sheet>
                 <div class="oe_chatter">
                     <field name="message_ids" widget="mail_thread"/>
@@ -90,7 +118,7 @@
                 <field name="region_id"/>
                 <field name="area_id"/>
                 <field name="route_id"/>
-                <filter name="active" string="Active" domain="[('active','=',True)]" default="1"/>
+                <filter name="active" string="Active" domain="[('active','=',True)]"/>
                 <filter name="single_phase" string="Single Phase" domain="[('phase','=','single')]"/>
                 <filter name="three_phase" string="Three Phase" domain="[('phase','=','three')]"/>
                 <group expand="0" string="Group By">

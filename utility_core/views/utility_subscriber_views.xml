@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_subscriber_tree" model="ir.ui.view">
+        <field name="name">utility.subscriber.tree</field>
+        <field name="model">utility.subscriber</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="sequence" widget="handle"/>
+                <field name="code"/>
+                <field name="name"/>
+                <field name="category_id"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_utility_subscriber_form" model="ir.ui.view">
+        <field name="name">utility.subscriber.form</field>
+        <field name="model">utility.subscriber</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <widget name="web_ribbon" title="مؤرشف" bg_color="bg-danger" attrs="{'invisible': [('active', '=', True)]}"/>
+                    <div class="oe_title">
+                        <label for="name" string="اسم المشترك / الفئة الفرعية"/>
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="code"/>
+                            <field name="category_id"/>
+                        </group>
+                        <group>
+                            <field name="active" invisible="1"/>
+                            <field name="sequence"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="الدعم والخصم">
+                            <group>
+                                <field name="subsidized_enabled" widget="boolean_toggle"/>
+                                <field name="subsidized_max_units" attrs="{'invisible': [('subsidized_enabled', '=', False)], 'required': [('subsidized_enabled', '=', True)]}"/>
+                                <field name="subsidized_percentage" attrs="{'invisible': [('subsidized_enabled', '=', False)], 'required': [('subsidized_enabled', '=', True)]}"/>
+                                <field name="subsidized_price_per_kwh" attrs="{'invisible': [('subsidized_enabled', '=', False)]}"/>
+                            </group>
+                        </page>
+                        <page string="الحسابات المحاسبية">
+                            <group>
+                                <field name="subsidy_account_id"/>
+                                <field name="revenue_account_id"/>
+                            </group>
+                        </page>
+                        <page string="الفوترة">
+                            <group>
+
+                                <field name="default_contract_template_id"/>
+                            </group>
+                        </page>
+                        <page string="ملاحظات">
+                            <field name="description"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_utility_subscriber" model="ir.actions.act_window">
+        <field name="name">المشتركين (الأنواع)</field>
+        <field name="res_model">utility.subscriber</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <!-- Menu Item (Assuming it will be placed in configuration) -->
+    <menuitem id="menu_utility_subscriber" name="المشتركين (الأنواع)"
+              parent="utility_core.menu_utility_config" sequence="65"
+              action="action_utility_subscriber"/>
+</odoo>

@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Tree View -->
+    <record id="view_utility_meter_replacement_tree" model="ir.ui.view">
+        <field name="name">utility.meter.replacement.tree</field>
+        <field name="model">utility.meter.replacement</field>
+        <field name="arch" type="xml">
+            <tree string="استبدال العدادات عبر حساب المشترك" decoration-info="state == 'draft'" decoration-success="state == 'done'">
+                <field name="utility_account_id"/>
+                <field name="partner_id"/>
+                <field name="contract_id"/>
+                <field name="old_meter_number"/>
+                <field name="new_meter_id"/>
+                <field name="replace_date"/>
+                <field name="reason"/>
+                <field name="state" widget="badge" decoration-info="state == 'draft'" decoration-success="state == 'done'"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_utility_meter_replacement_form" model="ir.ui.view">
+        <field name="name">utility.meter.replacement.form</field>
+        <field name="model">utility.meter.replacement</field>
+        <field name="arch" type="xml">
+            <form string="عملية استبدال عداد عبر حساب المشترك">
+                <header>
+                    <button name="action_confirm_replacement" string="تأكيد الاستبدال" type="object" class="oe_highlight" states="draft" groups="utility_core.group_utility_supervisor"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,done"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="utility_account_id" class="oe_edit_only" string="حساب الكهرباء / المشترك"/>
+                        <h1>
+                            <field name="utility_account_id" options="{'no_create': True}" attrs="{'readonly': [('state', '=', 'done')]}"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="partner_id"/>
+                            <field name="contract_id" options="{'no_create': True}" attrs="{'readonly': [('state', '=', 'done')]}"/>
+                        </group>
+                        <group>
+                            <field name="replace_date" attrs="{'readonly': [('state', '=', 'done')]}"/>
+                            <field name="reason" attrs="{'readonly': [('state', '=', 'done')]}"/>
+                            <field name="user_id" readonly="1"/>
+                        </group>
+                    </group>
+                    
+                    <group string="بيانات العداد القديم المستبدل">
+                        <group>
+                            <field name="old_meter_id" invisible="1"/>
+                            <field name="old_meter_number"/>
+                            <field name="old_meter_type_id"/>
+                            <field name="old_phase"/>
+                        </group>
+                        <group>
+                            <field name="old_last_invo_reading"/>
+                            <field name="old_closing_reading" attrs="{'readonly': [('state', '=', 'done')]}"/>
+                            <field name="old_uninvoiced_consumption"/>
+                        </group>
+                    </group>
+
+                    <group string="بيانات العداد الجديد">
+                        <group>
+                            <field name="new_meter_id" options="{'no_create': True}" attrs="{'readonly': [('state', '=', 'done')]}"/>
+                            <field name="new_meter_number" attrs="{'readonly': [('state', '=', 'done')], 'invisible': [('new_meter_id', '!=', False)]}"/>
+                        </group>
+                        <group>
+                            <field name="new_meter_type_id" attrs="{'readonly': [('state', '=', 'done')], 'required': [('new_meter_id', '=', False)], 'invisible': [('new_meter_id', '!=', False)]}"/>
+                            <field name="new_phase" attrs="{'readonly': [('state', '=', 'done')], 'invisible': [('new_meter_id', '!=', False)]}"/>
+                            <field name="new_opening_reading" attrs="{'readonly': [('state', '=', 'done')]}"/>
+                            <field name="new_meter_val" attrs="{'readonly': [('state', '=', 'done')]}"/>
+                        </group>
+                    </group>
+                    
+                    <notebook>
+                        <page string="ملاحظات">
+                            <field name="notes" placeholder="سجل أي ملاحظات حول حالة العداد القديم، التلاعب، أو فحص التركيب..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" widget="mail_followers"/>
+                    <field name="message_ids" widget="mail_thread"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="view_utility_meter_replacement_search" model="ir.ui.view">
+        <field name="name">utility.meter.replacement.search</field>
+        <field name="model">utility.meter.replacement</field>
+        <field name="arch" type="xml">
+            <search string="البحث في عمليات استبدال العدادات">
+                <field name="utility_account_id"/>
+                <field name="partner_id"/>
+                <field name="contract_id"/>
+                <field name="old_meter_number"/>
+                <field name="new_meter_number"/>
+                <separator/>
+                <filter string="مسودة" name="state_draft" domain="[('state', '=', 'draft')]"/>
+                <filter string="تم الاستبدال" name="state_done" domain="[('state', '=', 'done')]"/>
+                <group expand="0" string="تجميع حسب">
+                    <filter string="السبب" name="group_by_reason" domain="[]" context="{'group_by': 'reason'}"/>
+                    <filter string="الحالة" name="group_by_state" domain="[]" context="{'group_by': 'state'}"/>
+                    <filter string="تاريخ الاستبدال" name="group_by_date" domain="[]" context="{'group_by': 'replace_date'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Window Action -->
+    <record id="action_utility_meter_replacement" model="ir.actions.act_window">
+        <field name="name">سجل استبدال العدادات</field>
+        <field name="res_model">utility.meter.replacement</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_utility_meter_replacement_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                قم بتسجيل أول عملية استبدال عداد عبر حساب المشترك في النظام!
+            </p>
+            <p>
+                يسمح لك هذا السجل بمتابعة استبدال العدادات المعطلة أو التالفة مباشرة عبر حساب المشترك (utility.customer).
+            </p>
+        </field>
+    </record>
+
+    <!-- Menu Item -->
+    <menuitem id="menu_utility_meter_replacement" name="استبدال العدادات" parent="menu_utility_network" action="action_utility_meter_replacement" sequence="75"/>
+</odoo>

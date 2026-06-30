@@ -33,19 +33,16 @@
                             <field name="transformer_origin_id"
                                    attrs="{'invisible': [('transformer_origin_id', '=', False)]}"/>
                             <field name="recurring_rule_type" 
-                                   invisible="type != 'region'" 
-                                   required="type == 'region'"/>
+                                   attrs="{'invisible': [('type', '!=', 'region')], 'required': [('type', '=', 'region')]}"/>
                             <field name="parent_id" string="Parent Location" 
-                                   invisible="type == 'region'" 
-                                   required="type != 'region'"
-                                   domain="[('type', '=', type == 'zone' and 'area' or 'region')]"
-                                   attrs="{'readonly': [('transformer_origin_id', '!=', False)]}"/>
+                                   domain="[('type', 'in', ['region', 'area'])]"
+                                   attrs="{'invisible': [('type', '=', 'region')], 'required': [('type', '!=', 'region')], 'readonly': [('transformer_origin_id', '!=', False)]}"/>
                             <field name="active"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
                     </group>
                     <notebook>
-                        <page name="areas" string="Areas" invisible="type != 'region'">
+                        <page name="areas" string="Areas" attrs="{'invisible': [('type', '!=', 'region')]}">
                             <field name="area_ids">
                                 <tree>
                                     <field name="name"/>
@@ -54,7 +51,7 @@
                                 </tree>
                             </field>
                         </page>
-                        <page name="zones" string="Zones" invisible="type != 'area'">
+                        <page name="zones" string="Zones" attrs="{'invisible': [('type', '!=', 'area')]}">
                             <field name="zone_ids">
                                 <tree>
                                     <field name="name"/>
@@ -76,7 +73,7 @@
                 <field name="name"/>
                 <field name="code"/>
                 <field name="parent_id"/>
-                <filter name="active" string="Active" domain="[('active','=',True)]" default="1"/>
+                <filter name="active" string="Active" domain="[('active','=',True)]"/>
                 <filter name="inactive" string="Inactive" domain="[('active','=',False)]"/>
                 <filter name="type_region" string="Regions" domain="[('type','=','region')]"/>
                 <filter name="type_area" string="Areas" domain="[('type','=','area')]"/>

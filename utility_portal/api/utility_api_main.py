@@ -73,7 +73,7 @@ class UtilityAPI(http.Controller):
             'utility_sale_order_id': order.id,
             'utility_payment_method': payment_method,
             'electronic_doc_no': reference,
-            'payment_date': fields.Datetime.now(),
+            'date': fields.Date.context_today(request.env.user),
         })
         return {
             'payment_id': payment.id,
@@ -121,7 +121,7 @@ class UtilityAPI(http.Controller):
         alarms_domain = [('alarm_date', '>=', '%s 00:00:00' % report_date), ('alarm_date', '<=', '%s 23:59:59' % report_date), ('state', 'not in', ('resolved', 'closed'))]
         alarms = request.env['utility.alarm'].search(alarms_domain)
         total_collections = sum(request.env['account.payment'].search([
-            ('payment_date', '>=', '%s 00:00:00' % report_date), ('payment_date', '<=', '%s 23:59:59' % report_date),
+            ('date', '=', report_date),
             ('utility_sale_order_id', '!=', False),
         ]).mapped('amount'))
         return {

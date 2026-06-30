@@ -55,6 +55,20 @@ class UtilityTransformer(models.Model):
     coupling_meter_id = fields.Many2one('utility.meter', 'عداد الربط',
         domain="[('transformer_id', '=', id)]",
         help='العداد الرئيسي الذي يقيس إجمالي الطاقة الداخلة للخلية/المحول')
+    comparison_meter_id = fields.Many2one('utility.meter', 'عداد المقارنة',
+        domain="[('transformer_id', '=', id)]",
+        help='العداد المستخدم للمقارنة مع العداد الرئيسي أو الفاقد')
+    coupling_meter_ids = fields.Many2many('utility.meter', compute='_compute_coupling_meter_ids', string='عدادات الربط')
+
+    @api.depends('coupling_meter_id', 'comparison_meter_id')
+    def _compute_coupling_meter_ids(self):
+        for rec in self:
+            meters = self.env['utility.meter']
+            if rec.coupling_meter_id:
+                meters |= rec.coupling_meter_id
+            if rec.comparison_meter_id:
+                meters |= rec.comparison_meter_id
+            rec.coupling_meter_ids = [(6, 0, meters.ids)] if meters else False
     cell_account_ids = fields.One2many('utility.customer', 'cell_id',
         string='عقود المشتركين',
         help='عقود المشتركين المغذاة من هذه الخلية/المحول')

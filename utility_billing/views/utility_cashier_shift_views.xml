@@ -17,7 +17,7 @@
                             <field name="utility_sale_order_id"/>
                             <field name="amount" widget="monetary"/>
                             <field name="utility_payment_method"/>
-                            <field name="payment_date"/>
+                            <field name="date"/>
                         </tree>
                     </field>
                 </page>

@@ -33,6 +33,12 @@ class UtilityTransformerBalanceWizard(models.TransientModel):
     show_cells = fields.Boolean('إظهار الخلايا', default=True)
     show_loss_threshold = fields.Float('حد الإنذار للفاقد %', default=10.0,
         help='إذا تجاوز الفاقد هذه النسبة يظهر إنذار أحمر')
+    is_loss_warning = fields.Boolean('تحذير الفاقد', compute='_compute_is_loss_warning', store=True)
+
+    @api.depends('loss_percentage', 'show_loss_threshold')
+    def _compute_is_loss_warning(self):
+        for rec in self:
+            rec.is_loss_warning = rec.loss_percentage >= rec.show_loss_threshold
 
     @api.depends('transformer_id')
     def _compute_meters(self):

@@ -3,7 +3,9 @@ from odoo import api, fields, models, _
 
 class UtilityReversal(models.Model):
     _name = 'utility.reversal'
-    _inherit = ['mail.thread']
+    _description = 'Utility Reversal'
+    _rec_name = 'reference'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'date desc, id desc'
 
     active = fields.Boolean(default=True)

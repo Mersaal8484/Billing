@@ -1,0 +1,319 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Yemen Company Configuration -->
+        <record id="base.main_company" model="res.company">
+            <field name="name">المؤسسة العامة للكهرباء - الجمهورية اليمنية (PEC)</field>
+            <field name="currency_id" ref="base.YER"/>
+            <field name="country_id" ref="base.ye"/>
+        </record>
+
+        <!-- Products -->
+        <record id="utility_product_kwh" model="product.product">
+            <field name="name">استهلاك كهرباء (kWh)</field>
+            <field name="type">service</field>
+            <field name="list_price">350.00</field>
+        </record>
+        <record id="utility_product_fixed_fee" model="product.product">
+            <field name="name">رسوم اشتراك العداد</field>
+            <field name="type">service</field>
+            <field name="list_price">1500.00</field>
+        </record>
+        <record id="utility_product_service_charge" model="product.product">
+            <field name="name">رسوم خدمات وصيانة</field>
+            <field name="type">service</field>
+            <field name="list_price">1000.00</field>
+        </record>
+        <record id="utility_product_discount" model="product.product">
+            <field name="name">خصم استهلاك مدعوم</field>
+            <field name="type">service</field>
+            <field name="list_price">-350.00</field>
+        </record>
+
+        <!-- Region -->
+        <record id="demo_region_central" model="utility.region">
+            <field name="name">المنطقة المركزية - أمانة العاصمة (Sana'a Region)</field>
+            <field name="code">SANAA_C</field>
+            <field name="type">region</field>
+            <field name="recurring_rule_type">monthly</field>
+        </record>
+
+        <!-- Areas -->
+        <record id="demo_area_north" model="utility.region">
+            <field name="name">الفرع التشغيلي - حدة (Hadda District)</field>
+            <field name="code">HADDA</field>
+            <field name="type">area</field>
+            <field name="parent_id" ref="demo_region_central"/>
+        </record>
+        <record id="demo_area_south" model="utility.region">
+            <field name="name">الفرع التشغيلي - الزبيري (Zubayri District)</field>
+            <field name="code">ZUBAYRI</field>
+            <field name="type">area</field>
+            <field name="parent_id" ref="demo_region_central"/>
+        </record>
+
+        <!-- Zones -->
+        <record id="demo_zone_a" model="utility.region">
+            <field name="name">نطاق التوزيع - حي الصافية (Al-Safia Zone)</field>
+            <field name="code">ZONE_SAFIA</field>
+            <field name="type">zone</field>
+            <field name="parent_id" ref="demo_area_north"/>
+        </record>
+        <record id="demo_zone_b" model="utility.region">
+            <field name="name">نطاق التوزيع - حي الرويشان (Ruwaishan Zone)</field>
+            <field name="code">ZONE_RUWAISHAN</field>
+            <field name="type">zone</field>
+            <field name="parent_id" ref="demo_area_south"/>
+        </record>
+
+        <!-- Office -->
+        <record id="demo_office_main" model="utility.office">
+            <field name="name">مكتب خدمات المشتركين - المركز الرئيسي صنعاء</field>
+            <field name="code">MAIN_OFF_SANAA</field>
+            <field name="area_id" ref="demo_area_north"/>
+            <field name="phone">+967-1-445566</field>
+        </record>
+
+        <!-- Substation -->
+        <record id="demo_substation_1" model="utility.substation">
+            <field name="name">محطة تحويل حزيز المركزية 33/11 ك.ف</field>
+            <field name="code">SS_HIZIZ_01</field>
+            <field name="zone_id" ref="demo_zone_a"/>
+            <field name="voltage_level">mv</field>
+            <field name="capacity_kva">50000</field>
+            <field name="status">active</field>
+        </record>
+
+        <!-- Feeder -->
+        <record id="demo_feeder_1" model="utility.feeder">
+            <field name="name">مغذي حدة رقم 1 (11 ك.ف)</field>
+            <field name="code">FDR_HADDA_01</field>
+            <field name="zone_id" ref="demo_zone_a"/>
+            <field name="voltage_level">mv</field>
+            <field name="rated_capacity">5000</field>
+            <field name="current_load">3200</field>
+            <field name="substation_id" ref="demo_substation_1"/>
+        </record>
+
+        <!-- Transformer -->
+        <record id="demo_transformer_1" model="utility.transformer">
+            <field name="name">محول توزيع الصافية رقم 1 (1000 ك.ف.أ)</field>
+            <field name="code">TRAF_SAFIA_1</field>
+            <field name="substation_id" ref="demo_substation_1"/>
+            <field name="feeder_id" ref="demo_feeder_1"/>
+            <field name="capacity">1000</field>
+            <field name="phase">three</field>
+            <field name="manufacturer">Yemen Transformers Co.</field>
+            <field name="serial_number">YTC-2024-00192</field>
+            <field name="voltage_primary">11000</field>
+            <field name="voltage_secondary">415</field>
+            <field name="status">active</field>
+        </record>
+
+        <!-- Staff -->
+        <record id="demo_staff_inspector" model="utility.staff">
+            <field name="name">سالم السقاف (مفتش ميداني - Inspector)</field>
+            <field name="employee_code">EMP_INSP_YE01</field>
+            <field name="role">inspector</field>
+            <field name="mobile">+967-77-1122334</field>
+        </record>
+        <record id="demo_staff_cashier" model="utility.staff">
+            <field name="name">عبد الله الحروي (صراف الإيرادات - Cashier)</field>
+            <field name="employee_code">EMP_CASH_YE01</field>
+            <field name="role">cashier</field>
+            <field name="mobile">+967-77-2233445</field>
+        </record>
+        <record id="demo_staff_supervisor" model="utility.staff">
+            <field name="name">أحمد العولقي (مشرف هندسي - Supervisor)</field>
+            <field name="employee_code">EMP_SUPER_YE01</field>
+            <field name="role">supervisor</field>
+            <field name="mobile">+967-77-3344556</field>
+        </record>
+
+        <!-- Route -->
+        <record id="demo_route_1" model="utility.route">
+            <field name="name">مسار قراءة 1 - الصافية وحدة</field>
+            <field name="code">RTE_SANAA_01</field>
+            <field name="area_id" ref="demo_area_north"/>
+            <field name="zone_id" ref="demo_zone_a"/>
+            <field name="inspector_id" ref="demo_staff_inspector"/>
+            <field name="cashier_id" ref="demo_staff_cashier"/>
+            <field name="supervisor_id" ref="demo_staff_supervisor"/>
+        </record>
+
+
+        <!-- Customers -->
+        <record id="demo_partner_ahmed" model="res.partner">
+            <field name="name">محمد اليماني (Mohammad Al-Yamani)</field>
+            <field name="mobile">+967-77-5555555</field>
+            <field name="street">شارع حدة العام</field>
+            <field name="city">صنعاء (Sana'a)</field>
+            <field name="country_id" ref="base.ye"/>
+            <field name="region_id" ref="demo_region_central"/>
+            <field name="area_id" ref="demo_area_north"/>
+            <field name="zone_id" ref="demo_zone_a"/>
+        </record>
+        <record id="demo_partner_fahd" model="res.partner">
+            <field name="name">صالح الهمداني (Saleh Al-Hamdani)</field>
+            <field name="mobile">+967-77-6666666</field>
+            <field name="street">شارع الزبيري</field>
+            <field name="city">صنعاء (Sana'a)</field>
+            <field name="country_id" ref="base.ye"/>
+            <field name="region_id" ref="demo_region_central"/>
+            <field name="area_id" ref="demo_area_south"/>
+            <field name="zone_id" ref="demo_zone_b"/>
+        </record>
+        <record id="demo_partner_khalid" model="res.partner">
+            <field name="name">مؤسسة الحضرمي التجارية (Al-Hadhrami Commercial Est.)</field>
+            <field name="mobile">+967-77-7777777</field>
+            <field name="street">شارع الدائري</field>
+            <field name="city">صنعاء (Sana'a)</field>
+            <field name="country_id" ref="base.ye"/>
+            <field name="region_id" ref="demo_region_central"/>
+            <field name="area_id" ref="demo_area_north"/>
+            <field name="zone_id" ref="demo_zone_a"/>
+        </record>
+
+        <record id="demo_customer_1" model="utility.customer">
+            <field name="partner_id" ref="demo_partner_ahmed"/>
+            <field name="customer_number">PEC/SANAA/000001</field>
+            <field name="national_id">1001122334</field>
+            <field name="subscriber_id" ref="utility_core.sub_category_residential"/>
+
+            <field name="contract_state">active</field>
+            <field name="route_id" ref="demo_route_1"/>
+            <field name="contract_template_id" ref="utility_core.demo_contract_template_res"/>
+            <field name="balance">75000.00</field>
+            <field name="state">active</field>
+        </record>
+        <record id="demo_customer_2" model="utility.customer">
+            <field name="partner_id" ref="demo_partner_fahd"/>
+            <field name="customer_number">PEC/SANAA/000002</field>
+            <field name="national_id">1002233445</field>
+            <field name="subscriber_id" ref="utility_core.sub_category_residential"/>
+
+            <field name="contract_state">active</field>
+            <field name="route_id" ref="demo_route_1"/>
+            <field name="contract_template_id" ref="utility_core.demo_contract_template_res"/>
+            <field name="balance">145000.00</field>
+            <field name="state">active</field>
+        </record>
+        <record id="demo_customer_3" model="utility.customer">
+            <field name="partner_id" ref="demo_partner_khalid"/>
+            <field name="customer_number">PEC/SANAA/000003</field>
+            <field name="national_id">1003344556</field>
+            <field name="subscriber_id" ref="utility_core.sub_category_commercial"/>
+
+            <field name="contract_state">active</field>
+            <field name="route_id" ref="demo_route_1"/>
+            <field name="contract_template_id" ref="utility_core.demo_contract_template_com"/>
+            <field name="balance">420000.00</field>
+            <field name="state">active</field>
+        </record>
+
+        <!-- Meters -->
+        <record id="demo_meter_1" model="utility.meter">
+            <field name="meter_number">MET/YE/2024/0001</field>
+            <field name="serial_number">YE-MET-001-2024</field>
+            <field name="manufacturer">Landis+Gyr (PEC Approved)</field>
+            <field name="meter_type_id" ref="utility_core.meter_type_single_sts"/>
+            <field name="status_id" ref="utility_core.meter_status_active"/>
+            <field name="phase">single</field>
+            <field name="customer_id" ref="demo_customer_1"/>
+            <field name="communication_type">gsm</field>
+        </record>
+        <record id="demo_meter_2" model="utility.meter">
+            <field name="meter_number">MET/YE/2024/0002</field>
+            <field name="serial_number">YE-MET-002-2024</field>
+            <field name="manufacturer">Iskraemeco</field>
+            <field name="meter_type_id" ref="utility_core.meter_type_single_sts"/>
+            <field name="status_id" ref="utility_core.meter_status_active"/>
+            <field name="phase">single</field>
+            <field name="customer_id" ref="demo_customer_2"/>
+            <field name="communication_type">gsm</field>
+        </record>
+        <record id="demo_meter_3" model="utility.meter">
+            <field name="meter_number">MET/YE/2024/0003</field>
+            <field name="serial_number">YE-MET-003-2024</field>
+            <field name="manufacturer">Huawei Smart (AMI)</field>
+            <field name="meter_type_id" ref="utility_core.meter_type_smart_three"/>
+            <field name="status_id" ref="utility_core.meter_status_active"/>
+            <field name="phase">three</field>
+            <field name="customer_id" ref="demo_customer_3"/>
+            <field name="communication_type">rf</field>
+        </record>
+
+        <!-- Contract Templates -->
+        <record id="demo_contract_template_res" model="utility.contract.template">
+            <field name="name">عقد استهلاك سكني دوري - اليمن (شهري)</field>
+            <field name="code">TMPL_YE_RES_M</field>
+            <field name="recurring_rule_type">monthly</field>
+            <field name="recurring_invoicing_type">postpaid</field>
+            <field name="recurring_interval">1</field>
+
+            <field name="subscriber_ids" eval="[(6, 0, [ref('utility_core.sub_category_residential')])]"/>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="demo_contract_template_res_line1" model="utility.contract.template.line">
+            <field name="template_id" ref="demo_contract_template_res"/>
+            <field name="sequence">10</field>
+            <field name="product_id" ref="utility_product_kwh"/>
+            <field name="name">استهلاك كهرباء شهري (سكني)</field>
+            <field name="price_type">meter_reading</field>
+            <field name="meter_line_type">consumption</field>
+            <field name="qty_formula_id" ref="utility_core.formula_consumption"/>
+        </record>
+        <record id="demo_contract_template_res_line2" model="utility.contract.template.line">
+            <field name="template_id" ref="demo_contract_template_res"/>
+            <field name="sequence">20</field>
+            <field name="product_id" ref="utility_product_fixed_fee"/>
+            <field name="name">رسوم اشتراك وصيانة العداد (ريال يمني)</field>
+            <field name="price_type">fixed</field>
+            <field name="specific_price">1500.00</field>
+            <field name="meter_line_type">fixed_fee</field>
+            <field name="qty_formula_id" ref="utility_core.formula_fixed_fee"/>
+        </record>
+        <record id="demo_contract_template_res_line3" model="utility.contract.template.line">
+            <field name="template_id" ref="demo_contract_template_res"/>
+            <field name="sequence">30</field>
+            <field name="product_id" ref="utility_product_discount"/>
+            <field name="name">خصم الشريحة المدعومة (أول 100 وحدة)</field>
+            <field name="price_type">fixed</field>
+            <field name="specific_price">-350.00</field>
+            <field name="meter_line_type">discount</field>
+            <field name="qty_formula_id" ref="utility_core.formula_discount"/>
+            <field name="is_subsidized" eval="True"/>
+        </record>
+
+        <record id="demo_contract_template_com" model="utility.contract.template">
+            <field name="name">عقد استهلاك تجاري - اليمن (شهري)</field>
+            <field name="code">TMPL_YE_COM_M</field>
+            <field name="recurring_rule_type">monthly</field>
+            <field name="recurring_invoicing_type">postpaid</field>
+            <field name="recurring_interval">1</field>
+
+            <field name="subscriber_ids" eval="[(6, 0, [ref('utility_core.sub_category_commercial')])]"/>
+            <field name="active" eval="True"/>
+        </record>
+        <record id="demo_contract_template_com_line1" model="utility.contract.template.line">
+            <field name="template_id" ref="demo_contract_template_com"/>
+            <field name="sequence">10</field>
+            <field name="product_id" ref="utility_product_kwh"/>
+            <field name="name">استهلاك كهرباء شهري (تجاري)</field>
+            <field name="price_type">meter_reading</field>
+            <field name="meter_line_type">consumption</field>
+            <field name="qty_formula_id" ref="utility_core.formula_consumption"/>
+        </record>
+        <record id="demo_contract_template_com_line2" model="utility.contract.template.line">
+            <field name="template_id" ref="demo_contract_template_com"/>
+            <field name="sequence">20</field>
+            <field name="product_id" ref="utility_product_fixed_fee"/>
+            <field name="name">رسوم اشتراك العداد التجاري (ريال يمني)</field>
+            <field name="price_type">fixed</field>
+            <field name="specific_price">2500.00</field>
+            <field name="meter_line_type">fixed_fee</field>
+            <field name="qty_formula_id" ref="utility_core.formula_fixed_fee"/>
+        </record>
+    </data>
+</odoo>

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_contract_template_history_tree" model="ir.ui.view">
+        <field name="name">utility.contract.template.history.tree</field>
+        <field name="model">utility.contract.template.history</field>
+        <field name="arch" type="xml">
+            <tree decoration-muted="1">
+                <field name="template_id"/>
+                <field name="change_date"/>
+                <field name="old_price"/>
+                <field name="new_price"/>
+                <field name="old_fixed_charge"/>
+                <field name="new_fixed_charge"/>
+                <field name="reason"/>
+                <field name="changed_by"/>
+            </tree>
+        </field>
+    </record>
+</odoo>

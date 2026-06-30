@@ -4,6 +4,7 @@ from odoo import api, fields, models, _
 class UtilityTamperCase(models.Model):
     _name = 'utility.tamper.case'
     _description = 'Utility Tamper Case'
+    _rec_name = 'case_number'
     _inherit = ['mail.thread']
     _order = 'date_reported desc, id desc'
 
@@ -12,7 +13,7 @@ class UtilityTamperCase(models.Model):
     case_number = fields.Char('Case Number', required=True, index=True, default=lambda self: _('New'))
     date_reported = fields.Datetime('Date Reported', default=fields.Datetime.now)
     customer_id = fields.Many2one('utility.customer', 'Customer')
-    account_id = fields.Many2one('utility.customer', 'Account')
+    account_id = fields.Many2one('utility.customer', 'Account', related='customer_id', store=True)
     meter_id = fields.Many2one('utility.meter', 'Meter')
     tamper_type = fields.Selection([
         ('meter_bypass', 'Meter Bypass'),

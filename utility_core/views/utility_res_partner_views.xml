@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Inherit res.partner form view to add utility fields -->
+    <record id="view_partner_form_inherit_utility_core" model="ir.ui.view">
+        <field name="name">res.partner.form.inherit.utility.core</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='vat']" position="after">
+                <field name="nickname" placeholder="الاسم المختصر..."/>
+                <field name="char_code" placeholder="الرمز التعريفي"/>
+                <field name="new_no" placeholder="الرقم الجديد"/>
+                <field name="is_subscriber"/>
+                <field name="analytic_account_id" attrs="{'invisible': [('is_subscriber', '=', False)]}" options="{'no_create': True}"/>
+                <field name="subscriber_id" attrs="{'invisible': [('is_subscriber', '=', False)]}" options="{'no_create': True}"/>
+                <field name="sector_id" attrs="{'invisible': [('is_subscriber', '=', False)]}" options="{'no_create': True}"/>
+                <field name="sale_type" options="{'no_create': True}"/>
+            </xpath>
+
+            <notebook position="inside">
+                <page name="utility_technical_details" string="البيانات الفنية للكهرباء" attrs="{'invisible': [('is_subscriber', '=', False)]}">
+                    <group>
+                        <group string="التسلسل الجغرافي للشبكة (NUTS)">
+                            <field name="utility_region_id" options="{'no_create': True}"/>
+                            <field name="utility_area_id" options="{'no_create': True}"/>
+                            <field name="direct_branch_id" options="{'no_create': True}"/>
+                            <field name="transformer_zone_id" options="{'no_create': True}"/>
+                            <field name="residential_compound_id" options="{'no_create': True}"/>
+                            <field name="region_id" options="{'no_create': True}"/>
+                            <field name="area_id" options="{'no_create': True}"/>
+                            <field name="zone_id" options="{'no_create': True}"/>
+                        </group>
+                        <group string="بيانات العداد والتركيب">
+                            <field name="opening_reading"/>
+                            <field name="register_number"/>
+                            <field name="reading_multiplier"/>
+                            <field name="vas"/>
+                            <field name="meter_digit_count"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="بيانات الترحيل والنظام المؤسسي القديم (PEC)">
+                            <field name="tariff_code"/>
+                            <field name="base_name"/>
+                            <field name="opening_journal_no"/>
+                            <field name="subscription_amount_partner"/>
+                            <field name="is_credit_raised"/>
+                            <field name="credit_raise_date"/>
+                            <field name="n1"/>
+                            <field name="n2"/>
+                            <field name="n3"/>
+                            <field name="n11"/>
+                        </group>
+                        <group string="السجل المالي والمحاسبي">
+                            <field name="last_payment"/>
+                            <field name="last_payment_date"/>
+                            <field name="last_invoice"/>
+                            <field name="last_invoice_date"/>
+                            <field name="old_payment"/>
+                            <field name="old_credit"/>
+                            <field name="old_credit_before"/>
+                            <field name="credit_last"/>
+                            <field name="balance_customer"/>
+                            <field name="payment_token_ids" invisible="1"/>
+                            <field name="payment_token_id" options="{'no_create': True}"/>
+                        </group>
+                    </group>
+
+                </page>
+            </notebook>
+        </field>
+    </record>
+
+    <!-- Inherit ir.attachment form view to add custom storage path and URL -->
+    <record id="view_attachment_form_inherit_utility" model="ir.ui.view">
+        <field name="name">ir.attachment.form.inherit.utility</field>
+        <field name="model">ir.attachment</field>
+        <field name="inherit_id" ref="base.view_attachment_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='mimetype']" position="after">
+                <field name="custom_storage_path" readonly="1" groups="base.group_no_one"/>
+                <field name="invoice_attachment_url" readonly="1" widget="url" groups="base.group_no_one"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

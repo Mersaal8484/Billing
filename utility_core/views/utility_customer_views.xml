@@ -11,7 +11,7 @@
                 <field name="customer_number"/>
                 <field name="partner_id"/>
                 <field name="national_id"/>
-                <field name="subscriber_category_id"/>
+                <field name="subscriber_id"/>
                 <field name="state" widget="badge" decoration-success="state == 'active'" decoration-warning="state in ('suspended', 'disconnected')" decoration-danger="state == 'closed'"/>
                 <field name="region_id"/>
                 <field name="area_id"/>
@@ -32,7 +32,7 @@
                 <header>
                     <button name="action_create_analytic_account" type="object"
                             string="إنشاء حساب تحليلي" class="oe_highlight"
-                            invisible="analytic_account_id"/>
+                            attrs="{'invisible': [('analytic_account_id', '!=', False)]}"/>
                     <field name="state" widget="statusbar"
                            statusbar_visible="draft,active,suspended,disconnected,closed" options="{'clickable': '1'}"/>
                 </header>
@@ -59,7 +59,7 @@
                         <group string="معلومات الهوية والنوع">
                             <field name="partner_id"/>
                             <field name="national_id"/>
-                            <field name="subscriber_category_id"/>
+                            <field name="subscriber_id"/>
                             <field name="active"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
@@ -80,7 +80,7 @@
                             <group>
                                 <group string="الأجهزة والتعرفة">
                                     <field name="meter_id" options="{'no_create': True}"/>
-                                    <field name="tariff_id" options="{'no_create': True}"/>
+
                                     <field name="analytic_account_id" readonly="1"/>
                                 </group>
                                 <group string="الأرصدة والمبيعات">
@@ -188,9 +188,9 @@
                 <field name="zone_id"/>
                 <field name="route_id"/>
                 <field name="meter_id"/>
-                <field name="tariff_id"/>
+                <field name="contract_template_id"/>
                 
-                <filter name="active" string="نشط" domain="[('active','=',True)]" default="1"/>
+                <filter name="active" string="نشط" domain="[('active','=',True)]"/>
                 <separator/>
                 <filter name="draft" string="مسودة" domain="[('state','=','draft')]"/>
                 <filter name="active_state" string="فعال" domain="[('state','=','active')]"/>
@@ -204,7 +204,7 @@
                     <filter name="group_region" string="Region" context="{'group_by':'region_id'}"/>
                     <filter name="group_area" string="Area" context="{'group_by':'area_id'}"/>
                     <filter name="group_route" string="Route" context="{'group_by':'route_id'}"/>
-                    <filter name="group_category" string="Subscriber Category" context="{'group_by':'subscriber_category_id'}"/>
+                    <filter name="group_subscriber" string="Subscriber Type" context="{'group_by':'subscriber_id'}"/>
                 </group>
             </search>
         </field>

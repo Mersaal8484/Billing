@@ -3,6 +3,9 @@ from odoo import api, fields, models
 
 class UtilityTransaction(models.Model):
     _name = 'utility.transaction'
+    _description = 'Utility Transaction'
+    _rec_name = 'reference'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _log_access = False
     _order = 'date desc, id desc'
 

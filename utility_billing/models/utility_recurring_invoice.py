@@ -6,34 +6,34 @@ class UtilityContractTemplate(models.Model):
 
     def _prepare_sale_order_data(self, account, reading):
         """تحضير بيانات أمر البيع من العقد والقراءة المعتمدة"""
-        tariff = account.tariff_id
+        template = account.contract_template_id
         consumption = reading.consumption
         lines = []
         for line in self.line_ids:
             qty = line.quantity
             price = line.specific_price or 0.0
             name = line.name or line.product_id.name
-            if line.meter_line_type == 'consumption' and tariff:
+            if line.meter_line_type == 'consumption' and template:
                 qty = consumption
-                price = tariff.price_per_kwh or 0.0
+                price = template.price_per_kwh or 0.0
                 name = line.name or f'استهلاك ({consumption} kWh × {price})'
-            elif line.price_type == 'formula' and line.qty_formula_id:
-                category = account.subscriber_category_id
+            elif line.qty_formula_id:
+                category = account.subscriber_id
                 qty, computed_name = line.qty_formula_id.execute(
                     consumption=consumption,
                     previous_reading=reading.previous_reading,
                     current_reading=reading.reading_value,
-                    tariff=tariff,
+                    template=template,
                     account=account,
                     category=category,
                     line=line,
                 )
                 if computed_name:
                     name = computed_name
-            elif line.is_subsidized and account.subscriber_category_id:
-                category = account.subscriber_category_id
+            elif line.is_subsidized and account.subscriber_id:
+                category = account.subscriber_id
                 if category.subsidized_enabled and consumption > 0:
-                    qty, price, name = category._get_subsidized_amount(consumption, tariff)
+                    qty, price, name = category._get_subsidized_amount(consumption, template)
             if qty or price:
                 lines.append((0, 0, {
                     'name': name,
@@ -44,10 +44,9 @@ class UtilityContractTemplate(models.Model):
         return {
             'partner_id': account.partner_id.id if account.partner_id else self.env.company.partner_id.id,
             'customer_id': account.id,
-            'customer_id': account.id,
             'meter_id': account.meter_id.id,
             'reading_id': reading.id,
-            'tariff_id': tariff.id if tariff else False,
+            'contract_template_id': template.id if template else False,
             'period_start': reading.previous_reading_date.date() if reading.previous_reading_date else fields.Date.today(),
             'period_end': reading.reading_date.date() if reading.reading_date else fields.Date.today(),
             'previous_reading': reading.previous_reading,

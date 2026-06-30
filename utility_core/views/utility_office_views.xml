@@ -50,7 +50,7 @@
                 <field name="code"/>
                 <field name="area_id"/>
                 <field name="manager_id"/>
-                <filter name="active" string="Active" domain="[('active','=',True)]" default="1"/>
+                <filter name="active" string="Active" domain="[('active','=',True)]"/>
                 <group expand="0" string="Group By">
                     <filter name="group_area" string="Area" context="{'group_by':'area_id'}"/>
                     <filter name="group_region" string="Region" context="{'group_by':'region_id'}"/>

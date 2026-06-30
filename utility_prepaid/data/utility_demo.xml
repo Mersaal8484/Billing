@@ -18,10 +18,10 @@
       <field name="customer_id" ref="demo_account_1"/>
     </record>
 
-    <record id="demo_tariff_1" model="utility.tariff">
-      <field name="name">Residential Standard</field>
-      <field name="code">RES-STD</field>
-      <field name="unit_price">0.25</field>
+    <record id="demo_contract_1" model="utility.contract.template">
+      <field name="name">Residential Standard Prepaid</field>
+      <field name="code">RES-STD-PRE</field>
+      <field name="price_per_kwh">0.25</field>
     </record>
 
     <record id="demo_shift_1" model="utility.cashier.shift">
@@ -42,7 +42,7 @@
       <field name="account_id" ref="demo_account_1"/>
       <field name="meter_id" ref="demo_meter_1"/>
       <field name="customer_id" ref="demo_customer_1"/>
-      <field name="tariff_id" ref="demo_tariff_1"/>
+      <field name="contract_template_id" ref="demo_contract_1"/>
       <field name="amount">100.00</field>
       <field name="kwh">400.0</field>
       <field name="status">success</field>

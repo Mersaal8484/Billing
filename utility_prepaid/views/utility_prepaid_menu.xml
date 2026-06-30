@@ -1,35 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <menuitem id="menu_utility_prepaid_root" name="Utility Prepaid"
-              sequence="15" parent="utility_core.menu_utility_root"/>
-
-    <menuitem id="menu_utility_prepaid_pos" name="Point of Sale"
-              parent="menu_utility_prepaid_root" sequence="10"
-              action="point_of_sale.pos_action"/>
-
-    <menuitem id="menu_utility_prepaid_tokens" name="Tokens"
-              parent="menu_utility_prepaid_root" sequence="15"
-              action="action_utility_token"/>
-
-    <menuitem id="menu_utility_prepaid_cashiering" name="Cashiering"
-              parent="menu_utility_prepaid_root" sequence="20"/>
-
-    <menuitem id="menu_utility_prepaid_cashier_shifts" name="Cashier Shifts"
-              parent="menu_utility_prepaid_cashiering" sequence="10"
-              action="action_utility_cashier_shift"/>
-
-    <menuitem id="menu_utility_prepaid_adjustments" name="Adjustments"
-              parent="menu_utility_prepaid_root" sequence="25"
-              action="action_utility_adjustment"/>
-
-    <menuitem id="menu_utility_prepaid_reversals" name="Reversals"
-              parent="menu_utility_prepaid_root" sequence="30"
-              action="action_utility_reversal"/>
-
-    <menuitem id="menu_utility_prepaid_transactions" name="Transactions"
-              parent="menu_utility_prepaid_root" sequence="35"
-              action="action_utility_transaction"/>
-
     <record id="action_utility_token" model="ir.actions.act_window">
         <field name="name">Tokens</field>
         <field name="res_model">utility.token</field>
@@ -53,4 +23,34 @@
         <field name="res_model">utility.reversal</field>
         <field name="view_mode">tree,form</field>
     </record>
+
+    <menuitem id="menu_utility_prepaid_root" name="Utility Prepaid"
+              sequence="15" parent="utility_core.menu_utility_root"/>
+
+    <menuitem id="menu_utility_prepaid_pos" name="Point of Sale"
+              parent="menu_utility_prepaid_root" sequence="10"
+              action="point_of_sale.action_pos_config_kanban"/>
+
+    <menuitem id="menu_utility_prepaid_tokens" name="Tokens"
+              parent="menu_utility_prepaid_root" sequence="15"
+              action="action_utility_token"/>
+
+    <menuitem id="menu_utility_prepaid_cashiering" name="Cashiering"
+              parent="menu_utility_prepaid_root" sequence="20"/>
+
+    <menuitem id="menu_utility_prepaid_cashier_shifts" name="Cashier Shifts"
+              parent="menu_utility_prepaid_cashiering" sequence="10"
+              action="action_utility_cashier_shift"/>
+
+    <menuitem id="menu_utility_prepaid_adjustments" name="Adjustments"
+              parent="menu_utility_prepaid_root" sequence="25"
+              action="action_utility_adjustment"/>
+
+    <menuitem id="menu_utility_prepaid_reversals" name="Reversals"
+              parent="menu_utility_prepaid_root" sequence="30"
+              action="action_utility_reversal"/>
+
+    <menuitem id="menu_utility_prepaid_transactions" name="Transactions"
+              parent="menu_utility_prepaid_root" sequence="35"
+              action="action_utility_transaction"/>
 </odoo>

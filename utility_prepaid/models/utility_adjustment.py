@@ -3,7 +3,9 @@ from odoo import api, fields, models, _
 
 class UtilityAdjustment(models.Model):
     _name = 'utility.adjustment'
-    _inherit = ['mail.thread']
+    _description = 'Utility Adjustment'
+    _rec_name = 'reference'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'date desc, id desc'
 
     active = fields.Boolean(default=True)

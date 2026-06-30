@@ -38,17 +38,19 @@
             <tree decoration-warning="state == 'under_review'"
                   decoration-success="state == 'approved'"
                   decoration-danger="state == 'error'">
-                <field name="reading_id"/>
-                <field name="meter_id"/>
-                <field name="account_id"/>
-                <field name="reading_date"/>
-                <field name="reading_value"/>
-                <field name="consumption"/>
-                <field name="consumption_alert" widget="badge" decoration-danger="consumption_alert in ('high','negative','zero')" decoration-success="consumption_alert == 'normal'"/>
-                <field name="reading_type"/>
-                <field name="image_state" optional="show"/>
-                <field name="state" widget="badge" decoration-warning="state == 'under_review'" decoration-success="state == 'approved'" decoration-primary="state == 'billed'"/>
-                <field name="reviewer_id" optional="show"/>
+                <field name="meter_image" widget="image" class="oe_avatar" options="{'size': [64, 64]}" string="الصورة"/>
+                <field name="reading_id" string="رقم القراءة" style="width: 120px; font-weight: bold;"/>
+                <field name="customer_id" string="اسم المشترك"/>
+                <field name="meter_id" string="العداد"/>
+                <field name="reading_date" string="التاريخ"/>
+                <field name="reading_value" string="القراءة الحالية" style="width: 100px; font-weight: bold; color: blue;"/>
+                <field name="consumption" string="الاستهلاك" style="width: 100px; font-weight: bold; color: green;"/>
+                <field name="consumption_alert" widget="badge" decoration-danger="consumption_alert in ('high','negative','zero')" decoration-success="consumption_alert == 'normal'" string="الاستهلاك"/>
+                <field name="reading_type" string="نوع القراءة"/>
+                <field name="image_state" optional="show" string="حالة الصورة"/>
+                <field name="state" widget="badge" decoration-warning="state == 'under_review'" decoration-success="state == 'approved'" decoration-primary="state == 'billed'" string="الحالة"/>
+                <field name="create_uid" string="القارئ (الاسم)"/>
+                <field name="reviewer_id" optional="show" string="المراجع"/>
             </tree>
         </field>
     </record>
@@ -63,19 +65,19 @@
                     <!-- أزرار حسب الحالة متوافقة مع Odoo 17/18 -->
                     <button name="action_submit_review" type="object"
                             string="إرسال للمراجعة" class="oe_highlight"
-                            invisible="state != 'draft'"
+                            attrs="{'invisible': [('state', '!=', 'draft')]}"
                             groups="utility_core.group_utility_technician"/>
                     <button name="action_approve" type="object"
                             string="اعتماد القراءة" class="oe_highlight"
-                            invisible="state != 'under_review'"
+                            attrs="{'invisible': [('state', '!=', 'under_review')]}"
                             groups="utility_core.group_utility_supervisor"/>
                     <button name="action_reject" type="object"
                             string="رفض" class="btn-danger"
-                            invisible="state not in ('under_review', 'approved')"
+                            attrs="{'invisible': [('state', 'not in', ('under_review', 'approved'))]}"
                             groups="utility_core.group_utility_supervisor"/>
                     <button name="action_generate_bill" type="object"
                             string="إنشاء فاتورة" class="oe_highlight"
-                            invisible="state != 'approved'"
+                            attrs="{'invisible': [('state', '!=', 'approved')]}"
                             groups="utility_core.group_utility_billing_manager"/>
                     <field name="state" widget="statusbar"
                            statusbar_visible="draft,under_review,approved,billed"/>
@@ -105,9 +107,9 @@
                             <field name="previous_reading_date"/>
                             <field name="reading_value"/>
                             <field name="consumption" class="text-success"/>
-                            <!-- تحليل الاستهلاك متوافق مع Odoo 17/18 -->
-                            <field name="consumption_difference" invisible="consumption_alert == 'normal'"/>
-                            <field name="consumption_diff_percentage" invisible="consumption_alert == 'normal'"/>
+                            <!-- تحليل الاستهلاك -->
+                            <field name="consumption_difference" attrs="{'invisible': [('consumption_alert', '=', 'normal')]}"/>
+                            <field name="consumption_diff_percentage" attrs="{'invisible': [('consumption_alert', '=', 'normal')]}"/>
                             <field name="consumption_alert" widget="badge"/>
                         </group>
                     </group>
@@ -122,7 +124,7 @@
                         <field name="reviewer_id"/>
                         <field name="review_date"/>
                         <field name="review_notes"/>
-                        <field name="rejection_reason" invisible="not rejection_reason"/>
+                        <field name="rejection_reason" attrs="{'invisible': [('rejection_reason', '=', False)]}"/>
                     </group>
                     <field name="remarks" nolabel="1" placeholder="ملاحظات إضافية..."/>
                 </sheet>
@@ -136,7 +138,67 @@
         </field>
     </record>
 
+    <!-- ===================== KANBAN VIEW ===================== -->
+    <record id="view_utility_reading_kanban" model="ir.ui.view">
+        <field name="name">utility.reading.kanban</field>
+        <field name="model">utility.reading</field>
+        <field name="arch" type="xml">
+            <kanban default_group_by="state" class="o_kanban_mobile">
+                <field name="reading_id"/>
+                <field name="customer_id"/>
+                <field name="meter_id"/>
+                <field name="reading_value"/>
+                <field name="state"/>
+                <field name="meter_image"/>
+                <field name="create_uid"/>
+                <field name="id"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div t-attf-class="oe_kanban_global_click o_kanban_record_has_image_fill">
+                            <div class="o_kanban_image_fill_left d-none d-md-block" t-attf-style="background-image:url('#{kanban_image('utility.reading', 'meter_image', record.id.raw_value)}')">
+                                <img class="o_kanban_image_inner_pic" t-if="record.meter_image.raw_value" t-att-alt="record.reading_id.value" t-att-src="kanban_image('utility.reading', 'meter_image', record.id.raw_value)"/>
+                            </div>
+                            <div class="o_kanban_image d-md-none" t-attf-style="background-image:url('#{kanban_image('utility.reading', 'meter_image', record.id.raw_value)}')">
+                                <img class="o_kanban_image_inner_pic" t-if="record.meter_image.raw_value" t-att-alt="record.reading_id.value" t-att-src="kanban_image('utility.reading', 'meter_image', record.id.raw_value)"/>
+                            </div>
+                            <div class="oe_kanban_details">
+                                <div class="o_kanban_record_top">
+                                    <div class="o_kanban_record_headings">
+                                        <strong class="o_kanban_record_title"><field name="reading_id"/></strong>
+                                    </div>
+                                    <div class="o_dropdown_kanban dropdown">
+                                        <a role="button" class="dropdown-toggle o-no-caret btn" data-toggle="dropdown" href="#" aria-label="Dropdown menu" title="Dropdown menu">
+                                            <span class="fa fa-ellipsis-v"/>
+                                        </a>
+                                        <div class="dropdown-menu" role="menu">
+                                            <a role="menuitem" type="edit" class="dropdown-item">تعديل</a>
+                                            <a role="menuitem" type="delete" class="dropdown-item">حذف</a>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="o_kanban_record_body">
+                                    <div><field name="customer_id"/></div>
+                                    <div>العداد: <field name="meter_id"/></div>
+                                    <div>القراءة: <field name="reading_value"/></div>
+                                </div>
+                                <div class="o_kanban_record_bottom">
+                                    <div class="oe_kanban_bottom_left">
+                                        القارئ: <field name="create_uid"/>
+                                    </div>
+                                    <div class="oe_kanban_bottom_right">
+                                        <field name="state" widget="label_selection" options="{'classes': {'draft': 'default', 'under_review': 'warning', 'approved': 'success', 'billed': 'primary'}}"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
     <!-- ===================== SEARCH VIEW ===================== -->
+
     <record id="view_utility_reading_search" model="ir.ui.view">
         <field name="name">utility.reading.search</field>
         <field name="model">utility.reading</field>
@@ -172,7 +234,7 @@
     <record id="action_utility_reading" model="ir.actions.act_window">
         <field name="name">قراءات العدادات</field>
         <field name="res_model">utility.reading</field>
-        <field name="view_mode">tree,form</field>
+        <field name="view_mode">kanban,tree,form</field>
         <field name="search_view_id" ref="view_utility_reading_search"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
@@ -184,7 +246,7 @@
     <record id="action_utility_readings_pending_review" model="ir.actions.act_window">
         <field name="name">قراءات تنتظر المراجعة</field>
         <field name="res_model">utility.reading</field>
-        <field name="view_mode">tree,form</field>
+        <field name="view_mode">kanban,tree,form</field>
         <field name="domain">[('state', '=', 'under_review')]</field>
         <field name="context">{'default_state': 'under_review'}</field>
         <field name="help" type="html">
@@ -195,6 +257,10 @@
     </record>
 
     <!-- ======================= MENU ITEM ======================= -->
+    <menuitem id="menu_utility_meter_readings" name="Meter Readings"
+              parent="menu_utility_readings" sequence="10"
+              action="action_utility_reading"/>
+
     <menuitem id="menu_utility_readings_pending_review"
               name="قراءات تنتظر المراجعة"
               parent="menu_utility_readings"

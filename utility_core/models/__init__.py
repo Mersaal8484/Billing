@@ -8,16 +8,19 @@ from . import utility_customer
 
 from . import utility_connection
 from . import utility_meter
-from . import utility_tariff
 from . import utility_staff
 from . import utility_team
 from . import utility_user_role
 from . import utility_subscriber_category
+from . import utility_subscriber
 from . import utility_formula
 from . import utility_contract_template
+from . import utility_contract_template_block
+from . import utility_contract_template_history
 from . import utility_settings
 from . import utility_res_users
+from . import utility_res_partner
 from . import utility_date_range
 from . import utility_cell_reading
-from . import account_analytic_account
-
+from . import utility_ir_attachment
+from . import utility_meter_replacement

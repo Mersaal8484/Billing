@@ -6,6 +6,7 @@ from odoo.exceptions import ValidationError
 class UtilityReading(models.Model):
     _name = 'utility.reading'
     _description = 'Utility Meter Reading'
+    _rec_name = 'reading_id'
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'reading_date desc'
 
@@ -36,6 +37,7 @@ class UtilityReading(models.Model):
         ('loss_read', 'قراءة مفقودة'),
     ], string='حالة الصورة', default='none',
         help='حالة فحص الصورة من قبل المراجع')
+    attachment_id = fields.Many2one('ir.attachment', string='ملف المرفق الرسمي')
     reviewer_id = fields.Many2one('res.users', 'المراجع',
         readonly=True, tracking=True)
     review_date = fields.Datetime('تاريخ المراجعة', readonly=True)
@@ -144,18 +146,17 @@ class UtilityReading(models.Model):
             })
 
     def action_generate_bill(self):
-        """إنشاء أمر بيع (فاتورة) من القراءة المعتمدة"""
+        """إنشاء أمر بيع (فاتورة) من القراءة المعتمدة وربط المرفق رسمياً"""
         self.ensure_one()
         if self.state != 'approved':
             raise ValidationError('يجب الموافقة على القراءة أولاً قبل إنشاء الفاتورة!')
         if self.state == 'billed':
             raise ValidationError('تم إنشاء فاتورة لهذه القراءة مسبقاً!')
-        tariff = self.account_id.tariff_id
+        template = self.account_id.contract_template_id
         consumption = self.consumption
         order = self.env['sale.order'].create({
             'partner_id': self.account_id.partner_id.id if self.account_id.partner_id else self.env.company.partner_id.id,
             'customer_id': self.account_id.id,
-            'customer_id': self.customer_id.id,
             'meter_id': self.meter_id.id,
             'reading_id': self.id,
             'date_order': fields.Datetime.now(),
@@ -164,11 +165,24 @@ class UtilityReading(models.Model):
             'previous_reading': self.previous_reading,
             'current_reading': self.reading_value,
             'consumption': consumption,
-            'tariff_id': tariff.id if tariff else False,
+            'contract_template_id': template.id if template else False,
             'bill_state': 'draft',
         })
-        if tariff:
+        if template:
             order._calculate_amounts()
+            
+        # إنشاء/نقل ملف المرفق الخاص بصورة العداد مباشرة إلى أمر البيع (الفاتورة)
+        if self.meter_image:
+            attach = self.env['ir.attachment'].create({
+                'name': f'invoice_meter_{order.name or self.reading_id}.png',
+                'type': 'binary',
+                'datas': self.meter_image,
+                'res_model': 'sale.order',
+                'res_id': order.id,
+            })
+            order.attachment_id = attach.id
+            self.attachment_id = attach.id
+
         self.state = 'billed'
         return {
             'type': 'ir.actions.act_window',

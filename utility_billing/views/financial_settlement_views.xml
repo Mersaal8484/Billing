@@ -26,7 +26,7 @@
                 <header>
                     <button name="action_apply_settlement" type="object"
                             string="تطبيق التسوية المالية" class="oe_highlight"
-                            invisible="state == 'applied'"/>
+                            attrs="{'invisible': [('state', '=', 'applied')]}"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,applied"/>
                 </header>
                 <sheet>
@@ -43,6 +43,7 @@
                             <field name="settlement_type"/>
                             <field name="amount"/>
                             <field name="date"/>
+                            <field name="move_id" attrs="{'invisible': [('move_id', '=', False)]}"/>
                         </group>
                     </group>
                     <group string="التفاصيل والسبب">
@@ -58,4 +59,8 @@
         <field name="res_model">utility.financial.settlement</field>
         <field name="view_mode">tree,form</field>
     </record>
+
+    <menuitem id="menu_utility_financial_settlement" name="Financial Settlements"
+              parent="utility_billing.menu_utility_accounting" sequence="40"
+              action="action_utility_financial_settlement"/>
 </odoo>

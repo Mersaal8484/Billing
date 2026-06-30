@@ -77,6 +77,14 @@ class ResConfigSettings(models.TransientModel):
         default=3)
 
     # --- SMS / Notifications ---
+    stock_move_sms_validation = fields.Boolean(
+        string='تأكيد رسائل SMS لحركات المخزون',
+        config_parameter='utility.stock_move_sms_validation',
+        default=False)
+    stock_sms_confirmation_template_id = fields.Many2one(
+        'sms.template',
+        string='قالب رسائل SMS لتأكيد المخزون',
+        config_parameter='utility.stock_sms_confirmation_template_id')
     send_sms_on_invoice = fields.Boolean(
         string='إرسال SMS عند إنشاء الفاتورة',
         config_parameter='utility.send_sms_on_invoice',
@@ -97,9 +105,41 @@ class ResConfigSettings(models.TransientModel):
         config_parameter='utility.fine_account_id')
     discount_account_id = fields.Many2one(
         'account.account',
-        string='حساب الخصومات',
+        string='حساب الخصومات / الإعفاءات',
         config_parameter='utility.discount_account_id')
     deposit_account_id = fields.Many2one(
         'account.account',
         string='حساب التأمينات',
         config_parameter='utility.deposit_account_id')
+    settlement_account_id = fields.Many2one(
+        'account.account',
+        string='حساب التسويات المالية',
+        config_parameter='utility.settlement_account_id')
+    writeoff_journal_id = fields.Many2one(
+        'account.journal',
+        string='يومية الإعفاءات',
+        config_parameter='utility.writeoff_journal_id')
+    deposit_journal_id = fields.Many2one(
+        'account.journal',
+        string='يومية التأمينات والودائع',
+        config_parameter='utility.deposit_journal_id')
+    settlement_journal_id = fields.Many2one(
+        'account.journal',
+        string='يومية التسويات',
+        config_parameter='utility.settlement_journal_id')
+    penalty_product_id = fields.Many2one(
+        'product.product',
+        string='منتج الغرامات',
+        config_parameter='utility.penalty_product_id')
+    mu_allim_product_id = fields.Many2one(
+        'product.product',
+        string='منتج المعلم',
+        config_parameter='utility.mu_allim_product_id')
+    cleaning_product_id = fields.Many2one(
+        'product.product',
+        string='منتج النظافة',
+        config_parameter='utility.cleaning_product_id')
+    local_fee_product_id = fields.Many2one(
+        'product.product',
+        string='منتج المجالس المحلية',
+        config_parameter='utility.local_fee_product_id')

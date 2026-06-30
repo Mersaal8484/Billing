@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- إعدادات حجم الورق المخصص (70mm x 290mm) -->
+    <record id="paperformat_utility_receipt" model="report.paperformat">
+        <field name="name">فاتورة خدمات (70mm x 290mm)</field>
+        <field name="default" eval="True"/>
+        <field name="format">custom</field>
+        <field name="page_height">70</field>
+        <field name="page_width">290</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">5</field>
+        <field name="margin_bottom">5</field>
+        <field name="margin_left">2</field>
+        <field name="margin_right">2</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <!-- تقرير خاص لطباعة الفاتورة بالحجم المخصص دون التأثير على أوامر البيع العادية -->
+    <record id="action_report_utility_bill" model="ir.actions.report">
+        <field name="name">طباعة فاتورة المشترك (إيصال)</field>
+        <field name="model">sale.order</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">sale.report_saleorder</field>
+        <field name="report_file">sale.report_saleorder</field>
+        <field name="print_report_name">'فاتورة - %s' % (object.name)</field>
+        <field name="binding_model_id" ref="sale.model_sale_order"/>
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="utility_billing.paperformat_utility_receipt"/>
+    </record>
+
+    <!-- Update Standard Sale Order PDF Report -->
+    <template id="report_saleorder_document_utility" inherit_id="sale.report_saleorder_document">
+        <xpath expr="//div[@name='total']//table" position="inside">
+            <t t-if="doc.previous_balance &gt; 0">
+                <tr class="border-black o_subtotal">
+                    <td><strong>رصيد المتأخرات (سابق)</strong></td>
+                    <td class="text-end">
+                        <span t-field="doc.previous_balance"
+                            t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                    </td>
+                </tr>
+                <tr class="border-black o_total">
+                    <td><strong>إجمالي المطلوب سداده</strong></td>
+                    <td class="text-end">
+                        <span t-field="doc.total_due_amount"
+                            t-options='{"widget": "monetary", "display_currency": doc.currency_id}'/>
+                    </td>
+                </tr>
+            </t>
+        </xpath>
+    </template>
+</odoo>

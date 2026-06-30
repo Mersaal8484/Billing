@@ -4,6 +4,7 @@ from odoo import api, fields, models, _
 class UtilityAlarm(models.Model):
     _name = 'utility.alarm'
     _description = 'Utility Alarm'
+    _rec_name = 'alarm_code'
     _order = 'alarm_date desc, id desc'
 
     active = fields.Boolean(default=True)
@@ -32,7 +33,7 @@ class UtilityAlarm(models.Model):
         ('emergency', 'Emergency'),
     ], string='Severity', default='warning')
     customer_id = fields.Many2one('utility.customer', 'Customer')
-    account_id = fields.Many2one('utility.customer', 'Account')
+    account_id = fields.Many2one('utility.customer', 'Account', related='customer_id', store=True)
     meter_id = fields.Many2one('utility.meter', 'Meter')
     area_id = fields.Many2one('utility.region', 'Area', domain="[('type', '=', 'area')]")
     region_id = fields.Many2one('utility.region', 'Region', related='area_id.parent_id', store=True)
@@ -99,8 +100,8 @@ class UtilityAlarm(models.Model):
             self.create({
                 'alarm_type': 'low_credit',
                 'severity': 'critical' if account.balance == 0 else 'warning',
-                'description': _('Account %s has low balance: %s') % (account.account_number, account.balance),
-                'customer_id': account.customer_id.id,
+                'description': _('Account %s has low balance: %s') % (account.customer_number, account.balance),
+                'customer_id': account.id,
                 'account_id': account.id,
                 'meter_id': account.meter_id.id,
                 'region_id': account.region_id.id,

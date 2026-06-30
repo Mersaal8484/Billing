@@ -105,7 +105,7 @@
                 <field name="code"/>
                 <field name="category_id"/>
                 <field name="tariff_type"/>
-                <filter name="active_tariff" string="Active" domain="[('is_active','=',True)]" default="1"/>
+                <filter name="active_tariff" string="Active" domain="[('is_active','=',True)]"/>
                 <filter name="flat" string="Flat" domain="[('tariff_type','=','flat')]"/>
                 <filter name="block" string="Block" domain="[('tariff_type','=','block')]"/>
                 <group expand="0" string="Group By">

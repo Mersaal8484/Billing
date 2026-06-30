@@ -1,36 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <menuitem id="menu_utility_billing_root" name="Utility Billing"
-              sequence="20" parent="utility_core.menu_utility_root"/>
-
-    <menuitem id="menu_utility_readings" name="Readings"
-              parent="menu_utility_billing_root" sequence="10"/>
-    <menuitem id="menu_utility_meter_readings" name="Meter Readings"
-              parent="menu_utility_readings" sequence="10"
-              action="action_utility_reading"/>
-
-    <menuitem id="menu_utility_billing" name="Billing"
-              parent="menu_utility_billing_root" sequence="20"/>
-    <menuitem id="menu_utility_bills" name="Bills"
-              parent="menu_utility_billing" sequence="20"
-              action="action_utility_sale_order"/>
-
-    <menuitem id="menu_utility_accounting" name="Accounting"
-              parent="menu_utility_billing_root" sequence="40"/>
-    <menuitem id="menu_utility_writeoffs" name="Writeoffs"
-              parent="menu_utility_accounting" sequence="10"
-              action="action_utility_writeoff"/>
-    <menuitem id="menu_utility_deposits" name="Deposits"
-              parent="menu_utility_accounting" sequence="20"
-              action="action_utility_deposit"/>
-    <menuitem id="menu_utility_penalties" name="Penalties"
-              parent="menu_utility_accounting" sequence="30"
-              action="action_utility_penalty"/>
-
-    <menuitem id="menu_utility_financial_settlement" name="Financial Settlements"
-              parent="menu_utility_accounting" sequence="40"
-              action="action_utility_financial_settlement"/>
-
     <record id="action_utility_writeoff" model="ir.actions.act_window">
         <field name="name">Writeoffs</field>
         <field name="res_model">utility.writeoff</field>
@@ -48,4 +17,38 @@
         <field name="res_model">utility.penalty</field>
         <field name="view_mode">tree,form</field>
     </record>
+
+    <menuitem id="menu_utility_billing_root" name="Utility Billing"
+              sequence="20" parent="utility_core.menu_utility_root"/>
+
+    <menuitem id="menu_utility_readings" name="Readings"
+              parent="menu_utility_billing_root" sequence="10"/>
+
+    <menuitem id="menu_utility_billing" name="Billing"
+              parent="menu_utility_billing_root" sequence="20"/>
+
+    <menuitem id="menu_utility_accounting" name="Accounting"
+              parent="menu_utility_billing_root" sequence="40"/>
+
+    <menuitem id="menu_utility_writeoffs" name="Writeoffs"
+              parent="menu_utility_accounting" sequence="10"
+              action="action_utility_writeoff"/>
+
+    <menuitem id="menu_utility_deposits" name="Deposits"
+              parent="menu_utility_accounting" sequence="20"
+              action="action_utility_deposit"/>
+
+    <menuitem id="menu_utility_penalties" name="Penalties"
+              parent="menu_utility_accounting" sequence="30"
+              action="action_utility_penalty"/>
+
+    <record id="action_utility_penalty_type" model="ir.actions.act_window">
+        <field name="name">Penalty Types</field>
+        <field name="res_model">utility.penalty.type</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <menuitem id="menu_utility_penalty_type" name="Penalty Types"
+              parent="utility_core.menu_utility_config" sequence="45"
+              action="action_utility_penalty_type"/>
 </odoo>

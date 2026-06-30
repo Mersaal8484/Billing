@@ -38,9 +38,9 @@
                         </group>
                         <group string="الخصم المدعوم">
                             <field name="subsidized_enabled"/>
-                            <field name="subsidized_max_units" invisible="not subsidized_enabled"/>
-                            <field name="subsidized_percentage" invisible="not subsidized_enabled"/>
-                            <field name="subsidized_price_per_kwh" invisible="not subsidized_enabled"/>
+                            <field name="subsidized_max_units" attrs="{'invisible': [('subsidized_enabled', '=', False)]}"/>
+                            <field name="subsidized_percentage" attrs="{'invisible': [('subsidized_enabled', '=', False)]}"/>
+                            <field name="subsidized_price_per_kwh" attrs="{'invisible': [('subsidized_enabled', '=', False)]}"/>
                         </group>
                     </group>
                     <group string="الحسابات والإعدادات الافتراضية">
@@ -49,7 +49,7 @@
                             <field name="revenue_account_id"/>
                         </group>
                         <group>
-                            <field name="default_tariff_id"/>
+
                             <field name="default_contract_template_id"/>
                         </group>
                     </group>
@@ -57,7 +57,7 @@
                         <page string="الوصف">
                             <field name="description" placeholder="اكتب وصفاً للفئة هنا..."/>
                         </page>
-                        <page string="الفئات الفرعية" invisible="level == 'subcategory'">
+                        <page string="الفئات الفرعية" attrs="{'invisible': [('level', '=', 'subcategory')]}">
                             <field name="child_ids" readonly="1">
                                 <tree>
                                     <field name="code"/>
@@ -78,6 +78,8 @@
         <field name="view_mode">tree,form</field>
     </record>
 
+    <menuitem id="menu_utility_subscriber_category" name="Subscriber Categories" parent="utility_core.menu_utility_config" action="action_utility_subscriber_category" sequence="65"/>
+
     <!-- ===================== FORMULA VIEWS ===================== -->
     <record id="view_utility_formula_tree" model="ir.ui.view">
         <field name="name">utility.formula.tree</field>
@@ -85,7 +87,8 @@
         <field name="arch" type="xml">
             <tree>
                 <field name="name"/>
-                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="active" decoration-muted="not active"/>
+                <field name="company_id" groups="base.group_multi_company" optional="show"/>
             </tree>
         </field>
     </record>
@@ -94,20 +97,93 @@
         <field name="name">utility.formula.form</field>
         <field name="model">utility.formula</field>
         <field name="arch" type="xml">
-            <form>
+            <form string="معادلة الاحتساب">
+                <header>
+                    <button name="action_test_formula" type="object" string="تشغيل واختبار المعادلة" class="oe_highlight" icon="fa-cogs"/>
+                </header>
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_contract_lines" type="object" class="oe_stat_button" icon="fa-file-text-o" attrs="{'invisible': [('contract_line_count', '=', 0)]}">
+                            <field name="contract_line_count" widget="statinfo" string="بنود العقود"/>
+                        </button>
+                        <button name="toggle_active" type="object" class="oe_stat_button" icon="fa-archive">
+                            <field name="active" widget="boolean_button" options="{'terminology': 'active'}"/>
+                        </button>
+                    </div>
+                    <widget name="web_ribbon" title="مؤرشف" bg_color="bg-danger" attrs="{'invisible': [('active', '=', True)]}"/>
                     <div class="oe_title">
-                        <label for="name" string="اسم المعادلة"/>
+                        <label for="name" string="اسم المعادلة" class="oe_edit_only"/>
                         <h1>
-                            <field name="name" placeholder="مثال: خصم استهلاك مدعوم..."/>
+                            <field name="name" placeholder="مثال: معادلة احتساب الاستهلاك الشهري..."/>
                         </h1>
                     </div>
                     <group>
-                        <field name="company_id" groups="base.group_multi_company"/>
+                        <group>
+                            <field name="company_id" groups="base.group_multi_company" options="{'no_create': True}"/>
+                        </group>
+                        <group>
+                            <div class="text-muted" colspan="2">
+                                <i class="fa fa-code"/> يتم كتابة الكود بلغة Python ويتم تنفيذه ديناميكياً عند احتساب الفواتير.
+                            </div>
+                        </group>
                     </group>
-                    <group string="كود المعادلة (Python)">
-                        <field name="code" widget="ace" options="{'mode': 'python'}" nolabel="1"/>
-                    </group>
+                    <notebook>
+                        <page string="كود الاحتساب (Python)" icon="fa-code">
+                            <div class="alert alert-info oe_edit_only" role="alert" style="margin-bottom: 10px;">
+                                <i class="fa fa-lightbulb-o"/> اكتب كود Python لحساب قيمة <code>result</code>. يمكنك الضغط على "تشغيل واختبار المعادلة" في الأعلى لتجربة الحساب.
+                            </div>
+                            <field name="code" widget="ace" options="{'mode': 'python', 'theme': 'monokai', 'fontSize': 14}" nolabel="1" placeholder="# مثال:\n# خصم 20% من الاستهلاك الأول 100 كيلوواط\nif consumption &lt;= 100:\n    result = consumption * 0.20\nelse:\n    result = 20 + (consumption - 100) * 0.15\nname = 'خصم استهلاك'"/>
+                        </page>
+                        <page string="دليل المتغيرات المتاحة" icon="fa-book">
+                            <div class="alert alert-warning" role="alert" style="margin-bottom: 15px;">
+                                <i class="fa fa-info-circle"/> المتغيرات التالية يتم تمريرها تلقائياً أثناء فوترة المشترك. يجب أن ينتهي الكود بتعيين المتغير <code>result</code>.
+                            </div>
+                            <group string="متغيرات الإدخال (Input Variables)">
+                                <group>
+                                    <div class="o_row" title="كمية الاستهلاك الفعلي بالكيلوواط">
+                                        <span class="badge badge-pill badge-primary" style="font-size: 14px;"><code>consumption</code></span>
+                                        <span class="text-muted ml-2"> — (float) الاستهلاك الفعلي (kWh)</span>
+                                    </div>
+                                    <div class="o_row" title="قراءة العداد السابقة">
+                                        <span class="badge badge-pill badge-info" style="font-size: 14px;"><code>previous_reading</code></span>
+                                        <span class="text-muted ml-2"> — (float) القراءة السابقة للعداد</span>
+                                    </div>
+                                    <div class="o_row" title="قراءة العداد الحالية">
+                                        <span class="badge badge-pill badge-info" style="font-size: 14px;"><code>current_reading</code></span>
+                                        <span class="text-muted ml-2"> — (float) القراءة الحالية للعداد</span>
+                                    </div>
+                                    <div class="o_row" title="كائن التعرفة المرتبطة">
+                                        <span class="badge badge-pill badge-secondary" style="font-size: 14px;"><code>tariff</code></span>
+                                        <span class="text-muted ml-2"> — (record) كائن التعرفة (utility.tariff)</span>
+                                    </div>
+                                </group>
+                                <group>
+                                    <div class="o_row" title="كائن حساب المشترك">
+                                        <span class="badge badge-pill badge-secondary" style="font-size: 14px;"><code>account</code></span>
+                                        <span class="text-muted ml-2"> — (record) حساب المشترك (utility.customer)</span>
+                                    </div>
+                                    <div class="o_row" title="كائن فئة المشترك">
+                                        <span class="badge badge-pill badge-secondary" style="font-size: 14px;"><code>category</code></span>
+                                        <span class="text-muted ml-2"> — (record) فئة المشترك (utility.subscriber.category)</span>
+                                    </div>
+                                    <div class="o_row" title="كائن بند العقد الحالي">
+                                        <span class="badge badge-pill badge-secondary" style="font-size: 14px;"><code>line</code></span>
+                                        <span class="text-muted ml-2"> — (record) بند نموذج العقد الحالي</span>
+                                    </div>
+                                </group>
+                            </group>
+                            <group string="متغيرات الإخراج (Output Variables)">
+                                <div class="o_row" title="القيمة النهائية المحسوبة">
+                                    <span class="badge badge-pill badge-success" style="font-size: 14px;"><code>result</code></span>
+                                    <span class="text-muted ml-2"> — (float) <strong>إلزامي: القيمة النهائية التي يتم احتساب البند بناءً عليها</strong></span>
+                                </div>
+                                <div class="o_row" title="الاسم المخصص للبند">
+                                    <span class="badge badge-pill badge-warning" style="font-size: 14px;"><code>name</code></span>
+                                    <span class="text-muted ml-2"> — (str) اختياري: لتعديل اسم البند في الفاتورة ديناميكياً</span>
+                                </div>
+                            </group>
+                        </page>
+                    </notebook>
                 </sheet>
             </form>
         </field>
@@ -118,4 +194,6 @@
         <field name="res_model">utility.formula</field>
         <field name="view_mode">tree,form</field>
     </record>
+
+    <menuitem id="menu_utility_formula" name="Formulas" parent="utility_core.menu_utility_config" action="action_utility_formula" sequence="75"/>
 </odoo>

@@ -77,7 +77,7 @@
                 <field name="code"/>
                 <field name="zone_id"/>
                 <field name="status"/>
-                <filter name="active" string="Active" domain="[('active','=',True)]" default="1"/>
+                <filter name="active" string="Active" domain="[('active','=',True)]"/>
                 <group expand="0" string="Group By">
                     <filter name="group_status" string="Status" context="{'group_by':'status'}"/>
                     <filter name="group_zone" string="Zone" context="{'group_by':'zone_id'}"/>

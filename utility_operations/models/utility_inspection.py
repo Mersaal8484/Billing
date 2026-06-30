@@ -11,7 +11,7 @@ class UtilityInspection(models.Model):
     name = fields.Char('Inspection Number', required=True, index=True, default=lambda self: _('New'))
     service_order_id = fields.Many2one('utility.service.order', 'Service Order')
     customer_id = fields.Many2one('utility.customer', 'Customer')
-    account_id = fields.Many2one('utility.customer', 'Account')
+    account_id = fields.Many2one('utility.customer', 'Account', related='customer_id', store=True)
     meter_id = fields.Many2one('utility.meter', 'Meter')
     inspection_type = fields.Selection([
         ('pre_installation', 'Pre-Installation'),

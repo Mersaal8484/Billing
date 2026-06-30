@@ -27,7 +27,7 @@
                 <header>
                     <button name="action_complete_replacement" type="object"
                             string="إكمال الاستبدال" class="oe_highlight"
-                            invisible="state == 'done'"/>
+                            attrs="{'invisible': [('state', '=', 'done')]}"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,done"/>
                 </header>
                 <sheet>

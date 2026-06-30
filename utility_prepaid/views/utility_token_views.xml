@@ -44,7 +44,7 @@
             </group>
             <group>
               <field name="meter_id"/>
-              <field name="tariff_id"/>
+              <field name="contract_template_id"/>
               <field name="amount" widget="monetary"/>
               <field name="kwh"/>
               <field name="sts_server"/>

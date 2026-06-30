@@ -4,6 +4,7 @@ from odoo import api, fields, models, _
 class UtilityWorkOrder(models.Model):
     _name = 'utility.work.order'
     _description = 'Utility Work Order'
+    _rec_name = 'work_order_number'
     _order = 'date_created desc, id desc'
 
     active = fields.Boolean(default=True)
@@ -11,7 +12,7 @@ class UtilityWorkOrder(models.Model):
     work_order_number = fields.Char('Work Order Number', required=True, index=True, default=lambda self: _('New'))
     service_order_id = fields.Many2one('utility.service.order', 'Service Order')
     customer_id = fields.Many2one('utility.customer', 'Customer')
-    account_id = fields.Many2one('utility.customer', 'Account')
+    account_id = fields.Many2one('utility.customer', 'Account', related='customer_id', store=True)
     meter_id = fields.Many2one('utility.meter', 'Meter')
     work_type = fields.Selection([
         ('installation', 'Installation'),

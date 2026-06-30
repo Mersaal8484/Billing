@@ -22,3 +22,8 @@ auditor_penalty,utility.penalty.auditor,model_utility_penalty,utility_core.group
 access_utility_financial_settlement_admin,utility.financial.settlement.admin,model_utility_financial_settlement,base.group_system,1,1,1,1
 access_utility_financial_settlement_manager,utility.financial.settlement.manager,model_utility_financial_settlement,utility_core.group_utility_billing_manager,1,1,1,0
 access_utility_financial_settlement_auditor,utility.financial.settlement.auditor,model_utility_financial_settlement,utility_core.group_utility_auditor,1,0,0,0
+admin_penalty_type,utility.penalty.type.admin,model_utility_penalty_type,base.group_system,1,1,1,1
+billing_manager_penalty_type,utility.penalty.type.billing_manager,model_utility_penalty_type,utility_core.group_utility_billing_manager,1,1,1,1
+auditor_penalty_type,utility.penalty.type.auditor,model_utility_penalty_type,utility_core.group_utility_auditor,1,0,0,0
+access_sale_workflow_process_all,sale.workflow.process.all,model_sale_workflow_process,base.group_user,1,1,1,1
+access_automatic_workflow_job_all,automatic.workflow.job.all,model_automatic_workflow_job,base.group_system,1,1,1,1

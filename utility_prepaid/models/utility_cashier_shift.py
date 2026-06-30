@@ -3,6 +3,8 @@ from odoo import api, fields, models, _
 
 class UtilityCashierShift(models.Model):
     _name = 'utility.cashier.shift'
+    _description = 'Utility Cashier Shift'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'start_time desc, id desc'
 
     active = fields.Boolean(default=True)

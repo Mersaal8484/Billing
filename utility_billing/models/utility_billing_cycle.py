@@ -30,10 +30,9 @@ class DateRange(models.Model):
             ], order='reading_date desc', limit=1)
             if not reading:
                 continue
-            tariff = account.tariff_id
+            template = account.contract_template_id
             order = self.env['sale.order'].create({
                 'partner_id': account.partner_id.id if account.partner_id else self.env.company.partner_id.id,
-                'customer_id': account.id,
                 'customer_id': account.id,
                 'meter_id': reading.meter_id.id,
                 'reading_id': reading.id,
@@ -44,7 +43,7 @@ class DateRange(models.Model):
                 'previous_reading': reading.previous_reading,
                 'current_reading': reading.reading_value,
                 'consumption': reading.consumption,
-                'tariff_id': tariff.id if tariff else False,
+                'contract_template_id': template.id if template else False,
                 'bill_state': 'draft',
             })
             order._calculate_amounts()

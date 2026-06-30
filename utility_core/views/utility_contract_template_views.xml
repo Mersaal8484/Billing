@@ -10,7 +10,7 @@
                 <field name="recurring_rule_type"/>
                 <field name="recurring_invoicing_type"/>
                 <field name="recurring_interval"/>
-                <field name="tariff_id"/>
+
                 <field name="active"/>
             </tree>
         </field>
@@ -20,7 +20,10 @@
         <field name="name">utility.contract.template.form</field>
         <field name="model">utility.contract.template</field>
         <field name="arch" type="xml">
-            <form>
+            <form string="قالب العقد">
+                <header>
+                    <button name="action_sync_lines_with_template" type="object" string="مزامنة بنود العقد مع التسعيرة" class="oe_highlight" icon="fa-refresh"/>
+                </header>
                 <sheet>
                     <div class="oe_title">
                         <label for="name" string="اسم القالب"/>
@@ -31,6 +34,7 @@
                     <group>
                         <group string="التهيئة الأساسية">
                             <field name="code"/>
+                            <field name="subscriber_ids" widget="many2many_tags" placeholder="أنواع المشتركين..."/>
                             <field name="company_id" groups="base.group_multi_company"/>
                             <field name="active"/>
                         </group>
@@ -44,7 +48,7 @@
                         <group>
                             <field name="pricelist_id"/>
                             <field name="journal_id"/>
-                            <field name="tariff_id"/>
+
                         </group>
                         <group>
                             <field name="sale_autoconfirm"/>
@@ -54,10 +58,69 @@
                     </group>
                     <group string="الدفع التلقائي">
                         <field name="is_auto_pay"/>
-                        <field name="auto_pay_retries" invisible="not is_auto_pay"/>
-                        <field name="auto_pay_retry_hours" invisible="not is_auto_pay"/>
+                        <field name="auto_pay_retries" attrs="{'invisible': [('is_auto_pay', '=', False)]}"/>
+                        <field name="auto_pay_retry_hours" attrs="{'invisible': [('is_auto_pay', '=', False)]}"/>
                     </group>
                     <notebook>
+                        <page string="التسعير">
+                            <group>
+                                <group string="نمط التسعير والصلاحية">
+                                    <field name="pricing_mode"/>
+                                    <field name="effective_date"/>
+                                    <field name="end_date"/>
+                                    <field name="is_active" readonly="1"/>
+                                </group>
+                                <group string="الأسعار الأساسية">
+                                    <field name="price_per_kwh"/>
+                                    <field name="fixed_charge"/>
+                                    <field name="service_charge"/>
+                                </group>
+                            </group>
+                            <group>
+                                <group string="حدود الفوترة">
+                                    <field name="min_charge"/>
+                                    <field name="max_charge"/>
+                                </group>
+                                <group string="الرسوم المحلية (محسوبة × الاستهلاك)">
+                                    <field name="local_fee_per_kwh"/>
+                                    <field name="local_fee_mu_allim"/>
+                                    <field name="local_fee_cleaning"/>
+                                </group>
+                            </group>
+                            <group string="خصم الدعم (أول N وحدة)">
+                                <field name="discount_first_units"/>
+                                <field name="discount_unit_value"/>
+                            </group>
+                        </page>
+                        <page string="الشرائح التدريجية"
+                              attrs="{'invisible': [('pricing_mode', 'not in', ['block', 'tier', 'seasonal', 'tou'])]}">
+                            <field name="block_ids">
+                                <tree editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name"/>
+                                    <field name="from_kwh"/>
+                                    <field name="to_kwh"/>
+                                    <field name="price_per_kwh"/>
+                                    <field name="from_month" optional="hide"/>
+                                    <field name="to_month" optional="hide"/>
+                                    <field name="time_from" optional="hide"/>
+                                    <field name="time_to" optional="hide"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="سجل تغييرات التسعير">
+                            <field name="history_ids" readonly="1">
+                                <tree decoration-muted="1">
+                                    <field name="change_date"/>
+                                    <field name="old_price"/>
+                                    <field name="new_price"/>
+                                    <field name="old_fixed_charge"/>
+                                    <field name="new_fixed_charge"/>
+                                    <field name="reason"/>
+                                    <field name="changed_by"/>
+                                </tree>
+                            </field>
+                        </page>
                         <page string="بنود العقد">
                             <field name="line_ids">
                                 <tree editable="bottom">
@@ -69,8 +132,11 @@
                                     <field name="price_type"/>
                                     <field name="specific_price"/>
                                     <field name="meter_line_type"/>
+                                    <field name="local_fee_kind"
+                                           attrs="{'column_invisible': [('parent.pricing_mode', '=', 'flat')]}"/>
                                     <field name="qty_formula_id"/>
-                                    <field name="is_subsidized"/>
+                                    <field name="is_subsidized"
+                                           attrs="{'column_invisible': [('meter_line_type', '!=', 'discount')]}"/>
                                 </tree>
                             </field>
                         </page>
@@ -85,4 +151,6 @@
         <field name="res_model">utility.contract.template</field>
         <field name="view_mode">tree,form</field>
     </record>
+
+    <menuitem id="menu_utility_contract_template" name="Contract Templates" parent="utility_core.menu_utility_customer_management" action="action_utility_contract_template" sequence="50"/>
 </odoo>

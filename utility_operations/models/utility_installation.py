@@ -11,7 +11,7 @@ class UtilityInstallation(models.Model):
     name = fields.Char('Installation Number', required=True, index=True, default=lambda self: _('New'))
     service_order_id = fields.Many2one('utility.service.order', 'Service Order')
     customer_id = fields.Many2one('utility.customer', 'Customer', required=True)
-    account_id = fields.Many2one('utility.customer', 'Account', required=True)
+    account_id = fields.Many2one('utility.customer', 'Account', related='customer_id', store=True)
     meter_id = fields.Many2one('utility.meter', 'Meter', required=True)
     meter_serial = fields.Char('Meter Serial')
     meter_type_id = fields.Many2one('utility.meter.type', 'Meter Type')

@@ -26,42 +26,69 @@
                 <header>
                     <button name="action_open_transformer_balance" type="object"
                             string="توازن المحول" class="oe_highlight"/>
+                    <field name="status" widget="statusbar" options="{'clickable': '1'}"/>
                 </header>
                 <sheet>
+                    <widget name="web_ribbon" title="مؤرشف" bg_color="bg-danger" attrs="{'invisible': [('active', '=', True)]}"/>
                     <div class="oe_button_box" name="button_box">
                         <button name="action_view_cell_accounts" type="object"
                                 class="oe_stat_button" icon="fa-users">
                             <field name="cell_account_count" string="المشتركون" widget="statinfo"/>
+                        </button>
+                        <button name="toggle_active" type="object" class="oe_stat_button" icon="fa-archive">
+                            <field name="active" widget="boolean_button" options="{&quot;terminology&quot;: &quot;archive&quot;}"/>
                         </button>
                     </div>
                     <div class="oe_title">
                         <h1><field name="name"/></h1>
                     </div>
                     <group>
-                        <group>
+                        <group string="معلومات أساسية">
                             <field name="code"/>
-                            <field name="is_cell"/>
+                            <field name="is_cell" widget="boolean_toggle"/>
                             <field name="parent_id"
                                    attrs="{'invisible': [('is_cell', '=', True)], 'required': [('is_cell', '=', False)]}"/>
                             <field name="substation_id"/>
-                            <field name="zone_region_id" readonly="1"/>
                             <field name="feeder_id"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group string="الموقع والتسلسل">
+                            <field name="zone_region_id" readonly="1"/>
                             <field name="zone_id"/>
                             <field name="area_id"/>
                             <field name="region_id"/>
-                            <field name="status"/>
-                            <field name="active"/>
-                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="gps_latitude"/>
+                            <field name="gps_longitude"/>
                         </group>
+                    </group>
+                    <group string="المواصفات الفنية">
                         <group>
                             <field name="capacity"/>
                             <field name="phase"/>
                             <field name="manufacturer"/>
+                        </group>
+                        <group>
                             <field name="serial_number"/>
                             <field name="voltage_primary"/>
                             <field name="voltage_secondary"/>
-                            <field name="gps_latitude"/>
-                            <field name="gps_longitude"/>
+                        </group>
+                    </group>
+                    <group string="عدادات ونسب الخلية/المحول">
+                        <group>
+                            <field name="coupling_meter_id"/>
+                            <field name="comparison_meter_id"/>
+                        </group>
+                        <group>
+                            <label for="distribution_percentage"/>
+                            <div class="o_row">
+                                <field name="distribution_percentage"/>
+                                <span>%</span>
+                            </div>
+                            <label for="loss_percentage"/>
+                            <div class="o_row">
+                                <field name="loss_percentage"/>
+                                <span>%</span>
+                            </div>
                         </group>
                     </group>
                     <notebook>
@@ -96,37 +123,36 @@
                             </field>
                         </page>
                         <page name="readings" string="قراءات">
-                            <group string="قراءات عدادات الربط">
-                                <field name="coupling_reading_ids" nolabel="1">
-                                    <tree limit="15">
-                                        <field name="name"/>
-                                        <field name="meter_id"/>
-                                        <field name="reading_date"/>
-                                        <field name="reading_value"/>
-                                        <field name="consumption"/>
-                                        <field name="date_range_id"/>
-                                        <field name="state" widget="badge"/>
-                                    </tree>
-                                </field>
-                            </group>
-                            <group string="قراءات الخلايا/المشتركين">
-                                <field name="cell_reading_ids" nolabel="1">
-                                    <tree limit="15">
-                                        <field name="name"/>
-                                        <field name="customer_id"/>
-                                        <field name="reading_date"/>
-                                        <field name="reading_value"/>
-                                        <field name="consumption"/>
-                                        <field name="date_range_id"/>
-                                        <field name="state" widget="badge"/>
-                                    </tree>
-                                </field>
-                            </group>
+                            <separator string="قراءات عدادات الربط"/>
+                            <field name="coupling_reading_ids">
+                                <tree limit="15" default_order="reading_date desc" decoration-info="state == 'draft'" decoration-success="state == 'confirmed'" decoration-muted="state == 'cancelled'">
+                                    <field name="name" optional="show"/>
+                                    <field name="meter_id" optional="show"/>
+                                    <field name="reading_date" optional="show"/>
+                                    <field name="reading_value" optional="show"/>
+                                    <field name="consumption" optional="show"/>
+                                    <field name="date_range_id" optional="hide"/>
+                                    <field name="state" widget="badge" decoration-info="state == 'draft'" decoration-success="state == 'confirmed'" decoration-danger="state == 'cancelled'" optional="show"/>
+                                </tree>
+                            </field>
+                            <separator string="قراءات الخلايا/المشتركين"/>
+                            <field name="cell_reading_ids">
+                                <tree limit="15" default_order="reading_date desc" decoration-info="state == 'draft'" decoration-success="state == 'confirmed'" decoration-muted="state == 'cancelled'">
+                                    <field name="name" optional="show"/>
+                                    <field name="customer_id" optional="show"/>
+                                    <field name="reading_date" optional="show"/>
+                                    <field name="reading_value" optional="show"/>
+                                    <field name="consumption" optional="show"/>
+                                    <field name="date_range_id" optional="hide"/>
+                                    <field name="state" widget="badge" decoration-info="state == 'draft'" decoration-success="state == 'confirmed'" decoration-danger="state == 'cancelled'" optional="show"/>
+                                </tree>
+                            </field>
                         </page>
                         <page name="balance" string="توازن وفاقد">
                             <group>
-                                <group string="عداد الربط والإحصائيات">
+                                <group string="عداد الربط والمقارنة">
                                     <field name="coupling_meter_id"/>
+                                    <field name="comparison_meter_id"/>
                                     <field name="total_consumption" readonly="1"/>
                                 </group>
                                 <group string="الفاقد والخصوصية">
@@ -137,7 +163,7 @@
                             <group string="إعدادات الخصوصية والتوزيع">
                                 <group>
                                     <field name="is_private"/>
-                                    <field name="private_account_id" invisible="not is_private"/>
+                                    <field name="private_account_id" attrs="{'invisible': [('is_private', '=', False)]}"/>
                                 </group>
                                 <group>
                                     <field name="distribution_percentage"/>
@@ -164,7 +190,7 @@
                 <field name="status"/>
                 <filter name="cells" string="خلايا" domain="[('is_cell','=',True)]"/>
                 <filter name="transformers" string="محولات" domain="[('is_cell','=',False)]"/>
-                <filter name="active" string="Active" domain="[('active','=',True)]" default="1"/>
+                <filter name="active" string="Active" domain="[('active','=',True)]"/>
                 <group expand="0" string="Group By">
                     <filter name="group_is_cell" string="نوع" context="{'group_by':'is_cell'}"/>
                     <filter name="group_parent" string="الخلية الأم" context="{'group_by':'parent_id'}"/>

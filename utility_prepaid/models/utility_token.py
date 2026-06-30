@@ -8,7 +8,9 @@ _logger = logging.getLogger(__name__)
 
 class UtilityToken(models.Model):
     _name = 'utility.token'
-    _inherit = ['mail.thread']
+    _description = 'Utility Token'
+    _rec_name = 'token_number'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
 
     active = fields.Boolean(default=True)
     company_id = fields.Many2one('res.company', default=lambda self: self.env.company)
@@ -19,7 +21,7 @@ class UtilityToken(models.Model):
     account_id = fields.Many2one('utility.customer', string='Account', required=True)
     meter_id = fields.Many2one('utility.meter', string='Meter', required=True)
     customer_id = fields.Many2one('res.partner', string='Customer', required=True)
-    tariff_id = fields.Many2one('utility.tariff', string='Tariff')
+    contract_template_id = fields.Many2one('utility.contract.template', string='قالب العقد')
     amount = fields.Monetary(string='Amount')
     currency_id = fields.Many2one('res.currency', related='company_id.currency_id')
     kwh = fields.Float(string='kWh')

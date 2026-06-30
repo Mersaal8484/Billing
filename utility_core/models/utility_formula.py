@@ -17,35 +17,68 @@ class UtilityFormula(models.Model):
              '- consumption: float - الاستهلاك (kWh)\n'
              '- previous_reading: float - القراءة السابقة\n'
              '- current_reading: float - القراءة الحالية\n'
-             '- tariff: object - كائن التعرفة\n'
-             '- account: object - كائن الحساب\n'
+             '- template: object - كائن قالب العقد (utility.contract.template)\n'
+             '- account: object - كائن الحساب (utility.customer)\n'
              '- category: object - كائن فئة المشترك\n'
              '- line: object - كائن بند العقد الحالي\n'
              '- result: float - يجب تعيينها بقيمة الكمية المحسوبة\n'
              '- name: str - يمكن تغييرها لوصف مخصص')
     active = fields.Boolean(default=True)
     company_id = fields.Many2one('res.company', default=lambda self: self.env.company)
+    contract_line_count = fields.Integer(
+        'عدد بنود العقود',
+        compute='_compute_contract_line_count'
+    )
+
+    def _compute_contract_line_count(self):
+        ContractLine = self.env['utility.contract.template.line']
+        for record in self:
+            record.contract_line_count = ContractLine.search_count(
+                [('qty_formula_id', '=', record.id)]
+            )
+
+    def action_view_contract_lines(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('بنود نماذج العقود'),
+            'res_model': 'utility.contract.template.line',
+            'view_mode': 'tree,form',
+            'domain': [('qty_formula_id', '=', self.id)],
+            'context': {'default_qty_formula_id': self.id},
+        }
+
+    def action_test_formula(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'تشغيل المعادلة',
+            'res_model': 'utility.formula.test.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_formula_id': self.id},
+        }
 
     def execute(self, consumption=0, previous_reading=0, current_reading=0,
-                tariff=None, account=None, category=None, line=None):
+                tariff=None, account=None, category=None, line=None,
+                template=None):
         """تنفيذ المعادلة مع المتغيرات الممررة"""
         self.ensure_one()
         result = 0.0
         name = self.name
-        
-        # متغيرات السياق
+
         locals_dict = {
             'consumption': consumption or 0.0,
             'previous_reading': previous_reading or 0.0,
             'current_reading': current_reading or 0.0,
-            'tariff': tariff,
+            'template': template,
             'account': account,
             'category': category,
             'line': line,
             'result': result,
             'name': name,
         }
-        
+
         try:
             safe_eval(self.code, mode='exec', locals_dict=locals_dict, nocopy=True)
             result = locals_dict.get('result', 0.0)
@@ -53,5 +86,5 @@ class UtilityFormula(models.Model):
         except Exception as e:
             _logger.warning("Formula execution error in %s: %s", self.name, e)
             result = 0.0
-        
+
         return result, name
