@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_region_form_inherit_inventory" model="ir.ui.view">
+        <field name="name">utility.region.form.inherit.inventory</field>
+        <field name="model">utility.region</field>
+        <field name="inherit_id" ref="utility_core.view_utility_region_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='company_id']" position="after">
+                <field name="location_id" options="{'no_create': True}"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

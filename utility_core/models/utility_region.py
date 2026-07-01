@@ -1,4 +1,5 @@
 from odoo import api, fields, models
+from .utility_date_range import BILLING_PERIOD_TYPES
 
 
 class UtilityRegion(models.Model):
@@ -25,12 +26,12 @@ class UtilityRegion(models.Model):
     
     area_count = fields.Integer('Area Count', compute='_compute_area_count', store=True)
     zone_count = fields.Integer('Zone Count', compute='_compute_zone_count', store=True)
-    recurring_rule_type = fields.Selection([
-        ('monthly', 'شهري'),
-        ('bi_monthly', 'نصف شهري'),
-        ('quarterly', 'ربع سنوي'),
-        ('yearly', 'سنوي'),
-    ], string='نوع دورة الفوترة', default='monthly', required=True)
+    recurring_rule_type = fields.Selection(
+        BILLING_PERIOD_TYPES,
+        string='نوع دورة الفوترة',
+        default='monthly',
+        required=True
+    )
 
     transformer_origin_id = fields.Many2one('utility.transformer', 'منشأ من محول',
         readonly=True, copy=False,

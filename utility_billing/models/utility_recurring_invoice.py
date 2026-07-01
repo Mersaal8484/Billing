@@ -36,6 +36,7 @@ class UtilityContractTemplate(models.Model):
                     qty, price, name = category._get_subsidized_amount(consumption, template)
             if qty or price:
                 lines.append((0, 0, {
+                    'product_id': line.product_id.id if line.product_id else False,
                     'name': name,
                     'product_uom_qty': qty,
                     'price_unit': price,

@@ -100,7 +100,7 @@
                                 ], order='reading_date desc', limit=1)"/>
                                 <td style="border: 1px solid #dee2e6; padding: 8px;" t-esc="meter.meter_number"/>
                                 <td style="border: 1px solid #dee2e6; padding: 8px;" t-esc="meter.customer_id.partner_id.name if meter.customer_id else ''"/>
-                                <td style="border: 1px solid #dee2e6; padding: 8px;" t-esc="meter.account_id.cell_id.name if meter.account_id and meter.account_id.cell_id else ''"/>
+                                <td style="border: 1px solid #dee2e6; padding: 8px;" t-esc="meter.account_id.transformer_id.name if meter.account_id and meter.account_id.transformer_id else ''"/>
                                 <td style="border: 1px solid #dee2e6; padding: 8px;" t-esc="reading.consumption if reading else 0"/>
                             </tr>
                         </tbody>

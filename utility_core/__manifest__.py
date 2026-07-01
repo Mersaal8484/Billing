@@ -42,6 +42,7 @@ User Role.
         'views/utility_user_role_views.xml',
         'views/utility_config_menu.xml',
         'views/utility_network_menu.xml',
+        'views/utility_meter_menu.xml',
         'views/utility_customer_wizard_views.xml',
         'views/utility_customer_menu.xml',
         'data/utility_subscriber_data.xml',

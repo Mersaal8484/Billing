@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Customer Location -->
+        <record id="stock_location_utility_customers" model="stock.location">
+            <field name="name">مواقع المشتركين</field>
+            <field name="usage">customer</field>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+
+        <!-- Repair Location -->
+        <record id="stock_location_utility_repair" model="stock.location">
+            <field name="name">ورشة الفحص والصيانة</field>
+            <field name="usage">internal</field>
+            <field name="company_id" ref="base.main_company"/>
+        </record>
+
+        <!-- Product Category for Meters -->
+        <record id="product_category_meters" model="product.category">
+            <field name="name">العدادات الكهربائية</field>
+            <field name="parent_id" ref="product.product_category_all"/>
+        </record>
+    </data>
+</odoo>

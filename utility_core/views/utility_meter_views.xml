@@ -81,7 +81,6 @@
                                     <field name="substation_id"/>
                                     <field name="feeder_id"/>
                                     <field name="transformer_id"/>
-                                    <field name="cell_id"/>
                                     <field name="is_coupling_meter"/>
                                 </group>
                             </group>

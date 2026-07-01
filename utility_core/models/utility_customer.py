@@ -57,15 +57,17 @@ class UtilityCustomer(models.Model):
     analytic_account_id = fields.Many2one('account.analytic.account', string='الحساب التحليلي')
     company_currency_id = fields.Many2one(related='company_id.currency_id', string='العملة')
 
-    # المحول (Cell)
-    cell_id = fields.Many2one('utility.transformer', string='المحول/الخلية',
-        domain="[('is_cell', '=', True), ('active', '=', True)]")
-    is_private_transformer = fields.Boolean(related='cell_id.is_private', string='محول خاص')
-    distribution_percentage = fields.Float(related='cell_id.distribution_percentage', string='نسبة التوزيع')
+    # الفيدر / الخلية
+    cell_id = fields.Many2one('utility.feeder', string='الفيدر / الخلية',
+        domain="[('active', '=', True)]")
+    
+    # المحول
+    transformer_id = fields.Many2one('utility.transformer', string='المحول',
+        domain="[('active', '=', True)]")
 
-    # عداد المحول (لربط قراءات الربط)
-    cell_coupling_meter_id = fields.Many2one('utility.meter', 'عداد الخلية',
-        domain="[('transformer_id', '=', cell_id)]")
+    # عداد الفيدر
+    cell_coupling_meter_id = fields.Many2one('utility.meter', 'عداد الفيدر/الخلية',
+        domain="[('feeder_id', '=', cell_id)]")
 
     # المكان
     region_id = fields.Many2one(related='partner_id.region_id', store=True, string='المنطقة')
@@ -125,8 +127,15 @@ class UtilityCustomer(models.Model):
         
         customers = super().create(vals_list)
         
-        # Create analytic accounts automatically for each customer
         for customer in customers:
+            # تعيين المشترك كعميل في قائمة العملاء (res.partner)
+            if customer.partner_id:
+                customer.partner_id.sudo().write({
+                    'customer_rank': max(customer.partner_id.customer_rank, 1),
+                    'is_subscriber': True,
+                })
+
+            # Create analytic accounts automatically for each customer
             if not customer.analytic_account_id:
                 partner_name = customer.partner_id.name or customer.customer_number
                 plan = self.env.ref('analytic.analytic_plan_projects', raise_if_not_found=False)
@@ -143,6 +152,18 @@ class UtilityCustomer(models.Model):
                 customer.write({'analytic_account_id': analytic_account.id})
                 
         return customers
+
+    def write(self, vals):
+        res = super().write(vals)
+        # إذا تغيّر الـ partner_id، تعيينه كعميل تلقائياً
+        if 'partner_id' in vals:
+            for customer in self:
+                if customer.partner_id:
+                    customer.partner_id.sudo().write({
+                        'customer_rank': max(customer.partner_id.customer_rank, 1),
+                        'is_subscriber': True,
+                    })
+        return res
 
     @api.constrains('cell_id', 'meter_id')
     def _check_cell_meter_consistency(self):
@@ -192,9 +213,9 @@ class UtilityCustomer(models.Model):
     def cron_check_low_credit(self):
         accounts = self.search([
             ('active', '=', True),
-            ('balance', '<=', 'credit_limit'),
         ])
-        for account in accounts:
+        low_credit_accounts = accounts.filtered(lambda a: a.balance <= a.credit_limit)
+        for account in low_credit_accounts:
             _logger.info("Customer/Account %s has low credit balance: %s", account.customer_number, account.balance)
 
     @api.model

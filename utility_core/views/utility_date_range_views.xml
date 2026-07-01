@@ -1,58 +1,271 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <record id="view_date_range_type_form_inherit_utility" model="ir.ui.view">
+
+    <!-- =====================================================================
+         DATE RANGE TYPE — Views
+         ===================================================================== -->
+
+    <!-- Tree View: أنواع الفترات -->
+    <record id="view_utility_date_range_type_tree" model="ir.ui.view">
+        <field name="name">date.range.type.utility.tree</field>
+        <field name="model">date.range.type</field>
+        <field name="priority" eval="5"/>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="parent_type_id" optional="show"/>
+                <field name="default_billing_period" optional="show"/>
+                <field name="fiscal_year" widget="boolean_toggle"/>
+                <field name="allow_overlap" widget="boolean_toggle"/>
+                <field name="active" widget="boolean_toggle"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View: نوع الفترة -->
+    <record id="view_utility_date_range_type_form" model="ir.ui.view">
         <field name="name">date.range.type.utility.form</field>
         <field name="model">date.range.type</field>
-        <field name="inherit_id" ref="date_range.view_date_range_type_form_view"/>
+        <field name="priority" eval="5"/>
         <field name="arch" type="xml">
-            <field name="name" position="after">
-                <field name="parent_type_id"/>
-                <field name="fiscal_year"/>
-            </field>
+            <form>
+                <sheet>
+                    <group>
+                        <group string="معلومات النوع">
+                            <field name="name"/>
+                            <field name="parent_type_id" options="{'no_create': True}"/>
+                            <field name="default_billing_period"/>
+                        </group>
+                        <group string="الإعدادات">
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="fiscal_year"/>
+                            <field name="allow_overlap"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
         </field>
     </record>
 
-    <record id="view_date_range_form_inherit_utility" model="ir.ui.view">
-        <field name="name">date.range.utility.form</field>
-        <field name="model">date.range</field>
-        <field name="inherit_id" ref="date_range.view_date_range_form_view"/>
+    <!-- Search: أنواع الفترات -->
+    <record id="view_utility_date_range_type_search" model="ir.ui.view">
+        <field name="name">date.range.type.utility.search</field>
+        <field name="model">date.range.type</field>
+        <field name="priority" eval="5"/>
         <field name="arch" type="xml">
-            <field name="name" position="after">
-                <field name="parent_id"/>
-                <field name="previous_range_id"/>
-                <field name="region_id"/>
-                <field name="billing_period"/>
-                <field name="work_type"/>
-                <field name="is_current_period"/>
-            </field>
+            <search>
+                <field name="name"/>
+                <filter string="السنوات المالية" name="fiscal" domain="[('fiscal_year', '=', True)]"/>
+                <separator/>
+                <filter string="مؤرشف" name="inactive" domain="[('active', '=', False)]"/>
+            </search>
         </field>
     </record>
 
-    <record id="view_date_range_tree_inherit_utility" model="ir.ui.view">
+    <!-- =====================================================================
+         DATE RANGE — Views
+         ===================================================================== -->
+
+    <!-- Tree View: الفترات الزمنية -->
+    <record id="view_utility_date_range_tree" model="ir.ui.view">
         <field name="name">date.range.utility.tree</field>
         <field name="model">date.range</field>
-        <field name="inherit_id" ref="date_range.view_date_range_tree"/>
+        <field name="priority" eval="5"/>
         <field name="arch" type="xml">
-            <field name="date_start" position="after">
+            <tree decoration-success="is_current_period == True"
+                  decoration-muted="active == False">
+                <field name="name"/>
+                <field name="type_id"/>
+                <field name="date_start"/>
+                <field name="date_end"/>
                 <field name="region_id" optional="show"/>
-                <field name="billing_period" optional="show"/>
-            </field>
+                <field name="billing_period" widget="badge"
+                       decoration-info="billing_period == 'weekly'"
+                       decoration-primary="billing_period == 'biweekly'"
+                       decoration-success="billing_period == 'monthly'"
+                       decoration-warning="billing_period == 'quarterly'"
+                       decoration-danger="billing_period == 'yearly'"/>
+                <field name="work_type" widget="badge"
+                       decoration-warning="work_type == 'readings'"
+                       decoration-info="work_type == 'payment'"
+                       decoration-muted="work_type == 'other'"/>
+                <field name="is_current_period" widget="boolean_toggle"/>
+                <field name="previous_range_id" optional="hide"/>
+                <field name="parent_id" optional="hide"/>
+                <field name="child_count" string="فرعية" optional="show"/>
+                <field name="active" widget="boolean_toggle"/>
+            </tree>
         </field>
     </record>
 
+    <!-- Form View: الفترة الزمنية -->
+    <record id="view_utility_date_range_form" model="ir.ui.view">
+        <field name="name">date.range.utility.form</field>
+        <field name="model">date.range</field>
+        <field name="priority" eval="5"/>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_set_as_current"
+                            type="object"
+                            string="تعيين كفترة نشطة"
+                            class="oe_highlight"
+                            attrs="{'invisible': [('is_current_period', '=', True)]}"/>
+                    <field name="is_current_period" widget="boolean_toggle" nolabel="1"
+                           options="{'terminology': {'true_label': 'نشطة', 'false_label': 'غير نشطة'}}"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_children"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-calendar"
+                                attrs="{'invisible': [('child_count', '=', 0)]}">
+                            <field name="child_count" string="فترات فرعية" widget="statinfo"/>
+                        </button>
+                    </div>
+
+                    <div class="oe_title">
+                        <label for="name" string="اسم الفترة"/>
+                        <h1><field name="name" placeholder="مثال: يناير 2025"/></h1>
+                    </div>
+
+                    <group>
+                        <group string="التعريف">
+                            <field name="company_id" invisible="1"/>
+                            <field name="type_id" options="{'no_create': True}"/>
+                            <field name="date_start"/>
+                            <field name="date_end"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="active"/>
+                        </group>
+                        <group string="إعدادات الفوترة">
+                            <field name="billing_period"/>
+                            <field name="work_type"/>
+                            <field name="region_id" options="{'no_create': True}"/>
+                        </group>
+                    </group>
+
+                    <group>
+                        <group string="الترابط الزمني">
+                            <field name="parent_id" options="{'no_create': True}"/>
+                            <field name="previous_range_id" options="{'no_create': True}"/>
+                            <field name="next_range_id" readonly="1" options="{'no_create': True}"/>
+                        </group>
+                        <group string="المناطق المرتبطة">
+                            <field name="region_ids" widget="many2many_tags"
+                                   options="{'no_create': True}"
+                                   nolabel="1"/>
+                        </group>
+                    </group>
+
+                    <group string="ملاحظات">
+                        <field name="notes" nolabel="1" placeholder="ملاحظات إضافية عن هذه الفترة..."/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View: الفترات الزمنية -->
+    <record id="view_utility_date_range_search" model="ir.ui.view">
+        <field name="name">date.range.utility.search</field>
+        <field name="model">date.range</field>
+        <field name="priority" eval="5"/>
+        <field name="arch" type="xml">
+            <search string="بحث في الفترات الزمنية">
+                <field name="name"/>
+                <field name="type_id"/>
+                <field name="region_id"/>
+
+                <!-- فلاتر الحالة -->
+                <filter string="الفترات النشطة" name="current_periods"
+                        domain="[('is_current_period', '=', True)]"/>
+                <separator/>
+
+                <!-- فلاتر نوع الفوترة -->
+                <filter string="يومي"       name="daily"     domain="[('billing_period', '=', 'daily')]"/>
+                <filter string="أسبوعي"    name="weekly"    domain="[('billing_period', '=', 'weekly')]"/>
+                <filter string="نصف شهري"  name="biweekly"  domain="[('billing_period', '=', 'biweekly')]"/>
+                <filter string="شهري"      name="monthly"   domain="[('billing_period', '=', 'monthly')]"/>
+                <filter string="ربع سنوي"  name="quarterly" domain="[('billing_period', '=', 'quarterly')]"/>
+                <filter string="سنوي"      name="yearly"    domain="[('billing_period', '=', 'yearly')]"/>
+                <separator/>
+
+                <!-- فلاتر نوع العمل -->
+                <filter string="قراءات" name="readings" domain="[('work_type', '=', 'readings')]"/>
+                <filter string="دفع"    name="payment"  domain="[('work_type', '=', 'payment')]"/>
+                <separator/>
+
+                <filter string="مؤرشف" name="inactive" domain="[('active', '=', False)]"/>
+
+                <group expand="0" string="تجميع حسب">
+                    <filter string="النوع"           name="group_type_id"      context="{'group_by': 'type_id'}"/>
+                    <filter string="دورة الفوترة"    name="group_billing"      context="{'group_by': 'billing_period'}"/>
+                    <filter string="نوع العمل"       name="group_work_type"    context="{'group_by': 'work_type'}"/>
+                    <filter string="المنطقة"         name="group_region_id"    context="{'group_by': 'region_id'}"/>
+                    <filter string="الفترة الرئيسية" name="group_parent_id"   context="{'group_by': 'parent_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- =====================================================================
+         ACTIONS
+         ===================================================================== -->
+
     <record id="action_utility_date_range" model="ir.actions.act_window">
-        <field name="name">الفترات الزمنية (Date Ranges)</field>
+        <field name="name">الفترات الزمنية</field>
         <field name="res_model">date.range</field>
         <field name="view_mode">tree,form</field>
+        <field name="view_ids" eval="[
+            (5, 0, 0),
+            (0, 0, {'view_mode': 'tree', 'view_id': ref('view_utility_date_range_tree')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('view_utility_date_range_form')}),
+        ]"/>
+        <field name="search_view_id" ref="view_utility_date_range_search"/>
+        <field name="context">{'search_default_current_periods': 0}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                إنشاء فترة زمنية جديدة
+            </p>
+            <p>
+                تُستخدم الفترات الزمنية لتحديد دورات القراءة والفوترة والدفع.
+            </p>
+        </field>
     </record>
 
     <record id="action_utility_date_range_type" model="ir.actions.act_window">
-        <field name="name">أنواع الفترات الزمنية (Date Range Types)</field>
+        <field name="name">أنواع الفترات الزمنية</field>
         <field name="res_model">date.range.type</field>
         <field name="view_mode">tree,form</field>
+        <field name="view_ids" eval="[
+            (5, 0, 0),
+            (0, 0, {'view_mode': 'tree', 'view_id': ref('view_utility_date_range_type_tree')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('view_utility_date_range_type_form')}),
+        ]"/>
     </record>
 
-    <menuitem id="menu_utility_date_range_root" name="Date Ranges" parent="utility_core.menu_utility_config" sequence="85"/>
-    <menuitem id="menu_utility_date_range" name="Date Ranges" parent="menu_utility_date_range_root" action="action_utility_date_range" sequence="10"/>
-    <menuitem id="menu_utility_date_range_type" name="Date Range Types" parent="menu_utility_date_range_root" action="action_utility_date_range_type" sequence="20"/>
+    <!-- =====================================================================
+         MENUS
+         ===================================================================== -->
+
+    <menuitem id="menu_utility_date_range_root"
+              name="الفترات الزمنية"
+              parent="utility_core.menu_utility_config"
+              sequence="85"/>
+
+    <menuitem id="menu_utility_date_range"
+              name="الفترات"
+              parent="menu_utility_date_range_root"
+              action="action_utility_date_range"
+              sequence="10"/>
+
+    <menuitem id="menu_utility_date_range_type"
+              name="أنواع الفترات"
+              parent="menu_utility_date_range_root"
+              action="action_utility_date_range_type"
+              sequence="20"/>
+
 </odoo>

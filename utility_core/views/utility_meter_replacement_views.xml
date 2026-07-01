@@ -127,6 +127,5 @@
         </field>
     </record>
 
-    <!-- Menu Item -->
-    <menuitem id="menu_utility_meter_replacement" name="استبدال العدادات" parent="menu_utility_network" action="action_utility_meter_replacement" sequence="75"/>
+    <!-- Menu Item moved to utility_meter_menu.xml under menu_utility_meters -->
 </odoo>

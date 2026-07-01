@@ -33,9 +33,9 @@ class UtilityCustomerWizard(models.TransientModel):
         help='عند التفعيل: ينشئ الـ wizard محولاً خاصاً جديداً في utility.transformer ويربطه بالمشترك كخلية خاصة. عدّاد الربط يُنشأ تلقائياً.'
     )
     private_transformer_existing_id = fields.Many2one(
-        'utility.transformer', string='محول خاص قائم',
-        domain="[('is_cell', '=', True), ('is_private', '=', True), ('private_account_id', '=', False)]",
-        help='إن وُجد محول خاص غير مرتبط بمشترك، يمكن اختياره بدلاً من إنشاء جديد.'
+        'utility.transformer', string='محول قائم',
+        domain="[('active', '=', True)]",
+        help='يمكنك اختيار محول قائم لربطه بهذا المشترك.'
     )
     transformer_name = fields.Char(string='اسم المحول')
     transformer_code = fields.Char(string='كود المحول')
@@ -103,9 +103,8 @@ class UtilityCustomerWizard(models.TransientModel):
     def _get_or_create_private_transformer(self, customer):
         if self.private_transformer_existing_id:
             t = self.private_transformer_existing_id
-            if t.coupling_meter_id:
-                raise ValidationError(_('المحول الخاص المختار مرتبط بعدّاد مسبقاً.'))
-            t.write({'private_account_id': customer.id})
+            if len(t.customer_ids) > 0:
+                raise ValidationError('المحول المختار مرتبط بمشتركين مسبقاً.')
             return t
 
         if not self.transformer_code:
@@ -117,9 +116,6 @@ class UtilityCustomerWizard(models.TransientModel):
         return self.env['utility.transformer'].create({
             'name': self.transformer_name or f"محول خاص - {customer.partner_id.name}",
             'code': self.transformer_code,
-            'is_cell': True,
-            'is_private': True,
-            'private_account_id': customer.id,
             'capacity': self.transformer_capacity,
             'phase': self.transformer_phase or (self.phase if self.phase else 'single'),
             'manufacturer': self.transformer_manufacturer,
@@ -168,7 +164,10 @@ class UtilityCustomerWizard(models.TransientModel):
         transformer = False
         if self.use_private_transformer:
             transformer = self._get_or_create_private_transformer(customer)
-            customer.write({'cell_id': transformer.id})
+            customer.write({
+                'transformer_id': transformer.id,
+                'cell_id': transformer.feeder_id.id if transformer.feeder_id else False
+            })
 
         # 4. Create utility.meter if enabled
         meter = False
@@ -183,6 +182,7 @@ class UtilityCustomerWizard(models.TransientModel):
                 'phase': self.phase,
                 'customer_id': customer.id,
                 'transformer_id': transformer.id if transformer else False,
+                'feeder_id': transformer.feeder_id.id if transformer and transformer.feeder_id else False,
                 'payment_type': self.payment_type,
                 'sts_key_revision': self.sts_key_revision if self.payment_type == 'prepaid' else False,
                 'communication_type': self.communication_type if self.payment_type == 'postpaid' else False,

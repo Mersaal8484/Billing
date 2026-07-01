@@ -14,19 +14,24 @@ class UtilityTransformerReading(models.Model):
     name = fields.Char('رقم القراءة', default=lambda self: _('New'), readonly=True)
     reading_id = fields.Char(related='name', string='Reading ID')
 
+    feeder_id = fields.Many2one(
+        'utility.feeder', 'الفيدر / الخلية', index=True,
+        help='الفيدر المرتبط بهذه القراءة')
     transformer_id = fields.Many2one(
-        'utility.transformer', 'المحول', required=True, index=True)
+        'utility.transformer', 'المحول', index=True,
+        help='المحول (اختياري إذا كانت القراءة على مستوى الفيدر)')
     meter_id = fields.Many2one(
         'utility.meter', 'العداد', required=True, index=True,
-        domain="[('transformer_id', '=', transformer_id)]")
+        domain="['|', ('feeder_id', '=', feeder_id), ('transformer_id', '=', transformer_id)]")
     customer_id = fields.Many2one(
         'utility.customer', 'المشترك',
         help='مشترك الخلية (فقط لقراءات الخلايا)')
 
     reading_type = fields.Selection([
-        ('coupling', 'عداد ربط'),
-        ('cell', 'خلية / مشترك'),
-    ], string='نوع القراءة', default='coupling', required=True)
+        ('coupling',    'عداد ربط رئيسي'),
+        ('comparison',  'عداد مقارنة'),
+        ('cell',        'خلية / مشترك'),
+    ], string='نوع القراءة', default='coupling', required=True, tracking=True)
 
     reading_date = fields.Datetime('تاريخ القراءة', default=fields.Datetime.now, required=True)
     reading_value = fields.Float('قيمة القراءة', required=True)
@@ -57,6 +62,12 @@ class UtilityTransformerReading(models.Model):
          'unique(meter_id, reading_date)',
          'يوجد قراءة لنفس العداد في نفس التاريخ!'),
     ]
+
+    @api.constrains('feeder_id', 'transformer_id')
+    def _check_feeder_or_transformer(self):
+        for rec in self:
+            if not rec.feeder_id and not rec.transformer_id:
+                raise ValidationError(_('يجب تحديد الفيدر أو المحول لكل قراءة.'))
 
     @api.depends('reading_value', 'previous_reading')
     def _compute_consumption(self):

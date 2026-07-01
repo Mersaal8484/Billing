@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ===================== Meters Menu ===================== -->
+    <menuitem id="menu_utility_meters" name="العدادات" sequence="15" parent="menu_utility_root"/>
+
+    <!-- العدادات الرئيسية -->
+    <menuitem id="menu_utility_meter_all" name="جميع العدادات" parent="menu_utility_meters" action="action_utility_meter" sequence="10"/>
+
+    <!-- استبدال العدادات -->
+    <menuitem id="menu_utility_meter_replacement_new" name="استبدال العدادات" parent="menu_utility_meters" action="action_utility_meter_replacement" sequence="20"/>
+
+    <!-- إعدادات العدادات -->
+    <menuitem id="menu_utility_meter_config" name="إعدادات العدادات" parent="menu_utility_meters" sequence="90"/>
+    <menuitem id="menu_utility_meter_type_new" name="أنواع العدادات" parent="menu_utility_meter_config" action="action_utility_meter_type" sequence="10"/>
+    <menuitem id="menu_utility_meter_model_new" name="موديلات العدادات" parent="menu_utility_meter_config" action="action_utility_meter_model" sequence="20"/>
+    <menuitem id="menu_utility_meter_status_new" name="حالات العدادات" parent="menu_utility_meter_config" action="action_utility_meter_status" sequence="30"/>
+</odoo>

@@ -115,15 +115,12 @@
                         </page>
 
                         <!-- صفحة 3: المحول والخلية -->
-                        <page name="transformer_cell" string="المحول والخلية">
+                        <page name="transformer_cell" string="الخلية والمحول">
                             <group>
-                                <group string="تفاصيل الخلية">
+                                <group string="الربط بالشبكة">
                                     <field name="cell_id" options="{'no_create': True}"/>
+                                    <field name="transformer_id" options="{'no_create': True}"/>
                                     <field name="cell_coupling_meter_id" readonly="1"/>
-                                </group>
-                                <group string="التوزيع والخصوصية">
-                                    <field name="is_private_transformer" readonly="1"/>
-                                    <field name="distribution_percentage" readonly="1"/>
                                 </group>
                             </group>
                         </page>
@@ -216,5 +213,19 @@
         <field name="res_model">utility.customer</field>
         <field name="view_mode">tree,form</field>
         <field name="search_view_id" ref="view_utility_customer_search"/>
+    </record>
+
+    <!-- Action: عرض المشتركين كـ partners في قائمة العملاء -->
+    <record id="action_utility_subscriber_partners" model="ir.actions.act_window">
+        <field name="name">عملاء المشتركين</field>
+        <field name="res_model">res.partner</field>
+        <field name="view_mode">tree,form,kanban</field>
+        <field name="domain">[('is_subscriber', '=', True)]</field>
+        <field name="context">{'default_is_subscriber': True, 'default_customer_rank': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                لا يوجد مشتركون مسجّلون بعد
+            </p>
+        </field>
     </record>
 </odoo>
