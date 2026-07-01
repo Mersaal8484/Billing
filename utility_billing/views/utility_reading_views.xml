@@ -39,12 +39,12 @@
                   decoration-success="state == 'approved'"
                   decoration-danger="state == 'error'">
                 <field name="meter_image" widget="image" class="oe_avatar" options="{'size': [64, 64]}" string="الصورة"/>
-                <field name="reading_id" string="رقم القراءة" style="width: 120px; font-weight: bold;"/>
+                <field name="reading_id" string="رقم القراءة"/>
                 <field name="customer_id" string="اسم المشترك"/>
                 <field name="meter_id" string="العداد"/>
                 <field name="reading_date" string="التاريخ"/>
-                <field name="reading_value" string="القراءة الحالية" style="width: 100px; font-weight: bold; color: blue;"/>
-                <field name="consumption" string="الاستهلاك" style="width: 100px; font-weight: bold; color: green;"/>
+                <field name="reading_value" string="القراءة الحالية"/>
+                <field name="consumption" string="الاستهلاك"/>
                 <field name="consumption_alert" widget="badge" decoration-danger="consumption_alert in ('high','negative','zero')" decoration-success="consumption_alert == 'normal'" string="الاستهلاك"/>
                 <field name="reading_type" string="نوع القراءة"/>
                 <field name="image_state" optional="show" string="حالة الصورة"/>

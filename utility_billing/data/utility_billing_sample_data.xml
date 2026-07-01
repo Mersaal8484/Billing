@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <data noupdate="1">
+    <data noupdate="0">
 
         <!-- ==================== 1. DATE RANGE TYPE & CYCLES ==================== -->
         <record id="demo_date_range_type_monthly" model="date.range.type">

@@ -24,3 +24,4 @@ from . import utility_date_range
 from . import utility_cell_reading
 from . import utility_ir_attachment
 from . import utility_meter_replacement
+from . import utility_res_company

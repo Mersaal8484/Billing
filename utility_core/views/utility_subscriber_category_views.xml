@@ -9,10 +9,6 @@
                 <field name="sequence" widget="handle"/>
                 <field name="code"/>
                 <field name="name"/>
-                <field name="level"/>
-                <field name="subsidized_enabled"/>
-                <field name="subsidized_max_units"/>
-                <field name="subsidized_percentage"/>
             </tree>
         </field>
     </record>
@@ -33,39 +29,15 @@
                         <group string="التهيئة الأساسية">
                             <field name="code"/>
                             <field name="sequence"/>
-                            <field name="parent_id" domain="[('parent_id', '=', False)]"/>
-                            <field name="level"/>
                         </group>
-                        <group string="الخصم المدعوم">
-                            <field name="subsidized_enabled"/>
-                            <field name="subsidized_max_units" attrs="{'invisible': [('subsidized_enabled', '=', False)]}"/>
-                            <field name="subsidized_percentage" attrs="{'invisible': [('subsidized_enabled', '=', False)]}"/>
-                            <field name="subsidized_price_per_kwh" attrs="{'invisible': [('subsidized_enabled', '=', False)]}"/>
-                        </group>
-                    </group>
-                    <group string="الحسابات والإعدادات الافتراضية">
-                        <group>
-                            <field name="subsidy_account_id"/>
-                            <field name="revenue_account_id"/>
-                        </group>
-                        <group>
 
-                            <field name="default_contract_template_id"/>
-                        </group>
                     </group>
+
                     <notebook>
                         <page string="الوصف">
                             <field name="description" placeholder="اكتب وصفاً للفئة هنا..."/>
                         </page>
-                        <page string="الفئات الفرعية" attrs="{'invisible': [('level', '=', 'subcategory')]}">
-                            <field name="child_ids" readonly="1">
-                                <tree>
-                                    <field name="code"/>
-                                    <field name="name"/>
-                                    <field name="subsidized_enabled"/>
-                                </tree>
-                            </field>
-                        </page>
+
                     </notebook>
                 </sheet>
             </form>
@@ -152,10 +124,7 @@
                                         <span class="badge badge-pill badge-info" style="font-size: 14px;"><code>current_reading</code></span>
                                         <span class="text-muted ml-2"> — (float) القراءة الحالية للعداد</span>
                                     </div>
-                                    <div class="o_row" title="كائن التعرفة المرتبطة">
-                                        <span class="badge badge-pill badge-secondary" style="font-size: 14px;"><code>tariff</code></span>
-                                        <span class="text-muted ml-2"> — (record) كائن التعرفة (utility.tariff)</span>
-                                    </div>
+
                                 </group>
                                 <group>
                                     <div class="o_row" title="كائن حساب المشترك">

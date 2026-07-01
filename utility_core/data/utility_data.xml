@@ -82,31 +82,6 @@
             <field name="phase">single</field>
         </record>
 
-        <!-- Tariff Categories -->
-        <record id="tariff_cat_residential" model="utility.tariff.category">
-            <field name="name">Residential</field>
-            <field name="code">RES</field>
-            <field name="sequence">10</field>
-        </record>
-        <record id="tariff_cat_commercial" model="utility.tariff.category">
-            <field name="name">Commercial</field>
-            <field name="code">COM</field>
-            <field name="sequence">20</field>
-        </record>
-        <record id="tariff_cat_industrial" model="utility.tariff.category">
-            <field name="name">Industrial</field>
-            <field name="code">IND</field>
-            <field name="sequence">30</field>
-        </record>
-        <record id="tariff_cat_government" model="utility.tariff.category">
-            <field name="name">Government</field>
-            <field name="code">GOV</field>
-            <field name="sequence">40</field>
-        </record>
-        <record id="tariff_cat_agriculture" model="utility.tariff.category">
-            <field name="name">Agriculture</field>
-            <field name="code">AGR</field>
-            <field name="sequence">50</field>
-        </record>
+
     </data>
 </odoo>

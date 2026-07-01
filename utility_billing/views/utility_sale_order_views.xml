@@ -73,12 +73,11 @@
                     
                     <group string="المرفقات والصور">
                         <group>
-                            <field name="meter_image" widget="image" options="{'size': [300, 250]}" attrs="{'invisible': [('meter_image', '=', False)]}"/>
+                            <field name="meter_image" widget="image" options="{'size': [300, 250]}"/>
                             <field name="attachment_id" groups="base.group_no_one"/>
                         </group>
                         <group>
                             <field name="transformer_reading_id" readonly="1"/>
-                            <field name="transformer_meter_image" widget="image" options="{'size': [300, 250]}" attrs="{'invisible': [('transformer_meter_image', '=', False)]}"/>
                             <field name="reading_reviewer"/>
                         </group>
                     </group>
@@ -106,6 +105,17 @@
                 <separator/>
                 <filter name="group_bill_state" string="حالة الفاتورة" context="{'group_by':'bill_state'}"/>
             </filter>
+        </field>
+    </record>
+
+    <record id="action_server_recalculate_utility_bill" model="ir.actions.server">
+        <field name="name">إعادة احتساب الفاتورة (التسعيرة)</field>
+        <field name="model_id" ref="sale.model_sale_order"/>
+        <field name="binding_model_id" ref="sale.model_sale_order"/>
+        <field name="state">code</field>
+        <field name="code">
+            if records:
+                records.action_recalculate_bill()
         </field>
     </record>
 

@@ -57,6 +57,7 @@ class UtilityContractTemplate(models.Model):
     local_fee_cleaning = fields.Float('رسم النظافة لكل kWh', default=0.0)
 
     # خصم الدعم — أول N وحدة تُخصم على الجهة الداعمة
+    sponsor_id = fields.Many2one('res.partner', string='الجهة الداعمة (Sponsor)', help='الجهة التي سيتم تقييد الخصم عليها')
     discount_first_units = fields.Float('وحدات الدعم الأولى', default=0.0,
         help='عدد الوحدات (kWh) المدعومة في الفاتورة')
     discount_unit_value = fields.Float('قيمة الخصم للوحدة', default=0.0,
@@ -92,70 +93,118 @@ class UtilityContractTemplate(models.Model):
                 r.is_active = True
 
     def action_sync_lines_with_template(self):
-        self.ensure_one()
         # البحث عن المنتجات الافتراضية
         Product = self.env['product.product']
         kwh_product = self.env.ref('utility_core.utility_product_kwh', raise_if_not_found=False) or Product.search([('type', '=', 'service')], limit=1)
         fixed_product = self.env.ref('utility_core.utility_product_fixed_fee', raise_if_not_found=False) or Product.search([('type', '=', 'service')], limit=1)
         service_product = self.env.ref('utility_core.utility_product_service_charge', raise_if_not_found=False) or Product.search([('type', '=', 'service')], limit=1)
 
-        existing_types = self.line_ids.mapped('meter_line_type')
+        for template in self:
+            existing_types = template.line_ids.mapped('meter_line_type')
+            existing_local_fees = template.line_ids.filtered(lambda l: l.meter_line_type == 'local_fee').mapped('local_fee_kind')
 
-        # مزامنة أو إنشاء بند الاستهلاك
-        if 'consumption' not in existing_types and self.price_per_kwh > 0:
-            self.env['utility.contract.template.line'].create({
-                'template_id': self.id,
-                'sequence': 10,
-                'product_id': kwh_product.id if kwh_product else False,
-                'name': f'استهلاك كهرباء ({self.name})',
-                'price_type': 'meter_reading',
-                'meter_line_type': 'consumption',
-                'specific_price': self.price_per_kwh,
-            })
+            # مزامنة أو إنشاء بند الاستهلاك
+            if 'consumption' not in existing_types and template.price_per_kwh > 0:
+                self.env['utility.contract.template.line'].create({
+                    'template_id': template.id,
+                    'sequence': 10,
+                    'product_id': kwh_product.id if kwh_product else False,
+                    'name': f'استهلاك كهرباء ({template.name})',
+                    'price_type': 'meter_reading',
+                    'meter_line_type': 'consumption',
+                    'specific_price': template.price_per_kwh,
+                })
 
-        # مزامنة أو إنشاء بند الرسم الثابت
-        if 'fixed_fee' not in existing_types and self.fixed_charge > 0:
-            self.env['utility.contract.template.line'].create({
-                'template_id': self.id,
-                'sequence': 20,
-                'product_id': fixed_product.id if fixed_product else False,
-                'name': f'رسوم اشتراك وصيانة العداد ({self.name})',
-                'price_type': 'fixed',
-                'meter_line_type': 'fixed_fee',
-                'specific_price': self.fixed_charge,
-            })
+            # مزامنة أو إنشاء بند الرسم الثابت
+            if 'fixed_fee' not in existing_types and template.fixed_charge > 0:
+                self.env['utility.contract.template.line'].create({
+                    'template_id': template.id,
+                    'sequence': 20,
+                    'product_id': fixed_product.id if fixed_product else False,
+                    'name': f'رسوم اشتراك وصيانة العداد ({template.name})',
+                    'price_type': 'fixed',
+                    'meter_line_type': 'fixed_fee',
+                    'specific_price': template.fixed_charge,
+                })
 
-        # مزامنة أو إنشاء بند رسوم الخدمة
-        if 'service_charge' not in existing_types and self.service_charge > 0:
-            self.env['utility.contract.template.line'].create({
-                'template_id': self.id,
-                'sequence': 25,
-                'product_id': service_product.id if service_product else False,
-                'name': f'رسوم خدمات إضافية ({self.name})',
-                'price_type': 'fixed',
-                'meter_line_type': 'service_charge',
-                'specific_price': self.service_charge,
-            })
+            # مزامنة أو إنشاء بند رسوم الخدمة
+            if 'service_charge' not in existing_types and template.service_charge > 0:
+                self.env['utility.contract.template.line'].create({
+                    'template_id': template.id,
+                    'sequence': 25,
+                    'product_id': service_product.id if service_product else False,
+                    'name': f'رسوم خدمات إضافية ({template.name})',
+                    'price_type': 'fixed',
+                    'meter_line_type': 'service_charge',
+                    'specific_price': template.service_charge,
+                })
 
-        # تحديث الأسعار للبنود الحالية لتتطابق تماماً مع بيانات القالب
-        for line in self.line_ids:
-            if line.meter_line_type == 'consumption':
-                line.specific_price = self.price_per_kwh
-            elif line.meter_line_type == 'fixed_fee':
-                line.specific_price = self.fixed_charge
-            elif line.meter_line_type == 'service_charge':
-                line.specific_price = self.service_charge
+            # المعلم
+            if 'mu_allim' not in existing_local_fees and template.local_fee_mu_allim > 0:
+                self.env['utility.contract.template.line'].create({
+                    'template_id': template.id,
+                    'sequence': 30,
+                    'product_id': template.company_id.mu_allim_product_id.id or service_product.id or False,
+                    'name': f'رسم المعلم ({template.name})',
+                    'price_type': 'meter_reading',
+                    'meter_line_type': 'local_fee',
+                    'local_fee_kind': 'mu_allim',
+                    'specific_price': template.local_fee_mu_allim,
+                })
 
-        return {
-            'type': 'ir.actions.client',
-            'tag': 'display_notification',
-            'params': {
-                'title': _('مزامنة ناجحة'),
-                'message': _('تم التناغم ومزامنة بنود القالب مع التعرفة المحددة بنجاح تام!'),
-                'sticky': False,
-                'type': 'success',
+            # النظافة
+            if 'cleaning' not in existing_local_fees and template.local_fee_cleaning > 0:
+                self.env['utility.contract.template.line'].create({
+                    'template_id': template.id,
+                    'sequence': 35,
+                    'product_id': template.company_id.cleaning_product_id.id or service_product.id or False,
+                    'name': f'رسم النظافة ({template.name})',
+                    'price_type': 'meter_reading',
+                    'meter_line_type': 'local_fee',
+                    'local_fee_kind': 'cleaning',
+                    'specific_price': template.local_fee_cleaning,
+                })
+
+            # المجالس المحلية
+            if 'municipality' not in existing_local_fees and template.local_fee_per_kwh > 0:
+                self.env['utility.contract.template.line'].create({
+                    'template_id': template.id,
+                    'sequence': 40,
+                    'product_id': template.company_id.local_fee_product_id.id or service_product.id or False,
+                    'name': f'رسم المجالس المحلية ({template.name})',
+                    'price_type': 'meter_reading',
+                    'meter_line_type': 'local_fee',
+                    'local_fee_kind': 'municipality',
+                    'specific_price': template.local_fee_per_kwh,
+                })
+
+            # تحديث الأسعار للبنود الحالية لتتطابق تماماً مع بيانات القالب
+            for line in template.line_ids:
+                if line.meter_line_type == 'consumption':
+                    line.specific_price = template.price_per_kwh
+                elif line.meter_line_type == 'fixed_fee':
+                    line.specific_price = template.fixed_charge
+                elif line.meter_line_type == 'service_charge':
+                    line.specific_price = template.service_charge
+                elif line.meter_line_type == 'local_fee':
+                    if line.local_fee_kind == 'mu_allim':
+                        line.specific_price = template.local_fee_mu_allim
+                    elif line.local_fee_kind == 'cleaning':
+                        line.specific_price = template.local_fee_cleaning
+                    elif line.local_fee_kind == 'municipality':
+                        line.specific_price = template.local_fee_per_kwh
+
+        if len(self) == 1:
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('مزامنة ناجحة'),
+                    'message': _('تم إضافة ومزامنة بنود القالب بنجاح!'),
+                    'sticky': False,
+                    'type': 'success',
+                }
             }
-        }
 
 
 class UtilityContractTemplateLine(models.Model):

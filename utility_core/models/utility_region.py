@@ -30,7 +30,7 @@ class UtilityRegion(models.Model):
         ('bi_monthly', 'نصف شهري'),
         ('quarterly', 'ربع سنوي'),
         ('yearly', 'سنوي'),
-    ], string='نوع دورة الفوترة', default='monthly')
+    ], string='نوع دورة الفوترة', default='monthly', required=True)
 
     transformer_origin_id = fields.Many2one('utility.transformer', 'منشأ من محول',
         readonly=True, copy=False,

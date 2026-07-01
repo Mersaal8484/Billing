@@ -53,9 +53,8 @@ class IrAttachment(models.Model):
         table = 'unknown'
         res_model = model_name or self._context.get('res_model') or self._context.get('default_res_model', '')
         if res_model:
-            model_obj = self.env['ir.model'].sudo().search([('model', '=', res_model)], limit=1)
-            if model_obj and model_obj.table:
-                table = model_obj.table
+            if res_model in self.env:
+                table = self.env[res_model]._table
             else:
                 table = res_model.replace('.', '_')
         return os.path.join(

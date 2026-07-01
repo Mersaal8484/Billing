@@ -9,14 +9,13 @@ class UtilitySaleOrder(models.Model):
     customer_id = fields.Many2one('utility.customer', 'الحساب', index=True)
     meter_id = fields.Many2one('utility.meter', 'العداد')
     reading_id = fields.Many2one('utility.reading', 'قراءة العداد', index=True, ondelete='restrict')
-    date_range_id = fields.Many2one('date.range', 'فترة الفوترة', index=True)
+    date_range_id = fields.Many2one('date.range', 'فترة الفوترة', index=True, required=True)
 
-    meter_image = fields.Binary(related='reading_id.meter_image', string='صورة العداد')
+    meter_image = fields.Binary(related='reading_id.meter_image', string='صورة العداد', readonly=False)
     reading_reviewer = fields.Many2one(related='reading_id.reviewer_id', string='مراجع القراءة')
     attachment_id = fields.Many2one('ir.attachment', string='ملف صورة القراءة الرسمي')
     
     transformer_reading_id = fields.Many2one('utility.transformer.reading', string='قراءة المحول/الخلية المرتبطة', compute='_compute_transformer_reading', store=True)
-    transformer_meter_image = fields.Binary(related='transformer_reading_id.coupling_meter_image', string='صورة عداد المحول/الخلية')
 
     workflow_process_id = fields.Many2one('sale.workflow.process', string='مسار العمل التلقائي', ondelete='restrict')
     all_qty_delivered = fields.Boolean(compute='_compute_all_qty_delivered', store=True)
@@ -169,6 +168,13 @@ class UtilitySaleOrder(models.Model):
 
         return super(UtilitySaleOrder, self).action_confirm()
 
+    def action_draft(self):
+        res = super(UtilitySaleOrder, self).action_draft()
+        for order in self:
+            if order.reading_id and order.reading_id.state == 'billed':
+                order.reading_id.state = 'under_review'
+        return res
+
     @api.depends('meter_id', 'date_range_id', 'reading_id')
     def _compute_transformer_reading(self):
         TransformerReading = self.env.get('utility.transformer.reading')
@@ -197,6 +203,11 @@ class UtilitySaleOrder(models.Model):
             r.amount_paid = paid
             r.balance_due = r.amount_total - paid
             r.is_overdue = r.bill_state not in ('paid', 'cancelled') and r.balance_due > 0 and r.date_order and r.date_order.date() < date.today()
+
+    def action_recalculate_bill(self):
+        for order in self:
+            if order.state == 'draft':
+                order._calculate_amounts()
 
     def _calculate_amounts(self):
         """حساب مبالغ الفاتورة وفق قالب العقد.
@@ -233,7 +244,7 @@ class UtilitySaleOrder(models.Model):
         # ─────────────────────────────────────────────────────────────
         if template:
             for line in template.line_ids.sorted('sequence'):
-                qty, price, name, product_id = self._compute_line_amounts(
+                qty, price, name, product_id, sponsor_id = self._compute_line_amounts(
                     line, consumption, account, category, template
                 )
                 if not qty and not price:
@@ -245,6 +256,7 @@ class UtilitySaleOrder(models.Model):
                     'product_uom_qty': qty,
                     'price_unit': price,
                     'is_tax': False,
+                    'sponsor_id': sponsor_id,
                 }))
                 self._accumulate_amount(line.meter_line_type, amount)
 
@@ -319,11 +331,12 @@ class UtilitySaleOrder(models.Model):
         self.order_line = [(5, 0, 0)] + lines
 
     def _compute_line_amounts(self, line, consumption, account, category, template):
-        """حساب (qty, price, name, product_id) لبند قالب عقد واحد."""
+        """حساب (qty, price, name, product_id, sponsor_id) لبند قالب عقد واحد."""
         qty = 0.0
         price = 0.0
         name = line.name or line.product_id.name or ''
         product_id = line.product_id.id if line.product_id else False
+        sponsor_id = False
 
         # السعر من القالب (مصدر الحقيقة) — line.specific_price للـ override
         template_price = template.price_per_kwh if template else 0.0
@@ -396,6 +409,7 @@ class UtilitySaleOrder(models.Model):
             if (category and getattr(category, 'subsidized_enabled', False) and consumption > 0):
                 qty, price, name = category._get_subsidized_amount(consumption, template)
                 price = -abs(price)
+                sponsor_id = category.sponsor_id.id if hasattr(category, 'sponsor_id') and category.sponsor_id else False
             else:
                 # حساب خصم قائم على discount_first_units في القالب
                 if template and template.discount_first_units > 0 and consumption > 0:
@@ -405,8 +419,9 @@ class UtilitySaleOrder(models.Model):
                 else:
                     qty = 1.0
                     price = -(line.specific_price or 0.0)
+                sponsor_id = template.sponsor_id.id if template and template.sponsor_id else False
 
-        return qty, price, name, product_id
+        return qty, price, name, product_id, sponsor_id
 
     def _accumulate_amount(self, meter_line_type, amount):
         """تجميع المبلغ في الخانة المناسبة حسب نوع البند."""
@@ -445,6 +460,16 @@ class UtilitySaleOrderLine(models.Model):
         'account.analytic.account',
         string='عقد الاشتراك',
     )
+    sponsor_id = fields.Many2one(
+        'res.partner',
+        string='الجهة الداعمة (Sponsor)',
+    )
+
+    def _prepare_invoice_line(self, **optional_values):
+        res = super(UtilitySaleOrderLine, self)._prepare_invoice_line(**optional_values)
+        if self.sponsor_id:
+            res['partner_id'] = self.sponsor_id.id
+        return res
 
 
 class UtilityAccountMove(models.Model):
@@ -455,3 +480,12 @@ class UtilityAccountMove(models.Model):
     previous_reading = fields.Float('القراءة السابقة')
     current_reading = fields.Float('القراءة الحالية')
     consumption = fields.Float('الاستهلاك')
+
+    def _post(self, soft=True):
+        res = super(UtilityAccountMove, self)._post(soft=soft)
+        for move in self:
+            for line in move.line_ids:
+                if line.sale_line_ids and line.sale_line_ids[0].sponsor_id:
+                    if line.partner_id != line.sale_line_ids[0].sponsor_id:
+                        line.write({'partner_id': line.sale_line_ids[0].sponsor_id.id})
+        return res

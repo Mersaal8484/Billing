@@ -101,45 +101,56 @@ class ResConfigSettings(models.TransientModel):
     # --- Accounting ---
     fine_account_id = fields.Many2one(
         'account.account',
-        string='حساب إيرادات الغرامات',
-        config_parameter='utility.fine_account_id')
+        related='company_id.fine_account_id',
+        readonly=False,
+        string='حساب إيرادات الغرامات')
     discount_account_id = fields.Many2one(
         'account.account',
-        string='حساب الخصومات / الإعفاءات',
-        config_parameter='utility.discount_account_id')
+        related='company_id.discount_account_id',
+        readonly=False,
+        string='حساب الخصومات / الإعفاءات')
     deposit_account_id = fields.Many2one(
         'account.account',
-        string='حساب التأمينات',
-        config_parameter='utility.deposit_account_id')
+        related='company_id.deposit_account_id',
+        readonly=False,
+        string='حساب التأمينات')
     settlement_account_id = fields.Many2one(
         'account.account',
-        string='حساب التسويات المالية',
-        config_parameter='utility.settlement_account_id')
+        related='company_id.settlement_account_id',
+        readonly=False,
+        string='حساب التسويات المالية')
     writeoff_journal_id = fields.Many2one(
         'account.journal',
-        string='يومية الإعفاءات',
-        config_parameter='utility.writeoff_journal_id')
+        related='company_id.writeoff_journal_id',
+        readonly=False,
+        string='يومية الإعفاءات')
     deposit_journal_id = fields.Many2one(
         'account.journal',
-        string='يومية التأمينات والودائع',
-        config_parameter='utility.deposit_journal_id')
+        related='company_id.deposit_journal_id',
+        readonly=False,
+        string='يومية التأمينات والودائع')
     settlement_journal_id = fields.Many2one(
         'account.journal',
-        string='يومية التسويات',
-        config_parameter='utility.settlement_journal_id')
+        related='company_id.settlement_journal_id',
+        readonly=False,
+        string='يومية التسويات')
     penalty_product_id = fields.Many2one(
         'product.product',
-        string='منتج الغرامات',
-        config_parameter='utility.penalty_product_id')
+        related='company_id.penalty_product_id',
+        readonly=False,
+        string='منتج الغرامات')
     mu_allim_product_id = fields.Many2one(
         'product.product',
-        string='منتج المعلم',
-        config_parameter='utility.mu_allim_product_id')
+        related='company_id.mu_allim_product_id',
+        readonly=False,
+        string='منتج المعلم')
     cleaning_product_id = fields.Many2one(
         'product.product',
-        string='منتج النظافة',
-        config_parameter='utility.cleaning_product_id')
+        related='company_id.cleaning_product_id',
+        readonly=False,
+        string='منتج النظافة')
     local_fee_product_id = fields.Many2one(
         'product.product',
-        string='منتج المجالس المحلية',
-        config_parameter='utility.local_fee_product_id')
+        related='company_id.local_fee_product_id',
+        readonly=False,
+        string='منتج المجالس المحلية')

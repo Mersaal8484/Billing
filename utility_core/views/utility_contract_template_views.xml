@@ -22,7 +22,7 @@
         <field name="arch" type="xml">
             <form string="قالب العقد">
                 <header>
-                    <button name="action_sync_lines_with_template" type="object" string="مزامنة بنود العقد مع التسعيرة" class="oe_highlight" icon="fa-refresh"/>
+                    <button name="action_sync_lines_with_template" type="object" string="إضافة / مزامنة بنود القالب" class="oe_highlight" icon="fa-plus"/>
                 </header>
                 <sheet>
                     <div class="oe_title">
@@ -88,6 +88,7 @@
                                 </group>
                             </group>
                             <group string="خصم الدعم (أول N وحدة)">
+                                <field name="sponsor_id"/>
                                 <field name="discount_first_units"/>
                                 <field name="discount_unit_value"/>
                             </group>
@@ -143,6 +144,17 @@
                     </notebook>
                 </sheet>
             </form>
+        </field>
+    </record>
+
+    <record id="action_server_sync_template_lines" model="ir.actions.server">
+        <field name="name">توليد / تحديث بنود التسعيرة</field>
+        <field name="model_id" ref="utility_core.model_utility_contract_template"/>
+        <field name="binding_model_id" ref="utility_core.model_utility_contract_template"/>
+        <field name="state">code</field>
+        <field name="code">
+            if records:
+                action = records.action_sync_lines_with_template()
         </field>
     </record>
 

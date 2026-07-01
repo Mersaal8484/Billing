@@ -129,10 +129,16 @@ class UtilityCustomer(models.Model):
         for customer in customers:
             if not customer.analytic_account_id:
                 partner_name = customer.partner_id.name or customer.customer_number
+                plan = self.env.ref('analytic.analytic_plan_projects', raise_if_not_found=False)
+                if not plan:
+                    plan = self.env['account.analytic.plan'].search([], limit=1)
+                if not plan:
+                    plan = self.env['account.analytic.plan'].create({'name': 'Default Plan'})
+                
                 analytic_account = self.env['account.analytic.account'].create({
                     'name': f"{partner_name} - {customer.customer_number}",
                     'partner_id': customer.partner_id.id,
-                    'plan_id': self.env.ref('analytic.analytic_plan_projects', raise_if_not_found=False).id if self.env.ref('analytic.analytic_plan_projects', raise_if_not_found=False) else False
+                    'plan_id': plan.id
                 })
                 customer.write({'analytic_account_id': analytic_account.id})
                 
@@ -236,10 +242,17 @@ class UtilityCustomer(models.Model):
     def action_create_analytic_account(self):
         for rec in self:
             if not rec.analytic_account_id:
+                plan = self.env.ref('analytic.analytic_plan_projects', raise_if_not_found=False)
+                if not plan:
+                    plan = self.env['account.analytic.plan'].search([], limit=1)
+                if not plan:
+                    plan = self.env['account.analytic.plan'].create({'name': 'Default Plan'})
+
                 analytic = self.env['account.analytic.account'].create({
                     'name': f'[{rec.customer_number}] {rec.partner_id.name}',
                     'partner_id': rec.partner_id.id,
                     'company_id': rec.company_id.id,
                     'utility_customer_id': rec.id,
+                    'plan_id': plan.id,
                 })
                 rec.analytic_account_id = analytic.id

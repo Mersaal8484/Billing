@@ -41,7 +41,6 @@
                             <field name="amount" widget="monetary" decoration-bf="1" decoration-danger="1"/>
                             <field name="date"/>
                             <field name="approved_by" attrs="{'invisible': [('state', '=', 'draft')]}"/>
-                            <field name="move_id" attrs="{'invisible': [('move_id', '=', False)]}"/>
                         </group>
                     </group>
                     <notebook>
