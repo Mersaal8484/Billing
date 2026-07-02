@@ -19,8 +19,7 @@ class UtilitySubstation(models.Model):
         ('hv', 'High Voltage'),
     ], string='Voltage Level')
     capacity_kva = fields.Float('Capacity (kVA)')
-    gps_latitude = fields.Float('GPS Latitude')
-    gps_longitude = fields.Float('GPS Longitude')
+    address = fields.Text('Address')
     status = fields.Selection([
         ('active', 'Active'),
         ('inactive', 'Inactive'),

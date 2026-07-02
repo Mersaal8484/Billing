@@ -14,9 +14,9 @@ class UtilityRoute(models.Model):
     zone_id = fields.Many2one('utility.region', 'Zone', domain="[('type', '=', 'zone')]")
     region_id = fields.Many2one('utility.region', 'Region', related='area_id.parent_id', store=True)
     customer_ids = fields.One2many('utility.customer', 'route_id', string='عقود المشتركين')
-    inspector_id = fields.Many2one('utility.staff', string='الكشاف', domain="[('role', '=', 'inspector')]")
-    cashier_id = fields.Many2one('utility.staff', string='المحصل', domain="[('role', '=', 'cashier')]")
-    supervisor_id = fields.Many2one('utility.staff', string='المشرف', domain="[('role', '=', 'supervisor')]")
+    inspector_id = fields.Many2one('utility.staff', string='الكشاف', domain="[('user_role_id.code', '=', 'inspector')]")
+    cashier_id = fields.Many2one('utility.staff', string='المحصل', domain="[('user_role_id.code', '=', 'cashier')]")
+    supervisor_id = fields.Many2one('utility.staff', string='المشرف', domain="[('user_role_id.code', '=', 'supervisor')]")
 
     _sql_constraints = [
         ('unique_route_code_area', 'unique(code, area_id)', 'Route code must be unique per area!'),

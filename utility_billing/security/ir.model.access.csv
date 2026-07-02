@@ -27,3 +27,12 @@ billing_manager_penalty_type,utility.penalty.type.billing_manager,model_utility_
 auditor_penalty_type,utility.penalty.type.auditor,model_utility_penalty_type,utility_core.group_utility_auditor,1,0,0,0
 access_sale_workflow_process_all,sale.workflow.process.all,model_sale_workflow_process,base.group_user,1,1,1,1
 access_automatic_workflow_job_all,automatic.workflow.job.all,model_automatic_workflow_job,base.group_system,1,1,1,1
+admin_collector_shift,utility.collector.shift.admin,model_utility_collector_shift,base.group_system,1,1,1,1
+collector_collector_shift,utility.collector.shift.collector,model_utility_collector_shift,utility_core.group_utility_collector,1,1,1,0
+supervisor_collector_shift,utility.collector.shift.supervisor,model_utility_collector_shift,utility_core.group_utility_supervisor,1,1,1,1
+auditor_collector_shift,utility.collector.shift.auditor,model_utility_collector_shift,utility_core.group_utility_auditor,1,0,0,0
+admin_reading_batch,utility.reading.batch.admin,model_utility_reading_batch,base.group_system,1,1,1,1
+billing_manager_reading_batch,utility.reading.batch.billing_manager,model_utility_reading_batch,utility_core.group_utility_billing_manager,1,1,1,1
+technician_reading_batch,utility.reading.batch.technician,model_utility_reading_batch,utility_core.group_utility_technician,1,1,1,0
+supervisor_reading_batch,utility.reading.batch.supervisor,model_utility_reading_batch,utility_core.group_utility_supervisor,1,1,0,0
+auditor_reading_batch,utility.reading.batch.auditor,model_utility_reading_batch,utility_core.group_utility_auditor,1,0,0,0

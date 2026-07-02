@@ -14,6 +14,10 @@ class AccountPayment(models.Model):
     is_invoice_verified = fields.Boolean(string='تم التحقق من الفاتورة')
     cashier_shift_id = fields.Many2one('utility.cashier.shift', string='الوردية',
         default=lambda self: self._default_cashier_shift())
+    collector_shift_id = fields.Many2one('utility.collector.shift', string='يومية التحصيل',
+        default=lambda self: self._default_collector_shift())
+    date_range_id = fields.Many2one('date.range', string='الفترة', 
+        default=lambda self: self.env['date.range'].search([('is_current_period', '=', True), ('work_type', '=', 'payment')], limit=1))
 
     @api.model
     def _default_cashier_shift(self):
@@ -21,6 +25,16 @@ class AccountPayment(models.Model):
             return self.env.context['cashier_shift_id']
         shift = self.env['utility.cashier.shift'].search([
             ('cashier_id', '=', self.env.user.id),
+            ('state', '=', 'open'),
+        ], limit=1)
+        return shift.id if shift else False
+
+    @api.model
+    def _default_collector_shift(self):
+        if self.env.context.get('collector_shift_id'):
+            return self.env.context['collector_shift_id']
+        shift = self.env['utility.collector.shift'].search([
+            ('collector_id', '=', self.env.user.id),
             ('state', '=', 'open'),
         ], limit=1)
         return shift.id if shift else False

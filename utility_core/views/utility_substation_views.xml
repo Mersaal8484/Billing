@@ -37,8 +37,7 @@
                         <group>
                             <field name="voltage_level"/>
                             <field name="capacity_kva"/>
-                            <field name="gps_latitude"/>
-                            <field name="gps_longitude"/>
+                            <field name="address"/>
                         </group>
                     </group>
                     <notebook>

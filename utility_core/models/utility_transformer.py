@@ -23,6 +23,8 @@ class UtilityTransformer(models.Model):
     area_id = fields.Many2one('utility.region', 'Area', related='zone_id.parent_id', store=True)
     region_id = fields.Many2one('utility.region', 'Region', related='zone_id.parent_id.parent_id', store=True)
 
+    is_private = fields.Boolean(string='محول خاص', default=False, help='يُحدد ما إذا كان المحول خاصاً بمشترك واحد')
+
     # ===== المواصفات الفنية =====
     capacity = fields.Float('Capacity (kVA)')
     phase = fields.Selection([
@@ -33,8 +35,7 @@ class UtilityTransformer(models.Model):
     serial_number = fields.Char('Serial Number')
     voltage_primary = fields.Float('Primary Voltage (V)')
     voltage_secondary = fields.Float('Secondary Voltage (V)')
-    gps_latitude = fields.Float('GPS Latitude')
-    gps_longitude = fields.Float('GPS Longitude')
+    address = fields.Text('Address')
     status = fields.Selection([
         ('active', 'Active'),
         ('inactive', 'Inactive'),

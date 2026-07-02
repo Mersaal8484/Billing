@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ===================== TREE VIEW ===================== -->
+    <record id="view_utility_reading_batch_tree" model="ir.ui.view">
+        <field name="name">utility.reading.batch.tree</field>
+        <field name="model">utility.reading.batch</field>
+        <field name="arch" type="xml">
+            <tree decoration-success="state == 'done'"
+                  decoration-warning="state == 'processing'"
+                  decoration-danger="state in ('error', 'partial')">
+                <field name="name" string="رقم الدفعة"/>
+                <field name="user_id" string="القارئ / الجابي"/>
+                <field name="upload_date" string="تاريخ الرفع"/>
+                <field name="date_range_id" string="الفترة"/>
+                <field name="region_id" string="المنطقة"/>
+                <field name="total_readings" string="الإجمالي"/>
+                <field name="processed_count" string="تمت"/>
+                <field name="error_count" string="أخطاء"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'done'"
+                       decoration-warning="state in ('processing', 'uploaded')"
+                       decoration-danger="state in ('error', 'partial')"
+                       string="الحالة"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- ===================== FORM VIEW ===================== -->
+    <record id="view_utility_reading_batch_form" model="ir.ui.view">
+        <field name="name">utility.reading.batch.form</field>
+        <field name="model">utility.reading.batch</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_confirm" type="object"
+                            string="تأكيد وبدء المعالجة" class="oe_highlight"
+                            attrs="{'invisible': [('state', '!=', 'uploaded')]}"
+                            groups="utility_core.group_utility_billing_manager"/>
+                    <button name="action_reset_to_uploaded" type="object"
+                            string="إعادة المعالجة" class="oe_highlight"
+                            attrs="{'invisible': [('state', 'not in', ('error', 'partial'))]}"
+                            groups="utility_core.group_utility_billing_manager"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="uploaded,processing,done"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group string="معلومات الدفعة">
+                            <field name="user_id"/>
+                            <field name="upload_date"/>
+                            <field name="date_range_id"/>
+                            <field name="region_id"/>
+                        </group>
+                        <group string="الإحصائيات">
+                            <field name="total_readings"/>
+                            <field name="processed_count"/>
+                            <field name="error_count"/>
+                        </group>
+                    </group>
+                    <group string="ملف البيانات">
+                        <field name="data_file" filename="data_filename"/>
+                        <field name="data_filename" invisible="1"/>
+                    </group>
+
+                    <notebook>
+                        <page string="القراءات المُنشأة" attrs="{'invisible': [('processed_count', '=', 0)]}">
+                            <field name="reading_ids" readonly="1">
+                                <tree>
+                                    <field name="reading_id"/>
+                                    <field name="meter_id"/>
+                                    <field name="customer_id"/>
+                                    <field name="reading_value"/>
+                                    <field name="consumption"/>
+                                    <field name="state" widget="badge"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="الصور المرفقة">
+                            <field name="image_ids" readonly="1">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="file_size"/>
+                                    <field name="create_date"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="سجل الأخطاء" attrs="{'invisible': [('error_log', '=', False)]}">
+                            <field name="error_log" readonly="1"/>
+                        </page>
+                    </notebook>
+                </sheet>
+
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" widget="mail_followers"/>
+                    <field name="activity_ids" widget="mail_activity"/>
+                    <field name="message_ids" widget="mail_thread"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- ===================== SEARCH VIEW ===================== -->
+    <record id="view_utility_reading_batch_search" model="ir.ui.view">
+        <field name="name">utility.reading.batch.search</field>
+        <field name="model">utility.reading.batch</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="user_id"/>
+                <field name="date_range_id"/>
+                <filter name="uploaded" string="تم الرفع" domain="[('state','=','uploaded')]"/>
+                <filter name="processing" string="قيد المعالجة" domain="[('state','=','processing')]"/>
+                <filter name="done" string="مكتمل" domain="[('state','=','done')]"/>
+                <filter name="partial" string="مكتمل جزئياً" domain="[('state','=','partial')]"/>
+                <filter name="error" string="خطأ" domain="[('state','=','error')]"/>
+                <separator/>
+                <group expand="0" string="تجميع حسب">
+                    <filter name="group_user" string="القارئ" context="{'group_by': 'user_id'}"/>
+                    <filter name="group_period" string="الفترة" context="{'group_by': 'date_range_id'}"/>
+                    <filter name="group_region" string="المنطقة" context="{'group_by': 'region_id'}"/>
+                    <filter name="group_state" string="الحالة" context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ===================== ACTIONS ===================== -->
+    <record id="action_utility_reading_batch" model="ir.actions.act_window">
+        <field name="name">دفعات القراءات</field>
+        <field name="res_model">utility.reading.batch</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_utility_reading_batch_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                لا توجد دفعات مرفوعة حالياً. تُرفع الدفعات تلقائياً من تطبيق الموبايل.
+            </p>
+        </field>
+    </record>
+
+    <!-- ===================== MENU ITEMS ===================== -->
+    <menuitem id="menu_utility_reading_batch"
+              name="دفعات القراءات"
+              parent="utility_billing.menu_utility_readings"
+              action="action_utility_reading_batch"
+              sequence="20"/>
+</odoo>

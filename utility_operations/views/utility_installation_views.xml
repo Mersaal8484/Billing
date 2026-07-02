@@ -49,8 +49,7 @@
                             </group>
                             <group>
                                 <field name="seal_number"/>
-                                <field name="gps_latitude"/>
-                                <field name="gps_longitude"/>
+                                <field name="address"/>
                             </group>
                         </group>
                         <field name="notes" nolabel="1"/>

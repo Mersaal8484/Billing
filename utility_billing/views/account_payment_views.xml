@@ -11,7 +11,9 @@
                     <field name="utility_payment_method" readonly="1"/>
                     <field name="electronic_doc_no" readonly="1"/>
                     <field name="is_invoice_verified" readonly="1"/>
-                    <field name="cashier_shift_id" readonly="1"/>
+                    <field name="cashier_shift_id" readonly="1" attrs="{'invisible': [('cashier_shift_id', '=', False)]}"/>
+                    <field name="collector_shift_id" readonly="1" attrs="{'invisible': [('collector_shift_id', '=', False)]}"/>
+                    <field name="date_range_id" readonly="1" attrs="{'invisible': [('date_range_id', '=', False)]}"/>
                 </group>
             </xpath>
         </field>

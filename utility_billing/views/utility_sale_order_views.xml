@@ -83,8 +83,11 @@
                     </group>
                 </page>
             </xpath>
-            <xpath expr="//header" position="inside">
-                <field name="bill_state" widget="statusbar" statusbar_visible="draft,confirmed,sent,paid,overdue"/>
+            <xpath expr="//div[hasclass('oe_title')]" position="inside">
+                <h2>
+                    <span class="o_form_label">حالة الفاتورة: </span>
+                    <field name="bill_state" widget="badge" decoration-danger="bill_state in ('overdue','cancelled')" decoration-success="bill_state=='paid'" decoration-warning="bill_state=='draft'"/>
+                </h2>
             </xpath>
         </field>
     </record>

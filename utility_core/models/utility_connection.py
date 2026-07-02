@@ -20,8 +20,6 @@ class UtilityConnection(models.Model):
         ('suspended', 'Suspended'),
     ], string='Status', default='active')
     address = fields.Text('Address')
-    gps_latitude = fields.Float('GPS Latitude')
-    gps_longitude = fields.Float('GPS Longitude')
     notes = fields.Text('Notes')
 
     @api.model_create_multi

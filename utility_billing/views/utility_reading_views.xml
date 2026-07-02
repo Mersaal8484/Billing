@@ -77,10 +77,14 @@
                             groups="utility_core.group_utility_supervisor"/>
                     <button name="action_generate_bill" type="object"
                             string="إنشاء فاتورة" class="oe_highlight"
-                            attrs="{'invisible': [('state', '!=', 'approved')]}"
+                            attrs="{'invisible': ['|', ('state', '!=', 'approved'), '&amp;', ('reading_category', '!=', 'customer'), '|', ('reading_category', '!=', 'transformer'), ('is_private_transformer', '=', False)]}"
+                            groups="utility_core.group_utility_billing_manager"/>
+                    <button name="action_requeue" type="object"
+                            string="إعادة للطابور" class="oe_highlight"
+                            attrs="{'invisible': [('state', '!=', 'error')]}"
                             groups="utility_core.group_utility_billing_manager"/>
                     <field name="state" widget="statusbar"
-                           statusbar_visible="draft,under_review,approved,billed"/>
+                           statusbar_visible="draft,under_review,approved,queued,billed"/>
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
@@ -95,10 +99,14 @@
                     </div>
                     <group>
                         <group string="معلومات القراءة">
+                            <field name="reading_category" />
                             <field name="reading_id"/>
                             <field name="meter_id" options="{'no_create': True}"/>
-                            <field name="account_id"/>
-                            <field name="customer_id"/>
+                            <field name="transformer_id" attrs="{'invisible': [('reading_category', '!=', 'transformer')]}"/>
+                            <field name="is_private_transformer" invisible="1"/>
+                            <field name="feeder_id" attrs="{'invisible': [('reading_category', '!=', 'feeder')]}"/>
+                            <field name="account_id" attrs="{'invisible': ['&amp;', ('reading_category', '!=', 'customer'), '|', ('reading_category', '!=', 'transformer'), ('is_private_transformer', '=', False)]}"/>
+                            <field name="customer_id" attrs="{'invisible': ['&amp;', ('reading_category', '!=', 'customer'), '|', ('reading_category', '!=', 'transformer'), ('is_private_transformer', '=', False)]}"/>
                             <field name="reading_date"/>
                             <field name="reading_type"/>
                         </group>
@@ -127,6 +135,9 @@
                         <field name="rejection_reason" attrs="{'invisible': [('rejection_reason', '=', False)]}"/>
                     </group>
                     <field name="remarks" nolabel="1" placeholder="ملاحظات إضافية..."/>
+                    <group string="خطأ الفوترة" attrs="{'invisible': [('billing_error', '=', False)]}">
+                        <field name="billing_error" nolabel="1" readonly="1"/>
+                    </group>
                 </sheet>
                 
                 <div class="oe_chatter">
@@ -212,6 +223,9 @@
                 <filter name="under_review" string="قيد المراجعة" domain="[('state','=','under_review')]"
                         help="القراءات التي تنتظر المراجعة والاعتماد"/>
                 <filter name="approved" string="معتمدة" domain="[('state','=','approved')]"/>
+                <filter name="queued" string="في طابور الفوترة" domain="[('state','=','queued')]"/>
+                <filter name="billed" string="مفوترة" domain="[('state','=','billed')]"/>
+                <filter name="error" string="خطأ" domain="[('state','=','error')]"/>
                 <filter name="awaiting_bill" string="تنتظر الفوترة" domain="[('state','=','approved')]"/>
                 <filter name="estimated" string="تقديرية" domain="[('is_estimated','=',True)]"/>
                 <!-- مجموعات -->

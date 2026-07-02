@@ -27,8 +27,7 @@ class UtilityInspection(models.Model):
     condition_rating = fields.Integer('Condition Rating (1-5)')
     photos = fields.One2many('ir.attachment', 'res_id', string='Photos',
                              domain=[('res_model', '=', 'utility.inspection')])
-    gps_latitude = fields.Float('GPS Latitude')
-    gps_longitude = fields.Float('GPS Longitude')
+    address = fields.Text('Address')
     customer_signature = fields.Binary('Customer Signature')
     inspector_signature = fields.Binary('Inspector Signature')
     is_passed = fields.Boolean('Passed')

@@ -49,8 +49,7 @@
                             <group>
                                 <field name="condition_rating"/>
                                 <field name="is_passed"/>
-                                <field name="gps_latitude"/>
-                                <field name="gps_longitude"/>
+                                <field name="address"/>
                             </group>
                         </group>
                         <notebook>

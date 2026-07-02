@@ -39,7 +39,7 @@ class UtilityServiceOrder(models.Model):
     region_id = fields.Many2one('utility.region', 'Region', related='customer_id.region_id', store=True)
     area_id = fields.Many2one('utility.region', 'Area', related='customer_id.area_id', store=True)
     zone_id = fields.Many2one('utility.region', 'Zone', domain="[('type', '=', 'zone')]")
-    office_id = fields.Many2one('utility.office', 'Office')
+
     old_meter_id = fields.Many2one('utility.meter', 'Old Meter')
     new_meter_id = fields.Many2one('utility.meter', 'New Meter')
     description = fields.Text('Description', required=True)

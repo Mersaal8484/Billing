@@ -125,6 +125,7 @@ class UtilityCustomerWizard(models.TransientModel):
             'substation_id': self.transformer_substation_id.id if self.transformer_substation_id else False,
             'feeder_id': self.transformer_feeder_id.id if self.transformer_feeder_id else False,
             'zone_region_id': self.transformer_zone_id.id if self.transformer_zone_id else False,
+            'is_private': True,
         })
 
     def action_create_customer(self):
@@ -141,9 +142,9 @@ class UtilityCustomerWizard(models.TransientModel):
             'is_subscriber': True,
             'subscriber_id': self.subscriber_id.id,
             'sector_id': self.sector_id.id if self.sector_id else False,
-            'utility_region_id': self.utility_region_id.id if self.utility_region_id else False,
-            'utility_area_id': self.utility_area_id.id if self.utility_area_id else False,
-            'transformer_zone_id': self.transformer_zone_id.id if self.transformer_zone_id else False,
+            'region_id': self.utility_region_id.id if self.utility_region_id else False,
+            'area_id': self.utility_area_id.id if self.utility_area_id else False,
+            'zone_id': self.transformer_zone_id.id if self.transformer_zone_id else False,
         }
         partner = self.env['res.partner'].create(partner_vals)
 
@@ -188,6 +189,7 @@ class UtilityCustomerWizard(models.TransientModel):
                 'communication_type': self.communication_type if self.payment_type == 'postpaid' else False,
             }
             meter = self.env['utility.meter'].create(meter_vals)
+            customer.write({'meter_id': meter.id})
 
         # 5. Link meter as coupling meter for the private transformer
         if transformer and meter:

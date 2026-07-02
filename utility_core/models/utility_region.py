@@ -32,6 +32,18 @@ class UtilityRegion(models.Model):
         default='monthly',
         required=True
     )
+    
+    cash_journal_id = fields.Many2one('account.journal', string='يومية الصندوق', domain=[('type', '=', 'cash')], help='يومية الصندوق الخاصة بهذه المنطقة')
+    bank_journal_ids = fields.Many2many(
+        'account.journal', 
+        'utility_region_bank_journal_rel', 
+        'region_id', 
+        'journal_id', 
+        string='الحسابات البنكية', 
+        domain=[('type', '=', 'bank')],
+        help='اليوميات البنكية التابعة لهذه المنطقة'
+    )
+    financial_manager_id = fields.Many2one('res.users', string='المدير المالي للمنطقة', help='المسؤول المالي عن هذه المنطقة')
 
     transformer_origin_id = fields.Many2one('utility.transformer', 'منشأ من محول',
         readonly=True, copy=False,

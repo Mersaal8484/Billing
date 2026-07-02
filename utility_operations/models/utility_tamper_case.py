@@ -33,8 +33,7 @@ class UtilityTamperCase(models.Model):
     evidence_photos = fields.One2many('ir.attachment', 'res_id', string='Evidence Photos',
                                       domain=[('res_model', '=', 'utility.tamper.case')])
     evidence_notes = fields.Text('Evidence Notes')
-    gps_latitude = fields.Float('GPS Latitude')
-    gps_longitude = fields.Float('GPS Longitude')
+    address = fields.Text('Address')
     reported_by = fields.Many2one('res.users', 'Reported By')
     assigned_to = fields.Many2one('res.users', 'Assigned To')
     estimated_loss = fields.Monetary('Estimated Loss', currency_field='company_currency_id')

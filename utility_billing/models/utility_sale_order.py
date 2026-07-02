@@ -15,7 +15,7 @@ class UtilitySaleOrder(models.Model):
     reading_reviewer = fields.Many2one(related='reading_id.reviewer_id', string='مراجع القراءة')
     attachment_id = fields.Many2one('ir.attachment', string='ملف صورة القراءة الرسمي')
     
-    transformer_reading_id = fields.Many2one('utility.transformer.reading', string='قراءة المحول/الخلية المرتبطة', compute='_compute_transformer_reading', store=True)
+    transformer_reading_id = fields.Many2one('utility.reading', string='قراءة المحول/الخلية المرتبطة', compute='_compute_transformer_reading', store=True)
 
     workflow_process_id = fields.Many2one('sale.workflow.process', string='مسار العمل التلقائي', ondelete='restrict')
     all_qty_delivered = fields.Boolean(compute='_compute_all_qty_delivered', store=True)
@@ -49,7 +49,7 @@ class UtilitySaleOrder(models.Model):
         ('paid', 'مدفوعة'),
         ('overdue', 'متأخرة'),
         ('cancelled', 'ملغاة'),
-    ], string='حالة الفاتورة', default='draft', tracking=True)
+    ], string='حالة الفاتورة', default='draft', tracking=True, compute='_compute_bill_state', store=True)
 
     @api.model
     def _get_default_type(self):
@@ -177,32 +177,54 @@ class UtilitySaleOrder(models.Model):
 
     @api.depends('meter_id', 'date_range_id', 'reading_id')
     def _compute_transformer_reading(self):
-        TransformerReading = self.env.get('utility.transformer.reading')
+        UtilityReading = self.env.get('utility.reading')
         for order in self:
-            if order.meter_id and order.meter_id.transformer_id and TransformerReading:
-                tr = TransformerReading.search([
-                    ('transformer_id', '=', order.meter_id.transformer_id.id),
+            if order.meter_id and order.meter_id.transformer_id and UtilityReading:
+                tr = UtilityReading.search([
+                    ('reading_category', '=', 'transformer'),
+                    ('meter_id.transformer_id', '=', order.meter_id.transformer_id.id),
                     ('date_range_id', '=', order.date_range_id.id),
-                    ('state', '=', 'confirmed'),
+                    ('state', '=', 'approved'),
                 ], limit=1)
                 if not tr:
-                    tr = TransformerReading.search([
-                        ('transformer_id', '=', order.meter_id.transformer_id.id),
-                        ('state', '=', 'confirmed'),
+                    tr = UtilityReading.search([
+                        ('reading_category', '=', 'transformer'),
+                        ('meter_id.transformer_id', '=', order.meter_id.transformer_id.id),
+                        ('state', '=', 'approved'),
                     ], order='reading_date desc', limit=1)
                 order.transformer_reading_id = tr.id if tr else False
             else:
                 order.transformer_reading_id = False
 
-    @api.depends('amount_total', 'amount_paid')
+    @api.depends('amount_total', 'invoice_ids.state', 'invoice_ids.payment_state', 'invoice_ids.amount_residual', 'state', 'date_order')
     def _compute_payment(self):
         for r in self:
-            paid = sum(r.invoice_ids.filtered(lambda i: i.state == 'paid').mapped('amount_total'))
-            if not paid:
-                paid = 0.0
+            posted_invoices = r.invoice_ids.filtered(lambda i: i.state == 'posted')
+            paid = sum(posted_invoices.mapped(lambda i: i.amount_total - i.amount_residual))
             r.amount_paid = paid
             r.balance_due = r.amount_total - paid
-            r.is_overdue = r.bill_state not in ('paid', 'cancelled') and r.balance_due > 0 and r.date_order and r.date_order.date() < date.today()
+            r.is_overdue = r.balance_due > 0 and r.date_order and r.date_order.date() < date.today()
+
+    @api.depends('state', 'is_overdue', 'balance_due', 'invoice_ids.state', 'invoice_ids.payment_state')
+    def _compute_bill_state(self):
+        for r in self:
+            if r.state == 'cancel':
+                r.bill_state = 'cancelled'
+            elif r.state == 'draft':
+                r.bill_state = 'draft'
+            else:
+                posted_invoices = r.invoice_ids.filtered(lambda i: i.state == 'posted')
+                # If fully paid (or amount is 0 and it is invoiced)
+                if posted_invoices and r.balance_due <= 0:
+                    r.bill_state = 'paid'
+                elif r.is_overdue:
+                    r.bill_state = 'overdue'
+                elif posted_invoices:
+                    r.bill_state = 'sent'
+                elif r.state == 'sale':
+                    r.bill_state = 'confirmed'
+                else:
+                    r.bill_state = 'draft'
 
     def action_recalculate_bill(self):
         for order in self:
@@ -257,6 +279,7 @@ class UtilitySaleOrder(models.Model):
                     'price_unit': price,
                     'is_tax': False,
                     'sponsor_id': sponsor_id,
+                    'meter_line_type': line.meter_line_type,
                 }))
                 self._accumulate_amount(line.meter_line_type, amount)
 
@@ -274,6 +297,7 @@ class UtilitySaleOrder(models.Model):
                         'product_uom_qty': consumption,
                         'price_unit': template.local_fee_mu_allim,
                         'is_tax': False,
+                        'meter_line_type': 'local_fee',
                     }))
                     self.amount_local_fee += amount
 
@@ -287,6 +311,7 @@ class UtilitySaleOrder(models.Model):
                         'product_uom_qty': consumption,
                         'price_unit': template.local_fee_cleaning,
                         'is_tax': False,
+                        'meter_line_type': 'local_fee',
                     }))
                     self.amount_local_fee += amount
 
@@ -300,6 +325,7 @@ class UtilitySaleOrder(models.Model):
                         'product_uom_qty': consumption,
                         'price_unit': template.local_fee_per_kwh,
                         'is_tax': False,
+                        'meter_line_type': 'local_fee',
                     }))
                     self.amount_local_fee += amount
 
@@ -316,6 +342,7 @@ class UtilitySaleOrder(models.Model):
                     'name': f'تسوية إلى الحد الأدنى ({template.min_charge})',
                     'product_uom_qty': 1,
                     'price_unit': template.min_charge - pre_total,
+                    'meter_line_type': 'fixed_fee',
                 }))
                 self.amount_fixed += template.min_charge - pre_total
             elif template.max_charge and pre_total > template.max_charge:
@@ -325,6 +352,7 @@ class UtilitySaleOrder(models.Model):
                     'name': f'تسوية إلى الحد الأقصى ({template.max_charge})',
                     'product_uom_qty': 1,
                     'price_unit': template.max_charge - pre_total,
+                    'meter_line_type': 'discount',
                 }))
                 self.amount_discount += pre_total - template.max_charge
 
@@ -464,11 +492,32 @@ class UtilitySaleOrderLine(models.Model):
         'res.partner',
         string='الجهة الداعمة (Sponsor)',
     )
+    meter_line_type = fields.Selection([
+        ('consumption', 'استهلاك'),
+        ('fixed_fee', 'رسم ثابت'),
+        ('service_charge', 'رسم خدمة'),
+        ('local_fee', 'رسوم محلية'),
+        ('discount', 'خصم'),
+        ('penalty', 'غرامة'),
+        ('other', 'أخرى'),
+    ], string='نوع البند')
 
     def _prepare_invoice_line(self, **optional_values):
         res = super(UtilitySaleOrderLine, self)._prepare_invoice_line(**optional_values)
         if self.sponsor_id:
             res['partner_id'] = self.sponsor_id.id
+            
+        ICPSudo = self.env['ir.config_parameter'].sudo()
+        acc_id = False
+        
+        if self.meter_line_type == 'discount':
+            acc_id = int(ICPSudo.get_param('utility.discount_account_id', 0))
+        elif self.meter_line_type == 'penalty':
+            acc_id = int(ICPSudo.get_param('utility.fine_account_id', 0))
+            
+        if acc_id:
+            res['account_id'] = acc_id
+            
         return res
 
 

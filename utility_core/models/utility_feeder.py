@@ -49,14 +49,14 @@ class UtilityFeeder(models.Model):
 
     # ===== القراءات =====
     coupling_reading_ids = fields.One2many(
-        'utility.transformer.reading', 'feeder_id',
+        'utility.reading', 'feeder_id',
         string='قراءات الربط',
-        domain=[('reading_type', '=', 'coupling')],
+        domain=[('reading_category', 'in', ['feeder', 'transformer'])],
     )
     feeder_reading_ids = fields.One2many(
-        'utility.transformer.reading', 'feeder_id',
+        'utility.reading', 'feeder_id',
         string='قراءات الفيدر',
-        domain=[('reading_type', 'in', ['coupling', 'comparison'])],
+        domain=[('reading_category', '=', 'feeder')],
     )
 
     # ===== المشتركون (الخلية) =====
@@ -121,7 +121,7 @@ class UtilityFeeder(models.Model):
             rec.total_consumption = total
 
             last_coupling = rec.coupling_reading_ids.filtered(
-                lambda r: r.state == 'confirmed'
+                lambda r: r.state == 'approved'
             )[:1]
             supplied = last_coupling.consumption if last_coupling else 0.0
             rec.supplied_kwh = supplied
@@ -144,11 +144,11 @@ class UtilityFeeder(models.Model):
         return {
             'type': 'ir.actions.act_window',
             'name': _('قراءات %s') % self.name,
-            'res_model': 'utility.transformer.reading',
+            'res_model': 'utility.reading',
             'domain': [('feeder_id', '=', self.id)],
             'views': [(False, 'tree'), (False, 'form')],
             'context': {
                 'default_feeder_id': self.id,
-                'default_reading_type': 'coupling',
+                'default_reading_category': 'feeder',
             },
         }

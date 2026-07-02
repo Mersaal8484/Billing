@@ -22,13 +22,126 @@
         <field name="name">طباعة فاتورة المشترك (إيصال)</field>
         <field name="model">sale.order</field>
         <field name="report_type">qweb-pdf</field>
-        <field name="report_name">sale.report_saleorder</field>
-        <field name="report_file">sale.report_saleorder</field>
+        <field name="report_name">utility_billing.report_electricity_bill</field>
+        <field name="report_file">utility_billing.report_electricity_bill</field>
         <field name="print_report_name">'فاتورة - %s' % (object.name)</field>
         <field name="binding_model_id" ref="sale.model_sale_order"/>
         <field name="binding_type">report</field>
         <field name="paperformat_id" ref="utility_billing.paperformat_utility_receipt"/>
     </record>
+
+    <!-- QWeb Template for Electricity Bill (Landscape Strip) -->
+    <template id="report_electricity_bill">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <div class="article" t-att-data-oe-model="o and o._name" t-att-data-oe-id="o and o.id" t-att-data-oe-lang="o and o.env.context.get('lang')">
+                    
+                    <!-- Page Wrapper: Fits 290mm width x 70mm height (Landscape Strip) -->
+                    <div dir="rtl" style="page-break-inside: avoid; border: 0.5pt solid black; width: 100%; min-height: 64mm; padding: 2mm; margin: 0; box-sizing: border-box; line-height: 1.1; font-family: 'Cairo', 'Tahoma', sans-serif; font-size: 8pt; color: black; background: #fff;">
+                        
+                        <!-- 2. Header Section: 3-Column Layout -->
+                        <table style="width: 100%; border-collapse: collapse; margin-bottom: 2mm; table-layout: fixed;">
+                            <tr>
+                                <!-- Column 1 [Right 33%]: Subscriber Data -->
+                                <td style="width: 33%; vertical-align: top;">
+                                    <div style="font-size: 11pt; font-weight: bold; margin-bottom: 1.5mm;">بيانات المشترك</div>
+                                    <div>الاسم: <span t-esc="o.partner_id.name or 'الاسم غير متوفر'"/></div>
+                                    <div>العنوان: <span t-esc="o.partner_id.street or 'العنوان غير متوفر'"/></div>
+                                    <div>رقم الهاتف: <span t-esc="o.partner_id.phone or o.partner_id.mobile or ''"/></div>
+                                    <div>الفترة: <span t-esc="o.date_range_id.name or '1/2025'"/></div>
+                                    <div>التعرفة: <span t-esc="o.contract_template_id.name or '11'"/></div>
+                                    <div>المرحلة: <span t-esc="o.customer_id.route_id.name or '9008'"/></div>
+                                    <div>الفئة: <span t-esc="o.customer_id.category_id.name or 'اهلي'"/></div>
+                                </td>
+                                
+                                <!-- Column 2 [Center 34%]: Branding -->
+                                <td style="width: 34%; text-align: center; vertical-align: top;">
+                                    <img t-if="res_company.logo" t-att-src="image_data_uri(res_company.logo)" style="max-height: 20mm; margin-bottom: 1mm;" alt="Logo"/>
+                                    <div style="font-size: 11pt; font-weight: bold;">المؤسسة العامة للكهرباء</div>
+                                    <div>الجمهورية اليمنية</div>
+                                    <div>المنطقة الثانية - فرع: تسويق كهرباء</div>
+                                </td>
+                                
+                                <!-- Column 3 [Left 33%]: Invoice Meta -->
+                                <td style="width: 33%; vertical-align: top;">
+                                    <div style="font-size: 11pt; font-weight: bold; margin-bottom: 1.5mm;">بيانات الفاتورة</div>
+                                    <div>رقم العداد: <span t-esc="o.meter_id.meter_number or '14305'"/></div>
+                                    <div>رقم المشترك: <span t-esc="o.customer_id.customer_number or '624111'"/></div>
+                                    <div>رقم الفاتورة: <span t-esc="o.name or 'INV12/2025/5/107'"/></div>
+                                    <div>تاريخ الإصدار: <span t-esc="o.date_order.strftime('%d/%m/%Y') if o.date_order else '15/10/2025'"/></div>
+                                    <div>معامل الضرب: 1.0</div>
+                                </td>
+                            </tr>
+                        </table>
+                        
+                        <!-- Thin Separator -->
+                        <div style="border-bottom: 0.5pt solid black; margin-bottom: 2mm;"/>
+                        
+                        <!-- 3. Main Table: Consumption Details -->
+                        <table style="width: 100%; border-collapse: collapse; margin-bottom: 1.5mm; text-align: right;">
+                            <thead style="background-color: #E6F2FF;">
+                                <tr>
+                                    <th style="padding: 1.5mm 1mm; border: 0.5pt solid black;">القراءة السابقة</th>
+                                    <th style="padding: 1.5mm 1mm; border: 0.5pt solid black;">القراءة الحالية</th>
+                                    <th style="padding: 1.5mm 1mm; border: 0.5pt solid black;">الاستهلاك (ك.و)</th>
+                                    <th style="padding: 1.5mm 1mm; border: 0.5pt solid black;">قيمة الاستهلاك ر.ي</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td style="padding: 1.5mm 1mm; border: 0.5pt solid black;"><span t-esc="o.previous_reading or '75764'"/></td>
+                                    <td style="padding: 1.5mm 1mm; border: 0.5pt solid black;"><span t-esc="o.current_reading or '75769'"/></td>
+                                    <td style="padding: 1.5mm 1mm; border: 0.5pt solid black;"><span t-esc="o.consumption or '5'"/></td>
+                                    <td style="padding: 1.5mm 1mm; border: 0.5pt solid black;">
+                                        <span t-esc="o.amount_energy" t-options="{'widget': 'float', 'precision': 2}"/>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        
+                        <!-- Fees Sub-Table -->
+                        <table style="width: 100%; border-collapse: collapse; margin-bottom: 2mm; text-align: right;">
+                            <tr>
+                                <td style="padding: 1mm 0;">رسم محلي: <span t-esc="o.amount_local_fee" t-options="{'widget': 'float', 'precision': 2}"/></td>
+                                <td style="padding: 1mm 0;">رسم نظافة: <span t-esc="o.amount_service" t-options="{'widget': 'float', 'precision': 2}"/></td>
+                                <td style="padding: 1mm 0;">غرامات: <span t-esc="o.amount_penalty" t-options="{'widget': 'float', 'precision': 2}"/></td>
+                                <td style="padding: 1mm 0; font-weight: bold; text-align: left;">مبلغ الفاتورة الحالية: <span t-esc="o.amount_total" t-options="{'widget': 'float', 'precision': 2}"/></td>
+                            </tr>
+                        </table>
+                        
+                        <!-- Final Total -->
+                        <div style="text-align: center; color: #C00000; font-weight: bold; font-size: 10pt; margin-bottom: 2mm; width: 100%;">
+                            رصيد المشترك النهائي ر.ي <span t-esc="o.total_due_amount" t-options="{'widget': 'float', 'precision': 2}"/>
+                        </div>
+                        
+                        <!-- 4. Footer Section -->
+                        <div style="font-size: 7pt; width: 100%; margin-bottom: 1.5mm; text-align: center; border-top: 0.5pt dashed #ccc; padding-top: 1mm;">
+                            عزيزي المشترك: تسديد الفاتورة يجنبك فصل التيار الكهربائي وغرامات إعادة التيار. يرجى المبادرة بالسداد.
+                        </div>
+                        
+                        <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
+                            <tr>
+                                <!-- QR Code -->
+                                <td style="width: 33%; vertical-align: middle;">
+                                    <img t-if="o.id" t-att-src="'/report/barcode/?type=QR&amp;value=%s' % (o.name)" style="width: 18mm; height: 18mm; margin-right: -1mm;" alt="QR Code"/>
+                                </td>
+                                <!-- Contact Details -->
+                                <td style="width: 34%; text-align: center; vertical-align: middle; font-weight: bold;">
+                                    <div>01219333 - 01200136</div>
+                                    <div>خدمة الجمهور: 8000144</div>
+                                </td>
+                                <!-- Print Date -->
+                                <td style="width: 33%; text-align: left; vertical-align: middle; font-size: 7pt;">
+                                    تاريخ الطباعة: <span t-esc="context_timestamp(datetime.datetime.now()).strftime('%H:%M %d-%m-%Y')"/>
+                                </td>
+                            </tr>
+                        </table>
+                        
+                    </div>
+                </div>
+            </t>
+        </t>
+    </template>
 
     <!-- Update Standard Sale Order PDF Report -->
     <template id="report_saleorder_document_utility" inherit_id="sale.report_saleorder_document">

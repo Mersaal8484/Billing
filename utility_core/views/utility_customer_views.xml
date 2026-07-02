@@ -39,11 +39,13 @@
                 <sheet>
                     <div class="oe_button_box" name="button_box">
                         <button name="action_view_bills" type="object"
-                                class="oe_stat_button" icon="fa-pencil-square-o">
+                                class="oe_stat_button" icon="fa-pencil-square-o"
+                                attrs="{'invisible': [('payment_type', '=', 'prepaid')]}">
                             <field name="invoice_count" string="الفواتير" widget="statinfo"/>
                         </button>
                         <button name="action_view_readings" type="object"
-                                class="oe_stat_button" icon="fa-tasks">
+                                class="oe_stat_button" icon="fa-tasks"
+                                attrs="{'invisible': [('payment_type', '=', 'prepaid')]}">
                             <field name="reading_count" string="القراءات" widget="statinfo"/>
                         </button>
                         <button name="action_view_payments" type="object"
@@ -60,6 +62,7 @@
                             <field name="partner_id"/>
                             <field name="national_id"/>
                             <field name="subscriber_id"/>
+                            <field name="payment_type" widget="badge" decoration-info="payment_type == 'prepaid'" decoration-success="payment_type == 'postpaid'"/>
                             <field name="active"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
@@ -69,8 +72,8 @@
                             <field name="region_id"/>
                             <field name="area_id"/>
                             <field name="zone_id"/>
-                            <field name="office_id"/>
-                            <field name="route_id"/>
+
+                            <field name="route_id" attrs="{'invisible': [('payment_type', '=', 'prepaid')]}"/>
                         </group>
                     </group>
                     
@@ -80,22 +83,22 @@
                             <group>
                                 <group string="الأجهزة والتعرفة">
                                     <field name="meter_id" options="{'no_create': True}"/>
-
+                                    <field name="last_reading_value" string="القراءة الحالية للعداد" readonly="1"/>
                                     <field name="analytic_account_id" readonly="1"/>
                                 </group>
                                 <group string="الأرصدة والمبيعات">
                                     <field name="company_currency_id" invisible="1"/>
                                     <field name="balance" widget="monetary" options="{'currency_field': 'company_currency_id'}"/>
-                                    <field name="emergency_credit" widget="monetary" options="{'currency_field': 'company_currency_id'}"/>
-                                    <field name="total_purchases" widget="monetary" options="{'currency_field': 'company_currency_id'}" readonly="1"/>
-                                    <field name="total_kwh_purchased" readonly="1"/>
-                                    <field name="last_purchase_date" readonly="1"/>
+                                    <field name="emergency_credit" widget="monetary" options="{'currency_field': 'company_currency_id'}" attrs="{'invisible': [('payment_type', '!=', 'prepaid')]}"/>
+                                    <field name="total_purchases" widget="monetary" options="{'currency_field': 'company_currency_id'}" readonly="1" attrs="{'invisible': [('payment_type', '!=', 'prepaid')]}"/>
+                                    <field name="total_kwh_purchased" readonly="1" attrs="{'invisible': [('payment_type', '!=', 'prepaid')]}"/>
+                                    <field name="last_purchase_date" readonly="1" attrs="{'invisible': [('payment_type', '!=', 'prepaid')]}"/>
                                 </group>
                             </group>
                         </page>
                         
                         <!-- صفحة 2: الاشتراك المتكرر -->
-                        <page name="recurring_contract" string="الاشتراك المتكرر">
+                        <page name="recurring_contract" string="الاشتراك المتكرر" attrs="{'invisible': [('payment_type', '=', 'prepaid')]}">
                             <group>
                                 <group string="قالب العقد والتواريخ">
                                     <field name="contract_template_id" options="{'no_create': True}"/>
@@ -114,51 +117,43 @@
                             </group>
                         </page>
 
-                        <!-- صفحة 3: المحول والخلية -->
+                        <!-- صفحة 3: الخلية والمحول -->
                         <page name="transformer_cell" string="الخلية والمحول">
                             <group>
                                 <group string="الربط بالشبكة">
-                                    <field name="cell_id" options="{'no_create': True}"/>
+                                    <field name="is_private_transformer" invisible="1"/>
+                                    <field name="cell_id" options="{'no_create': True}" attrs="{'invisible': [('is_private_transformer', '=', False)]}"/>
                                     <field name="transformer_id" options="{'no_create': True}"/>
-                                    <field name="cell_coupling_meter_id" readonly="1"/>
+                                    <field name="cell_coupling_meter_id" readonly="1" attrs="{'invisible': [('is_private_transformer', '=', False)]}"/>
                                 </group>
                             </group>
                         </page>
 
-                        <!-- صفحة 4: القراءات -->
-                        <page name="readings" string="القراءات">
-                            <group string="القراءات المرفوعة">
-                                <field name="uploaded_reading_ids" nolabel="1">
-                                    <tree editable="bottom" limit="20">
-                                        <field name="reading_id"/>
-                                        <field name="reading_date"/>
-                                        <field name="reading_value"/>
-                                        <field name="consumption"/>
-                                        <field name="state" widget="badge"/>
-                                        <field name="date_range_id"/>
-                                    </tree>
-                                </field>
-                            </group>
-                            <group string="القراءات المفوتـرة">
-                                <field name="billed_reading_ids" nolabel="1">
-                                    <tree limit="20">
-                                        <field name="reading_id"/>
-                                        <field name="reading_date"/>
-                                        <field name="reading_value"/>
-                                        <field name="consumption"/>
-                                        <field name="date_range_id"/>
-                                    </tree>
-                                </field>
-                            </group>
+                        <page name="readings" string="القراءات" attrs="{'invisible': [('payment_type', '=', 'prepaid')]}">
+                            <separator string="القراءات المرفوعة"/>
+                            <field name="uploaded_reading_ids" nolabel="1">
+                                <tree editable="bottom" limit="20">
+                                    <field name="reading_id"/>
+                                    <field name="reading_date"/>
+                                    <field name="reading_value"/>
+                                    <field name="consumption"/>
+                                    <field name="state" widget="badge"/>
+                                    <field name="date_range_id"/>
+                                </tree>
+                            </field>
+                            <separator string="القراءات المفوتـرة"/>
+                            <field name="billed_reading_ids" nolabel="1">
+                                <tree limit="20">
+                                    <field name="reading_id"/>
+                                    <field name="reading_date"/>
+                                    <field name="reading_value"/>
+                                    <field name="consumption"/>
+                                    <field name="date_range_id"/>
+                                </tree>
+                            </field>
                         </page>
 
-                        <!-- صفحة 5: الموقع الجغرافي -->
-                        <page name="location" string="الموقع الجغرافي">
-                            <group>
-                                <field name="gps_latitude"/>
-                                <field name="gps_longitude"/>
-                            </group>
-                        </page>
+                        <!-- The location page was here, removed entirely -->
                     </notebook>
                 </sheet>
                 <div class="oe_chatter">

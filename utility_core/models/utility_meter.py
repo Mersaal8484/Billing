@@ -39,8 +39,7 @@ class UtilityMeter(models.Model):
     transformer_id = fields.Many2one('utility.transformer', 'Transformer')
     substation_id = fields.Many2one('utility.substation', 'Substation')
     installation_date = fields.Date('Installation Date')
-    gps_latitude = fields.Float('GPS Latitude')
-    gps_longitude = fields.Float('GPS Longitude')
+    address = fields.Text('Address')
     communication_type = fields.Selection([
         ('gsm', 'GSM'),
         ('nbiot', 'NB-IoT'),

@@ -7,7 +7,7 @@
             <tree>
                 <field name="name"/>
                 <field name="employee_code"/>
-                <field name="role"/>
+                <field name="user_role_id"/>
                 <field name="team_id"/>
                 <field name="mobile"/>
                 <field name="active"/>
@@ -27,7 +27,7 @@
                         <group>
                             <field name="employee_code"/>
                             <field name="user_id"/>
-                            <field name="role"/>
+                            <field name="user_role_id"/>
                             <field name="team_id"/>
                             <field name="active"/>
                             <field name="company_id" groups="base.group_multi_company"/>
@@ -48,11 +48,11 @@
             <search>
                 <field name="name"/>
                 <field name="employee_code"/>
-                <field name="role"/>
+                <field name="user_role_id"/>
                 <field name="team_id"/>
                 <filter name="active" string="Active" domain="[('active','=',True)]"/>
                 <group expand="0" string="Group By">
-                    <filter name="group_role" string="Role" context="{'group_by':'role'}"/>
+                    <filter name="group_user_role_id" string="Role" context="{'group_by':'user_role_id'}"/>
                     <filter name="group_team" string="Team" context="{'group_by':'team_id'}"/>
                 </group>
             </search>

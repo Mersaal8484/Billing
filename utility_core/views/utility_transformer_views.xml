@@ -68,8 +68,7 @@
                             <field name="zone_id" readonly="1"/>
                             <field name="area_id" readonly="1"/>
                             <field name="region_id" readonly="1"/>
-                            <field name="gps_latitude"/>
-                            <field name="gps_longitude"/>
+                            <field name="address"/>
                         </group>
                     </group>
 

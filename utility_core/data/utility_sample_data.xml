@@ -181,19 +181,19 @@
         <record id="demo_staff_inspector" model="utility.staff">
             <field name="name">سالم السقاف (مفتش ميداني - Inspector)</field>
             <field name="employee_code">EMP_INSP_YE01</field>
-            <field name="role">inspector</field>
+            <field name="user_role_id" ref="role_inspector"/>
             <field name="mobile">+967-77-1122334</field>
         </record>
         <record id="demo_staff_cashier" model="utility.staff">
             <field name="name">عبد الله الحروي (صراف الإيرادات - Cashier)</field>
             <field name="employee_code">EMP_CASH_YE01</field>
-            <field name="role">cashier</field>
+            <field name="user_role_id" ref="role_cashier"/>
             <field name="mobile">+967-77-2233445</field>
         </record>
         <record id="demo_staff_supervisor" model="utility.staff">
             <field name="name">أحمد العولقي (مشرف هندسي - Supervisor)</field>
             <field name="employee_code">EMP_SUPER_YE01</field>
-            <field name="role">supervisor</field>
+            <field name="user_role_id" ref="role_supervisor"/>
             <field name="mobile">+967-77-3344556</field>
         </record>
 

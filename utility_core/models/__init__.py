@@ -21,7 +21,6 @@ from . import utility_contract_template_history
 from . import utility_settings
 from . import utility_res_users
 from . import utility_res_partner
-from . import utility_cell_reading
 from . import utility_ir_attachment
 from . import utility_meter_replacement
 from . import utility_res_company

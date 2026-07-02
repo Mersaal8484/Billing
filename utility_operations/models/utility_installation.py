@@ -17,8 +17,7 @@ class UtilityInstallation(models.Model):
     meter_type_id = fields.Many2one('utility.meter.type', 'Meter Type')
     installation_date = fields.Datetime('Installation Date', default=fields.Datetime.now)
     installer_id = fields.Many2one('res.users', 'Installer')
-    gps_latitude = fields.Float('GPS Latitude')
-    gps_longitude = fields.Float('GPS Longitude')
+    address = fields.Text('Address')
     seal_number = fields.Char('Seal Number')
     photo_ids = fields.One2many('ir.attachment', 'res_id', string='Photos',
                                 domain=[('res_model', '=', 'utility.installation')])

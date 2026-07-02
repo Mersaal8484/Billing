@@ -64,6 +64,7 @@ class UtilityCustomer(models.Model):
     # المحول
     transformer_id = fields.Many2one('utility.transformer', string='المحول',
         domain="[('active', '=', True)]")
+    is_private_transformer = fields.Boolean(related='transformer_id.is_private', readonly=True, string='هل المحول خاص؟')
 
     # عداد الفيدر
     cell_coupling_meter_id = fields.Many2one('utility.meter', 'عداد الفيدر/الخلية',
@@ -73,13 +74,12 @@ class UtilityCustomer(models.Model):
     region_id = fields.Many2one(related='partner_id.region_id', store=True, string='المنطقة')
     area_id = fields.Many2one(related='partner_id.area_id', store=True, string='المنطقة الفرعية')
     zone_id = fields.Many2one(related='partner_id.zone_id', store=True, string='المنطقة التفصيلية')
-    office_id = fields.Many2one('utility.office', string='المكتب')
+
     route_id = fields.Many2one('utility.route', string='خط السير', index=True)
-    gps_latitude = fields.Float(string='خط العرض')
-    gps_longitude = fields.Float(string='خط الطول')
 
     # العداد
-    meter_id = fields.Many2one('utility.meter', 'العداد', tracking=True)
+    meter_id = fields.Many2one('utility.meter', 'العداد', tracking=True, required=True)
+    payment_type = fields.Selection(related='meter_id.payment_type', store=True, string='نظام الدفع (آجل/مسبق)', readonly=True)
 
     # الرصيد والمشتريات
     balance = fields.Float('الرصيد', default=0.0, help='الرصيد الحالي للمشترك')
@@ -176,6 +176,8 @@ class UtilityCustomer(models.Model):
                         f"العداد {rec.meter_id.meter_number} لا يتبع المحول/الخلية {cell.name}! "
                         "يرجى اختيار عداد مرتبط بهذا المحول."
                     )
+
+
 
     @api.onchange('subscriber_id')
     def _onchange_subscriber_id(self):

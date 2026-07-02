@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- Collector Shift Tree View -->
+        <record id="view_utility_collector_shift_tree" model="ir.ui.view">
+            <field name="name">utility.collector.shift.tree</field>
+            <field name="model">utility.collector.shift</field>
+            <field name="arch" type="xml">
+                <tree string="يوميات التحصيل" decoration-info="state == 'open'" decoration-muted="state == 'closed'" decoration-success="state == 'verified'">
+                    <field name="name"/>
+                    <field name="collector_id" widget="many2one_avatar_user"/>
+                    <field name="route_id"/>
+                    <field name="start_time"/>
+                    <field name="end_time"/>
+                    <field name="opening_balance"/>
+                    <field name="total_collected"/>
+                    <field name="expected_balance"/>
+                    <field name="state" widget="badge" decoration-info="state == 'open'" decoration-muted="state == 'closed'" decoration-success="state == 'verified'"/>
+                </tree>
+            </field>
+        </record>
+
+        <!-- Collector Shift Form View -->
+        <record id="view_utility_collector_shift_form" model="ir.ui.view">
+            <field name="name">utility.collector.shift.form</field>
+            <field name="model">utility.collector.shift</field>
+            <field name="arch" type="xml">
+                <form string="يومية التحصيل">
+                    <header>
+                        <button name="action_close" string="إغلاق الوردية" type="object" class="btn-primary" states="open" groups="utility_core.group_utility_collector,utility_core.group_utility_supervisor"/>
+                        <button name="action_verify" string="تدقيق" type="object" class="btn-primary" states="closed" groups="utility_core.group_utility_auditor,utility_core.group_utility_supervisor"/>
+                        <field name="state" widget="statusbar" statusbar_visible="open,closed,verified"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_title">
+                            <h1>
+                                <field name="name" readonly="1"/>
+                            </h1>
+                        </div>
+                        <group>
+                            <group>
+                                <field name="collector_id" attrs="{'readonly': [('state', '!=', 'open')]}"/>
+                                <field name="route_id" attrs="{'readonly': [('state', '!=', 'open')]}"/>
+                                <field name="currency_id" invisible="1"/>
+                            </group>
+                            <group>
+                                <field name="start_time" attrs="{'readonly': [('state', '!=', 'open')]}"/>
+                                <field name="end_time" readonly="1"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="المدفوعات" name="payments">
+                                <field name="payment_ids" readonly="1">
+                                    <tree string="المدفوعات" create="false" delete="false" edit="false">
+                                        <field name="date"/>
+                                        <field name="name"/>
+                                        <field name="partner_id"/>
+                                        <field name="amount"/>
+                                        <field name="state" widget="badge"/>
+                                    </tree>
+                                </field>
+                            </page>
+                            <page string="الخزينة و الأرصدة" name="balances">
+                                <group>
+                                    <group>
+                                        <field name="opening_balance" attrs="{'readonly': [('state', '!=', 'open')]}"/>
+                                        <field name="total_collected" readonly="1"/>
+                                        <field name="expected_balance" readonly="1"/>
+                                    </group>
+                                    <group>
+                                        <field name="closing_balance" attrs="{'readonly': [('state', '==', 'verified')], 'invisible': [('state', '=', 'open')]}"/>
+                                        <field name="difference" attrs="{'invisible': [('state', '=', 'open')]}"/>
+                                    </group>
+                                </group>
+                            </page>
+                            <page string="ملاحظات" name="notes">
+                                <field name="notes" placeholder="ملاحظات حول الوردية..."/>
+                            </page>
+                        </notebook>
+                    </sheet>
+                    <div class="oe_chatter">
+                        <field name="message_follower_ids" widget="mail_followers"/>
+                        <field name="activity_ids" widget="mail_activity"/>
+                        <field name="message_ids" widget="mail_thread"/>
+                    </div>
+                </form>
+            </field>
+        </record>
+
+        <!-- Collector Shift Search View -->
+        <record id="view_utility_collector_shift_search" model="ir.ui.view">
+            <field name="name">utility.collector.shift.search</field>
+            <field name="model">utility.collector.shift</field>
+            <field name="arch" type="xml">
+                <search string="بحث يوميات التحصيل">
+                    <field name="name"/>
+                    <field name="collector_id"/>
+                    <field name="route_id"/>
+                    <filter string="مفتوحة" name="filter_open" domain="[('state', '=', 'open')]"/>
+                    <filter string="مغلقة" name="filter_closed" domain="[('state', '=', 'closed')]"/>
+                    <filter string="يومياتي" name="filter_my_shifts" domain="[('collector_id', '=', uid)]"/>
+                    <group expand="0" string="Group By">
+                        <filter string="المتحصل" name="group_by_collector" context="{'group_by': 'collector_id'}"/>
+                        <filter string="المسار" name="group_by_route" context="{'group_by': 'route_id'}"/>
+                        <filter string="الحالة" name="group_by_state" context="{'group_by': 'state'}"/>
+                    </group>
+                </search>
+            </field>
+        </record>
+
+        <!-- Action for Collector Shift -->
+        <record id="action_utility_collector_shift" model="ir.actions.act_window">
+            <field name="name">يوميات التحصيل</field>
+            <field name="res_model">utility.collector.shift</field>
+            <field name="view_mode">tree,form</field>
+            <field name="context">{'search_default_filter_open': 1}</field>
+            <field name="help" type="html">
+                <p class="o_view_nocontent_smiling_face">
+                    لا توجد يوميات تحصيل بعد
+                </p>
+                <p>
+                    انقر لإنشاء يومية تحصيل جديدة.
+                </p>
+            </field>
+        </record>
+
+        <!-- Menu Items -->
+        <menuitem id="menu_utility_collections" name="التحصيل"
+                  parent="utility_billing.menu_utility_billing_root" sequence="35"/>
+
+        <menuitem id="menu_utility_collector_shifts" name="يوميات التحصيل"
+                  parent="menu_utility_collections" sequence="10"
+                  action="action_utility_collector_shift"
+                  groups="utility_core.group_utility_collector,utility_core.group_utility_supervisor,utility_core.group_utility_auditor"/>
+
+    </data>
+</odoo>

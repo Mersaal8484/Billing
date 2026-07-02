@@ -40,6 +40,10 @@
                             <field name="active"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
+                        <group string="المالية" attrs="{'invisible': [('type', '!=', 'region')]}">
+                            <field name="cash_journal_id" attrs="{'required': [('type', '=', 'region')]}"/>
+                            <field name="financial_manager_id" attrs="{'required': [('type', '=', 'region')]}" widget="many2one_avatar_user"/>
+                        </group>
                     </group>
                     <notebook>
                         <page name="areas" string="Areas" attrs="{'invisible': [('type', '!=', 'region')]}">
@@ -56,6 +60,16 @@
                                 <tree>
                                     <field name="name"/>
                                     <field name="code"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page name="banks" string="الحسابات البنكية" attrs="{'invisible': [('type', '!=', 'region')]}">
+                            <field name="bank_journal_ids">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="code"/>
+                                    <field name="bank_account_id"/>
+                                    <field name="company_id" groups="base.group_multi_company"/>
                                 </tree>
                             </field>
                         </page>
