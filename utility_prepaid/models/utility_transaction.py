@@ -46,7 +46,7 @@ class UtilityTransaction(models.Model):
             'amount': amount,
             'balance_before': balance_before,
             'balance_after': balance_after,
-            'customer_id': account.customer_id.id,
+            'customer_id': account.partner_id.id if account.partner_id else False,
             'account_id': account.id,
             'meter_id': account.meter_id.id if account.meter_id else False,
             'pos_order_id': pos_order.id if pos_order else False,

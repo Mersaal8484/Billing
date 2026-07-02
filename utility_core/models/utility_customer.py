@@ -98,14 +98,14 @@ class UtilityCustomer(models.Model):
 
 
     # قراءات الربط
-    coupling_reading_ids = fields.One2many('utility.transformer.reading', 'customer_id',
-        string='قراءات الربط', domain=[('reading_type', '=', 'coupling')])
-    cell_reading_ids = fields.One2many('utility.transformer.reading', 'customer_id',
-        string='قراءات الخلية', domain=[('reading_type', '=', 'cell')])
-    uploaded_reading_ids = fields.One2many('utility.transformer.reading', 'customer_id',
-        domain=[('state', 'in', ['draft', 'confirmed'])], string='Uploaded Readings')
-    billed_reading_ids = fields.One2many('utility.transformer.reading', 'customer_id',
-        domain=[('state', '=', 'confirmed')], string='Billed Readings')
+    coupling_reading_ids = fields.One2many('utility.reading', 'account_id',
+        string='قراءات الربط', domain=[('reading_category', 'in', ['transformer', 'feeder'])])
+    cell_reading_ids = fields.One2many('utility.reading', 'account_id',
+        string='قراءات الخلية', domain=[('reading_category', '=', 'transformer')])
+    uploaded_reading_ids = fields.One2many('utility.reading', 'account_id',
+        domain=[('state', 'in', ['draft', 'under_review', 'approved'])], string='Uploaded Readings')
+    billed_reading_ids = fields.One2many('utility.reading', 'account_id',
+        domain=[('state', '=', 'billed')], string='Billed Readings')
 
     # الأزرار الذكية
     invoice_count = fields.Integer('عدد الفواتير', compute='_compute_smart_buttons')
@@ -164,6 +164,15 @@ class UtilityCustomer(models.Model):
                         'is_subscriber': True,
                     })
         return res
+
+    def _update_balance(self, amount):
+        """Apply a prepaid balance delta and keep basic purchase totals aligned."""
+        for customer in self:
+            delta = amount or 0.0
+            customer.balance = (customer.balance or 0.0) + delta
+            if delta > 0:
+                customer.total_purchases = (customer.total_purchases or 0.0) + delta
+                customer.last_purchase_date = fields.Date.context_today(customer)
 
     @api.constrains('cell_id', 'meter_id')
     def _check_cell_meter_consistency(self):
@@ -227,10 +236,11 @@ class UtilityCustomer(models.Model):
     def _compute_smart_buttons(self):
         SaleOrder = self.env.get('sale.order')
         Reading = self.env.get('utility.reading')
+        Payment = self.env.get('account.payment')
         for rec in self:
             rec.invoice_count = SaleOrder.search_count([('customer_id', '=', rec.id)]) if SaleOrder else 0
             rec.reading_count = Reading.search_count([('customer_id', '=', rec.id)]) if Reading else 0
-            rec.payment_count = 0
+            rec.payment_count = Payment.search_count([('utility_sale_order_id.customer_id', '=', rec.id)]) if Payment else 0
 
     def action_view_bills(self):
         self.ensure_one()

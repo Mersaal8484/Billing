@@ -33,7 +33,20 @@ class PosOrder(models.Model):
         self.ensure_one()
         if not self.account_id or not self.meter_id:
             return
-        token = self.env['utility.token'].create({
+        if self.token_id and self.token_id.status == 'success':
+            self.token_status = 'generated'
+            return self.token_id
+        existing_success = self.env['utility.token'].search([
+            ('pos_order_id', '=', self.id),
+            ('status', '=', 'success'),
+        ], limit=1)
+        if existing_success:
+            self.write({
+                'token_id': existing_success.id,
+                'token_status': 'generated',
+            })
+            return existing_success
+        token = self.token_id or self.env['utility.token'].create({
             'pos_order_id': self.id,
             'account_id': self.account_id.id,
             'meter_id': self.meter_id.id,
@@ -48,15 +61,20 @@ class PosOrder(models.Model):
             self.token_status = 'generated'
         else:
             self.token_status = 'failed'
+        return token
 
     def _apply_balance(self):
         self.ensure_one()
-        if self.account_id:
-            self.account_id._update_balance(self.amount_paid or 0.0)
-            self.balance_before = self.account_id.balance - (self.amount_paid or 0.0)
-            self.balance_after = self.account_id.balance
+        if not self.account_id:
+            return
+        amount = self.amount_paid or 0.0
+        self.balance_before = self.account_id.balance or 0.0
+        self.account_id._update_balance(amount)
+        if self.kwh_purchased:
+            self.account_id.total_kwh_purchased = (self.account_id.total_kwh_purchased or 0.0) + self.kwh_purchased
+        self.balance_after = self.account_id.balance
         self.env['utility.transaction'].create_transaction(
-            'sale', self.account_id, self.amount_paid, pos_order=self,
+            'sale', self.account_id, amount, pos_order=self,
             notes=_('Prepaid POS sale: %s') % self.name,
         )
 

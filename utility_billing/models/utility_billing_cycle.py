@@ -30,6 +30,12 @@ class DateRange(models.Model):
             ], order='reading_date desc', limit=1)
             if not reading:
                 continue
+            existing_order = self.env['sale.order'].search([
+                ('reading_id', '=', reading.id),
+                ('state', '!=', 'cancel'),
+            ], limit=1)
+            if existing_order:
+                continue
             template = account.contract_template_id
             order = self.env['sale.order'].create({
                 'partner_id': account.partner_id.id if account.partner_id else self.env.company.partner_id.id,
@@ -44,7 +50,6 @@ class DateRange(models.Model):
                 'current_reading': reading.reading_value,
                 'consumption': reading.consumption,
                 'contract_template_id': template.id if template else False,
-                'bill_state': 'draft',
             })
             order._calculate_amounts()
             reading.state = 'billed'

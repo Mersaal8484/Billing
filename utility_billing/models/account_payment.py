@@ -46,3 +46,27 @@ class AccountPayment(models.Model):
             if self.env.user.collection_journal_id:
                 res['journal_id'] = self.env.user.collection_journal_id.id
         return res
+
+    def action_post(self):
+        res = super().action_post()
+        for payment in self.filtered('utility_sale_order_id'):
+            payment._reconcile_utility_sale_order()
+        return res
+
+    def _reconcile_utility_sale_order(self):
+        self.ensure_one()
+        order = self.utility_sale_order_id
+        if not order or not self.move_id:
+            return
+        invoices = order.invoice_ids.filtered(lambda m: m.state == 'posted' and m.payment_state != 'paid')
+        if not invoices:
+            return
+        payment_lines = self.move_id.line_ids.filtered(
+            lambda line: not line.reconciled and line.account_id.account_type == 'asset_receivable'
+        )
+        invoice_lines = invoices.mapped('line_ids').filtered(
+            lambda line: not line.reconciled and line.account_id.account_type == 'asset_receivable'
+        )
+        lines = payment_lines | invoice_lines
+        if lines:
+            lines.reconcile()

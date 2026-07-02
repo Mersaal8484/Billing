@@ -47,6 +47,7 @@ class UtilityContractTemplate(models.Model):
             'customer_id': account.id,
             'meter_id': account.meter_id.id,
             'reading_id': reading.id,
+            'date_range_id': reading.date_range_id.id,
             'contract_template_id': template.id if template else False,
             'period_start': reading.previous_reading_date.date() if reading.previous_reading_date else fields.Date.today(),
             'period_end': reading.reading_date.date() if reading.reading_date else fields.Date.today(),
@@ -54,7 +55,6 @@ class UtilityContractTemplate(models.Model):
             'current_reading': reading.reading_value,
             'consumption': consumption,
             'order_line': lines,
-            'bill_state': 'draft',
         }
 
     def cron_generate_recurring_invoices(self):
@@ -67,7 +67,13 @@ class UtilityContractTemplate(models.Model):
                 ('account_id', '=', account.id),
                 ('state', '=', 'approved'),
             ], order='reading_date desc', limit=1)
-            if not reading:
+            if not reading or not reading.date_range_id:
+                continue
+            existing_order = self.env['sale.order'].search([
+                ('reading_id', '=', reading.id),
+                ('state', '!=', 'cancel'),
+            ], limit=1)
+            if existing_order:
                 continue
             order = self.env['sale.order'].create(
                 account.contract_template_id._prepare_sale_order_data(account, reading)

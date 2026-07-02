@@ -26,12 +26,5 @@
             <field name="company_id" eval="False"/>
         </record>
 
-        <record id="seq_utility_transformer_reading" model="ir.sequence">
-            <field name="name">Transformer Reading Number</field>
-            <field name="code">utility.transformer.reading</field>
-            <field name="prefix">TFR/%(year)s/</field>
-            <field name="padding">6</field>
-            <field name="company_id" eval="False"/>
-        </record>
     </data>
 </odoo>

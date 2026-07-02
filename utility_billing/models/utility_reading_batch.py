@@ -37,6 +37,7 @@ class UtilityReadingBatch(models.Model):
     total_readings = fields.Integer('إجمالي القراءات', readonly=True)
     processed_count = fields.Integer('تمت معالجتها', readonly=True, default=0)
     error_count = fields.Integer('فشلت', readonly=True, default=0)
+    processed_offset = fields.Integer('مؤشر التقدم داخل الملف', readonly=True, default=0)
 
     state = fields.Selection([
         ('uploaded', 'تم الرفع'),
@@ -71,7 +72,13 @@ class UtilityReadingBatch(models.Model):
                 import base64
                 json_data = json.loads(base64.b64decode(batch.data_file))
                 readings_data = json_data.get('readings', [])
-                batch.total_readings = len(readings_data)
+                batch.write({
+                    'total_readings': len(readings_data),
+                    'processed_count': 0,
+                    'error_count': 0,
+                    'processed_offset': 0,
+                    'error_log': False,
+                })
             except Exception as e:
                 raise ValidationError(f'خطأ في قراءة ملف JSON: {e}')
 
@@ -113,8 +120,16 @@ class UtilityReadingBatch(models.Model):
                 continue
 
             readings_data = json_data.get('readings', [])
-            # معالجة حتى batch_size قراءة فقط من كل دفعة
-            to_process = readings_data[:batch_size]
+            start = batch.processed_offset or 0
+            # معالجة حتى batch_size قراءة فقط من كل دفعة دون إعادة معالجة السابق
+            to_process = readings_data[start:start + batch_size]
+            if not to_process:
+                batch.write({
+                    'state': 'done' if not batch.error_count else 'partial',
+                    'total_readings': batch.total_readings or len(readings_data),
+                })
+                self.env.cr.commit()
+                continue
             error_log_lines = []
             processed = 0
 
@@ -167,18 +182,24 @@ class UtilityReadingBatch(models.Model):
             error_count = len(error_log_lines)
             total_processed = batch.processed_count + processed
             total_errors = batch.error_count + error_count
+            next_offset = start + len(to_process)
+            total_readings = batch.total_readings or len(readings_data)
 
-            if total_processed + total_errors >= batch.total_readings:
+            if next_offset >= total_readings:
                 # اكتملت المعالجة
                 final_state = 'done' if total_errors == 0 else 'partial'
             else:
                 final_state = 'processing'  # لا تزال هناك قراءات متبقية
 
+            previous_log = batch.error_log or ''
+            new_log = '\n'.join(error_log_lines)
             batch.write({
                 'processed_count': total_processed,
                 'error_count': total_errors,
+                'processed_offset': next_offset,
+                'total_readings': total_readings,
                 'state': final_state,
-                'error_log': '\n'.join(error_log_lines) if error_log_lines else batch.error_log,
+                'error_log': '\n'.join([l for l in [previous_log, new_log] if l]) or False,
             })
             self.env.cr.commit()
 

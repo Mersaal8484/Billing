@@ -1,5 +1,6 @@
 from datetime import date, timedelta
 from odoo import api, fields, models, _
+from odoo.exceptions import ValidationError
 
 
 class UtilitySaleOrder(models.Model):
@@ -70,13 +71,24 @@ class UtilitySaleOrder(models.Model):
             if order.state == 'draft' and order.partner_id:
                 # استخدام حقل credit القياسي من أودو والذي يمثل إجمالي الذمم المدينة (المتأخرات)
                 order.previous_balance = order.partner_id.credit
-            elif not order.partner_id:
+            else:
                 order.previous_balance = 0.0
 
     @api.depends('amount_total', 'previous_balance')
     def _compute_total_due_amount(self):
         for order in self:
             order.total_due_amount = order.amount_total + order.previous_balance
+
+    @api.constrains('reading_id', 'state')
+    def _check_unique_active_reading_bill(self):
+        for order in self.filtered('reading_id'):
+            duplicate = self.search([
+                ('reading_id', '=', order.reading_id.id),
+                ('id', '!=', order.id),
+                ('state', '!=', 'cancel'),
+            ], limit=1)
+            if duplicate and order.state != 'cancel':
+                raise ValidationError(_('لا يمكن إنشاء أكثر من فاتورة نشطة لنفس القراءة.'))
 
     def _prepare_invoice(self):
         res = super(UtilitySaleOrder, self)._prepare_invoice()
@@ -466,13 +478,13 @@ class UtilitySaleOrder(models.Model):
 
     @api.model
     def cron_update_overdue_orders(self):
-        today = date.today()
-        orders = self.search([
+        # bill_state is computed from date/payment data; touching the records is enough
+        # to let stored computes refresh through normal dependencies.
+        self.search([
             ('bill_state', 'not in', ('paid', 'cancelled', 'overdue')),
-            ('date_order', '<', today),
+            ('date_order', '<', date.today()),
             ('balance_due', '>', 0),
-        ])
-        orders.write({'bill_state': 'overdue'})
+        ])._compute_bill_state()
 
     @api.model
     def cron_send_due_reminders(self):

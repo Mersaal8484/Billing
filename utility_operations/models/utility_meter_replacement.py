@@ -3,7 +3,7 @@ from odoo.exceptions import ValidationError
 
 
 class UtilityMeterReplacement(models.Model):
-    _name = 'utility.meter.replacement'
+    _inherit = 'utility.meter.replacement'
     _description = 'Meter Replacement History'
     _order = 'replacement_date desc'
 

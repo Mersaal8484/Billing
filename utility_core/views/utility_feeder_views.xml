@@ -112,13 +112,12 @@
                         <page name="coupling_readings" string="قراءات الربط">
                             <field name="coupling_reading_ids">
                                 <tree editable="bottom"
-                                      decoration-success="state == 'confirmed'"
-                                      decoration-danger="state == 'cancelled'">
-                                    <field name="name" readonly="1"/>
+                                      decoration-success="state == 'approved'"
+                                      decoration-danger="state == 'error'">
+                                    <field name="reading_id" readonly="1"/>
                                     <field name="meter_id"
                                            domain="[('feeder_id', '=', parent.id)]"
                                            options="{'no_create': True}"/>
-                                    <field name="reading_type"/>
                                     <field name="reading_date"/>
                                     <field name="reading_value"/>
                                     <field name="previous_reading" readonly="1"/>
@@ -126,8 +125,8 @@
                                     <field name="date_range_id" options="{'no_create': True}"/>
                                     <field name="image_state" widget="badge" optional="show"/>
                                     <field name="state" widget="badge"/>
-                                    <button name="action_confirm" type="object"
-                                            string="تأكيد" icon="fa-check"
+                                    <button name="action_submit_review" type="object"
+                                            string="إرسال للمراجعة" icon="fa-check"
                                             attrs="{'invisible': [('state', '!=', 'draft')]}"/>
                                 </tree>
                             </field>
@@ -135,12 +134,11 @@
 
                         <!-- صفحة 3: قراءات عدادات المقارنة -->
                         <page name="comparison_readings" string="قراءات المقارنة">
-                            <field name="feeder_reading_ids"
-                                   domain="[('reading_type', '=', 'comparison')]">
+                            <field name="feeder_reading_ids">
                                 <tree editable="bottom"
-                                      decoration-success="state == 'confirmed'"
-                                      decoration-danger="state == 'cancelled'">
-                                    <field name="name" readonly="1"/>
+                                      decoration-success="state == 'approved'"
+                                      decoration-danger="state == 'error'">
+                                    <field name="reading_id" readonly="1"/>
                                     <field name="meter_id"
                                            domain="[('feeder_id', '=', parent.id)]"
                                            options="{'no_create': True}"/>

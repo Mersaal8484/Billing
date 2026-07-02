@@ -64,6 +64,14 @@ class UtilityAPI(http.Controller):
         order = request.env['sale.order'].browse(int(order_id))
         if not order.exists():
             return {'error': 'Order not found'}
+        try:
+            amount = float(amount)
+        except (TypeError, ValueError):
+            return {'error': 'amount must be a positive number'}
+        if amount <= 0:
+            return {'error': 'amount must be a positive number'}
+        if order.bill_state in ('paid', 'cancelled'):
+            return {'error': 'Bill is not payable'}
         partner = order.partner_id
         payment = request.env['account.payment'].create({
             'partner_id': partner.id if partner else request.env.user.partner_id.id,
@@ -75,8 +83,10 @@ class UtilityAPI(http.Controller):
             'electronic_doc_no': reference,
             'date': fields.Date.context_today(request.env.user),
         })
+        payment.action_post()
         return {
             'payment_id': payment.id,
+            'state': payment.state,
             'success': True,
         }
 
