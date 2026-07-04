@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="view_utility_inventory_location_tree" model="ir.ui.view">
+            <field name="name">utility.inventory.location.tree</field>
+            <field name="model">utility.inventory.location</field>
+            <field name="arch" type="xml">
+                <tree>
+                    <field name="code"/>
+                    <field name="name"/>
+                    <field name="location_type"/>
+                    <field name="parent_id"/>
+                    <field name="active"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="view_utility_inventory_location_form" model="ir.ui.view">
+            <field name="name">utility.inventory.location.form</field>
+            <field name="model">utility.inventory.location</field>
+            <field name="arch" type="xml">
+                <form>
+                    <sheet>
+                        <div class="oe_title">
+                            <h1>
+                                <field name="name" placeholder="اسم الموقع"/>
+                            </h1>
+                        </div>
+                        <group>
+                            <group>
+                                <field name="code" required="1"/>
+                                <field name="location_type" required="1"/>
+                                <field name="parent_id"/>
+                                <field name="active"/>
+                            </group>
+                            <group>
+                                <field name="company_id" groups="base.group_multi_company"/>
+                            </group>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_utility_inventory_location" model="ir.actions.act_window">
+            <field name="name">مواقع المخزون</field>
+            <field name="res_model">utility.inventory.location</field>
+            <field name="view_mode">tree,form</field>
+        </record>
+
+    </data>
+</odoo>

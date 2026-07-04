@@ -27,15 +27,15 @@
                 <form>
                     <header>
                         <field name="state" widget="statusbar"/>
-                        <button name="action_approve" string="Approve" type="object"
+                        <button name="action_approve" string="اعتماد" type="object"
                                 states="draft" class="btn-primary"/>
-                        <button name="action_schedule" string="Schedule" type="object"
+                        <button name="action_schedule" string="جدولة" type="object"
                                 states="approved" class="btn-primary"/>
-                        <button name="action_start" string="Start" type="object"
+                        <button name="action_start" string="بدء" type="object"
                                 states="scheduled" class="btn-primary"/>
-                        <button name="action_complete" string="Complete" type="object"
+                        <button name="action_complete" string="إكمال" type="object"
                                 states="in_progress" class="btn-primary"/>
-                        <button name="action_cancel" string="Cancel" type="object"
+                        <button name="action_cancel" string="إلغاء" type="object"
                                 states="draft,approved,scheduled" class="btn-secondary"/>
                     </header>
                     <sheet>
@@ -57,12 +57,12 @@
                             </group>
                         </group>
                         <group>
-                            <group string="Customer">
+                            <group string="العميل">
                                 <field name="customer_id"/>
                                 <field name="account_id"/>
                                 <field name="meter_id"/>
                             </group>
-                            <group string="Location">
+                            <group string="الموقع">
                                 <field name="region_id"/>
                                 <field name="area_id"/>
                                 <field name="zone_id"/>
@@ -70,24 +70,24 @@
                             </group>
                         </group>
                         <notebook>
-                            <page string="Description">
+                            <page string="الوصف">
                                 <field name="description" nolabel="1"/>
                             </page>
-                            <page string="Meter Info">
+                            <page string="بيانات العداد">
                                 <group>
-                                    <group string="Old Meter">
+                                    <group string="العداد القديم">
                                         <field name="old_meter_id"/>
                                         <field name="meter_reading_before"/>
                                         <field name="seal_number_old"/>
                                     </group>
-                                    <group string="New Meter">
+                                    <group string="العداد الجديد">
                                         <field name="new_meter_id"/>
                                         <field name="meter_reading_after"/>
                                         <field name="seal_number_new"/>
                                     </group>
                                 </group>
                             </page>
-                            <page string="Results">
+                            <page string="النتائج">
                                 <group>
                                     <group>
                                         <field name="findings"/>
@@ -100,7 +100,7 @@
                                     </group>
                                 </group>
                             </page>
-                            <page string="Notes">
+                            <page string="ملاحظات">
                                 <field name="notes" nolabel="1"/>
                             </page>
                         </notebook>
@@ -120,24 +120,24 @@
                     <field name="service_type"/>
                     <field name="state"/>
                     <field name="priority"/>
-                    <filter name="filter_date" string="Date Requested" date="date_requested"/>
-                    <group expand="0" string="Group By">
-                        <filter name="group_service_type" string="Service Type" context="{'group_by': 'service_type'}"/>
-                        <filter name="group_state" string="State" context="{'group_by': 'state'}"/>
-                        <filter name="group_priority" string="Priority" context="{'group_by': 'priority'}"/>
-                        <filter name="group_technician" string="Technician" context="{'group_by': 'technician_id'}"/>
+                    <filter name="filter_date" string="تاريخ الطلب" date="date_requested"/>
+                    <group expand="0" string="تصنيف حسب">
+                        <filter name="group_service_type" string="نوع الخدمة" context="{'group_by': 'service_type'}"/>
+                        <filter name="group_state" string="الحالة" context="{'group_by': 'state'}"/>
+                        <filter name="group_priority" string="الأولوية" context="{'group_by': 'priority'}"/>
+                        <filter name="group_technician" string="الفني" context="{'group_by': 'technician_id'}"/>
                     </group>
                 </search>
             </field>
         </record>
 
         <record id="action_utility_service_order" model="ir.actions.act_window">
-            <field name="name">Service Orders</field>
+            <field name="name">أوامر الخدمة</field>
             <field name="res_model">utility.service.order</field>
             <field name="view_mode">tree,form</field>
             <field name="search_view_id" ref="view_utility_service_order_search"/>
             <field name="help" type="html">
-                <p>Manage service orders for utility field operations.</p>
+                <p>إدارة أوامر الخدمة للعمليات الميدانية.</p>
             </field>
         </record>
 

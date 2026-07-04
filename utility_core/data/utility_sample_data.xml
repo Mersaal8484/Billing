@@ -11,28 +11,6 @@
             <field name="country_id" ref="base.ye"/>
         </record>
 
-        <!-- Products -->
-        <record id="utility_product_kwh" model="product.product">
-            <field name="name">استهلاك كهرباء (kWh)</field>
-            <field name="type">service</field>
-            <field name="list_price">350.00</field>
-        </record>
-        <record id="utility_product_fixed_fee" model="product.product">
-            <field name="name">رسوم اشتراك العداد</field>
-            <field name="type">service</field>
-            <field name="list_price">1500.00</field>
-        </record>
-        <record id="utility_product_service_charge" model="product.product">
-            <field name="name">رسوم خدمات وصيانة</field>
-            <field name="type">service</field>
-            <field name="list_price">1000.00</field>
-        </record>
-        <record id="utility_product_discount" model="product.product">
-            <field name="name">خصم استهلاك مدعوم</field>
-            <field name="type">service</field>
-            <field name="list_price">-350.00</field>
-        </record>
-
         <!-- Accounting Demo Data -->
         <record id="demo_account_fine" model="account.account">
             <field name="name">إيرادات الغرامات</field>
@@ -79,6 +57,49 @@
             <field name="company_id" ref="base.main_company"/>
         </record>
 
+        <!-- Products -->
+        <record id="utility_product_kwh" model="product.product">
+            <field name="name">استهلاك كهرباء (kWh)</field>
+            <field name="type">service</field>
+            <field name="list_price">350.00</field>
+        </record>
+        <record id="utility_product_fixed_fee" model="product.product">
+            <field name="name">رسوم اشتراك العداد</field>
+            <field name="type">service</field>
+            <field name="list_price">1500.00</field>
+        </record>
+        <record id="utility_product_service_charge" model="product.product">
+            <field name="name">رسوم خدمات وصيانة</field>
+            <field name="type">service</field>
+            <field name="list_price">1000.00</field>
+        </record>
+        <record id="utility_product_discount" model="product.product">
+            <field name="name">خصم استهلاك مدعوم</field>
+            <field name="type">service</field>
+            <field name="list_price">-350.00</field>
+            <field name="property_account_income_id" ref="demo_account_discount"/>
+        </record>
+        <record id="utility_product_mu_allim" model="product.product">
+            <field name="name">رسم المعلم</field>
+            <field name="type">service</field>
+            <field name="list_price">0.00</field>
+        </record>
+        <record id="utility_product_cleaning" model="product.product">
+            <field name="name">رسم النظافة</field>
+            <field name="type">service</field>
+            <field name="list_price">0.00</field>
+        </record>
+        <record id="utility_product_municipality" model="product.product">
+            <field name="name">رسم المجالس المحلية</field>
+            <field name="type">service</field>
+            <field name="list_price">0.00</field>
+        </record>
+        <record id="utility_product_penalty" model="product.product">
+            <field name="name">غرامة تأخير</field>
+            <field name="type">service</field>
+            <field name="list_price">0.00</field>
+        </record>
+
         <!-- Assigning to Company -->
         <function model="res.company" name="write">
             <value eval="[ref('base.main_company')]"/>
@@ -90,91 +111,97 @@
                 'writeoff_journal_id': ref('demo_journal_writeoff'),
                 'deposit_journal_id': ref('demo_journal_deposit'),
                 'settlement_journal_id': ref('demo_journal_settlement'),
-                'penalty_product_id': ref('utility_product_service_charge'),
-                'mu_allim_product_id': ref('utility_product_fixed_fee'),
-                'cleaning_product_id': ref('utility_product_service_charge'),
-                'local_fee_product_id': ref('utility_product_fixed_fee'),
+                'penalty_product_id': ref('utility_product_penalty'),
+                'mu_allim_product_id': ref('utility_product_mu_allim'),
+                'cleaning_product_id': ref('utility_product_cleaning'),
+                'local_fee_product_id': ref('utility_product_municipality'),
+                'writeoff_account_id': ref('demo_account_discount'),
+                'collection_journal_id': ref('demo_journal_writeoff'),
             }"/>
         </function>
 
-        <!-- Region -->
-        <record id="demo_region_central" model="utility.region">
-            <field name="name">المنطقة المركزية - أمانة العاصمة (Sana'a Region)</field>
-            <field name="code">SANAA_C</field>
+        <!-- ====== المناطق ====== -->
+        <record id="demo_region_1" model="utility.region">
+            <field name="name">المنطقة الأولى</field>
+            <field name="code">REGION_1</field>
             <field name="type">region</field>
-            <field name="recurring_rule_type">monthly</field>
+            <field name="recurring_rule_type">biweekly</field>
+        </record>
+        <record id="demo_region_2" model="utility.region">
+            <field name="name">المنطقة الثانية</field>
+            <field name="code">REGION_2</field>
+            <field name="type">region</field>
+            <field name="recurring_rule_type">biweekly</field>
+        </record>
+        <record id="demo_region_3" model="utility.region">
+            <field name="name">المنطقة الثالثة</field>
+            <field name="code">REGION_3</field>
+            <field name="type">region</field>
+            <field name="recurring_rule_type">biweekly</field>
+        </record>
+        <record id="demo_region_4" model="utility.region">
+            <field name="name">المنطقة الرابعة</field>
+            <field name="code">REGION_4</field>
+            <field name="type">region</field>
+            <field name="recurring_rule_type">biweekly</field>
+        </record>
+        <record id="demo_region_hodeidah" model="utility.region">
+            <field name="name">الحديدة</field>
+            <field name="code">REGION_HUD</field>
+            <field name="type">region</field>
+            <field name="recurring_rule_type">biweekly</field>
         </record>
 
-        <!-- Areas -->
-        <record id="demo_area_north" model="utility.region">
-            <field name="name">الفرع التشغيلي - حدة (Hadda District)</field>
-            <field name="code">HADDA</field>
+        <!-- ====== هيكل المنطقة الثانية (Area → Zone → Substation → Feeder → Transformer) ====== -->
+        <record id="demo_area_2" model="utility.region">
+            <field name="name">فرع المنطقة الثانية</field>
+            <field name="code">AREA_2</field>
             <field name="type">area</field>
-            <field name="parent_id" ref="demo_region_central"/>
+            <field name="parent_id" ref="demo_region_2"/>
+            <field name="recurring_rule_type">biweekly</field>
         </record>
-        <record id="demo_area_south" model="utility.region">
-            <field name="name">الفرع التشغيلي - الزبيري (Zubayri District)</field>
-            <field name="code">ZUBAYRI</field>
-            <field name="type">area</field>
-            <field name="parent_id" ref="demo_region_central"/>
-        </record>
-
-        <!-- Zones -->
-        <record id="demo_zone_a" model="utility.region">
-            <field name="name">نطاق التوزيع - حي الصافية (Al-Safia Zone)</field>
-            <field name="code">ZONE_SAFIA</field>
+        <record id="demo_zone_2" model="utility.region">
+            <field name="name">نطاق المنطقة الثانية</field>
+            <field name="code">ZONE_2</field>
             <field name="type">zone</field>
-            <field name="parent_id" ref="demo_area_north"/>
-        </record>
-        <record id="demo_zone_b" model="utility.region">
-            <field name="name">نطاق التوزيع - حي الرويشان (Ruwaishan Zone)</field>
-            <field name="code">ZONE_RUWAISHAN</field>
-            <field name="type">zone</field>
-            <field name="parent_id" ref="demo_area_south"/>
+            <field name="parent_id" ref="demo_area_2"/>
+            <field name="recurring_rule_type">biweekly</field>
         </record>
 
-        <!-- Office -->
-        <record id="demo_office_main" model="utility.office">
-            <field name="name">مكتب خدمات المشتركين - المركز الرئيسي صنعاء</field>
-            <field name="code">MAIN_OFF_SANAA</field>
-            <field name="area_id" ref="demo_area_north"/>
-            <field name="phone">+967-1-445566</field>
-        </record>
-
-        <!-- Substation -->
-        <record id="demo_substation_1" model="utility.substation">
-            <field name="name">محطة تحويل حزيز المركزية 33/11 ك.ف</field>
-            <field name="code">SS_HIZIZ_01</field>
-            <field name="zone_id" ref="demo_zone_a"/>
+        <!-- محطة فرعية -->
+        <record id="demo_substation_2" model="utility.substation">
+            <field name="name">محطة المنطقة الثانية</field>
+            <field name="code">SUB_2</field>
+            <field name="area_id" ref="demo_area_2"/>
             <field name="voltage_level">mv</field>
-            <field name="capacity_kva">50000</field>
-            <field name="status">active</field>
         </record>
 
-        <!-- Feeder -->
-        <record id="demo_feeder_1" model="utility.feeder">
-            <field name="name">مغذي حدة رقم 1 (11 ك.ف)</field>
-            <field name="code">FDR_HADDA_01</field>
-            <field name="zone_id" ref="demo_zone_a"/>
-            <field name="voltage_level">mv</field>
-            <field name="rated_capacity">5000</field>
-            <field name="current_load">3200</field>
-            <field name="substation_id" ref="demo_substation_1"/>
+        <!-- فيدر -->
+        <record id="demo_feeder_2" model="utility.feeder">
+            <field name="name">فيدر المنطقة الثانية</field>
+            <field name="code">FEEDER_2</field>
+            <field name="substation_id" ref="demo_substation_2"/>
+            <field name="voltage_level">lv</field>
+            <field name="rated_capacity">500.0</field>
         </record>
 
-        <!-- Transformer -->
-        <record id="demo_transformer_1" model="utility.transformer">
-            <field name="name">محول توزيع الصافية رقم 1 (1000 ك.ف.أ)</field>
-            <field name="code">TRAF_SAFIA_1</field>
-            <field name="substation_id" ref="demo_substation_1"/>
-            <field name="feeder_id" ref="demo_feeder_1"/>
-            <field name="capacity">1000</field>
+        <!-- محول -->
+        <record id="demo_transformer_2" model="utility.transformer">
+            <field name="name">محول المنطقة الثانية</field>
+            <field name="code">TRANS_2</field>
+            <field name="feeder_id" ref="demo_feeder_2"/>
+            <field name="substation_id" ref="demo_substation_2"/>
+            <field name="capacity">250.0</field>
             <field name="phase">three</field>
-            <field name="manufacturer">Yemen Transformers Co.</field>
-            <field name="serial_number">YTC-2024-00192</field>
-            <field name="voltage_primary">11000</field>
-            <field name="voltage_secondary">415</field>
             <field name="status">active</field>
+        </record>
+
+        <!-- خط سير (مسار قراءة) -->
+        <record id="demo_route_2" model="utility.route">
+            <field name="name">مسار المنطقة الثانية</field>
+            <field name="code">ROUTE_2</field>
+            <field name="area_id" ref="demo_area_2"/>
+            <field name="zone_id" ref="demo_zone_2"/>
         </record>
 
         <!-- Staff -->
@@ -182,207 +209,417 @@
             <field name="name">سالم السقاف (مفتش ميداني - Inspector)</field>
             <field name="employee_code">EMP_INSP_YE01</field>
             <field name="user_role_id" ref="role_inspector"/>
-            <field name="mobile">+967-77-1122334</field>
+            <field name="mobile">771122334</field>
         </record>
         <record id="demo_staff_cashier" model="utility.staff">
             <field name="name">عبد الله الحروي (صراف الإيرادات - Cashier)</field>
             <field name="employee_code">EMP_CASH_YE01</field>
             <field name="user_role_id" ref="role_cashier"/>
-            <field name="mobile">+967-77-2233445</field>
+            <field name="mobile">772233445</field>
         </record>
         <record id="demo_staff_supervisor" model="utility.staff">
             <field name="name">أحمد العولقي (مشرف هندسي - Supervisor)</field>
             <field name="employee_code">EMP_SUPER_YE01</field>
             <field name="user_role_id" ref="role_supervisor"/>
-            <field name="mobile">+967-77-3344556</field>
-        </record>
-
-        <!-- Route -->
-        <record id="demo_route_1" model="utility.route">
-            <field name="name">مسار قراءة 1 - الصافية وحدة</field>
-            <field name="code">RTE_SANAA_01</field>
-            <field name="area_id" ref="demo_area_north"/>
-            <field name="zone_id" ref="demo_zone_a"/>
-            <field name="inspector_id" ref="demo_staff_inspector"/>
-            <field name="cashier_id" ref="demo_staff_cashier"/>
-            <field name="supervisor_id" ref="demo_staff_supervisor"/>
+            <field name="mobile">773344556</field>
         </record>
 
 
-        <!-- Contract Templates -->
-        <record id="demo_contract_template_res" model="utility.contract.template">
-            <field name="name">عقد استهلاك سكني دوري - اليمن (شهري)</field>
-            <field name="code">TMPL_YE_RES_M</field>
+
+        <!-- ====== قوالب الفوترة (block = شرائح) ====== -->
+
+        <!-- ====== 1. أهالي - شهري (block) ====== -->
+        <record id="demo_tmpl_pub_monthly" model="utility.contract.template">
+            <field name="name">عقد أهالي - شهري (شرائح)</field>
+            <field name="code">TMPL_PUB_M</field>
+            <field name="pricing_mode">block</field>
             <field name="recurring_rule_type">monthly</field>
             <field name="recurring_invoicing_type">postpaid</field>
             <field name="recurring_interval">1</field>
-
-            <field name="subscriber_ids" eval="[(6, 0, [ref('utility_core.sub_category_residential')])]"/>
+            <field name="service_charge">1500</field>
+            <field name="subscriber_ids" eval="[(6, 0, [ref('utility_core.sub_category_public')])]"/>
             <field name="active" eval="True"/>
         </record>
-
-        <record id="demo_contract_template_res_line1" model="utility.contract.template.line">
-            <field name="template_id" ref="demo_contract_template_res"/>
+        <record id="demo_tmpl_pub_monthly_block1" model="utility.contract.template.block">
+            <field name="template_id" ref="demo_tmpl_pub_monthly"/>
             <field name="sequence">10</field>
-            <field name="product_id" ref="utility_product_kwh"/>
-            <field name="name">استهلاك كهرباء شهري (سكني)</field>
-            <field name="price_type">meter_reading</field>
-            <field name="meter_line_type">consumption</field>
-            <field name="qty_formula_id" ref="utility_core.formula_consumption"/>
+            <field name="name">الشريحة الأولى (0-100)</field>
+            <field name="from_kwh">0</field>
+            <field name="to_kwh">100</field>
+            <field name="price_per_kwh">200</field>
         </record>
-        <record id="demo_contract_template_res_line2" model="utility.contract.template.line">
-            <field name="template_id" ref="demo_contract_template_res"/>
+        <record id="demo_tmpl_pub_monthly_block2" model="utility.contract.template.block">
+            <field name="template_id" ref="demo_tmpl_pub_monthly"/>
             <field name="sequence">20</field>
-            <field name="product_id" ref="utility_product_fixed_fee"/>
-            <field name="name">رسوم اشتراك وصيانة العداد (ريال يمني)</field>
-            <field name="price_type">fixed</field>
-            <field name="specific_price">1500.00</field>
-            <field name="meter_line_type">fixed_fee</field>
-            <field name="qty_formula_id" ref="utility_core.formula_fixed_fee"/>
+            <field name="name">الشريحة الثانية (101-200)</field>
+            <field name="from_kwh">100</field>
+            <field name="to_kwh">200</field>
+            <field name="price_per_kwh">300</field>
         </record>
-        <record id="demo_contract_template_res_line3" model="utility.contract.template.line">
-            <field name="template_id" ref="demo_contract_template_res"/>
+        <record id="demo_tmpl_pub_monthly_block3" model="utility.contract.template.block">
+            <field name="template_id" ref="demo_tmpl_pub_monthly"/>
             <field name="sequence">30</field>
-            <field name="product_id" ref="utility_product_discount"/>
-            <field name="name">خصم الشريحة المدعومة (أول 100 وحدة)</field>
+            <field name="name">الشريحة الثالثة (201-500)</field>
+            <field name="from_kwh">200</field>
+            <field name="to_kwh">500</field>
+            <field name="price_per_kwh">400</field>
+        </record>
+        <record id="demo_tmpl_pub_monthly_block4" model="utility.contract.template.block">
+            <field name="template_id" ref="demo_tmpl_pub_monthly"/>
+            <field name="sequence">40</field>
+            <field name="name">الشريحة الرابعة (501+)</field>
+            <field name="from_kwh">500</field>
+            <field name="to_kwh">0</field>
+            <field name="price_per_kwh">500</field>
+        </record>
+        <record id="demo_tmpl_pub_monthly_line1" model="utility.contract.template.line">
+            <field name="template_id" ref="demo_tmpl_pub_monthly"/>
+            <field name="sequence">10</field>
+            <field name="product_id" ref="utility_product_service_charge"/>
+            <field name="name">رسم خدمة ثابت (أهالي)</field>
             <field name="price_type">fixed</field>
-            <field name="specific_price">-350.00</field>
-            <field name="meter_line_type">discount</field>
-            <field name="qty_formula_id" ref="utility_core.formula_discount"/>
-            <field name="is_subsidized" eval="True"/>
+            <field name="specific_price">1500</field>
+            <field name="meter_line_type">service_charge</field>
         </record>
 
-        <record id="demo_contract_template_com" model="utility.contract.template">
-            <field name="name">عقد استهلاك تجاري - اليمن (شهري)</field>
-            <field name="code">TMPL_YE_COM_M</field>
+        <!-- ====== 2. أهالي - نصف شهري (block) ====== -->
+        <record id="demo_tmpl_pub_bimonthly" model="utility.contract.template">
+            <field name="name">عقد أهالي - نصف شهري (شرائح)</field>
+            <field name="code">TMPL_PUB_BI</field>
+            <field name="pricing_mode">block</field>
+            <field name="recurring_rule_type">bi_monthly</field>
+            <field name="recurring_invoicing_type">postpaid</field>
+            <field name="recurring_interval">1</field>
+            <field name="service_charge">750</field>
+            <field name="subscriber_ids" eval="[(6, 0, [ref('utility_core.sub_category_public')])]"/>
+            <field name="active" eval="True"/>
+        </record>
+        <record id="demo_tmpl_pub_bimonthly_block1" model="utility.contract.template.block">
+            <field name="template_id" ref="demo_tmpl_pub_bimonthly"/>
+            <field name="sequence">10</field>
+            <field name="name">الشريحة الأولى (0-50)</field>
+            <field name="from_kwh">0</field>
+            <field name="to_kwh">50</field>
+            <field name="price_per_kwh">200</field>
+        </record>
+        <record id="demo_tmpl_pub_bimonthly_block2" model="utility.contract.template.block">
+            <field name="template_id" ref="demo_tmpl_pub_bimonthly"/>
+            <field name="sequence">20</field>
+            <field name="name">الشريحة الثانية (51-100)</field>
+            <field name="from_kwh">50</field>
+            <field name="to_kwh">100</field>
+            <field name="price_per_kwh">300</field>
+        </record>
+        <record id="demo_tmpl_pub_bimonthly_block3" model="utility.contract.template.block">
+            <field name="template_id" ref="demo_tmpl_pub_bimonthly"/>
+            <field name="sequence">30</field>
+            <field name="name">الشريحة الثالثة (101-250)</field>
+            <field name="from_kwh">100</field>
+            <field name="to_kwh">250</field>
+            <field name="price_per_kwh">400</field>
+        </record>
+        <record id="demo_tmpl_pub_bimonthly_block4" model="utility.contract.template.block">
+            <field name="template_id" ref="demo_tmpl_pub_bimonthly"/>
+            <field name="sequence">40</field>
+            <field name="name">الشريحة الرابعة (251+)</field>
+            <field name="from_kwh">250</field>
+            <field name="to_kwh">0</field>
+            <field name="price_per_kwh">500</field>
+        </record>
+        <record id="demo_tmpl_pub_bimonthly_line1" model="utility.contract.template.line">
+            <field name="template_id" ref="demo_tmpl_pub_bimonthly"/>
+            <field name="sequence">10</field>
+            <field name="product_id" ref="utility_product_service_charge"/>
+            <field name="name">رسم خدمة ثابت (أهالي)</field>
+            <field name="price_type">fixed</field>
+            <field name="specific_price">750</field>
+            <field name="meter_line_type">service_charge</field>
+        </record>
+
+        <!-- ====== 3. كبار مستهلكين - شهري (block) ====== -->
+        <record id="demo_tmpl_large_monthly" model="utility.contract.template">
+            <field name="name">عقد كبار مستهلكين - شهري (شرائح)</field>
+            <field name="code">TMPL_LARGE_M</field>
+            <field name="pricing_mode">block</field>
             <field name="recurring_rule_type">monthly</field>
             <field name="recurring_invoicing_type">postpaid</field>
             <field name="recurring_interval">1</field>
-
-            <field name="subscriber_ids" eval="[(6, 0, [ref('utility_core.sub_category_commercial')])]"/>
+            <field name="service_charge">4000</field>
+            <field name="subscriber_ids" eval="[(6, 0, [ref('utility_core.sub_category_large')])]"/>
             <field name="active" eval="True"/>
         </record>
-        <record id="demo_contract_template_com_line1" model="utility.contract.template.line">
-            <field name="template_id" ref="demo_contract_template_com"/>
+        <record id="demo_tmpl_large_monthly_block1" model="utility.contract.template.block">
+            <field name="template_id" ref="demo_tmpl_large_monthly"/>
             <field name="sequence">10</field>
-            <field name="product_id" ref="utility_product_kwh"/>
-            <field name="name">استهلاك كهرباء شهري (تجاري)</field>
-            <field name="price_type">meter_reading</field>
-            <field name="meter_line_type">consumption</field>
-            <field name="qty_formula_id" ref="utility_core.formula_consumption"/>
+            <field name="name">الشريحة الأولى (0-500)</field>
+            <field name="from_kwh">0</field>
+            <field name="to_kwh">500</field>
+            <field name="price_per_kwh">400</field>
         </record>
-        <record id="demo_contract_template_com_line2" model="utility.contract.template.line">
-            <field name="template_id" ref="demo_contract_template_com"/>
+        <record id="demo_tmpl_large_monthly_block2" model="utility.contract.template.block">
+            <field name="template_id" ref="demo_tmpl_large_monthly"/>
             <field name="sequence">20</field>
-            <field name="product_id" ref="utility_product_fixed_fee"/>
-            <field name="name">رسوم اشتراك العداد التجاري (ريال يمني)</field>
+            <field name="name">الشريحة الثانية (501-1000)</field>
+            <field name="from_kwh">500</field>
+            <field name="to_kwh">1000</field>
+            <field name="price_per_kwh">500</field>
+        </record>
+        <record id="demo_tmpl_large_monthly_block3" model="utility.contract.template.block">
+            <field name="template_id" ref="demo_tmpl_large_monthly"/>
+            <field name="sequence">30</field>
+            <field name="name">الشريحة الثالثة (1001-5000)</field>
+            <field name="from_kwh">1000</field>
+            <field name="to_kwh">5000</field>
+            <field name="price_per_kwh">600</field>
+        </record>
+        <record id="demo_tmpl_large_monthly_block4" model="utility.contract.template.block">
+            <field name="template_id" ref="demo_tmpl_large_monthly"/>
+            <field name="sequence">40</field>
+            <field name="name">الشريحة الرابعة (5001+)</field>
+            <field name="from_kwh">5000</field>
+            <field name="to_kwh">0</field>
+            <field name="price_per_kwh">700</field>
+        </record>
+        <record id="demo_tmpl_large_monthly_line1" model="utility.contract.template.line">
+            <field name="template_id" ref="demo_tmpl_large_monthly"/>
+            <field name="sequence">10</field>
+            <field name="product_id" ref="utility_product_service_charge"/>
+            <field name="name">رسم خدمة ثابت (كبار مستهلكين)</field>
             <field name="price_type">fixed</field>
-            <field name="specific_price">2500.00</field>
-            <field name="meter_line_type">fixed_fee</field>
-            <field name="qty_formula_id" ref="utility_core.formula_fixed_fee"/>
+            <field name="specific_price">4000</field>
+            <field name="meter_line_type">service_charge</field>
         </record>
 
-        <!-- Customers -->
-        <record id="demo_partner_ahmed" model="res.partner">
-            <field name="name">محمد اليماني (Mohammad Al-Yamani)</field>
-            <field name="mobile">+967-77-5555555</field>
-            <field name="street">شارع حدة العام</field>
-            <field name="city">صنعاء (Sana'a)</field>
-            <field name="country_id" ref="base.ye"/>
-            <field name="region_id" ref="demo_region_central"/>
-            <field name="area_id" ref="demo_area_north"/>
-            <field name="zone_id" ref="demo_zone_a"/>
+        <!-- ====== 4. كبار مستهلكين - نصف شهري (block) ====== -->
+        <record id="demo_tmpl_large_bimonthly" model="utility.contract.template">
+            <field name="name">عقد كبار مستهلكين - نصف شهري (شرائح)</field>
+            <field name="code">TMPL_LARGE_BI</field>
+            <field name="pricing_mode">block</field>
+            <field name="recurring_rule_type">bi_monthly</field>
+            <field name="recurring_invoicing_type">postpaid</field>
+            <field name="recurring_interval">1</field>
+            <field name="service_charge">2000</field>
+            <field name="subscriber_ids" eval="[(6, 0, [ref('utility_core.sub_category_large')])]"/>
+            <field name="active" eval="True"/>
         </record>
-        <record id="demo_partner_fahd" model="res.partner">
-            <field name="name">صالح الهمداني (Saleh Al-Hamdani)</field>
-            <field name="mobile">+967-77-6666666</field>
-            <field name="street">شارع الزبيري</field>
-            <field name="city">صنعاء (Sana'a)</field>
-            <field name="country_id" ref="base.ye"/>
-            <field name="region_id" ref="demo_region_central"/>
-            <field name="area_id" ref="demo_area_south"/>
-            <field name="zone_id" ref="demo_zone_b"/>
+        <record id="demo_tmpl_large_bimonthly_block1" model="utility.contract.template.block">
+            <field name="template_id" ref="demo_tmpl_large_bimonthly"/>
+            <field name="sequence">10</field>
+            <field name="name">الشريحة الأولى (0-250)</field>
+            <field name="from_kwh">0</field>
+            <field name="to_kwh">250</field>
+            <field name="price_per_kwh">400</field>
         </record>
-        <record id="demo_partner_khalid" model="res.partner">
-            <field name="name">مؤسسة الحضرمي التجارية (Al-Hadhrami Commercial Est.)</field>
-            <field name="mobile">+967-77-7777777</field>
-            <field name="street">شارع الدائري</field>
-            <field name="city">صنعاء (Sana'a)</field>
-            <field name="country_id" ref="base.ye"/>
-            <field name="region_id" ref="demo_region_central"/>
-            <field name="area_id" ref="demo_area_north"/>
-            <field name="zone_id" ref="demo_zone_a"/>
+        <record id="demo_tmpl_large_bimonthly_block2" model="utility.contract.template.block">
+            <field name="template_id" ref="demo_tmpl_large_bimonthly"/>
+            <field name="sequence">20</field>
+            <field name="name">الشريحة الثانية (251-500)</field>
+            <field name="from_kwh">250</field>
+            <field name="to_kwh">500</field>
+            <field name="price_per_kwh">500</field>
         </record>
-
-        <record id="demo_customer_1" model="utility.customer">
-            <field name="partner_id" ref="demo_partner_ahmed"/>
-            <field name="customer_number">PEC/SANAA/000001</field>
-            <field name="national_id">1001122334</field>
-            <field name="subscriber_id" ref="utility_core.sub_category_residential"/>
-
-            <field name="contract_state">active</field>
-            <field name="route_id" ref="demo_route_1"/>
-            <field name="contract_template_id" ref="utility_core.demo_contract_template_res"/>
-            <field name="balance">75000.00</field>
-            <field name="state">active</field>
+        <record id="demo_tmpl_large_bimonthly_block3" model="utility.contract.template.block">
+            <field name="template_id" ref="demo_tmpl_large_bimonthly"/>
+            <field name="sequence">30</field>
+            <field name="name">الشريحة الثالثة (501-2500)</field>
+            <field name="from_kwh">500</field>
+            <field name="to_kwh">2500</field>
+            <field name="price_per_kwh">600</field>
         </record>
-        <record id="demo_customer_2" model="utility.customer">
-            <field name="partner_id" ref="demo_partner_fahd"/>
-            <field name="customer_number">PEC/SANAA/000002</field>
-            <field name="national_id">1002233445</field>
-            <field name="subscriber_id" ref="utility_core.sub_category_residential"/>
-
-            <field name="contract_state">active</field>
-            <field name="route_id" ref="demo_route_1"/>
-            <field name="contract_template_id" ref="utility_core.demo_contract_template_res"/>
-            <field name="balance">145000.00</field>
-            <field name="state">active</field>
+        <record id="demo_tmpl_large_bimonthly_block4" model="utility.contract.template.block">
+            <field name="template_id" ref="demo_tmpl_large_bimonthly"/>
+            <field name="sequence">40</field>
+            <field name="name">الشريحة الرابعة (2501+)</field>
+            <field name="from_kwh">2500</field>
+            <field name="to_kwh">0</field>
+            <field name="price_per_kwh">700</field>
         </record>
-        <record id="demo_customer_3" model="utility.customer">
-            <field name="partner_id" ref="demo_partner_khalid"/>
-            <field name="customer_number">PEC/SANAA/000003</field>
-            <field name="national_id">1003344556</field>
-            <field name="subscriber_id" ref="utility_core.sub_category_commercial"/>
-
-            <field name="contract_state">active</field>
-            <field name="route_id" ref="demo_route_1"/>
-            <field name="contract_template_id" ref="utility_core.demo_contract_template_com"/>
-            <field name="balance">420000.00</field>
-            <field name="state">active</field>
+        <record id="demo_tmpl_large_bimonthly_line1" model="utility.contract.template.line">
+            <field name="template_id" ref="demo_tmpl_large_bimonthly"/>
+            <field name="sequence">10</field>
+            <field name="product_id" ref="utility_product_service_charge"/>
+            <field name="name">رسم خدمة ثابت (كبار مستهلكين)</field>
+            <field name="price_type">fixed</field>
+            <field name="specific_price">2000</field>
+            <field name="meter_line_type">service_charge</field>
         </record>
 
-        <!-- Meters -->
-        <record id="demo_meter_1" model="utility.meter">
-            <field name="meter_number">MET/YE/2024/0001</field>
-            <field name="serial_number">YE-MET-001-2024</field>
-            <field name="manufacturer">Landis+Gyr (PEC Approved)</field>
-            <field name="meter_type_id" ref="utility_core.meter_type_single_sts"/>
-            <field name="status_id" ref="utility_core.meter_status_active"/>
-            <field name="phase">single</field>
-            <field name="customer_id" ref="demo_customer_1"/>
-            <field name="communication_type">gsm</field>
+        <!-- ====== 5. حكومي - شهري (block) ====== -->
+        <record id="demo_tmpl_gov_monthly" model="utility.contract.template">
+            <field name="name">عقد حكومي - شهري (شرائح)</field>
+            <field name="code">TMPL_GOV_M</field>
+            <field name="pricing_mode">block</field>
+            <field name="recurring_rule_type">monthly</field>
+            <field name="recurring_invoicing_type">postpaid</field>
+            <field name="recurring_interval">1</field>
+            <field name="service_charge">3000</field>
+            <field name="subscriber_ids" eval="[(6, 0, [ref('utility_core.sub_category_government_new')])]"/>
+            <field name="active" eval="True"/>
         </record>
-        <record id="demo_meter_2" model="utility.meter">
-            <field name="meter_number">MET/YE/2024/0002</field>
-            <field name="serial_number">YE-MET-002-2024</field>
-            <field name="manufacturer">Iskraemeco</field>
-            <field name="meter_type_id" ref="utility_core.meter_type_single_sts"/>
-            <field name="status_id" ref="utility_core.meter_status_active"/>
-            <field name="phase">single</field>
-            <field name="customer_id" ref="demo_customer_2"/>
-            <field name="communication_type">gsm</field>
+        <record id="demo_tmpl_gov_monthly_block1" model="utility.contract.template.block">
+            <field name="template_id" ref="demo_tmpl_gov_monthly"/>
+            <field name="sequence">10</field>
+            <field name="name">الشريحة الأولى (0-500)</field>
+            <field name="from_kwh">0</field>
+            <field name="to_kwh">500</field>
+            <field name="price_per_kwh">350</field>
         </record>
-        <record id="demo_meter_3" model="utility.meter">
-            <field name="meter_number">MET/YE/2024/0003</field>
-            <field name="serial_number">YE-MET-003-2024</field>
-            <field name="manufacturer">Huawei Smart (AMI)</field>
-            <field name="meter_type_id" ref="utility_core.meter_type_smart_three"/>
-            <field name="status_id" ref="utility_core.meter_status_active"/>
-            <field name="phase">three</field>
-            <field name="customer_id" ref="demo_customer_3"/>
-            <field name="communication_type">rf</field>
+        <record id="demo_tmpl_gov_monthly_block2" model="utility.contract.template.block">
+            <field name="template_id" ref="demo_tmpl_gov_monthly"/>
+            <field name="sequence">20</field>
+            <field name="name">الشريحة الثانية (501-2000)</field>
+            <field name="from_kwh">500</field>
+            <field name="to_kwh">2000</field>
+            <field name="price_per_kwh">450</field>
+        </record>
+        <record id="demo_tmpl_gov_monthly_block3" model="utility.contract.template.block">
+            <field name="template_id" ref="demo_tmpl_gov_monthly"/>
+            <field name="sequence">30</field>
+            <field name="name">الشريحة الثالثة (2001+)</field>
+            <field name="from_kwh">2000</field>
+            <field name="to_kwh">0</field>
+            <field name="price_per_kwh">550</field>
+        </record>
+        <record id="demo_tmpl_gov_monthly_line1" model="utility.contract.template.line">
+            <field name="template_id" ref="demo_tmpl_gov_monthly"/>
+            <field name="sequence">10</field>
+            <field name="product_id" ref="utility_product_service_charge"/>
+            <field name="name">رسم خدمة ثابت (حكومي)</field>
+            <field name="price_type">fixed</field>
+            <field name="specific_price">3000</field>
+            <field name="meter_line_type">service_charge</field>
         </record>
 
+        <!-- ====== 6. حكومي - نصف شهري (block) ====== -->
+        <record id="demo_tmpl_gov_bimonthly" model="utility.contract.template">
+            <field name="name">عقد حكومي - نصف شهري (شرائح)</field>
+            <field name="code">TMPL_GOV_BI</field>
+            <field name="pricing_mode">block</field>
+            <field name="recurring_rule_type">bi_monthly</field>
+            <field name="recurring_invoicing_type">postpaid</field>
+            <field name="recurring_interval">1</field>
+            <field name="service_charge">1500</field>
+            <field name="subscriber_ids" eval="[(6, 0, [ref('utility_core.sub_category_government_new')])]"/>
+            <field name="active" eval="True"/>
+        </record>
+        <record id="demo_tmpl_gov_bimonthly_block1" model="utility.contract.template.block">
+            <field name="template_id" ref="demo_tmpl_gov_bimonthly"/>
+            <field name="sequence">10</field>
+            <field name="name">الشريحة الأولى (0-250)</field>
+            <field name="from_kwh">0</field>
+            <field name="to_kwh">250</field>
+            <field name="price_per_kwh">350</field>
+        </record>
+        <record id="demo_tmpl_gov_bimonthly_block2" model="utility.contract.template.block">
+            <field name="template_id" ref="demo_tmpl_gov_bimonthly"/>
+            <field name="sequence">20</field>
+            <field name="name">الشريحة الثانية (251-1000)</field>
+            <field name="from_kwh">250</field>
+            <field name="to_kwh">1000</field>
+            <field name="price_per_kwh">450</field>
+        </record>
+        <record id="demo_tmpl_gov_bimonthly_block3" model="utility.contract.template.block">
+            <field name="template_id" ref="demo_tmpl_gov_bimonthly"/>
+            <field name="sequence">30</field>
+            <field name="name">الشريحة الثالثة (1001+)</field>
+            <field name="from_kwh">1000</field>
+            <field name="to_kwh">0</field>
+            <field name="price_per_kwh">550</field>
+        </record>
+        <record id="demo_tmpl_gov_bimonthly_line1" model="utility.contract.template.line">
+            <field name="template_id" ref="demo_tmpl_gov_bimonthly"/>
+            <field name="sequence">10</field>
+            <field name="product_id" ref="utility_product_service_charge"/>
+            <field name="name">رسم خدمة ثابت (حكومي)</field>
+            <field name="price_type">fixed</field>
+            <field name="specific_price">1500</field>
+            <field name="meter_line_type">service_charge</field>
+        </record>
+
+        <!-- ====== 7. تعرفة عامة - نصف شهري (شرائح استهلاكية) ====== -->
+        <record id="demo_tmpl_general_biweekly" model="utility.contract.template">
+            <field name="name">تعرفة عامة - نصف شهري (شرائح استهلاكية)</field>
+            <field name="code">TMPL_GENERAL_BI</field>
+            <field name="pricing_mode">block</field>
+            <field name="recurring_rule_type">bi_monthly</field>
+            <field name="recurring_invoicing_type">postpaid</field>
+            <field name="recurring_interval">1</field>
+            <field name="service_charge">1000</field>
+            <field name="active" eval="True"/>
+        </record>
+        <record id="demo_tmpl_general_biweekly_block1" model="utility.contract.template.block">
+            <field name="template_id" ref="demo_tmpl_general_biweekly"/>
+            <field name="sequence">10</field>
+            <field name="name">الشريحة الأولى (1-2,999)</field>
+            <field name="from_kwh">1</field>
+            <field name="to_kwh">2999</field>
+            <field name="price_per_kwh">230</field>
+        </record>
+        <record id="demo_tmpl_general_biweekly_block2" model="utility.contract.template.block">
+            <field name="template_id" ref="demo_tmpl_general_biweekly"/>
+            <field name="sequence">20</field>
+            <field name="name">الشريحة الثانية (3,000-9,999)</field>
+            <field name="from_kwh">3000</field>
+            <field name="to_kwh">9999</field>
+            <field name="price_per_kwh">220</field>
+        </record>
+        <record id="demo_tmpl_general_biweekly_block3" model="utility.contract.template.block">
+            <field name="template_id" ref="demo_tmpl_general_biweekly"/>
+            <field name="sequence">30</field>
+            <field name="name">الشريحة الثالثة (10,000-19,999)</field>
+            <field name="from_kwh">10000</field>
+            <field name="to_kwh">19999</field>
+            <field name="price_per_kwh">200</field>
+        </record>
+        <record id="demo_tmpl_general_biweekly_block4" model="utility.contract.template.block">
+            <field name="template_id" ref="demo_tmpl_general_biweekly"/>
+            <field name="sequence">40</field>
+            <field name="name">الشريحة الرابعة (20,000-29,999)</field>
+            <field name="from_kwh">20000</field>
+            <field name="to_kwh">29999</field>
+            <field name="price_per_kwh">190</field>
+        </record>
+        <record id="demo_tmpl_general_biweekly_block5" model="utility.contract.template.block">
+            <field name="template_id" ref="demo_tmpl_general_biweekly"/>
+            <field name="sequence">50</field>
+            <field name="name">الشريحة الخامسة (30,000-99,999)</field>
+            <field name="from_kwh">30000</field>
+            <field name="to_kwh">99999</field>
+            <field name="price_per_kwh">185</field>
+        </record>
+        <record id="demo_tmpl_general_biweekly_block6" model="utility.contract.template.block">
+            <field name="template_id" ref="demo_tmpl_general_biweekly"/>
+            <field name="sequence">60</field>
+            <field name="name">الشريحة السادسة (100,000-199,999)</field>
+            <field name="from_kwh">100000</field>
+            <field name="to_kwh">199999</field>
+            <field name="price_per_kwh">180</field>
+        </record>
+        <record id="demo_tmpl_general_biweekly_block7" model="utility.contract.template.block">
+            <field name="template_id" ref="demo_tmpl_general_biweekly"/>
+            <field name="sequence">70</field>
+            <field name="name">الشريحة السابعة (200,000-299,999)</field>
+            <field name="from_kwh">200000</field>
+            <field name="to_kwh">299999</field>
+            <field name="price_per_kwh">175</field>
+        </record>
+        <record id="demo_tmpl_general_biweekly_block8" model="utility.contract.template.block">
+            <field name="template_id" ref="demo_tmpl_general_biweekly"/>
+            <field name="sequence">80</field>
+            <field name="name">الشريحة الثامنة (300,000+)</field>
+            <field name="from_kwh">300000</field>
+            <field name="to_kwh">0</field>
+            <field name="price_per_kwh">170</field>
+        </record>
+        <record id="demo_tmpl_general_biweekly_line1" model="utility.contract.template.line">
+            <field name="template_id" ref="demo_tmpl_general_biweekly"/>
+            <field name="sequence">10</field>
+            <field name="product_id" ref="utility_product_service_charge"/>
+            <field name="name">رسم خدمة ثابت</field>
+            <field name="price_type">fixed</field>
+            <field name="specific_price">1000</field>
+            <field name="meter_line_type">service_charge</field>
+        </record>
 
     </data>
 </odoo>

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_payment_gateway_transaction_tree" model="ir.ui.view">
+        <field name="name">utility.payment.gateway.transaction.tree</field>
+        <field name="model">utility.payment.gateway.transaction</field>
+        <field name="arch" type="xml">
+            <tree decoration-success="state == 'done'" decoration-danger="state == 'failed'">
+                <field name="create_date"/>
+                <field name="name"/>
+                <field name="provider_id"/>
+                <field name="sale_order_id"/>
+                <field name="customer_id"/>
+                <field name="amount"/>
+                <field name="state" widget="badge"/>
+                <field name="payment_id"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_utility_payment_gateway_transaction_form" model="ir.ui.view">
+        <field name="name">utility.payment.gateway.transaction.form</field>
+        <field name="model">utility.payment.gateway.transaction</field>
+        <field name="arch" type="xml">
+            <form string="معاملة بوابة دفع">
+                <header>
+                    <button name="action_mark_pending" type="object" string="إرسال للمزود" states="draft" class="btn-primary"/>
+                    <button name="action_confirm_payment" type="object" string="تأكيد يدوي" states="pending" class="btn-secondary"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,pending,done,failed"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="provider_id"/>
+                            <field name="sale_order_id"/>
+                            <field name="customer_id"/>
+                        </group>
+                        <group>
+                            <field name="amount"/>
+                            <field name="currency_id"/>
+                            <field name="provider_reference"/>
+                            <field name="payment_id"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="الطلب">
+                            <field name="request_payload" nolabel="1"/>
+                        </page>
+                        <page string="Callback">
+                            <field name="callback_payload" nolabel="1"/>
+                            <field name="error_message" nolabel="1" attrs="{'invisible': [('error_message', '=', False)]}"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_utility_payment_gateway_transaction" model="ir.actions.act_window">
+        <field name="name">معاملات بوابة الدفع</field>
+        <field name="res_model">utility.payment.gateway.transaction</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <menuitem id="menu_utility_payment_gateway_transaction" name="معاملات بوابة الدفع" parent="utility_core.menu_utility_integrations" sequence="30" action="action_utility_payment_gateway_transaction" groups="utility_core.group_utility_admin"/>
+</odoo>

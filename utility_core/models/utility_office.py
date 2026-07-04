@@ -1,9 +1,14 @@
-from odoo import api, fields, models
+from odoo import api, fields, models, _
+from odoo.exceptions import ValidationError
+
+import re
+
+PHONE_9_RE = re.compile(r'^\d{9}$')
 
 
 class UtilityOffice(models.Model):
     _name = 'utility.office'
-    _description = 'Utility Office'
+    _description = 'مكتب'
     _order = 'name'
 
     active = fields.Boolean(default=True)
@@ -19,3 +24,11 @@ class UtilityOffice(models.Model):
     _sql_constraints = [
         ('unique_office_code_company', 'unique(code, company_id)', 'Office code must be unique per company!'),
     ]
+
+    @api.constrains('phone')
+    def _check_phone_9_digits(self):
+        for rec in self:
+            if rec.phone and not PHONE_9_RE.match(rec.phone):
+                raise ValidationError(
+                    'رقم الهاتف يجب أن يتكون من 9 أرقام فقط، بدون مفتاح دولة (+967/00) أو شرطات.'
+                )

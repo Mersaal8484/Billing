@@ -65,7 +65,7 @@ Standard Odoo 16.0 addon path. No custom Makefile, pre-commit, linter, or typech
 
 ## date_range model
 
-`utility_core` inherits Odoo's standard `date.range.type` and `date.range` (`utility_core/models/utility_date_range.py`). Adds: `parent_type_id`, `fiscal_year` to type; `parent_id`, `previous_range_id`, `region_id`, `billing_period`, `work_type`, `is_current_period` to range. Requires the `date_range` Odoo module as a dependency.
+`utility_core` inherits Odoo's standard `date.range.type` and `date.range` (`utility_core/models/utility_date_range.py`). Adds: `parent_type_id`, `fiscal_year` to type; `parent_id`, `previous_range_id`, `billing_period`, `work_type`, `is_current_period` to range. Requires the `date_range` Odoo module as a dependency.
 
 ## Transformer/cell readings
 

@@ -1,54 +1,54 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <record id="action_utility_writeoff" model="ir.actions.act_window">
-        <field name="name">Writeoffs</field>
+        <field name="name">الإعفاءات</field>
         <field name="res_model">utility.writeoff</field>
         <field name="view_mode">tree,form</field>
     </record>
 
     <record id="action_utility_deposit" model="ir.actions.act_window">
-        <field name="name">Deposits</field>
+        <field name="name">التأمينات</field>
         <field name="res_model">utility.deposit</field>
         <field name="view_mode">tree,form</field>
     </record>
 
     <record id="action_utility_penalty" model="ir.actions.act_window">
-        <field name="name">Penalties</field>
+        <field name="name">الغرامات</field>
         <field name="res_model">utility.penalty</field>
         <field name="view_mode">tree,form</field>
     </record>
 
-    <menuitem id="menu_utility_billing_root" name="Utility Billing"
+    <menuitem id="menu_utility_billing_root" name="الفوترة الآجلة"
               sequence="20" parent="utility_core.menu_utility_root"/>
 
-    <menuitem id="menu_utility_readings" name="Readings"
+    <menuitem id="menu_utility_readings" name="القراءات"
               parent="menu_utility_billing_root" sequence="10"/>
 
-    <menuitem id="menu_utility_billing" name="Billing"
+    <menuitem id="menu_utility_billing" name="الفوترة"
               parent="menu_utility_billing_root" sequence="20"/>
 
-    <menuitem id="menu_utility_accounting" name="Accounting"
+    <menuitem id="menu_utility_accounting" name="المحاسبة"
               parent="menu_utility_billing_root" sequence="40"/>
 
-    <menuitem id="menu_utility_writeoffs" name="Writeoffs"
+    <menuitem id="menu_utility_writeoffs" name="الإعفاءات"
               parent="menu_utility_accounting" sequence="10"
               action="action_utility_writeoff"/>
 
-    <menuitem id="menu_utility_deposits" name="Deposits"
+    <menuitem id="menu_utility_deposits" name="التأمينات"
               parent="menu_utility_accounting" sequence="20"
               action="action_utility_deposit"/>
 
-    <menuitem id="menu_utility_penalties" name="Penalties"
+    <menuitem id="menu_utility_penalties" name="الغرامات"
               parent="menu_utility_accounting" sequence="30"
               action="action_utility_penalty"/>
 
     <record id="action_utility_penalty_type" model="ir.actions.act_window">
-        <field name="name">Penalty Types</field>
+        <field name="name">أنواع الغرامات</field>
         <field name="res_model">utility.penalty.type</field>
         <field name="view_mode">tree,form</field>
     </record>
 
-    <menuitem id="menu_utility_penalty_type" name="Penalty Types"
+    <menuitem id="menu_utility_penalty_type" name="أنواع الغرامات"
               parent="utility_core.menu_utility_config" sequence="45"
               action="action_utility_penalty_type"/>
 </odoo>

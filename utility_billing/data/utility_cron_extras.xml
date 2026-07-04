@@ -83,4 +83,28 @@
         <field name="numbercall">-1</field>
         <field name="active">True</field>
     </record>
+
+    <record id="ir_cron_create_disconnection_orders" model="ir.cron">
+        <field name="name">ERP الكهرباء: إنشاء أوامر الفصل للمتأخرات</field>
+        <field name="model_id" ref="sale.model_sale_order"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_create_disconnection_orders()</field>
+        <field name="user_id" ref="base.user_root"/>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="numbercall">-1</field>
+        <field name="active">True</field>
+    </record>
+
+    <record id="ir_cron_dispatch_sms_notifications" model="ir.cron">
+        <field name="name">ERP الكهرباء: إرسال إشعارات SMS المعلقة</field>
+        <field name="model_id" ref="utility_core.model_utility_notification_log"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_dispatch_sms_notifications()</field>
+        <field name="user_id" ref="base.user_root"/>
+        <field name="interval_number">10</field>
+        <field name="interval_type">minutes</field>
+        <field name="numbercall">-1</field>
+        <field name="active">True</field>
+    </record>
 </odoo>

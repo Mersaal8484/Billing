@@ -3,7 +3,7 @@ from odoo import api, fields, models, _
 
 class UtilityInstallation(models.Model):
     _name = 'utility.installation'
-    _description = 'Utility Installation'
+    _description = 'تركيبة'
     _order = 'installation_date desc'
 
     active = fields.Boolean(default=True)
@@ -19,7 +19,7 @@ class UtilityInstallation(models.Model):
     installer_id = fields.Many2one('res.users', 'Installer')
     address = fields.Text('Address')
     seal_number = fields.Char('Seal Number')
-    photo_ids = fields.One2many('ir.attachment', 'res_id', string='Photos',
+    photo_ids = fields.One2many('ir.attachment', 'res_id', string='الصور',
                                 domain=[('res_model', '=', 'utility.installation')])
     notes = fields.Text('Notes')
     state = fields.Selection([
@@ -27,7 +27,7 @@ class UtilityInstallation(models.Model):
         ('installed', 'Installed'),
         ('verified', 'Verified'),
         ('failed', 'Failed'),
-    ], string='State', default='draft')
+    ], string='الحالة', default='draft')
 
     @api.model_create_multi
     def create(self, vals_list):

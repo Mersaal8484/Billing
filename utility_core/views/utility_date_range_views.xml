@@ -79,7 +79,6 @@
                 <field name="type_id"/>
                 <field name="date_start"/>
                 <field name="date_end"/>
-                <field name="region_id" optional="show"/>
                 <field name="billing_period" widget="badge"
                        decoration-info="billing_period == 'weekly'"
                        decoration-primary="billing_period == 'biweekly'"
@@ -143,20 +142,17 @@
                         <group string="إعدادات الفوترة">
                             <field name="billing_period"/>
                             <field name="work_type"/>
-                            <field name="region_id" options="{'no_create': True}"/>
                         </group>
                     </group>
 
                     <group>
                         <group string="الترابط الزمني">
-                            <field name="parent_id" options="{'no_create': True}"/>
+                            <field name="parent_id"
+                                   string="الفترة الرئيسية / فترة القراءة المرتبطة"
+                                   options="{'no_create': True}"
+                                   attrs="{'required': [('work_type', '=', 'payment')]}"/>
                             <field name="previous_range_id" options="{'no_create': True}"/>
                             <field name="next_range_id" readonly="1" options="{'no_create': True}"/>
-                        </group>
-                        <group string="المناطق المرتبطة">
-                            <field name="region_ids" widget="many2many_tags"
-                                   options="{'no_create': True}"
-                                   nolabel="1"/>
                         </group>
                     </group>
 
@@ -177,7 +173,6 @@
             <search string="بحث في الفترات الزمنية">
                 <field name="name"/>
                 <field name="type_id"/>
-                <field name="region_id"/>
 
                 <!-- فلاتر الحالة -->
                 <filter string="الفترات النشطة" name="current_periods"
@@ -204,7 +199,6 @@
                     <filter string="النوع"           name="group_type_id"      context="{'group_by': 'type_id'}"/>
                     <filter string="دورة الفوترة"    name="group_billing"      context="{'group_by': 'billing_period'}"/>
                     <filter string="نوع العمل"       name="group_work_type"    context="{'group_by': 'work_type'}"/>
-                    <filter string="المنطقة"         name="group_region_id"    context="{'group_by': 'region_id'}"/>
                     <filter string="الفترة الرئيسية" name="group_parent_id"   context="{'group_by': 'parent_id'}"/>
                 </group>
             </search>

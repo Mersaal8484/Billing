@@ -3,7 +3,7 @@ from odoo import api, fields, models, _
 
 class UtilityInspection(models.Model):
     _name = 'utility.inspection'
-    _description = 'Utility Inspection'
+    _description = 'معاينة'
     _order = 'inspection_date desc'
 
     active = fields.Boolean(default=True)
@@ -20,12 +20,12 @@ class UtilityInspection(models.Model):
         ('tamper', 'Tamper'),
         ('safety', 'Safety'),
         ('theft', 'Theft'),
-    ], string='Inspection Type', required=True)
+    ], string='نوع المعاينة', required=True)
     inspector_id = fields.Many2one('res.users', 'Inspector')
     inspection_date = fields.Datetime('Inspection Date', default=fields.Datetime.now)
     findings = fields.Text('Findings')
     condition_rating = fields.Integer('Condition Rating (1-5)')
-    photos = fields.One2many('ir.attachment', 'res_id', string='Photos',
+    photos = fields.One2many('ir.attachment', 'res_id', string='الصور',
                              domain=[('res_model', '=', 'utility.inspection')])
     address = fields.Text('Address')
     customer_signature = fields.Binary('Customer Signature')
@@ -36,7 +36,7 @@ class UtilityInspection(models.Model):
         ('scheduled', 'Scheduled'),
         ('completed', 'Completed'),
         ('cancelled', 'Cancelled'),
-    ], string='State', default='scheduled')
+    ], string='الحالة', default='scheduled')
 
     @api.model_create_multi
     def create(self, vals_list):

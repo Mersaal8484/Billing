@@ -45,13 +45,13 @@
                             </group>
                         </group>
                         <notebook>
-                            <page string="Description">
+                            <page string="الوصف">
                                 <field name="description" nolabel="1"/>
                             </page>
-                            <page string="Evidence">
+                            <page string="الإثباتات">
                                 <field name="evidence_notes" nolabel="1"/>
                             </page>
-                            <page string="Financial">
+                            <page string="المالية">
                                 <group>
                                     <group>
                                         <field name="estimated_loss"/>
@@ -68,7 +68,7 @@
         </record>
 
         <record id="action_utility_tamper_case" model="ir.actions.act_window">
-            <field name="name">Tamper Cases</field>
+            <field name="name">حالات التلاعب</field>
             <field name="res_model">utility.tamper.case</field>
             <field name="view_mode">tree,form</field>
         </record>

@@ -1,304 +1,113 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <data noupdate="0">
+    <data noupdate="1">
 
-        <!-- ==================== 1. DATE RANGE TYPE & CYCLES ==================== -->
-        <record id="demo_date_range_type_monthly" model="date.range.type">
-            <field name="name">دورة فوترة شهرية - اليمن</field>
+        <!-- ==================== 1. DATE RANGE TYPES ==================== -->
+
+        <!-- سنة مالية -->
+        <record id="demo_date_range_type_yearly" model="date.range.type">
+            <field name="name">سنة مالية</field>
             <field name="allow_overlap" eval="False"/>
+            <field name="fiscal_year" eval="True"/>
+            <field name="default_billing_period">yearly</field>
         </record>
 
-        <record id="demo_billing_cycle_may" model="date.range">
-            <field name="name">دورة فوترة مايو 2024</field>
-            <field name="type_id" ref="demo_date_range_type_monthly"/>
-            <field name="date_start">2024-05-01</field>
-            <field name="date_end">2024-05-31</field>
-            <field name="billing_period">monthly</field>
-            <field name="region_id" ref="utility_core.demo_region_central"/>
-            <field name="work_type">readings</field>
-            <field name="is_current_period" eval="False"/>
+        <!-- دورة شهرية -->
+        <record id="demo_date_range_type_monthly" model="date.range.type">
+            <field name="name">دورة فوترة شهرية</field>
+            <field name="allow_overlap" eval="True"/>
+            <field name="default_billing_period">monthly</field>
         </record>
 
-        <record id="demo_billing_cycle_june" model="date.range">
-            <field name="name">دورة فوترة يونيو 2024 (الحالية)</field>
+        <!-- دورة نصف شهرية -->
+        <record id="demo_date_range_type_biweekly" model="date.range.type">
+            <field name="name">دورة فوترة نصف شهرية</field>
+            <field name="allow_overlap" eval="True"/>
+            <field name="default_billing_period">biweekly</field>
+        </record>
+
+        <!-- ==================== 2. السنة المالية ==================== -->
+        <record id="demo_fiscal_year_2026" model="date.range">
+            <field name="name">السنة المالية 2026</field>
+            <field name="type_id" ref="demo_date_range_type_yearly"/>
+            <field name="date_start">2026-01-01</field>
+            <field name="date_end">2026-12-31</field>
+            <field name="billing_period">yearly</field>
+            <field name="work_type">other</field>
+            <field name="is_current_period" eval="True"/>
+        </record>
+
+        <!-- ==================== 3. فترات القراءة (Readings) ==================== -->
+
+        <!-- فترة قراءة شهرية نشطة -->
+        <record id="demo_reading_monthly_july_2026" model="date.range">
+            <field name="name">فترة قراءة شهرية - يوليو 2026</field>
             <field name="type_id" ref="demo_date_range_type_monthly"/>
-            <field name="date_start">2024-06-01</field>
-            <field name="date_end">2024-06-30</field>
+            <field name="date_start">2026-07-01</field>
+            <field name="date_end">2026-07-31</field>
             <field name="billing_period">monthly</field>
-            <field name="region_id" ref="utility_core.demo_region_central"/>
             <field name="work_type">readings</field>
             <field name="is_current_period" eval="True"/>
         </record>
 
-        <!-- ==================== 2. METER READINGS ==================== -->
-        <!-- Reading 1: Previous reading for Mohammad Al-Yamani -->
-        <record id="demo_reading_ahmed_may" model="utility.reading">
-            <field name="meter_id" ref="utility_core.demo_meter_1"/>
-            <field name="reading_date">2024-05-31 10:00:00</field>
-            <field name="reading_value">1000.0</field>
-            <field name="previous_reading">800.0</field>
-            <field name="reading_type">manual</field>
-            <field name="reading_source">تطبيق القارئ الميداني (PEC)</field>
-            <field name="image_state">clear</field>
-            <field name="is_validated" eval="True"/>
-            <field name="state">approved</field>
-            <field name="date_range_id" ref="demo_billing_cycle_may"/>
-            <field name="remarks">قراءة شهر مايو سليمة ومطابقة</field>
+        <!-- فترة قراءة نصف شهرية (النصف الأول) نشطة -->
+        <record id="demo_reading_biweekly_july_2026_a" model="date.range">
+            <field name="name">فترة قراءة نصف شهرية - النصف الأول يوليو 2026</field>
+            <field name="type_id" ref="demo_date_range_type_biweekly"/>
+            <field name="date_start">2026-07-01</field>
+            <field name="date_end">2026-07-15</field>
+            <field name="billing_period">biweekly</field>
+            <field name="work_type">readings</field>
+            <field name="is_current_period" eval="True"/>
         </record>
 
-        <!-- Reading 2: Current reading for Mohammad Al-Yamani -->
-        <record id="demo_reading_ahmed_june" model="utility.reading">
-            <field name="meter_id" ref="utility_core.demo_meter_1"/>
-            <field name="reading_date">2024-06-28 11:30:00</field>
-            <field name="reading_value">1350.0</field>
-            <field name="previous_reading">1000.0</field>
-            <field name="reading_type">manual</field>
-            <field name="reading_source">تطبيق القارئ الميداني (PEC)</field>
-            <field name="image_state">clear</field>
-            <field name="is_validated" eval="True"/>
-            <field name="state">approved</field>
-            <field name="date_range_id" ref="demo_billing_cycle_june"/>
-            <field name="remarks">قراءة شهر يونيو معتمدة من مفتش أمانة العاصمة</field>
+        <!-- فترة قراءة نصف شهرية (النصف الثاني) - غير نشطة حتى يحين وقتها -->
+        <record id="demo_reading_biweekly_july_2026_b" model="date.range">
+            <field name="name">فترة قراءة نصف شهرية - النصف الثاني يوليو 2026</field>
+            <field name="type_id" ref="demo_date_range_type_biweekly"/>
+            <field name="date_start">2026-07-16</field>
+            <field name="date_end">2026-07-31</field>
+            <field name="billing_period">biweekly</field>
+            <field name="work_type">readings</field>
+            <field name="is_current_period" eval="False"/>
         </record>
 
-        <!-- Reading 3: Current reading for Saleh Al-Hamdani (Under Review) -->
-        <record id="demo_reading_fahd_june" model="utility.reading">
-            <field name="meter_id" ref="utility_core.demo_meter_2"/>
-            <field name="reading_date">2024-06-28 12:15:00</field>
-            <field name="reading_value">2450.0</field>
-            <field name="previous_reading">2100.0</field>
-            <field name="reading_type">manual</field>
-            <field name="reading_source">تطبيق القارئ الميداني (PEC)</field>
-            <field name="image_state">not_clear</field>
-            <field name="state">under_review</field>
-            <field name="date_range_id" ref="demo_billing_cycle_june"/>
-            <field name="remarks">يحتاج التحقق من الصورة لوجود انعكاس ضوئي على غطاء العداد</field>
+        <!-- ==================== 4. فترات التحصيل (Payment) ==================== -->
+
+        <!-- فترة تحصيل شهرية مرتبطة بفترة القراءة الشهرية -->
+        <record id="demo_payment_monthly_july_2026" model="date.range">
+            <field name="name">فترة تحصيل شهرية - يوليو 2026</field>
+            <field name="type_id" ref="demo_date_range_type_monthly"/>
+            <field name="date_start">2026-07-01</field>
+            <field name="date_end">2026-08-10</field>
+            <field name="billing_period">monthly</field>
+            <field name="work_type">payment</field>
+            <field name="parent_id" ref="demo_reading_monthly_july_2026"/>
+            <field name="is_current_period" eval="True"/>
         </record>
 
-        <!-- Reading 4: Current reading for Al-Hadhrami Commercial Est. (AMI / Smart Meter) -->
-        <record id="demo_reading_khalid_june" model="utility.reading">
-            <field name="meter_id" ref="utility_core.demo_meter_3"/>
-            <field name="reading_date">2024-06-29 01:00:00</field>
-            <field name="reading_value">5800.0</field>
-            <field name="previous_reading">4200.0</field>
-            <field name="reading_type">ami</field>
-            <field name="reading_source">نظام القراءة الذكية (PEC AMI Gateway)</field>
-            <field name="image_state">none</field>
-            <field name="is_validated" eval="True"/>
-            <field name="state">approved</field>
-            <field name="date_range_id" ref="demo_billing_cycle_june"/>
-            <field name="remarks">قراءة آلية واردة من نظام العدادات الذكية بصنعاء</field>
+        <!-- فترة تحصيل نصف شهرية مرتبطة بفترة القراءة (النصف الأول) -->
+        <record id="demo_payment_biweekly_july_2026_a" model="date.range">
+            <field name="name">فترة تحصيل نصف شهرية - النصف الأول يوليو 2026</field>
+            <field name="type_id" ref="demo_date_range_type_biweekly"/>
+            <field name="date_start">2026-07-01</field>
+            <field name="date_end">2026-07-25</field>
+            <field name="billing_period">biweekly</field>
+            <field name="work_type">payment</field>
+            <field name="parent_id" ref="demo_reading_biweekly_july_2026_a"/>
+            <field name="is_current_period" eval="True"/>
         </record>
 
-        <!-- ==================== 3. UTILITY BILLS (SALE ORDERS) ==================== -->
-        <!-- Bill 1: Mohammad Al-Yamani May Bill (PAID) -->
-        <record id="demo_bill_ahmed_may" model="sale.order">
-            <field name="partner_id" ref="utility_core.demo_partner_ahmed"/>
-            <field name="customer_id" ref="utility_core.demo_customer_1"/>
-            <field name="meter_id" ref="utility_core.demo_meter_1"/>
-            <field name="reading_id" ref="demo_reading_ahmed_may"/>
-            <field name="date_range_id" ref="demo_billing_cycle_may"/>
-            <field name="date_order">2024-05-31 12:00:00</field>
-            <field name="period_start">2024-05-01</field>
-            <field name="period_end">2024-05-31</field>
-            <field name="previous_reading">800.0</field>
-            <field name="current_reading">1000.0</field>
-            <field name="consumption">200.0</field>
-            <field name="contract_template_id" ref="utility_core.demo_contract_template_res"/>
-            <field name="amount_energy">70000.0</field>
-            <field name="amount_fixed">1500.0</field>
-            <field name="amount_service">1000.0</field>
-            <field name="bill_state">paid</field>
-            <field name="order_line" eval="[
-                (0, 0, {
-                    'product_id': ref('utility_core.utility_product_kwh'),
-                    'name': 'استهلاك كهرباء (200 kWh × 350 ريال يمني)',
-                    'product_uom_qty': 200.0,
-                    'price_unit': 350.0,
-                }),
-                (0, 0, {
-                    'product_id': ref('utility_core.utility_product_fixed_fee'),
-                    'name': 'رسوم اشتراك وصيانة العداد',
-                    'product_uom_qty': 1.0,
-                    'price_unit': 1500.0,
-                }),
-                (0, 0, {
-                    'product_id': ref('utility_core.utility_product_service_charge'),
-                    'name': 'رسوم خدمات الفوترة',
-                    'product_uom_qty': 1.0,
-                    'price_unit': 1000.0,
-                }),
-            ]"/>
-        </record>
-
-        <!-- Bill 2: Mohammad Al-Yamani June Bill (CONFIRMED / UNPAID) -->
-        <record id="demo_bill_ahmed_june" model="sale.order">
-            <field name="partner_id" ref="utility_core.demo_partner_ahmed"/>
-            <field name="customer_id" ref="utility_core.demo_customer_1"/>
-            <field name="meter_id" ref="utility_core.demo_meter_1"/>
-            <field name="reading_id" ref="demo_reading_ahmed_june"/>
-            <field name="date_range_id" ref="demo_billing_cycle_june"/>
-            <field name="date_order">2024-06-28 14:00:00</field>
-            <field name="period_start">2024-06-01</field>
-            <field name="period_end">2024-06-28</field>
-            <field name="previous_reading">1000.0</field>
-            <field name="current_reading">1350.0</field>
-            <field name="consumption">350.0</field>
-            <field name="contract_template_id" ref="utility_core.demo_contract_template_res"/>
-            <field name="amount_energy">122500.0</field>
-            <field name="amount_fixed">1500.0</field>
-            <field name="amount_service">1000.0</field>
-            <field name="bill_state">confirmed</field>
-            <field name="order_line" eval="[
-                (0, 0, {
-                    'product_id': ref('utility_core.utility_product_kwh'),
-                    'name': 'استهلاك كهرباء (350 kWh × 350 ريال يمني)',
-                    'product_uom_qty': 350.0,
-                    'price_unit': 350.0,
-                }),
-                (0, 0, {
-                    'product_id': ref('utility_core.utility_product_fixed_fee'),
-                    'name': 'رسوم اشتراك وصيانة العداد',
-                    'product_uom_qty': 1.0,
-                    'price_unit': 1500.0,
-                }),
-                (0, 0, {
-                    'product_id': ref('utility_core.utility_product_service_charge'),
-                    'name': 'رسوم خدمات الفوترة',
-                    'product_uom_qty': 1.0,
-                    'price_unit': 1000.0,
-                }),
-            ]"/>
-        </record>
-
-        <!-- Bill 3: Al-Hadhrami Commercial Est. June Bill (CONFIRMED / OVERDUE) -->
-        <record id="demo_bill_khalid_june" model="sale.order">
-            <field name="partner_id" ref="utility_core.demo_partner_khalid"/>
-            <field name="customer_id" ref="utility_core.demo_customer_3"/>
-            <field name="meter_id" ref="utility_core.demo_meter_3"/>
-            <field name="reading_id" ref="demo_reading_khalid_june"/>
-            <field name="date_range_id" ref="demo_billing_cycle_june"/>
-            <field name="date_order">2024-06-29 09:00:00</field>
-            <field name="period_start">2024-06-01</field>
-            <field name="period_end">2024-06-29</field>
-            <field name="previous_reading">4200.0</field>
-            <field name="current_reading">5800.0</field>
-            <field name="consumption">1600.0</field>
-            <field name="contract_template_id" ref="utility_core.demo_contract_template_com"/>
-            <field name="amount_energy">720000.0</field>
-            <field name="amount_fixed">2500.0</field>
-            <field name="amount_service">1000.0</field>
-            <field name="bill_state">overdue</field>
-            <field name="order_line" eval="[
-                (0, 0, {
-                    'product_id': ref('utility_core.utility_product_kwh'),
-                    'name': 'استهلاك كهرباء تجاري (1600 kWh × 450 ريال يمني)',
-                    'product_uom_qty': 1600.0,
-                    'price_unit': 450.0,
-                }),
-                (0, 0, {
-                    'product_id': ref('utility_core.utility_product_fixed_fee'),
-                    'name': 'رسوم اشتراك تجارية',
-                    'product_uom_qty': 1.0,
-                    'price_unit': 2500.0,
-                }),
-                (0, 0, {
-                    'product_id': ref('utility_core.utility_product_service_charge'),
-                    'name': 'رسوم صيانة عداد تجاري 3-Phase',
-                    'product_uom_qty': 1.0,
-                    'price_unit': 1000.0,
-                }),
-            ]"/>
-        </record>
-
-        <!-- ==================== 4. CASHIER SHIFT & PAYMENTS ==================== -->
-        <!-- Cashier Shift -->
-        <record id="demo_cashier_shift_billing" model="utility.cashier.shift">
-            <field name="name">وردية الصراف الرئيسي صنعاء - يونيو 2024</field>
-            <field name="cashier_id" ref="base.user_admin"/>
-            <field name="start_time">2024-06-29 08:00:00</field>
-            <field name="opening_balance">500000.0</field>
-            <field name="state">open</field>
-        </record>
-
-        <!-- Payment 1: Collection for Mohammad Al-Yamani May Bill -->
-        <record id="demo_payment_ahmed_may" model="account.payment">
-            <field name="payment_type">inbound</field>
-            <field name="partner_type">customer</field>
-            <field name="partner_id" ref="utility_core.demo_partner_ahmed"/>
-            <field name="amount">72500.0</field>
-            <field name="date">2024-06-05</field>
-            <field name="ref">سداد فاتورة مايو - البريد اليمني / محفظة بنكية</field>
-            <field name="utility_sale_order_id" ref="demo_bill_ahmed_may"/>
-            <field name="utility_payment_method">electronic</field>
-            <field name="electronic_doc_no">YEM-POST-9876543</field>
-            <field name="is_invoice_verified" eval="True"/>
-            <field name="cashier_shift_id" ref="demo_cashier_shift_billing"/>
-        </record>
-
-        <!-- Payment 2: Partial Collection for Mohammad Al-Yamani June Bill -->
-        <record id="demo_payment_ahmed_june_part" model="account.payment">
-            <field name="payment_type">inbound</field>
-            <field name="partner_type">customer</field>
-            <field name="partner_id" ref="utility_core.demo_partner_ahmed"/>
-            <field name="amount">50000.0</field>
-            <field name="date">2024-06-29</field>
-            <field name="ref">سداد دفعة مقدمة لفاتورة يونيو - توريد نقدي بالريال اليمني</field>
-            <field name="utility_sale_order_id" ref="demo_bill_ahmed_june"/>
-            <field name="utility_payment_method">cash</field>
-            <field name="is_invoice_verified" eval="True"/>
-            <field name="cashier_shift_id" ref="demo_cashier_shift_billing"/>
-        </record>
-
-        <!-- ==================== 5. PENALTIES ==================== -->
-        <record id="demo_penalty_type_late" model="utility.penalty.type">
-            <field name="name">غرامة تأخير سداد</field>
-            <field name="code">late_payment</field>
-        </record>
-
-        <!-- Penalty for Al-Hadhrami Commercial Est Overdue Bill -->
-        <record id="demo_penalty_khalid" model="utility.penalty">
-            <field name="sale_order_id" ref="demo_bill_khalid_june"/>
-            <field name="customer_id" ref="utility_core.demo_customer_3"/>
-            <field name="penalty_type_id" ref="demo_penalty_type_late"/>
-            <field name="amount">15000.0</field>
-            <field name="calculated_date">2024-06-30</field>
-            <field name="reason">غرامة تأخير سداد الفاتورة التجارية لشهر يونيو (15,000 ريال يمني)</field>
-            <field name="state">calculated</field>
-        </record>
-
-        <!-- ==================== 6. DEPOSITS ==================== -->
-        <!-- Security Deposit for Al-Hadhrami Commercial Account -->
-        <record id="demo_deposit_khalid" model="utility.deposit">
-            <field name="customer_id" ref="utility_core.demo_customer_3"/>
-            <field name="meter_id" ref="utility_core.demo_meter_3"/>
-            <field name="amount">150000.0</field>
-            <field name="deposit_date">2024-01-15</field>
-            <field name="deposit_type">security</field>
-            <field name="status">held</field>
-            <field name="notes">تأمين عداد تجاري 3-Phase محجوز لدى المؤسسة العامة للكهرباء حتى نهاية العقد</field>
-        </record>
-
-        <!-- ==================== 7. FINANCIAL SETTLEMENTS ==================== -->
-        <!-- Credit Settlement (Discount / Rebate) for Saleh Al-Hamdani -->
-        <record id="demo_settlement_fahd" model="utility.financial.settlement">
-            <field name="account_id" ref="utility_core.demo_customer_2"/>
-            <field name="settlement_type">credit</field>
-            <field name="amount">25000.0</field>
-            <field name="date">2024-06-25</field>
-            <field name="reason">تسوية مالية وتعويض عن انقطاع وعطل في شبكة توزيع الصافية (25,000 ريال يمني)</field>
-            <field name="state">draft</field>
-        </record>
-
-        <!-- ==================== 8. WRITEOFFS ==================== -->
-        <!-- Writeoff request for an old uncollectible balance -->
-        <record id="demo_writeoff_ahmed" model="utility.writeoff">
-            <field name="customer_id" ref="utility_core.demo_customer_1"/>
-            <field name="sale_order_id" ref="demo_bill_ahmed_may"/>
-            <field name="amount">1500.0</field>
-            <field name="reason">إعفاء من متبقي رسوم تسوية سابقة بناءً على توجيه مدير المنطقة المركزية</field>
-            <field name="state">approved</field>
-            <field name="approved_by" ref="base.user_admin"/>
+        <!-- فترة تحصيل نصف شهرية مرتبطة بفترة القراءة (النصف الثاني) - غير نشطة -->
+        <record id="demo_payment_biweekly_july_2026_b" model="date.range">
+            <field name="name">فترة تحصيل نصف شهرية - النصف الثاني يوليو 2026</field>
+            <field name="type_id" ref="demo_date_range_type_biweekly"/>
+            <field name="date_start">2026-07-16</field>
+            <field name="date_end">2026-08-10</field>
+            <field name="billing_period">biweekly</field>
+            <field name="work_type">payment</field>
+            <field name="parent_id" ref="demo_reading_biweekly_july_2026_b"/>
+            <field name="is_current_period" eval="False"/>
         </record>
 
     </data>

@@ -3,7 +3,7 @@ from odoo import api, fields, models, _
 
 class UtilityConnection(models.Model):
     _name = 'utility.connection'
-    _description = 'Utility Connection'
+    _description = 'توصيلة كهرباء'
     _order = 'id desc'
 
     active = fields.Boolean(default=True)
@@ -18,7 +18,7 @@ class UtilityConnection(models.Model):
         ('active', 'Active'),
         ('disconnected', 'Disconnected'),
         ('suspended', 'Suspended'),
-    ], string='Status', default='active')
+    ], string='الحالة', default='active')
     address = fields.Text('Address')
     notes = fields.Text('Notes')
 
@@ -32,7 +32,7 @@ class UtilityConnection(models.Model):
 
 class UtilityConnectionType(models.Model):
     _name = 'utility.connection.type'
-    _description = 'Utility Connection Type'
+    _description = 'نوع التوصيلة'
     _order = 'name'
 
     name = fields.Char('Name', required=True)
@@ -41,10 +41,10 @@ class UtilityConnectionType(models.Model):
         ('lv', 'Low Voltage'),
         ('mv', 'Medium Voltage'),
         ('hv', 'High Voltage'),
-    ], string='Voltage Level')
+    ], string='مستوى الجهد')
     phase = fields.Selection([
         ('single', 'Single Phase'),
         ('three', 'Three Phase'),
-    ], string='Phase')
+    ], string='الطور')
     description = fields.Text('Description')
 

@@ -43,6 +43,7 @@
                 <field name="customer_id" string="اسم المشترك"/>
                 <field name="meter_id" string="العداد"/>
                 <field name="reading_date" string="التاريخ"/>
+                <field name="date_range_id" optional="show" string="الفترة"/>
                 <field name="reading_value" string="القراءة الحالية"/>
                 <field name="consumption" string="الاستهلاك"/>
                 <field name="consumption_alert" widget="badge" decoration-danger="consumption_alert in ('high','negative','zero')" decoration-success="consumption_alert == 'normal'" string="الاستهلاك"/>
@@ -99,42 +100,46 @@
                     </div>
                     <group>
                         <group string="معلومات القراءة">
-                            <field name="reading_category" />
-                            <field name="reading_id"/>
-                            <field name="meter_id" options="{'no_create': True}"/>
+                            <field name="reading_category" attrs="{'readonly': [('state', '!=', 'draft')]}"/>
+                            <field name="reading_id" readonly="1"/>
+                            <field name="meter_id" options="{'no_create': True}" attrs="{'readonly': [('state', '!=', 'draft')]}"/>
                             <field name="transformer_id" attrs="{'invisible': [('reading_category', '!=', 'transformer')]}"/>
                             <field name="is_private_transformer" invisible="1"/>
                             <field name="feeder_id" attrs="{'invisible': [('reading_category', '!=', 'feeder')]}"/>
                             <field name="account_id" attrs="{'invisible': ['&amp;', ('reading_category', '!=', 'customer'), '|', ('reading_category', '!=', 'transformer'), ('is_private_transformer', '=', False)]}"/>
                             <field name="customer_id" attrs="{'invisible': ['&amp;', ('reading_category', '!=', 'customer'), '|', ('reading_category', '!=', 'transformer'), ('is_private_transformer', '=', False)]}"/>
-                            <field name="reading_date"/>
-                            <field name="reading_type"/>
+                            <field name="reading_date" attrs="{'readonly': [('state', 'not in', ('draft', 'error'))]}"/>
+                            <field name="date_range_id" options="{'no_create': True}" attrs="{'readonly': [('state', 'not in', ('draft', 'error'))]}"/>
+                            <field name="reading_type" attrs="{'readonly': [('state', '!=', 'draft')]}"/>
                         </group>
                         <group string="قراءات العداد">
-                            <field name="previous_reading"/>
-                            <field name="previous_reading_date"/>
-                            <field name="reading_value"/>
-                            <field name="consumption" class="text-success"/>
+                            <field name="previous_reading" readonly="1"/>
+                            <field name="previous_reading_date" readonly="1"/>
+                            <field name="reading_value" attrs="{'readonly': [('state', 'not in', ('draft', 'error'))]}"/>
+                            <field name="consumption" class="text-success" readonly="1"/>
                             <!-- تحليل الاستهلاك -->
                             <field name="consumption_difference" attrs="{'invisible': [('consumption_alert', '=', 'normal')]}"/>
                             <field name="consumption_diff_percentage" attrs="{'invisible': [('consumption_alert', '=', 'normal')]}"/>
-                            <field name="consumption_alert" widget="badge"/>
+                            <field name="consumption_alert" widget="badge" readonly="1"/>
                         </group>
                     </group>
                     <group string="صور العداد">
                         <field name="meter_image" widget="image"
-                               class="oe_avatar" options="{'size': [200, 150]}"/>
+                               class="oe_avatar" options="{'size': [200, 150]}"
+                               attrs="{'readonly': [('state', 'not in', ('draft', 'under_review', 'error'))]}"/>
                         <field name="meter_image_secondary" widget="image"
-                               class="oe_avatar" options="{'size': [200, 150]}"/>
+                               class="oe_avatar" options="{'size': [200, 150]}"
+                               attrs="{'readonly': [('state', 'not in', ('draft', 'under_review', 'error'))]}"/>
                     </group>
                     <group string="المراجعة" groups="utility_core.group_utility_supervisor">
-                        <field name="image_state"/>
-                        <field name="reviewer_id"/>
-                        <field name="review_date"/>
-                        <field name="review_notes"/>
-                        <field name="rejection_reason" attrs="{'invisible': [('rejection_reason', '=', False)]}"/>
+                        <field name="image_state" attrs="{'readonly': [('state', 'not in', ('draft', 'under_review', 'error'))]}"/>
+                        <field name="reviewer_id" readonly="1"/>
+                        <field name="review_date" readonly="1"/>
+                        <field name="review_notes" attrs="{'readonly': [('state', '!=', 'under_review')]}"/>
+                        <field name="rejection_reason" attrs="{'readonly': [('state', 'in', ('queued', 'billed'))]}"/>
                     </group>
-                    <field name="remarks" nolabel="1" placeholder="ملاحظات إضافية..."/>
+                    <field name="remarks" nolabel="1" placeholder="ملاحظات إضافية..."
+                           attrs="{'readonly': [('state', 'not in', ('draft', 'error'))]}"/>
                     <group string="خطأ الفوترة" attrs="{'invisible': [('billing_error', '=', False)]}">
                         <field name="billing_error" nolabel="1" readonly="1"/>
                     </group>
@@ -271,7 +276,7 @@
     </record>
 
     <!-- ======================= MENU ITEM ======================= -->
-    <menuitem id="menu_utility_meter_readings" name="Meter Readings"
+    <menuitem id="menu_utility_meter_readings" name="قراءات العدادات"
               parent="menu_utility_readings" sequence="10"
               action="action_utility_reading"/>
 

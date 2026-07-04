@@ -8,39 +8,39 @@ _logger = logging.getLogger(__name__)
 
 class UtilityToken(models.Model):
     _name = 'utility.token'
-    _description = 'Utility Token'
+    _description = 'رمز STS'
     _rec_name = 'token_number'
     _inherit = ['mail.thread', 'mail.activity.mixin']
 
     active = fields.Boolean(default=True)
     company_id = fields.Many2one('res.company', default=lambda self: self.env.company)
-    token_number = fields.Char(string='Token Number', index=True)
-    token_identifier = fields.Char(string='Token Identifier (TID)')
-    sequence_number = fields.Integer(string='Sequence Number')
-    pos_order_id = fields.Many2one('pos.order', string='POS Order', required=True, ondelete='cascade')
-    account_id = fields.Many2one('utility.customer', string='Account', required=True)
-    meter_id = fields.Many2one('utility.meter', string='Meter', required=True)
-    customer_id = fields.Many2one('res.partner', string='Customer', required=True)
+    token_number = fields.Char(string='رقم الكود', index=True)
+    token_identifier = fields.Char(string='معرف الكود (TID)')
+    sequence_number = fields.Integer(string='الرقم التسلسلي')
+    pos_order_id = fields.Many2one('pos.order', string='أمر نقاط البيع', required=True, ondelete='cascade')
+    account_id = fields.Many2one('utility.customer', string='الحساب', required=True)
+    meter_id = fields.Many2one('utility.meter', string='العداد', required=True)
+    customer_id = fields.Many2one('res.partner', string='العميل', required=True)
     contract_template_id = fields.Many2one('utility.contract.template', string='قالب العقد')
-    amount = fields.Monetary(string='Amount')
+    amount = fields.Monetary(string='المبلغ')
     currency_id = fields.Many2one('res.currency', related='company_id.currency_id')
-    kwh = fields.Float(string='kWh')
-    request_date = fields.Datetime(default=fields.Datetime.now, string='Request Date')
-    response_date = fields.Datetime(string='Response Date')
-    response_code = fields.Char(string='Response Code')
-    response_message = fields.Text(string='Response Message')
+    kwh = fields.Float(string='كيلوواط ساعة')
+    request_date = fields.Datetime(default=fields.Datetime.now, string='تاريخ الطلب')
+    response_date = fields.Datetime(string='تاريخ الرد')
+    response_code = fields.Char(string='رمز الرد')
+    response_message = fields.Text(string='رسالة الرد')
     status = fields.Selection([
         ('pending', 'Pending'),
         ('success', 'Success'),
         ('failed', 'Failed'),
         ('retry', 'Retry'),
         ('cancelled', 'Cancelled'),
-    ], default='pending', string='Status', tracking=True)
-    retry_count = fields.Integer(string='Retry Count', default=0)
-    last_retry_date = fields.Datetime(string='Last Retry Date')
-    raw_request = fields.Text(string='Raw Request')
-    raw_response = fields.Text(string='Raw Response')
-    sts_server = fields.Char(string='STS Server')
+    ], default='pending', string='الحالة', tracking=True)
+    retry_count = fields.Integer(string='عدد إعادة المحاولة', default=0)
+    last_retry_date = fields.Datetime(string='تاريخ آخر محاولة')
+    raw_request = fields.Text(string='الطلب الخام')
+    raw_response = fields.Text(string='الرد الخام')
+    sts_server = fields.Char(string='خادم STS')
 
     def action_request_token(self):
         self.ensure_one()

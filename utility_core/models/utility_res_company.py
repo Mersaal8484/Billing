@@ -51,3 +51,12 @@ class ResCompany(models.Model):
         'product.product',
         string='منتج المجالس المحلية',
         check_company=True)
+
+    writeoff_account_id = fields.Many2one(
+        'account.account',
+        string='حساب الإعفاءات',
+        check_company=True)
+    collection_journal_id = fields.Many2one(
+        'account.journal',
+        string='يومية التحصيل الافتراضية',
+        check_company=True)

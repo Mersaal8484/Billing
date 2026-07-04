@@ -2,7 +2,7 @@ from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
 
 
-# ثوابت مشتركة — متزامنة مع utility.region.recurring_rule_type
+# ثوابت مشتركة
 BILLING_PERIOD_TYPES = [
     ('daily',         'يومي'),
     ('weekly',        'أسبوعي'),
@@ -61,23 +61,6 @@ class DateRange(models.Model):
         store=False
     )
 
-    # ===== المنطقة =====
-    region_id = fields.Many2one(
-        'utility.region',
-        string="المنطقة",
-        domain="[('type', '=', 'region')]",
-        index=True,
-        help="المنطقة الجغرافية المرتبطة بهذه الفترة"
-    )
-    region_ids = fields.Many2many(
-        'utility.region',
-        'date_range_region_rel',
-        'date_range_id', 'region_id',
-        string="المناطق",
-        domain="[('type', '=', 'region')]",
-        help="يمكن ربط الفترة بأكثر من منطقة"
-    )
-
     # ===== الفوترة والعمل =====
     billing_period = fields.Selection(
         BILLING_PERIOD_TYPES,
@@ -121,7 +104,7 @@ class DateRange(models.Model):
             rec.next_range_id = next_range.id if next_range else False
 
     # ===== Constraints =====
-    @api.constrains('is_current_period', 'billing_period', 'work_type', 'region_id')
+    @api.constrains('is_current_period', 'billing_period', 'work_type')
     def _check_single_active_period(self):
         for record in self:
             if not record.is_current_period:
@@ -132,35 +115,50 @@ class DateRange(models.Model):
                 ('work_type',         '=', record.work_type),
                 ('id',                '!=', record.id),
             ]
-            if record.region_id:
-                domain.append(('region_id', '=', record.region_id.id))
 
             if self.search_count(domain) > 0:
                 raise ValidationError(
                     _("لا يمكن أن يكون هناك أكثر من فترة نشطة واحدة لنفس "
-                      "نوع الفوترة ونوع العمل والمنطقة.")
+                      "نوع الفوترة ونوع العمل.")
+                )
+
+    @api.constrains('work_type', 'parent_id', 'billing_period')
+    def _check_payment_period_reading_parent(self):
+        for record in self:
+            if record.work_type != 'payment':
+                continue
+            if not record.parent_id:
+                raise ValidationError(
+                    _("يجب ربط فترة الدفع بفترة قراءة عبر حقل الفترة الرئيسية.")
+                )
+            if record.parent_id.work_type != 'readings':
+                raise ValidationError(
+                    _("فترة الدفع يجب أن تكون مرتبطة بفترة قراءة فقط.")
+                )
+            if record.billing_period != record.parent_id.billing_period:
+                raise ValidationError(
+                    _("يجب أن تكون دورة فوترة فترة الدفع مطابقة لدورة فترة القراءة المرتبطة.")
                 )
 
     # ===== Onchange =====
-    @api.onchange('billing_period')
-    def _onchange_billing_period(self):
-        """ربط المنطقة تلقائياً إذا كانت المنطقة الوحيدة تتطابق مع دورة الفوترة"""
-        if self.billing_period:
-            regions = self.env['utility.region'].search([
-                ('type', '=', 'region'),
-                ('recurring_rule_type', '=', self.billing_period),
-            ])
-            if len(regions) == 1:
-                self.region_id = regions.id
-                self.region_ids = [(6, 0, regions.ids)]
-            elif len(regions) > 1:
-                self.region_ids = [(6, 0, regions.ids)]
-
     @api.onchange('type_id')
     def _onchange_type_id(self):
         """استيراد دورة الفوترة الافتراضية من النوع"""
         if self.type_id and self.type_id.default_billing_period:
             self.billing_period = self.type_id.default_billing_period
+
+    @api.onchange('work_type')
+    def _onchange_work_type(self):
+        if self.work_type != 'payment':
+            return {'domain': {'parent_id': []}}
+        if self.parent_id and self.parent_id.work_type != 'readings':
+            self.parent_id = False
+        return {'domain': {'parent_id': [('work_type', '=', 'readings')]}}
+
+    @api.onchange('parent_id')
+    def _onchange_parent_id(self):
+        if self.work_type == 'payment' and self.parent_id:
+            self.billing_period = self.parent_id.billing_period
 
     # ===== Actions =====
     def action_set_as_current(self):
@@ -172,8 +170,6 @@ class DateRange(models.Model):
             ('work_type',         '=', self.work_type),
             ('id',                '!=', self.id),
         ]
-        if self.region_id:
-            domain.append(('region_id', '=', self.region_id.id))
         self.search(domain).write({'is_current_period': False})
         self.is_current_period = True
         return {

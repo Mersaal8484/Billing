@@ -60,7 +60,7 @@
         <field name="view_mode">tree,form</field>
     </record>
 
-    <menuitem id="menu_utility_financial_settlement" name="Financial Settlements"
+    <menuitem id="menu_utility_financial_settlement" name="التسويات المالية"
               parent="utility_billing.menu_utility_accounting" sequence="40"
               action="action_utility_financial_settlement"/>
 </odoo>

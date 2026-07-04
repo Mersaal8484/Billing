@@ -9,16 +9,15 @@
             <tree decoration-muted="active == False">
                 <field name="name"/>
                 <field name="code"/>
-                <field name="zone_id"/>
-                <field name="area_id" optional="show"/>
                 <field name="substation_id" optional="show"/>
+                <field name="zone_id" optional="show"/>
+                <field name="area_id" optional="show"/>
                 <field name="voltage_level" widget="badge" optional="show"/>
                 <field name="rated_capacity" optional="show"/>
                 <field name="load_percentage" widget="progressbar" optional="show"/>
                 <field name="coupling_meter_id" optional="show"/>
-                <field name="customer_count" string="مشتركون" optional="show"/>
+                <field name="transformer_count" string="محولات" optional="show"/>
                 <field name="supplied_kwh" string="مزوّد (kWh)" optional="show"/>
-                <field name="loss_percentage" string="فاقد %" optional="show"/>
                 <field name="active" widget="boolean_toggle"/>
             </tree>
         </field>
@@ -33,17 +32,21 @@
                 <sheet>
                     <!-- Smart Buttons -->
                     <div class="oe_button_box" name="button_box">
-                        <button name="action_view_customers"
+                        <button name="action_view_meters"
                                 type="object"
                                 class="oe_stat_button"
-                                icon="fa-users">
-                            <field name="customer_count" string="مشتركون" widget="statinfo"/>
+                                icon="fa-tachometer">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">عدادات</span>
+                            </div>
                         </button>
                         <button name="action_view_readings"
                                 type="object"
                                 class="oe_stat_button"
                                 icon="fa-tachometer">
-                            <span class="o_stat_text">قراءات الفيدر</span>
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">قراءات الربط</span>
+                            </div>
                         </button>
                     </div>
 
@@ -57,7 +60,7 @@
                         <group string="معلومات الشبكة">
                             <field name="code"/>
                             <field name="substation_id" options="{'no_create': True}"/>
-                            <field name="zone_id" options="{'no_create': True}"/>
+                            <field name="zone_id" readonly="1"/>
                             <field name="area_id" readonly="1"/>
                             <field name="region_id" readonly="1"/>
                             <field name="active"/>
@@ -80,32 +83,11 @@
                                            options="{'no_create': True}"
                                            domain="[('feeder_id', '=', active_id)]"/>
                                 </group>
-                                <group string="إحصائيات الفاقد">
+                                <group string="إحصائيات">
                                     <field name="supplied_kwh" readonly="1"/>
-                                    <field name="total_consumption" readonly="1"/>
-                                    <field name="loss_kwh" readonly="1"/>
-                                    <field name="loss_percentage" readonly="1"
-                                           widget="progressbar"
-                                           options="{'max_value': 30, 'editable': false}"/>
+                                    <field name="transformer_count" readonly="1"/>
                                 </group>
                             </group>
-
-                            <separator string="عدادات المقارنة"/>
-                            <field name="comparison_meter_ids" widget="many2many_tags"
-                                   domain="[('feeder_id', '=', active_id)]"
-                                   options="{'no_create': True}"/>
-
-                            <separator string="جميع عدادات الفيدر"/>
-                            <field name="meter_ids">
-                                <tree>
-                                    <field name="meter_number"/>
-                                    <field name="serial_number"/>
-                                    <field name="meter_type_id"/>
-                                    <field name="payment_type" widget="badge"/>
-                                    <field name="status_id"/>
-                                    <field name="customer_id"/>
-                                </tree>
-                            </field>
                         </page>
 
                         <!-- صفحة 2: قراءات عداد الربط -->
@@ -132,8 +114,8 @@
                             </field>
                         </page>
 
-                        <!-- صفحة 3: قراءات عدادات المقارنة -->
-                        <page name="comparison_readings" string="قراءات المقارنة">
+                        <!-- صفحة 3: قراءات الفيدر -->
+                        <page name="feeder_readings" string="قراءات الفيدر">
                             <field name="feeder_reading_ids">
                                 <tree editable="bottom"
                                       decoration-success="state == 'approved'"
@@ -161,28 +143,11 @@
                                     <field name="capacity"/>
                                     <field name="phase"/>
                                     <field name="status"/>
-                                    <field name="customer_count" string="مشتركون"/>
                                 </tree>
                             </field>
                         </page>
 
-                        <!-- صفحة 5: عقود المشتركين -->
-                        <page name="cell_accounts" string="عقود المشتركين">
-                            <field name="cell_account_ids" readonly="1">
-                                <tree>
-                                    <field name="customer_number"/>
-                                    <field name="partner_id"/>
-                                    <field name="meter_id"/>
-                                    <field name="transformer_id"/>
-                                    <field name="state" widget="badge"
-                                           decoration-success="state == 'active'"
-                                           decoration-warning="state in ('suspended', 'disconnected')"
-                                           decoration-danger="state == 'closed'"/>
-                                </tree>
-                            </field>
-                        </page>
-
-                        <!-- صفحة 6: ملاحظات -->
+                        <!-- صفحة 5: ملاحظات -->
                         <page name="notes" string="ملاحظات">
                             <field name="notes" nolabel="1"
                                    placeholder="ملاحظات تقنية عن الفيدر/الخلية..."/>
@@ -206,8 +171,8 @@
             <search>
                 <field name="name"/>
                 <field name="code"/>
-                <field name="zone_id"/>
                 <field name="substation_id"/>
+                <field name="zone_id"/>
                 <field name="voltage_level"/>
                 <field name="coupling_meter_id"/>
 
@@ -217,16 +182,12 @@
                         domain="[('coupling_meter_id', '!=', False)]"/>
                 <filter name="no_coupling" string="بدون عداد ربط"
                         domain="[('coupling_meter_id', '=', False)]"/>
-                <separator/>
-                <filter name="high_loss" string="فاقد عالٍ (+20%)"
-                        domain="[('loss_percentage', '>=', 20)]"/>
 
                 <group expand="0" string="تجميع حسب">
+                    <filter name="group_substation" string="المحطة"     context="{'group_by': 'substation_id'}"/>
                     <filter name="group_zone"     string="المنطقة"      context="{'group_by': 'zone_id'}"/>
                     <filter name="group_area"     string="الفرع"        context="{'group_by': 'area_id'}"/>
-                    <filter name="group_region"   string="الإقليم"      context="{'group_by': 'region_id'}"/>
                     <filter name="group_voltage"  string="الجهد"        context="{'group_by': 'voltage_level'}"/>
-                    <filter name="group_substation" string="المحطة"     context="{'group_by': 'substation_id'}"/>
                 </group>
             </search>
         </field>
@@ -244,7 +205,7 @@
             </p>
             <p>
                 الفيدر (الخلية) هو المستوى الذي يتم عنده رفع قراءات الربط
-                وعدادات المقارنة لحساب الفاقد الكهربائي.
+                لحساب الفاقد الكهربائي.
             </p>
         </field>
     </record>

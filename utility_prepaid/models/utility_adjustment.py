@@ -3,7 +3,7 @@ from odoo import api, fields, models, _
 
 class UtilityAdjustment(models.Model):
     _name = 'utility.adjustment'
-    _description = 'Utility Adjustment'
+    _description = 'تسوية'
     _rec_name = 'reference'
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'date desc, id desc'
@@ -12,28 +12,28 @@ class UtilityAdjustment(models.Model):
     company_id = fields.Many2one('res.company', default=lambda self: self.env.company)
     reference = fields.Char(required=True, default=lambda self: _('New'))
     date = fields.Datetime(default=fields.Datetime.now)
-    customer_id = fields.Many2one('res.partner', string='Customer', required=True)
-    account_id = fields.Many2one('utility.customer', string='Account', required=True)
+    customer_id = fields.Many2one('res.partner', string='العميل', required=True)
+    account_id = fields.Many2one('utility.customer', string='الحساب', required=True)
     adjustment_type = fields.Selection([
         ('credit', 'Credit'),
         ('debit', 'Debit'),
         ('emergency_credit', 'Emergency Credit'),
         ('compensation', 'Compensation'),
         ('correction', 'Correction'),
-    ], string='Adjustment Type', required=True)
-    amount = fields.Monetary(string='Amount', required=True)
+    ], string='نوع التسوية', required=True)
+    amount = fields.Monetary(string='المبلغ', required=True)
     currency_id = fields.Many2one('res.currency', related='company_id.currency_id')
-    balance_before = fields.Monetary(compute='_compute_balances', string='Balance Before', store=True)
-    balance_after = fields.Monetary(compute='_compute_balances', string='Balance After', store=True)
-    reason = fields.Text(string='Reason', required=True)
-    approved_by = fields.Many2one('res.users', string='Approved By')
-    operator_id = fields.Many2one('res.users', string='Operator', default=lambda self: self.env.user)
+    balance_before = fields.Monetary(compute='_compute_balances', string='الرصيد قبل', store=True)
+    balance_after = fields.Monetary(compute='_compute_balances', string='الرصيد بعد', store=True)
+    reason = fields.Text(string='السبب', required=True)
+    approved_by = fields.Many2one('res.users', string='معتمد من')
+    operator_id = fields.Many2one('res.users', string='المشغل', default=lambda self: self.env.user)
     state = fields.Selection([
         ('draft', 'Draft'),
         ('approved', 'Approved'),
         ('applied', 'Applied'),
         ('cancelled', 'Cancelled'),
-    ], default='draft', string='State', tracking=True)
+    ], default='draft', string='الحالة', tracking=True)
 
     @api.depends('account_id', 'amount', 'adjustment_type')
     def _compute_balances(self):

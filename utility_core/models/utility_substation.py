@@ -3,7 +3,7 @@ from odoo import api, fields, models
 
 class UtilitySubstation(models.Model):
     _name = 'utility.substation'
-    _description = 'Utility Substation'
+    _description = 'محطة فرعية'
     _order = 'name'
 
     active = fields.Boolean(default=True)
@@ -17,7 +17,7 @@ class UtilitySubstation(models.Model):
         ('lv', 'Low Voltage'),
         ('mv', 'Medium Voltage'),
         ('hv', 'High Voltage'),
-    ], string='Voltage Level')
+    ], string='مستوى الجهد')
     capacity_kva = fields.Float('Capacity (kVA)')
     address = fields.Text('Address')
     status = fields.Selection([
@@ -25,9 +25,9 @@ class UtilitySubstation(models.Model):
         ('inactive', 'Inactive'),
         ('fault', 'Fault'),
         ('maintenance', 'Maintenance'),
-    ], string='Status', default='active')
-    feeder_ids = fields.One2many('utility.feeder', 'substation_id', string='Feeders')
-    transformer_ids = fields.One2many('utility.transformer', 'substation_id', string='Transformers')
+    ], string='الحالة', default='active')
+    feeder_ids = fields.One2many('utility.feeder', 'substation_id', string='المغذيات')
+    transformer_ids = fields.One2many('utility.transformer', 'substation_id', string='المحولات')
 
     _sql_constraints = [
         ('unique_substation_code_zone', 'unique(code, zone_id)', 'Substation code must be unique per zone!'),

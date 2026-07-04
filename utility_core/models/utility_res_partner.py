@@ -1,9 +1,14 @@
-from odoo import api, fields, models
+from odoo import api, fields, models, _
+from odoo.exceptions import ValidationError
+
+import re
+
+PHONE_9_RE = re.compile(r'^\d{9}$')
 
 
 class SaleOrderType(models.Model):
     _name = 'sale.order.type'
-    _description = 'Sale Order Type'
+    _description = 'نوع أمر البيع'
     _order = 'sequence'
 
     name = fields.Char(string='Name', required=True, translate=True)
@@ -36,7 +41,7 @@ class SaleOrderType(models.Model):
 
 class SaleOrderTypeRule(models.Model):
     _name = 'sale.order.type.rule'
-    _description = 'Rule for automatic sale order type matching'
+    _description = 'قاعدة المطابقة التلقائية لنوع أمر البيع'
     _order = 'sequence'
 
     name = fields.Char(required=True)
@@ -81,7 +86,7 @@ class ProductTemplate(models.Model):
 
 class ResPartnerSector(models.Model):
     _name = 'res.partner.sector'
-    _description = 'Customer Sector'
+    _description = 'قطاع المشترك'
 
     name = fields.Char(string="Name", required=True)
     code = fields.Char(string="Code")
@@ -95,37 +100,37 @@ class ResPartner(models.Model):
     area_id = fields.Many2one('utility.region', string='المنطقة الفرعية', domain="[('type', '=', 'area')]")
     zone_id = fields.Many2one('utility.region', string='المنطقة التفصيلية', domain="[('type', '=', 'zone')]")
 
-    nickname = fields.Char(string="Short Name")
+    nickname = fields.Char(string="الاسم المختصر")
     is_subscriber = fields.Boolean(string="مشترك كهرباء (Is Subscriber)", default=False, tracking=True)
-    last_payment = fields.Monetary(string="Last Payment", compute='_compute_last_payment', store=False)
-    last_payment_date = fields.Date(string="Last Payment Date", compute='_compute_last_payment', store=False)
-    last_invoice = fields.Monetary(string="Last Invoice", compute='_compute_last_invoice', store=False)
-    last_invoice_date = fields.Date(string="Last Invoice Date", compute='_compute_last_invoice', store=False)
-    char_code = fields.Char(string="Character")
-    old_payment = fields.Monetary(string="Last Payment from Institution")
-    old_credit = fields.Monetary(string="Previous Balance from Institution")
-    new_no = fields.Char(string="New Number")
-    opening_reading = fields.Integer(string="Opening Reading")
-    register_number = fields.Integer(string="Register Number")
-    is_credit_raised = fields.Boolean(string="Credit Raised")
+    last_payment = fields.Monetary(string="آخر دفعة", compute='_compute_last_payment', store=False)
+    last_payment_date = fields.Date(string="تاريخ آخر دفعة", compute='_compute_last_payment', store=False)
+    last_invoice = fields.Monetary(string="آخر فاتورة", compute='_compute_last_invoice', store=False)
+    last_invoice_date = fields.Date(string="تاريخ آخر فاتورة", compute='_compute_last_invoice', store=False)
+    char_code = fields.Char(string="الحرف")
+    old_payment = fields.Monetary(string="آخر دفعة من المؤسسة")
+    old_credit = fields.Monetary(string="الرصيد السابق من المؤسسة")
+    new_no = fields.Char(string="الرقم الجديد")
+    opening_reading = fields.Integer(string="قراءة الافتتاح")
+    register_number = fields.Integer(string="رقم السجل")
+    is_credit_raised = fields.Boolean(string="رصيد مرحل")
     n11 = fields.Integer(string="N11")
-    pec_credit = fields.Monetary(string="Credit Raised from Institution")
-    credit_raise_date = fields.Date(string="Credit Raise Date")
-    reading_multiplier = fields.Float(string="Reading Multiplier")
-    tariff_code = fields.Char(string="Tariff Code from Institution")
-    subscription_amount_partner = fields.Integer(string="Subscription Amount in Institution")
-    opening_journal_no = fields.Integer(string="Opening Balance Journal Number")
+    pec_credit = fields.Monetary(string="رصيد مرحل من المؤسسة")
+    credit_raise_date = fields.Date(string="تاريخ الترحيل")
+    reading_multiplier = fields.Float(string="معامل القراءة")
+    tariff_code = fields.Char(string="رمز التعرفة من المؤسسة")
+    subscription_amount_partner = fields.Integer(string="قيمة الاشتراك في المؤسسة")
+    opening_journal_no = fields.Integer(string="رقم يومية رصيد الافتتاح")
     vas = fields.Integer(string="VAS")
-    meter_digit_count = fields.Integer(string="Meter Digit Count")
-    base_name = fields.Char(string="Base Name from Institution")
-    old_credit_before = fields.Monetary(string="Previous Balance Before Calculation")
+    meter_digit_count = fields.Integer(string="عدد أرقام العداد")
+    base_name = fields.Char(string="الاسم الأساسي من المؤسسة")
+    old_credit_before = fields.Monetary(string="الرصيد السابق قبل الحساب")
     n1 = fields.Integer(string="N1")
     n2 = fields.Integer(string="N2")
     n3 = fields.Integer(string="N3")
-    balance_customer = fields.Monetary(string="Total Customer Debit", readonly=True)
-    credit_last = fields.Monetary(string="Last Credit")
+    balance_customer = fields.Monetary(string="إجمالي مدين المشترك", readonly=True)
+    credit_last = fields.Monetary(string="آخر رصيد")
 
-    sale_type = fields.Many2one('sale.order.type', string='Sale Order Type', company_dependent=True)
+    sale_type = fields.Many2one('sale.order.type', string='نوع أمر البيع', company_dependent=True)
     subscriber_id = fields.Many2one('utility.subscriber', string="نوع المشترك", tracking=True)
     sector_id = fields.Many2one('res.partner.sector', string="القطاع (Sector)", tracking=True)
 
@@ -227,3 +232,15 @@ class ResPartner(models.Model):
         self.env.cr.execute(query, params)
         res = self.env.cr.fetchone()
         return res[0] or 0.0
+
+    @api.constrains('phone', 'mobile')
+    def _check_phone_9_digits(self):
+        for partner in self:
+            if partner.phone and not PHONE_9_RE.match(partner.phone):
+                raise ValidationError(
+                    'رقم الهاتف يجب أن يتكون من 9 أرقام فقط، بدون مفتاح دولة (+967/00) أو شرطات.'
+                )
+            if partner.mobile and not PHONE_9_RE.match(partner.mobile):
+                raise ValidationError(
+                    'رقم الجوال يجب أن يتكون من 9 أرقام فقط، بدون مفتاح دولة (+967/00) أو شرطات.'
+                )

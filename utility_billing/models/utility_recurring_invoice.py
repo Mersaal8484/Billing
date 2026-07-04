@@ -1,4 +1,7 @@
+import logging
 from odoo import api, fields, models, _
+
+_logger = logging.getLogger(__name__)
 
 
 class UtilityContractTemplate(models.Model):
@@ -40,7 +43,7 @@ class UtilityContractTemplate(models.Model):
                     'name': name,
                     'product_uom_qty': qty,
                     'price_unit': price,
-                    'is_tax': line.meter_line_type == 'tax',
+                    'meter_line_type': line.meter_line_type,
                 }))
         return {
             'partner_id': account.partner_id.id if account.partner_id else self.env.company.partner_id.id,
@@ -58,31 +61,49 @@ class UtilityContractTemplate(models.Model):
         }
 
     def cron_generate_recurring_invoices(self):
+        batch_size = int(self.env['ir.config_parameter'].sudo().get_param(
+            'utility.recurring_batch_size', 200))
         accounts = self.env['utility.customer'].search([
             ('contract_state', '=', 'active'),
             ('contract_template_id', '!=', False),
-        ])
+        ], limit=batch_size)
+        success = 0
+        errors = 0
         for account in accounts:
-            reading = self.env['utility.reading'].search([
-                ('account_id', '=', account.id),
-                ('state', '=', 'approved'),
-            ], order='reading_date desc', limit=1)
-            if not reading or not reading.date_range_id:
-                continue
-            existing_order = self.env['sale.order'].search([
-                ('reading_id', '=', reading.id),
-                ('state', '!=', 'cancel'),
-            ], limit=1)
-            if existing_order:
-                continue
-            order = self.env['sale.order'].create(
-                account.contract_template_id._prepare_sale_order_data(account, reading)
-            )
-            order._calculate_amounts()
-            reading.state = 'billed'
-            account.write({
-                'last_reading_date': reading.reading_date,
-                'last_reading_value': reading.reading_value,
-                'last_invoice_date': fields.Datetime.now(),
-                'last_invoice_reading': reading.reading_value,
-            })
+            try:
+                reading = self.env['utility.reading'].search([
+                    ('account_id', '=', account.id),
+                    ('state', '=', 'approved'),
+                ], order='reading_date desc', limit=1)
+                if not reading or not reading.date_range_id:
+                    continue
+                existing_order = self.env['sale.order'].search([
+                    ('reading_id', '=', reading.id),
+                    ('state', '!=', 'cancel'),
+                ], limit=1)
+                if existing_order:
+                    continue
+                order = self.env['sale.order'].create(
+                    account.contract_template_id._prepare_sale_order_data(account, reading)
+                )
+                order._calculate_amounts()
+                reading.state = 'billed'
+                account.write({
+                    'last_reading_date': reading.reading_date,
+                    'last_reading_value': reading.reading_value,
+                    'last_invoice_date': fields.Datetime.now(),
+                    'last_invoice_reading': reading.reading_value,
+                })
+                self.env.cr.commit()
+                success += 1
+            except Exception as e:
+                self.env.cr.rollback()
+                _logger.warning(
+                    "Recurring invoice failed for account %s (reading %s): %s",
+                    account.name, reading.id if reading else '—', e)
+                self.env.cr.commit()
+                errors += 1
+        if errors:
+            _logger.info(
+                "Recurring billing: %d success, %d errors (batch %d)",
+                success, errors, batch_size)

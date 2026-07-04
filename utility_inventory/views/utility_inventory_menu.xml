@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- تحت قسم المنتجات في المخزون -->
+        <menuitem id="menu_utility_inv_masters"
+                  name="مخزون العدادات والمواد"
+                  parent="stock.menu_stock_inventory_control"
+                  sequence="50"/>
+
+        <menuitem id="menu_utility_inventory_location_list"
+                  name="مواقع المخزون"
+                  parent="menu_utility_inv_masters"
+                  action="action_utility_inventory_location"
+                  sequence="10"/>
+
+        <menuitem id="menu_utility_inventory_item_list"
+                  name="أصناف المخزون"
+                  parent="menu_utility_inv_masters"
+                  action="action_utility_inventory_item"
+                  sequence="20"/>
+
+        <!-- تحت قسم العمليات في المخزون -->
+        <menuitem id="menu_utility_inv_operations"
+                  name="مخزون العدادات والمواد"
+                  parent="stock.menu_stock_warehouse_mgmt"
+                  sequence="50"/>
+
+        <menuitem id="menu_utility_inventory_movement_list"
+                  name="حركات المخزون"
+                  parent="menu_utility_inv_operations"
+                  action="action_utility_inventory_movement"
+                  sequence="10"/>
+
+        <menuitem id="menu_utility_inventory_count_list"
+                  name="جرد المخزون"
+                  parent="menu_utility_inv_operations"
+                  action="action_utility_inventory_count"
+                  sequence="20"/>
+
+    </data>
+</odoo>

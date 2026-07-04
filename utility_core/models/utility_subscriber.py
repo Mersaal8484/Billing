@@ -2,7 +2,7 @@ from odoo import api, fields, models, _
 
 class UtilitySubscriber(models.Model):
     _name = 'utility.subscriber'
-    _description = 'Subscriber'
+    _description = 'مشترك'
     _order = 'sequence, code'
 
     name = fields.Char('الاسم', required=True, translate=True)

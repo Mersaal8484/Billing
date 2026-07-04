@@ -9,8 +9,8 @@
                 <field name="change_date"/>
                 <field name="old_price"/>
                 <field name="new_price"/>
-                <field name="old_fixed_charge"/>
-                <field name="new_fixed_charge"/>
+                <field name="old_service_charge"/>
+                <field name="new_service_charge"/>
                 <field name="reason"/>
                 <field name="changed_by"/>
             </tree>

@@ -4,7 +4,7 @@ from odoo.exceptions import ValidationError
 
 class UtilityFinancialSettlement(models.Model):
     _name = 'utility.financial.settlement'
-    _description = 'Financial Settlement'
+    _description = 'تسوية مالية'
     _order = 'date desc'
 
     name = fields.Char('رقم التسوية المالية', default=lambda self: _('New'), readonly=True)
@@ -34,14 +34,20 @@ class UtilityFinancialSettlement(models.Model):
                 vals['name'] = self.env['ir.sequence'].next_by_code('utility.financial.settlement') or _('New')
         return super().create(vals_list)
 
+    def _get_company_config(self, company_field, config_key):
+        company = self.env.company
+        val = company[company_field]
+        if val:
+            return val.id if hasattr(val, 'id') else val
+        return int(self.env['ir.config_parameter'].sudo().get_param(config_key, 0))
+
     def action_apply_settlement(self):
         self.ensure_one()
         if self.state == 'applied':
             raise ValidationError('تم تطبيق هذه التسوية بالفعل!')
             
-        settings = self.env['ir.config_parameter'].sudo()
-        settlement_journal_id = int(settings.get_param('utility.settlement_journal_id', 0))
-        settlement_account_id = int(settings.get_param('utility.settlement_account_id', 0))
+        settlement_journal_id = self._get_company_config('settlement_journal_id', 'utility.settlement_journal_id')
+        settlement_account_id = self._get_company_config('settlement_account_id', 'utility.settlement_account_id')
         
         if not settlement_journal_id or not settlement_account_id:
             raise ValidationError('يرجى تحديد يومية التسويات وحساب التسويات في إعدادات النظام أولاً.')

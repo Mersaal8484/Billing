@@ -16,7 +16,7 @@
                     <group>
                         <group string="بيانات الاتصال والهوية">
                             <field name="national_id" placeholder="الرقم الوطني أو السجل التجاري"/>
-                            <field name="mobile" placeholder="+967-77-xxxxxxx"/>
+                            <field name="mobile" placeholder="777xxxxxx"/>
                             <field name="phone"/>
                             <field name="street" placeholder="اسم الشارع / الحي"/>
                             <field name="city"/>

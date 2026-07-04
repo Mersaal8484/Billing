@@ -72,7 +72,6 @@
                                 </group>
                                 <group string="الأسعار الأساسية">
                                     <field name="price_per_kwh"/>
-                                    <field name="fixed_charge"/>
                                     <field name="service_charge"/>
                                 </group>
                             </group>
@@ -115,8 +114,8 @@
                                     <field name="change_date"/>
                                     <field name="old_price"/>
                                     <field name="new_price"/>
-                                    <field name="old_fixed_charge"/>
-                                    <field name="new_fixed_charge"/>
+                                    <field name="old_service_charge"/>
+                                    <field name="new_service_charge"/>
                                     <field name="reason"/>
                                     <field name="changed_by"/>
                                 </tree>
@@ -133,8 +132,6 @@
                                     <field name="price_type"/>
                                     <field name="specific_price"/>
                                     <field name="meter_line_type"/>
-                                    <field name="local_fee_kind"
-                                           attrs="{'column_invisible': [('parent.pricing_mode', '=', 'flat')]}"/>
                                     <field name="qty_formula_id"/>
                                     <field name="is_subsidized"
                                            attrs="{'column_invisible': [('meter_line_type', '!=', 'discount')]}"/>

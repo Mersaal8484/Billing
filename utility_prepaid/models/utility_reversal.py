@@ -3,7 +3,7 @@ from odoo import api, fields, models, _
 
 class UtilityReversal(models.Model):
     _name = 'utility.reversal'
-    _description = 'Utility Reversal'
+    _description = 'إلغاء'
     _rec_name = 'reference'
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'date desc, id desc'
@@ -15,22 +15,22 @@ class UtilityReversal(models.Model):
     reversal_type = fields.Selection([
         ('full', 'Full'),
         ('partial', 'Partial'),
-    ], string='Reversal Type', required=True, default='full')
-    amount = fields.Monetary(string='Amount', required=True)
+    ], string='نوع الإلغاء', required=True, default='full')
+    amount = fields.Monetary(string='المبلغ', required=True)
     currency_id = fields.Many2one('res.currency', related='company_id.currency_id')
-    customer_id = fields.Many2one('res.partner', string='Customer', required=True)
-    account_id = fields.Many2one('utility.customer', string='Account', required=True)
-    meter_id = fields.Many2one('utility.meter', string='Meter')
-    pos_order_id = fields.Many2one('pos.order', string='POS Order')
-    reason = fields.Text(string='Reason', required=True)
-    approved_by = fields.Many2one('res.users', string='Approved By')
-    operator_id = fields.Many2one('res.users', string='Operator', default=lambda self: self.env.user)
+    customer_id = fields.Many2one('res.partner', string='العميل', required=True)
+    account_id = fields.Many2one('utility.customer', string='الحساب', required=True)
+    meter_id = fields.Many2one('utility.meter', string='العداد')
+    pos_order_id = fields.Many2one('pos.order', string='أمر نقاط البيع')
+    reason = fields.Text(string='السبب', required=True)
+    approved_by = fields.Many2one('res.users', string='معتمد من')
+    operator_id = fields.Many2one('res.users', string='المشغل', default=lambda self: self.env.user)
     state = fields.Selection([
         ('draft', 'Draft'),
         ('approved', 'Approved'),
         ('completed', 'Completed'),
         ('rejected', 'Rejected'),
-    ], default='draft', string='State', tracking=True)
+    ], default='draft', string='الحالة', tracking=True)
 
     def action_approve(self):
         self.ensure_one()

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="view_utility_inventory_movement_tree" model="ir.ui.view">
+            <field name="name">utility.inventory.movement.tree</field>
+            <field name="model">utility.inventory.movement</field>
+            <field name="arch" type="xml">
+                <tree>
+                    <field name="name"/>
+                    <field name="movement_date"/>
+                    <field name="item_id"/>
+                    <field name="movement_type"/>
+                    <field name="quantity"/>
+                    <field name="reference"/>
+                    <field name="state"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="view_utility_inventory_movement_form" model="ir.ui.view">
+            <field name="name">utility.inventory.movement.form</field>
+            <field name="model">utility.inventory.movement</field>
+            <field name="arch" type="xml">
+                <form>
+                    <header>
+                        <field name="state" widget="statusbar"/>
+                        <button name="action_done" string="تأكيد" type="object"
+                                states="draft" class="btn-primary"/>
+                        <button name="action_cancel" string="إلغاء" type="object"
+                                states="draft" class="btn-secondary"/>
+                    </header>
+                    <sheet>
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                        <group>
+                            <group>
+                                <field name="item_id" required="1"/>
+                                <field name="movement_type" required="1"/>
+                                <field name="quantity" required="1"/>
+                                <field name="movement_date"/>
+                            </group>
+                            <group>
+                                <field name="reference"/>
+                                <field name="partner_id"/>
+                                <field name="user_id"/>
+                                <field name="company_id" groups="base.group_multi_company"/>
+                            </group>
+                        </group>
+                        <group>
+                            <field name="notes"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_utility_inventory_movement" model="ir.actions.act_window">
+            <field name="name">حركات المخزون</field>
+            <field name="res_model">utility.inventory.movement</field>
+            <field name="view_mode">tree,form</field>
+        </record>
+
+    </data>
+</odoo>

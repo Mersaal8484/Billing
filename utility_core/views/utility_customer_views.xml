@@ -191,12 +191,12 @@
                 <filter name="closed_state" string="مغلق" domain="[('state','=','closed')]"/>
                 <separator/>
                 
-                <group expand="0" string="Group By">
-                    <filter name="group_state" string="State" context="{'group_by':'state'}"/>
-                    <filter name="group_region" string="Region" context="{'group_by':'region_id'}"/>
-                    <filter name="group_area" string="Area" context="{'group_by':'area_id'}"/>
-                    <filter name="group_route" string="Route" context="{'group_by':'route_id'}"/>
-                    <filter name="group_subscriber" string="Subscriber Type" context="{'group_by':'subscriber_id'}"/>
+                <group expand="0" string="تصنيف حسب">
+                    <filter name="group_state" string="الحالة" context="{'group_by':'state'}"/>
+                    <filter name="group_region" string="المنطقة" context="{'group_by':'region_id'}"/>
+                    <filter name="group_area" string="المنطقة الفرعية" context="{'group_by':'area_id'}"/>
+                    <filter name="group_route" string="المسار" context="{'group_by':'route_id'}"/>
+                    <filter name="group_subscriber" string="نوع المشترك" context="{'group_by':'subscriber_id'}"/>
                 </group>
             </search>
         </field>
@@ -204,7 +204,7 @@
 
     <!-- ===================== ACTIONS ===================== -->
     <record id="action_utility_customer" model="ir.actions.act_window">
-        <field name="name">Customers</field>
+        <field name="name">العملاء</field>
         <field name="res_model">utility.customer</field>
         <field name="view_mode">tree,form</field>
         <field name="search_view_id" ref="view_utility_customer_search"/>

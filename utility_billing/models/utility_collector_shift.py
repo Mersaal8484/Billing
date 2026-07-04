@@ -1,8 +1,9 @@
 from odoo import api, fields, models, _
+from odoo.exceptions import ValidationError
 
 class UtilityCollectorShift(models.Model):
     _name = 'utility.collector.shift'
-    _description = 'Utility Collector Shift'
+    _description = 'وردية محصل'
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'start_time desc, id desc'
 
@@ -56,6 +57,21 @@ class UtilityCollectorShift(models.Model):
     def action_verify(self):
         self.ensure_one()
         self.state = 'verified'
+
+    @api.constrains('collector_id', 'state')
+    def _check_open_shift_overlap(self):
+        for rec in self:
+            if rec.state == 'open':
+                existing = self.search([
+                    ('collector_id', '=', rec.collector_id.id),
+                    ('state', '=', 'open'),
+                    ('id', '!=', rec.id),
+                ], limit=1)
+                if existing:
+                    raise ValidationError(
+                        'المتحصّل %s لديه بالفعل يومية تحصيل مفتوحة (رقم %s). '
+                        'يجب إغلاقها أولاً قبل فتح يومية جديدة.'
+                        % (rec.collector_id.name, existing.name))
 
     @api.model
     def create(self, vals):

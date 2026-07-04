@@ -1,13 +1,25 @@
 import logging
 from odoo import api, fields, models, _
+from odoo.exceptions import ValidationError
 from odoo.tools.safe_eval import safe_eval
 
 _logger = logging.getLogger(__name__)
 
+# متغيرات آمنة مسموح بها داخل safe_eval للمعادلات
+_FORMULA_SAFE_GLOBALS = {
+    '__builtins__': {
+        # دوال رياضية آمنة فقط
+        'abs': abs, 'round': round, 'min': min, 'max': max,
+        'int': int, 'float': float, 'bool': bool, 'str': str,
+        'len': len, 'range': range, 'sum': sum,
+        'True': True, 'False': False, 'None': None,
+    },
+}
+
 
 class UtilityFormula(models.Model):
     _name = 'utility.formula'
-    _description = 'Utility Formula for Contract Lines'
+    _description = 'صيغة حسابات بنود العقد'
     _rec_name = 'name'
 
     name = fields.Char('اسم المعادلة', required=True, translate=True)
@@ -17,10 +29,14 @@ class UtilityFormula(models.Model):
              '- consumption: float - الاستهلاك (kWh)\n'
              '- previous_reading: float - القراءة السابقة\n'
              '- current_reading: float - القراءة الحالية\n'
-             '- template: object - كائن قالب العقد (utility.contract.template)\n'
-             '- account: object - كائن الحساب (utility.customer)\n'
-             '- category: object - كائن فئة المشترك\n'
-             '- line: object - كائن بند العقد الحالي\n'
+             '- template_id: int - معرف قالب العقد\n'
+             '- template_name: str - اسم قالب العقد\n'
+             '- account_id: int - معرف الحساب\n'
+             '- account_name: str - اسم الحساب\n'
+             '- category_id: int - معرف فئة المشترك\n'
+             '- category_name: str - اسم فئة المشترك\n'
+             '- line_id: int - معرف بند العقد\n'
+             '- line_name: str - اسم بند العقد\n'
              '- result: float - يجب تعيينها بقيمة الكمية المحسوبة\n'
              '- name: str - يمكن تغييرها لوصف مخصص')
     active = fields.Boolean(default=True)
@@ -36,6 +52,22 @@ class UtilityFormula(models.Model):
             record.contract_line_count = ContractLine.search_count(
                 [('qty_formula_id', '=', record.id)]
             )
+
+    # ── FIX: التحقق من صحة الكود عند الحفظ ──────────────────────────────────
+    @api.constrains('code')
+    def _validate_formula_syntax(self):
+        """تحقق من صحة صياغة كود Python قبل الحفظ."""
+        for record in self:
+            if not record.code or not record.code.strip():
+                raise ValidationError('كود المعادلة لا يمكن أن يكون فارغاً.')
+            try:
+                compile(record.code, '<formula:%s>' % record.name, 'exec')
+            except SyntaxError as e:
+                raise ValidationError(
+                    'خطأ في صياغة كود المعادلة "%s":\n%s\n'
+                    'السطر: %s | العمود: %s'
+                    % (record.name, e.msg, e.lineno, e.offset)
+                ) from e
 
     def action_view_contract_lines(self):
         self.ensure_one()
@@ -62,29 +94,67 @@ class UtilityFormula(models.Model):
     def execute(self, consumption=0, previous_reading=0, current_reading=0,
                 tariff=None, account=None, category=None, line=None,
                 template=None):
-        """تنفيذ المعادلة مع المتغيرات الممررة"""
+        """تنفيذ المعادلة مع المتغيرات الممررة.
+
+        الأمان:
+        - يُمرَّر _FORMULA_SAFE_GLOBALS لتقييد الـ builtins المتاحة.
+        - لا يُمرَّر env أو أي كائن ORM لمنع الوصول غير المصرح به.
+        - النتيجة يجب أن تكون رقمية (int أو float).
+        """
         self.ensure_one()
         result = 0.0
         name = self.name
 
         locals_dict = {
-            'consumption': consumption or 0.0,
-            'previous_reading': previous_reading or 0.0,
-            'current_reading': current_reading or 0.0,
-            'template': template,
-            'account': account,
-            'category': category,
-            'line': line,
+            'consumption': float(consumption or 0.0),
+            'previous_reading': float(previous_reading or 0.0),
+            'current_reading': float(current_reading or 0.0),
+            'template_id': template.id if template else 0,
+            'template_name': template.name if template else '',
+            'account_id': account.id if account else 0,
+            'account_name': account.partner_id.name if account and account.partner_id else '',
+            'category_id': category.id if category else 0,
+            'category_name': category.name if category else '',
+            'line_id': line.id if line else 0,
+            'line_name': line.name if line else '',
             'result': result,
             'name': name,
         }
 
         try:
-            safe_eval(self.code, mode='exec', locals_dict=locals_dict, nocopy=True)
+            # FIX: تمرير globals آمنة محدودة بدلاً من الـ builtins الكاملة
+            safe_eval(
+                self.code,
+                globals_dict=dict(_FORMULA_SAFE_GLOBALS),
+                locals_dict=locals_dict,
+                mode='exec',
+                nocopy=True,
+            )
             result = locals_dict.get('result', 0.0)
             name = locals_dict.get('name', self.name)
+
+            if not isinstance(result, (int, float)):
+                raise ValueError(
+                    'result يجب أن يكون رقماً. '
+                    'القيمة المُعادة: %s (نوع: %s)' % (result, type(result).__name__)
+                )
+            result = float(result)
+
+        except ValidationError:
+            raise
         except Exception as e:
-            _logger.warning("Formula execution error in %s: %s", self.name, e)
-            result = 0.0
+            msg = _(
+                "خطأ في تنفيذ المعادلة '%s':\n"
+                "الخطأ: %s\n"
+                "السياق: استهلاك=%.2f، قراءة سابقة=%.2f، قراءة حالية=%.2f"
+            ) % (
+                self.name, e,
+                float(consumption or 0),
+                float(previous_reading or 0),
+                float(current_reading or 0),
+            )
+            _logger.warning('Formula execution failed: formula_id=%d name=%s error=%s',
+                            self.id, self.name, e)
+            raise ValidationError(msg) from e
 
         return result, name

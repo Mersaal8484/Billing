@@ -8,7 +8,7 @@
                 <field name="writeoff_number"/>
                 <field name="customer_id"/>
                 <field name="sale_order_id"/>
-                <field name="amount" sum="Total"/>
+                <field name="amount" sum="الإجمالي"/>
                 <field name="date"/>
                 <field name="state" widget="badge" decoration-info="state == 'draft'" decoration-success="state == 'applied'" decoration-warning="state == 'approved'"/>
             </tree>

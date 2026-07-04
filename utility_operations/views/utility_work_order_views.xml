@@ -46,7 +46,7 @@
                                 <field name="date_completed"/>
                             </group>
                         </group>
-                        <group string="Related">
+                        <group string="المرتبط">
                             <group>
                                 <field name="service_order_id"/>
                                 <field name="customer_id"/>
@@ -57,10 +57,10 @@
                             </group>
                         </group>
                         <notebook>
-                            <page string="Description">
+                            <page string="الوصف">
                                 <field name="description" nolabel="1"/>
                             </page>
-                            <page string="Time &amp; GPS">
+                            <page string="الوقت والموقع">
                                 <group>
                                     <group>
                                         <field name="labor_hours"/>
@@ -73,15 +73,15 @@
                                     </group>
                                 </group>
                             </page>
-                            <page string="Parts &amp; Photos">
+                            <page string="القطع والصور">
                                 <group>
                                     <field name="parts_used"/>
                                 </group>
                             </page>
-                            <page string="Signature">
+                            <page string="التوقيع">
                                 <field name="customer_signature" widget="signature"/>
                             </page>
-                            <page string="Notes">
+                            <page string="ملاحظات">
                                 <field name="notes" nolabel="1"/>
                             </page>
                         </notebook>
@@ -91,7 +91,7 @@
         </record>
 
         <record id="action_utility_work_order" model="ir.actions.act_window">
-            <field name="name">Work Orders</field>
+            <field name="name">أوامر العمل</field>
             <field name="res_model">utility.work.order</field>
             <field name="view_mode">tree,form</field>
         </record>

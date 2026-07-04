@@ -13,11 +13,13 @@
                             <field name="discount_account_id"/>
                             <field name="deposit_account_id"/>
                             <field name="settlement_account_id"/>
+                            <field name="writeoff_account_id"/>
                         </group>
                         <group string="اليوميات">
                             <field name="writeoff_journal_id"/>
                             <field name="deposit_journal_id"/>
                             <field name="settlement_journal_id"/>
+                            <field name="collection_journal_id"/>
                         </group>
                         <group string="المنتجات الافتراضية">
                             <field name="penalty_product_id"/>

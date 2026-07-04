@@ -43,7 +43,6 @@
                     <group string="Pricing">
                         <group>
                             <field name="price_per_kwh"/>
-                            <field name="fixed_charge"/>
                             <field name="service_charge"/>
                         </group>
                         <group>

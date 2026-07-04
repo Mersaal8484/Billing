@@ -1,43 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
-
-        <record id="reading_demo_1" model="utility.reading">
-            <field name="meter_id" ref="utility_core.demo_meter_1"/>
-            <field name="reading_date" eval="(datetime.now() - relativedelta(days=30)).strftime('%Y-%m-%d %H:%M:%S')"/>
-            <field name="reading_value">1250.0</field>
-            <field name="previous_reading">1000.0</field>
-            <field name="reading_type">manual</field>
-            <field name="is_validated" eval="True"/>
-            <field name="state">approved</field>
-        </record>
-
-        <record id="reading_demo_2" model="utility.reading">
-            <field name="meter_id" ref="utility_core.demo_meter_1"/>
-            <field name="reading_date" eval="datetime.now().strftime('%Y-%m-%d %H:%M:%S')"/>
-            <field name="reading_value">1500.0</field>
-            <field name="previous_reading">1250.0</field>
-            <field name="reading_type">manual</field>
-            <field name="is_validated" eval="True"/>
-            <field name="state">approved</field>
-        </record>
-
-        <record id="sale_order_demo" model="sale.order">
-            <field name="partner_id" ref="utility_core.demo_partner_ahmed"/>
-            <field name="customer_id" ref="utility_core.demo_account_1"/>
-            <field name="meter_id" ref="utility_core.demo_meter_1"/>
-            <field name="date_order" eval="datetime.now().strftime('%Y-%m-%d %H:%M:%S')"/>
-            <field name="period_start" eval="(datetime.now() - relativedelta(days=30)).strftime('%Y-%m-%d')"/>
-            <field name="period_end" eval="datetime.now().strftime('%Y-%m-%d')"/>
-            <field name="previous_reading">1250.0</field>
-            <field name="current_reading">1500.0</field>
-            <field name="consumption">250.0</field>
-            <field name="amount_energy">125.0</field>
-            <field name="amount_fixed">10.0</field>
-            <field name="amount_service">5.0</field>
-            <field name="amount_total">140.0</field>
-            <field name="bill_state">confirmed</field>
-        </record>
-
     </data>
 </odoo>

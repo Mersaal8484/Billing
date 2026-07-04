@@ -7,8 +7,8 @@
         <field name="arch" type="xml">
             <tree decoration-success="state == 'done'">
                 <field name="name"/>
-                <field name="account_id"/>
-                <field name="customer_id"/>
+                <field name="utility_account_id"/>
+                <field name="partner_id"/>
                 <field name="old_meter_id"/>
                 <field name="new_meter_id"/>
                 <field name="replacement_date"/>
@@ -37,8 +37,8 @@
                     </div>
                     <group>
                         <group string="معلومات الاشتراك">
-                            <field name="account_id"/>
-                            <field name="customer_id"/>
+                            <field name="utility_account_id"/>
+                            <field name="partner_id"/>
                         </group>
                         <group string="تفاصيل العدادات">
                             <field name="old_meter_id"/>

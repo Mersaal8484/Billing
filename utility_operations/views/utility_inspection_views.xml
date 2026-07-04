@@ -53,16 +53,16 @@
                             </group>
                         </group>
                         <notebook>
-                            <page string="Findings">
+                            <page string="النتائج">
                                 <field name="findings" nolabel="1"/>
                             </page>
-                            <page string="Signatures">
+                            <page string="التوقيعات">
                                 <group>
                                     <field name="customer_signature" widget="signature"/>
                                     <field name="inspector_signature" widget="signature"/>
                                 </group>
                             </page>
-                            <page string="Notes">
+                            <page string="ملاحظات">
                                 <field name="notes" nolabel="1"/>
                             </page>
                         </notebook>
@@ -72,7 +72,7 @@
         </record>
 
         <record id="action_utility_inspection" model="ir.actions.act_window">
-            <field name="name">Inspections</field>
+            <field name="name">المعاينات</field>
             <field name="res_model">utility.inspection</field>
             <field name="view_mode">tree,form</field>
         </record>

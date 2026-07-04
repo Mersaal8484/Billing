@@ -1,9 +1,10 @@
 from odoo import api, fields, models
+from odoo.exceptions import ValidationError
 
 
 class UtilityContractTemplateBlock(models.Model):
     _name = 'utility.contract.template.block'
-    _description = 'Contract Template Block (Rate Tier)'
+    _description = 'شريحة قالب العقد'
     _order = 'template_id, sequence, id'
 
     template_id = fields.Many2one(
@@ -33,3 +34,62 @@ class UtilityContractTemplateBlock(models.Model):
 
     time_from = fields.Float('من الساعة', help='0-24')
     time_to = fields.Float('إلى الساعة', help='0-24')
+
+    # ── FIX: قيود منطقية على نطاق الشرائح ───────────────────────────────────────
+    @api.constrains('from_kwh', 'to_kwh')
+    def _check_kwh_range(self):
+        for rec in self:
+            # from يجب أن يكون أكبر من أو يساوي 0
+            if rec.from_kwh < 0:
+                raise ValidationError(
+                    'قيمة “من (kWh)” لا يمكن أن تكون سالبة في الشريحة [%s].' % (rec.name or rec.sequence)
+                )
+            # to_kwh = 0 يعني شريحة مفتوحة (لا حد أعلى) — مسموح
+            if rec.to_kwh > 0 and rec.to_kwh <= rec.from_kwh:
+                raise ValidationError(
+                    'قيمة “إلى (kWh)” يجب أن تكون أكبر من “من (kWh)” '
+                    'في الشريحة [%s]. (%.2f ≤ %.2f)'
+                    % (rec.name or rec.sequence, rec.to_kwh, rec.from_kwh)
+                )
+
+    @api.constrains('price_per_kwh')
+    def _check_positive_price(self):
+        for rec in self:
+            if rec.price_per_kwh < 0:
+                raise ValidationError(
+                    'سعر الكيلووات/ساعة لا يمكن أن يكون سالباً '
+                    'في الشريحة [%s].' % (rec.name or rec.sequence)
+                )
+
+    @api.constrains('from_kwh', 'to_kwh', 'template_id')
+    def _check_no_overlapping_blocks(self):
+        """منع تداخل نطاقات الشرائح داخل نفس القالب."""
+        for rec in self:
+            if not rec.template_id or rec.to_kwh == 0:
+                # الشريحة المفتوحة لا تتداخل بحكم التعريف — نتحقق أنه ليس هناك شريحة مفتوحة أخرى
+                other_open = self.search([
+                    ('template_id', '=', rec.template_id.id),
+                    ('to_kwh', '=', 0),
+                    ('id', '!=', rec.id),
+                ], limit=1)
+                if rec.to_kwh == 0 and other_open:
+                    raise ValidationError(
+                        'يوجد بالفعل شريحة مفتوحة بدون حد أعلى في القالب. '
+                        'لا يمكن وجود أكثر من شريحة مفتوحة واحدة.'
+                    )
+                continue
+            # تحقق من تداخل الشرائح المغلقة
+            overlapping = self.search([
+                ('template_id', '=', rec.template_id.id),
+                ('id', '!=', rec.id),
+                ('from_kwh', '<', rec.to_kwh),
+                '|',
+                ('to_kwh', '=', 0),           # شريحة مفتوحة
+                ('to_kwh', '>', rec.from_kwh),  # شريحة تتداخل
+            ], limit=1)
+            if overlapping:
+                raise ValidationError(
+                    'الشريحة [%s: %.0f – %.0f] تتداخل مع شريحة أخرى في القالب. '
+                    'تأكد من عدم تداخل نطاقات kWh.'
+                    % (rec.name or rec.sequence, rec.from_kwh, rec.to_kwh)
+                )

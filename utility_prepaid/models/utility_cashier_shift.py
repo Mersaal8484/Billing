@@ -1,9 +1,10 @@
 from odoo import api, fields, models, _
+from odoo.exceptions import ValidationError
 
 
 class UtilityCashierShift(models.Model):
     _name = 'utility.cashier.shift'
-    _description = 'Utility Cashier Shift'
+    _description = 'وردية كاشير'
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'start_time desc, id desc'
 
@@ -29,21 +30,20 @@ class UtilityCashierShift(models.Model):
     total_cash = fields.Monetary(compute='_compute_pos_data', string='نقدي', store=True)
     notes = fields.Text(string='ملاحظات')
 
-    @api.depends('start_time', 'end_time', 'state')
+    @api.depends('cashier_id', 'start_time', 'end_time', 'state')
     def _compute_pos_data(self):
         for rec in self:
-            user = rec.cashier_id
-            if not user:
-                rec.total_sales = 0.0
-                rec.total_cash = 0.0
-                continue
             orders = self.env['pos.order'].search([
-                ('user_id', '=', user.id),
+                ('cashier_shift_id', '=', rec.id),
             ])
-            if rec.start_time:
-                orders = orders.filtered(lambda o: o.date_order >= rec.start_time)
-            if rec.end_time and rec.state != 'open':
-                orders = orders.filtered(lambda o: o.date_order <= rec.end_time)
+            if not orders and rec.cashier_id:
+                orders = self.env['pos.order'].search([
+                    ('user_id', '=', rec.cashier_id.id),
+                ])
+                if rec.start_time:
+                    orders = orders.filtered(lambda o: o.date_order >= rec.start_time)
+                if rec.end_time and rec.state != 'open':
+                    orders = orders.filtered(lambda o: o.date_order <= rec.end_time)
             rec.total_sales = sum(orders.mapped('amount_paid'))
             rec.total_cash = rec.total_sales
 
@@ -67,6 +67,21 @@ class UtilityCashierShift(models.Model):
     def action_verify(self):
         self.ensure_one()
         self.state = 'verified'
+
+    @api.constrains('cashier_id', 'state')
+    def _check_open_shift_overlap(self):
+        for rec in self:
+            if rec.state == 'open':
+                existing = self.search([
+                    ('cashier_id', '=', rec.cashier_id.id),
+                    ('state', '=', 'open'),
+                    ('id', '!=', rec.id),
+                ], limit=1)
+                if existing:
+                    raise ValidationError(
+                        'الكاشير %s لديه بالفعل وردية مفتوحة (رقم %s). '
+                        'يجب إغلاقها أولاً قبل فتح وردية جديدة.'
+                        % (rec.cashier_id.name, existing.name))
 
     @api.model
     def create(self, vals):

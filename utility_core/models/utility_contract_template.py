@@ -1,11 +1,12 @@
 from datetime import date
 
 from odoo import api, fields, models, _
+from odoo.exceptions import ValidationError
 
 
 class UtilityContractTemplate(models.Model):
     _name = 'utility.contract.template'
-    _description = 'Utility Contract Template'
+    _description = 'قالب عقد الكهرباء'
 
     name = fields.Char(required=True, translate=True)
     code = fields.Char(required=True)
@@ -41,9 +42,15 @@ class UtilityContractTemplate(models.Model):
         ('tou', 'حسب وقت الاستخدام'),
     ], string='نمط التسعير', default='flat')
     price_per_kwh = fields.Float('سعر الكيلوواط/ساعة', default=0.0)
-    fixed_charge = fields.Float('رسم خدمة ثابت', default=0.0,
-        help='مبلغ شهري ثابت لا يتأثر بالاستهلاك')
-    service_charge = fields.Float('رسم خدمة إضافية', default=0.0)
+    service_charge = fields.Float('رسم الخدمة الثابت', default=0.0,
+        help='مبلغ شهري ثابت لا يتأثر بالاستهلاك (رسوم الاشتراك والصيانة)')
+    fixed_charge = fields.Float(
+        string='رسم ثابت (مرادف)',
+        related='service_charge',
+        store=True,
+        readonly=False,
+        help='هذا الحقل مرادف لـ service_charge. تم الاحتفاظ به للتوافق مع الإصدارات السابقة.'
+    )
     min_charge = fields.Float('الحد الأدنى للفوترة', default=0.0)
     max_charge = fields.Float('الحد الأقصى للفوترة', default=0.0)
     effective_date = fields.Date('تاريخ السريان')
@@ -81,6 +88,13 @@ class UtilityContractTemplate(models.Model):
 
     active = fields.Boolean(default=True)
 
+    _sql_constraints = [
+        # FIX: منع تكرار رمز القالب داخل نفس الشركة
+        ('unique_code_company',
+         'unique(code, company_id)',
+         'رمز قالب العقد موجود مسبقاً في هذه الشركة. يجب أن يكون الرمز فريداً.'),
+    ]
+
     @api.depends('effective_date', 'end_date')
     def _compute_is_active(self):
         today = date.today()
@@ -92,16 +106,83 @@ class UtilityContractTemplate(models.Model):
             else:
                 r.is_active = True
 
+    # ── FIX: قيود منطقية على التسعير ────────────────────────────────────────────
+    @api.constrains('min_charge', 'max_charge')
+    def _check_min_max_charge(self):
+        for r in self:
+            if r.min_charge and r.max_charge and r.min_charge > r.max_charge:
+                raise ValidationError(
+                    'الحد الأدنى للفوترة (%.2f) يجب أن يكون أقل من '
+                    'الحد الأقصى (%.2f).'
+                    % (r.min_charge, r.max_charge)
+                )
+
+    @api.constrains('price_per_kwh', 'service_charge')
+    def _check_positive_prices(self):
+        for r in self:
+            if r.price_per_kwh < 0:
+                raise ValidationError('سعر الكيلووات/ساعة لا يمكن أن يكون سالباً.')
+            if r.service_charge < 0:
+                raise ValidationError('رسم الخدمة الثابت لا يمكن أن يكون سالباً.')
+
+    def write(self, vals):
+        """عند تغيير الأسعار الرئيسية، سجّل التاريخ تلقائياً."""
+        price_fields = {'price_per_kwh', 'service_charge'}
+        needs_history = bool(price_fields & set(vals))
+
+        # التقاط القيم القديمة قبل الكتابة
+        old_prices = {}
+        if needs_history:
+                old_prices = {
+                r.id: {
+                    'price_per_kwh': r.price_per_kwh,
+                    'service_charge': r.service_charge,
+                }
+                for r in self
+            }
+
+        res = super().write(vals)
+
+        # تسجيل التاريخ إذا تغيرت الأسعار
+        if needs_history:
+            for r in self:
+                old = old_prices.get(r.id, {})
+                new_price = vals.get('price_per_kwh', old.get('price_per_kwh', r.price_per_kwh))
+                new_service = vals.get('service_charge', old.get('service_charge', r.service_charge))
+                if (old.get('price_per_kwh') != new_price or
+                        old.get('service_charge') != new_service):
+                    self.env['utility.contract.template.history'].create({
+                        'template_id': r.id,
+                        'old_price': old.get('price_per_kwh', 0),
+                        'new_price': new_price,
+                        'old_service_charge': old.get('service_charge', 0),
+                        'new_service_charge': new_service,
+                        'changed_by': self.env.user.id,
+                        'reason': 'تغيير تلقائي عبر النموذج',
+                    })
+        return res
+
     def action_sync_lines_with_template(self):
         # البحث عن المنتجات الافتراضية
         Product = self.env['product.product']
-        kwh_product = self.env.ref('utility_core.utility_product_kwh', raise_if_not_found=False) or Product.search([('type', '=', 'service')], limit=1)
-        fixed_product = self.env.ref('utility_core.utility_product_fixed_fee', raise_if_not_found=False) or Product.search([('type', '=', 'service')], limit=1)
-        service_product = self.env.ref('utility_core.utility_product_service_charge', raise_if_not_found=False) or Product.search([('type', '=', 'service')], limit=1)
+        kwh_product = (
+            self.env.ref('utility_core.utility_product_kwh', raise_if_not_found=False)
+            or Product.search([('type', '=', 'service')], limit=1)
+        )
+        service_product = (
+            self.env.ref('utility_core.utility_product_service_charge', raise_if_not_found=False)
+            or Product.search([('type', '=', 'service')], limit=1)
+        )
+
+        # FIX: التحقق من وجود المنتجات قبل إنشاء البنود
+        if not kwh_product:
+            raise ValidationError(
+                'لا يوجد منتج kWh محدد. المسار: '
+                'utility_core.utility_product_kwh أو أي منتج خدمة.'
+            )
 
         for template in self:
             existing_types = template.line_ids.mapped('meter_line_type')
-            existing_local_fees = template.line_ids.filtered(lambda l: l.meter_line_type == 'local_fee').mapped('local_fee_kind')
 
             # مزامنة أو إنشاء بند الاستهلاك
             if 'consumption' not in existing_types and template.price_per_kwh > 0:
@@ -115,19 +196,7 @@ class UtilityContractTemplate(models.Model):
                     'specific_price': template.price_per_kwh,
                 })
 
-            # مزامنة أو إنشاء بند الرسم الثابت
-            if 'fixed_fee' not in existing_types and template.fixed_charge > 0:
-                self.env['utility.contract.template.line'].create({
-                    'template_id': template.id,
-                    'sequence': 20,
-                    'product_id': fixed_product.id if fixed_product else False,
-                    'name': f'رسوم اشتراك وصيانة العداد ({template.name})',
-                    'price_type': 'fixed',
-                    'meter_line_type': 'fixed_fee',
-                    'specific_price': template.fixed_charge,
-                })
-
-            # مزامنة أو إنشاء بند رسوم الخدمة
+            # مزامنة أو إنشاء بند رسم الخدمة الثابت
             if 'service_charge' not in existing_types and template.service_charge > 0:
                 self.env['utility.contract.template.line'].create({
                     'template_id': template.id,
@@ -140,41 +209,41 @@ class UtilityContractTemplate(models.Model):
                 })
 
             # المعلم
-            if 'mu_allim' not in existing_local_fees and template.local_fee_mu_allim > 0:
+            if 'mu_allim' not in existing_types and template.local_fee_mu_allim > 0:
+                mu_allim_prod = template.company_id.mu_allim_product_id or service_product
                 self.env['utility.contract.template.line'].create({
                     'template_id': template.id,
                     'sequence': 30,
-                    'product_id': template.company_id.mu_allim_product_id.id or service_product.id or False,
+                    'product_id': mu_allim_prod.id,
                     'name': f'رسم المعلم ({template.name})',
                     'price_type': 'meter_reading',
-                    'meter_line_type': 'local_fee',
-                    'local_fee_kind': 'mu_allim',
+                    'meter_line_type': 'mu_allim',
                     'specific_price': template.local_fee_mu_allim,
                 })
 
             # النظافة
-            if 'cleaning' not in existing_local_fees and template.local_fee_cleaning > 0:
+            if 'cleaning' not in existing_types and template.local_fee_cleaning > 0:
+                cleaning_prod = template.company_id.cleaning_product_id or service_product
                 self.env['utility.contract.template.line'].create({
                     'template_id': template.id,
                     'sequence': 35,
-                    'product_id': template.company_id.cleaning_product_id.id or service_product.id or False,
+                    'product_id': cleaning_prod.id,
                     'name': f'رسم النظافة ({template.name})',
                     'price_type': 'meter_reading',
-                    'meter_line_type': 'local_fee',
-                    'local_fee_kind': 'cleaning',
+                    'meter_line_type': 'cleaning',
                     'specific_price': template.local_fee_cleaning,
                 })
 
             # المجالس المحلية
-            if 'municipality' not in existing_local_fees and template.local_fee_per_kwh > 0:
+            if 'municipality' not in existing_types and template.local_fee_per_kwh > 0:
+                muni_prod = template.company_id.local_fee_product_id or service_product
                 self.env['utility.contract.template.line'].create({
                     'template_id': template.id,
                     'sequence': 40,
-                    'product_id': template.company_id.local_fee_product_id.id or service_product.id or False,
+                    'product_id': muni_prod.id,
                     'name': f'رسم المجالس المحلية ({template.name})',
                     'price_type': 'meter_reading',
-                    'meter_line_type': 'local_fee',
-                    'local_fee_kind': 'municipality',
+                    'meter_line_type': 'municipality',
                     'specific_price': template.local_fee_per_kwh,
                 })
 
@@ -182,40 +251,31 @@ class UtilityContractTemplate(models.Model):
             for line in template.line_ids:
                 if line.meter_line_type == 'consumption':
                     line.specific_price = template.price_per_kwh
-                elif line.meter_line_type == 'fixed_fee':
-                    line.specific_price = template.fixed_charge
-                elif line.meter_line_type == 'service_charge':
+                elif line.meter_line_type in ('fixed_fee', 'service_charge'):
                     line.specific_price = template.service_charge
-                elif line.meter_line_type == 'local_fee':
-                    if line.local_fee_kind == 'mu_allim':
-                        line.specific_price = template.local_fee_mu_allim
-                    elif line.local_fee_kind == 'cleaning':
-                        line.specific_price = template.local_fee_cleaning
-                    elif line.local_fee_kind == 'municipality':
-                        line.specific_price = template.local_fee_per_kwh
+                elif line.meter_line_type == 'mu_allim':
+                    line.specific_price = template.local_fee_mu_allim
+                elif line.meter_line_type == 'cleaning':
+                    line.specific_price = template.local_fee_cleaning
+                elif line.meter_line_type == 'municipality':
+                    line.specific_price = template.local_fee_per_kwh
 
         if len(self) == 1:
             return {
                 'type': 'ir.actions.client',
-                'tag': 'display_notification',
-                'params': {
-                    'title': _('مزامنة ناجحة'),
-                    'message': _('تم إضافة ومزامنة بنود القالب بنجاح!'),
-                    'sticky': False,
-                    'type': 'success',
-                }
+                'tag': 'reload',
             }
 
 
 class UtilityContractTemplateLine(models.Model):
     _name = 'utility.contract.template.line'
-    _description = 'Contract Template Line'
+    _description = 'بند قالب العقد'
 
     template_id = fields.Many2one('utility.contract.template', required=True, ondelete='cascade')
     sequence = fields.Integer(default=10)
 
     product_id = fields.Many2one('product.product', required=True)
-    name = fields.Text(string='Description', translate=True)
+    name = fields.Text(string='الوصف', translate=True)
 
     quantity = fields.Float(default=1.0)
     uom_id = fields.Many2one('uom.uom')
@@ -230,18 +290,13 @@ class UtilityContractTemplateLine(models.Model):
     # تصنيف البند للفوترة
     meter_line_type = fields.Selection([
         ('consumption', 'الاستهلاك'),
-        ('fixed_fee', 'رسم ثابت'),
-        ('service_charge', 'رسم خدمة'),
-        ('local_fee', 'رسم محلي'),
+        ('service_charge', 'رسم خدمة ثابت'),
+        ('fixed_fee', 'رسم ثابت (قديم)'),
+        ('mu_allim', 'رسم المعلم'),
+        ('cleaning', 'رسم النظافة'),
+        ('municipality', 'رسم المجلس المحلي'),
         ('discount', 'خصم'),
     ], string='نوع بند العداد')
-
-    local_fee_kind = fields.Selection([
-        ('municipality', 'مجلس محلي'),
-        ('mu_allim', 'المعلم'),
-        ('cleaning', 'نظافة'),
-        ('other', 'أخرى'),
-    ], string='نوع الرسم المحلي')
 
     # الربط مع معادلات محرك الاحتساب
     qty_formula_id = fields.Many2one('utility.formula', 'معادلة الكمية',

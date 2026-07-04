@@ -3,7 +3,7 @@ from odoo import api, fields, models
 
 class UtilityTransformer(models.Model):
     _name = 'utility.transformer'
-    _description = 'Utility Transformer'
+    _description = 'محول كهرباء'
     _order = 'name'
 
     active = fields.Boolean(default=True)
@@ -30,7 +30,7 @@ class UtilityTransformer(models.Model):
     phase = fields.Selection([
         ('single', 'Single Phase'),
         ('three', 'Three Phase'),
-    ], string='Phase')
+    ], string='الطور')
     manufacturer = fields.Char('Manufacturer')
     serial_number = fields.Char('Serial Number')
     voltage_primary = fields.Float('Primary Voltage (V)')
@@ -41,10 +41,10 @@ class UtilityTransformer(models.Model):
         ('inactive', 'Inactive'),
         ('fault', 'Fault'),
         ('maintenance', 'Maintenance'),
-    ], string='Status', default='active')
+    ], string='الحالة', default='active')
 
     # ===== الربط بالمشتركين والعدادات =====
-    meter_ids = fields.One2many('utility.meter', 'transformer_id', string='Meters')
+    meter_ids = fields.One2many('utility.meter', 'transformer_id', string='العدادات')
     customer_ids = fields.One2many(
         'utility.customer', 'transformer_id',
         string='عقود المشتركين',

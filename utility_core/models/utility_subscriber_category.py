@@ -3,7 +3,7 @@ from odoo import api, fields, models, _
 
 class UtilitySubscriberCategory(models.Model):
     _name = 'utility.subscriber.category'
-    _description = 'Subscriber Category'
+    _description = 'فئة المشترك'
     _order = 'sequence, code'
 
     name = fields.Char('الاسم', required=True, translate=True)

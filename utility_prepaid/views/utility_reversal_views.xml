@@ -23,9 +23,9 @@
       <form>
         <header>
           <field name="state" widget="statusbar" statusbar_visible="draft,approved,completed"/>
-          <button name="action_approve" string="Approve" type="object" states="draft" class="btn-primary"/>
-          <button name="action_complete" string="Complete" type="object" states="approved" class="btn-primary"/>
-          <button name="action_reject" string="Reject" type="object" states="draft,approved" class="btn-secondary"/>
+          <button name="action_approve" string="اعتماد" type="object" states="draft" class="btn-primary"/>
+          <button name="action_complete" string="إكمال" type="object" states="approved" class="btn-primary"/>
+          <button name="action_reject" string="رفض" type="object" states="draft,approved" class="btn-secondary"/>
         </header>
         <sheet>
           <div class="oe_title">
@@ -48,7 +48,7 @@
               <field name="approved_by"/>
             </group>
           </group>
-          <group string="Reason">
+          <group string="السبب">
             <field name="reason" nolabel="1"/>
           </group>
         </sheet>
@@ -60,7 +60,7 @@
   </record>
 
   <record id="action_utility_reversal" model="ir.actions.act_window">
-    <field name="name">Reversals</field>
+    <field name="name">الإلغاءات</field>
     <field name="res_model">utility.reversal</field>
     <field name="view_mode">tree,form</field>
   </record>

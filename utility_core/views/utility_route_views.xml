@@ -9,9 +9,10 @@
                 <field name="code"/>
                 <field name="area_id"/>
                 <field name="zone_id"/>
-                <field name="inspector_id"/>
-                <field name="cashier_id"/>
-                <field name="supervisor_id"/>
+                <field name="inspector_ids" widget="many2many_tags" optional="show"/>
+                <field name="cashier_ids" widget="many2many_tags" optional="show"/>
+                <field name="supervisor_id" optional="show"/>
+                <field name="customer_count" string="مشتركون" optional="show"/>
                 <field name="active"/>
             </tree>
         </field>
@@ -22,6 +23,17 @@
         <field name="arch" type="xml">
             <form>
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_add_customers_wizard" type="object"
+                                class="oe_stat_button" icon="fa-plus">
+                            <span class="o_stat_text">إضافة مشتركين</span>
+                        </button>
+                        <button name="action_remove_customers_wizard" type="object"
+                                class="oe_stat_button" icon="fa-minus">
+                            <span class="o_stat_text">حذف مشتركين</span>
+                        </button>
+                    </div>
+
                     <div class="oe_title">
                         <h1><field name="name"/></h1>
                     </div>
@@ -35,14 +47,14 @@
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
                         <group string="طاقم العمل">
-                            <field name="inspector_id" options="{'no_create': True}"/>
-                            <field name="cashier_id" options="{'no_create': True}"/>
+                            <field name="inspector_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                            <field name="cashier_ids" widget="many2many_tags" options="{'no_create': True}"/>
                             <field name="supervisor_id" options="{'no_create': True}"/>
                         </group>
                     </group>
                     <notebook>
                         <page name="customers" string="عقود المشتركين">
-                            <field name="customer_ids">
+                            <field name="customer_ids" readonly="1">
                                 <tree>
                                     <field name="customer_number"/>
                                     <field name="partner_id"/>
@@ -65,16 +77,16 @@
                 <field name="code"/>
                 <field name="area_id"/>
                 <field name="zone_id"/>
-                <filter name="active" string="Active" domain="[('active','=',True)]"/>
-                <group expand="0" string="Group By">
-                    <filter name="group_area" string="Area" context="{'group_by':'area_id'}"/>
-                    <filter name="group_zone" string="Zone" context="{'group_by':'zone_id'}"/>
+                <filter name="active" string="نشط" domain="[('active','=',True)]"/>
+                <group expand="0" string="تجميع حسب">
+                    <filter name="group_area" string="الفرع" context="{'group_by':'area_id'}"/>
+                    <filter name="group_zone" string="المنطقة" context="{'group_by':'zone_id'}"/>
                 </group>
             </search>
         </field>
     </record>
     <record id="action_utility_route" model="ir.actions.act_window">
-        <field name="name">Routes</field>
+        <field name="name">مسارات القراءة</field>
         <field name="res_model">utility.route</field>
         <field name="view_mode">tree,form</field>
         <field name="search_view_id" ref="view_utility_route_search"/>

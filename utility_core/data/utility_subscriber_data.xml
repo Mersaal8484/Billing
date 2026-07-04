@@ -1,59 +1,49 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo noupdate="1">
-    <!-- ====== فئات المشتركين الرئيسية ====== -->
-    <record id="cat_residential" model="utility.subscriber.category">
-        <field name="name">سكني</field>
-        <field name="code">CAT_RES</field>
+    <!-- ====== الفئات الجديدة ====== -->
+    <record id="cat_public" model="utility.subscriber.category">
+        <field name="name">أهالي</field>
+        <field name="code">CAT_PUB</field>
+        <field name="sequence">5</field>
     </record>
 
-    <record id="cat_commercial" model="utility.subscriber.category">
-        <field name="name">تجاري والصناعي</field>
-        <field name="code">CAT_COM</field>
+    <record id="cat_large" model="utility.subscriber.category">
+        <field name="name">كبار مستهلكين</field>
+        <field name="code">CAT_LARGE</field>
+        <field name="sequence">15</field>
     </record>
 
-    <!-- ====== المشتركين (الأنواع) ====== -->
-    <record id="sub_category_residential" model="utility.subscriber">
-        <field name="name">سكني</field>
-        <field name="code">RES</field>
-        <field name="sequence">10</field>
-        <field name="category_id" ref="cat_residential"/>
+    <record id="cat_government" model="utility.subscriber.category">
+        <field name="name">حكومي</field>
+        <field name="code">CAT_GOV</field>
+        <field name="sequence">25</field>
+    </record>
+
+    <!-- ====== المشتركين للفئات الجديدة ====== -->
+    <record id="sub_category_public" model="utility.subscriber">
+        <field name="name">أهالي</field>
+        <field name="code">PUB</field>
+        <field name="sequence">5</field>
+        <field name="category_id" ref="cat_public"/>
         <field name="subsidized_enabled" eval="True"/>
         <field name="subsidized_max_units">100</field>
         <field name="subsidized_percentage">100</field>
     </record>
 
-    <record id="sub_category_commercial" model="utility.subscriber">
-        <field name="name">تجاري</field>
-        <field name="code">COM</field>
-        <field name="sequence">20</field>
-        <field name="category_id" ref="cat_commercial"/>
+    <record id="sub_category_large" model="utility.subscriber">
+        <field name="name">كبار مستهلكين</field>
+        <field name="code">LARGE</field>
+        <field name="sequence">25</field>
+        <field name="category_id" ref="cat_large"/>
         <field name="subsidized_enabled" eval="False"/>
     </record>
 
-    <record id="sub_category_industrial" model="utility.subscriber">
-        <field name="name">صناعي</field>
-        <field name="code">IND</field>
-        <field name="sequence">30</field>
-        <field name="category_id" ref="cat_commercial"/>
-        <field name="subsidized_enabled" eval="False"/>
-    </record>
-
-    <record id="sub_category_government" model="utility.subscriber">
+    <record id="sub_category_government_new" model="utility.subscriber">
         <field name="name">حكومي</field>
-        <field name="code">GOV</field>
-        <field name="sequence">40</field>
-        <field name="category_id" ref="cat_commercial"/>
+        <field name="code">GOV_NEW</field>
+        <field name="sequence">35</field>
+        <field name="category_id" ref="cat_government"/>
         <field name="subsidized_enabled" eval="False"/>
-    </record>
-
-    <record id="sub_category_agriculture" model="utility.subscriber">
-        <field name="name">زراعي</field>
-        <field name="code">AGR</field>
-        <field name="sequence">50</field>
-        <field name="category_id" ref="cat_commercial"/>
-        <field name="subsidized_enabled" eval="True"/>
-        <field name="subsidized_max_units">200</field>
-        <field name="subsidized_percentage">50</field>
     </record>
 
     <!-- ====== معادلات افتراضية ====== -->

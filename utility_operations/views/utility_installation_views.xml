@@ -41,7 +41,7 @@
                                 <field name="state"/>
                             </group>
                         </group>
-                        <group string="Meter Details">
+                        <group string="بيانات العداد">
                             <group>
                                 <field name="meter_id" required="1"/>
                                 <field name="meter_serial"/>
@@ -59,7 +59,7 @@
         </record>
 
         <record id="action_utility_installation" model="ir.actions.act_window">
-            <field name="name">Installations</field>
+            <field name="name">التركيبات</field>
             <field name="res_model">utility.installation</field>
             <field name="view_mode">tree,form</field>
         </record>

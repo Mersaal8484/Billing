@@ -9,7 +9,7 @@
                 <field name="customer_id"/>
                 <field name="penalty_type_id"/>
                 <field name="calculated_date"/>
-                <field name="amount" sum="Total"/>
+                <field name="amount" sum="الإجمالي"/>
                 <field name="state"/>
             </tree>
         </field>

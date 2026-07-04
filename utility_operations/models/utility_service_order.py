@@ -1,9 +1,10 @@
 from odoo import api, fields, models, _
+from odoo.exceptions import ValidationError
 
 
 class UtilityServiceOrder(models.Model):
     _name = 'utility.service.order'
-    _description = 'Utility Service Order'
+    _description = 'أمر خدمة'
     _rec_name = 'order_number'
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'date_requested desc, id desc'
@@ -26,13 +27,13 @@ class UtilityServiceOrder(models.Model):
         ('site_survey', 'Site Survey'),
         ('maintenance', 'Maintenance'),
         ('other', 'Other'),
-    ], string='Service Type', required=True)
+    ], string='نوع الخدمة', required=True)
     priority = fields.Selection([
         ('low', 'Low'),
         ('normal', 'Normal'),
         ('high', 'High'),
         ('urgent', 'Urgent'),
-    ], string='Priority', default='normal')
+    ], string='الأولوية', default='normal')
     customer_id = fields.Many2one('utility.customer', 'Customer', index=True)
     account_id = fields.Many2one('utility.customer', 'Account', related='customer_id', store=True, index=True)
     meter_id = fields.Many2one('utility.meter', 'Meter', index=True)
@@ -52,7 +53,7 @@ class UtilityServiceOrder(models.Model):
         ('in_progress', 'In Progress'),
         ('completed', 'Completed'),
         ('cancelled', 'Cancelled'),
-    ], string='State', default='draft')
+    ], string='الحالة', default='draft', tracking=True)
     findings = fields.Text('Findings')
     meter_reading_before = fields.Float('Meter Reading Before')
     meter_reading_after = fields.Float('Meter Reading After')
@@ -63,37 +64,52 @@ class UtilityServiceOrder(models.Model):
     cost_estimate = fields.Monetary('Cost Estimate', currency_field='company_currency_id')
     actual_cost = fields.Monetary('Actual Cost', currency_field='company_currency_id')
     notes = fields.Text('Notes')
-    company_currency_id = fields.Many2one('res.currency', related='company_id.currency_id', string='Currency')
+    company_currency_id = fields.Many2one('res.currency', related='company_id.currency_id', string='العملة')
 
     _sql_constraints = [
         ('unique_order_number_company', 'unique(order_number, company_id)',
          'Order number must be unique per company!'),
     ]
 
+    def _check_state_transition(self, allowed_states):
+        if self.state not in allowed_states:
+            raise ValidationError(
+                f'لا يمكن تنفيذ هذا الإجراء من الحالة "{self.state}". '
+                f'الحالات المسموحة: {", ".join(allowed_states)}'
+            )
+
     def action_approve(self):
+        self._check_state_transition(['draft'])
         self.state = 'approved'
 
     def action_schedule(self):
+        self._check_state_transition(['approved'])
         self.state = 'scheduled'
+        self.date_scheduled = fields.Datetime.now()
 
     def action_start(self):
+        self._check_state_transition(['scheduled'])
         self.state = 'in_progress'
 
     def action_complete(self):
+        self._check_state_transition(['in_progress'])
         if self.service_type == 'meter_replacement' and self.new_meter_id:
             self.new_meter_id.write({
-                'account_id': self.account_id.id,
                 'customer_id': self.customer_id.id,
             })
             if self.old_meter_id:
                 self.old_meter_id.write({
-                    'account_id': False,
                     'customer_id': False,
                 })
+        elif self.service_type == 'disconnection' and self.customer_id:
+            self.customer_id.write({'state': 'disconnected'})
+        elif self.service_type == 'reconnection' and self.customer_id:
+            self.customer_id.write({'state': 'active'})
         self.state = 'completed'
         self.date_completed = fields.Datetime.now()
 
     def action_cancel(self):
+        self._check_state_transition(['draft', 'approved', 'scheduled'])
         self.state = 'cancelled'
 
     @api.model_create_multi

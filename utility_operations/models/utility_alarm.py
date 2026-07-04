@@ -3,7 +3,7 @@ from odoo import api, fields, models, _
 
 class UtilityAlarm(models.Model):
     _name = 'utility.alarm'
-    _description = 'Utility Alarm'
+    _description = 'إنذار'
     _rec_name = 'alarm_code'
     _order = 'alarm_date desc, id desc'
 
@@ -25,13 +25,13 @@ class UtilityAlarm(models.Model):
         ('over_current', 'Over Current'),
         ('phase_failure', 'Phase Failure'),
         ('other', 'Other'),
-    ], string='Alarm Type', required=True)
+    ], string='نوع الإنذار', required=True)
     severity = fields.Selection([
         ('info', 'Info'),
         ('warning', 'Warning'),
         ('critical', 'Critical'),
         ('emergency', 'Emergency'),
-    ], string='Severity', default='warning')
+    ], string='الخطورة', default='warning')
     customer_id = fields.Many2one('utility.customer', 'Customer')
     account_id = fields.Many2one('utility.customer', 'Account', related='customer_id', store=True)
     meter_id = fields.Many2one('utility.meter', 'Meter')
@@ -48,7 +48,7 @@ class UtilityAlarm(models.Model):
         ('in_progress', 'In Progress'),
         ('resolved', 'Resolved'),
         ('closed', 'Closed'),
-    ], string='State', default='new')
+    ], string='الحالة', default='new')
     assigned_to = fields.Many2one('res.users', 'Assigned To')
     resolution = fields.Text('Resolution')
     resolved_date = fields.Datetime('Resolved Date')

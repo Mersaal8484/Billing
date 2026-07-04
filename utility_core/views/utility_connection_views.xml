@@ -56,16 +56,16 @@
                 <field name="customer_id"/>
                 <field name="connection_type"/>
                 <field name="status"/>
-                <filter name="active" string="Active" domain="[('status','=','active')]"/>
-                <group expand="0" string="Group By">
-                    <filter name="group_status" string="Status" context="{'group_by':'status'}"/>
-                    <filter name="group_type" string="Connection Type" context="{'group_by':'connection_type'}"/>
+                <filter name="active" string="نشط" domain="[('status','=','active')]"/>
+                <group expand="0" string="تصنيف حسب">
+                    <filter name="group_status" string="الحالة" context="{'group_by':'status'}"/>
+                    <filter name="group_type" string="نوع التوصيلة" context="{'group_by':'connection_type'}"/>
                 </group>
             </search>
         </field>
     </record>
     <record id="action_utility_connection" model="ir.actions.act_window">
-        <field name="name">Connections</field>
+        <field name="name">التوصيلات</field>
         <field name="res_model">utility.connection</field>
         <field name="view_mode">tree,form</field>
         <field name="search_view_id" ref="view_utility_connection_search"/>

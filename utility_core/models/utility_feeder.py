@@ -4,7 +4,7 @@ from odoo.exceptions import ValidationError
 
 class UtilityFeeder(models.Model):
     _name = 'utility.feeder'
-    _description = 'Utility Feeder (Cell)'
+    _description = 'مغذٍ (خلية)'
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'name'
 
@@ -14,10 +14,10 @@ class UtilityFeeder(models.Model):
     code = fields.Char('الرمز', required=True)
 
     # ===== الموقع في الشبكة =====
-    zone_id = fields.Many2one('utility.region', 'Zone', domain="[('type', '=', 'zone')]")
+    substation_id = fields.Many2one('utility.substation', 'Substation', index=True)
+    zone_id = fields.Many2one('utility.region', 'Zone', related='substation_id.zone_id', store=True)
     area_id = fields.Many2one('utility.region', 'Area', related='zone_id.parent_id', store=True)
     region_id = fields.Many2one('utility.region', 'Region', related='zone_id.parent_id.parent_id', store=True)
-    substation_id = fields.Many2one('utility.substation', 'Substation')
 
     # ===== المواصفات الكهربائية =====
     voltage_level = fields.Selection([
@@ -33,16 +33,8 @@ class UtilityFeeder(models.Model):
     coupling_meter_id = fields.Many2one(
         'utility.meter', 'عداد الربط الرئيسي',
         domain="[('feeder_id', '=', id)]",
-        help='العداد الذي يقيس إجمالي الطاقة الداخلة للفيدر/الخلية',
+        help='العداد الذي يقيس إجمالي الطاقة الداخلة للفيدر/الخلية (يُستخدم للمقارنة وكشف الفاقد)',
         tracking=True,
-    )
-    comparison_meter_ids = fields.Many2many(
-        'utility.meter',
-        'feeder_comparison_meter_rel',
-        'feeder_id', 'meter_id',
-        string='عدادات المقارنة',
-        domain="[('feeder_id', '=', id)]",
-        help='العدادات المستخدمة للمقارنة وكشف الفاقد',
     )
     transformer_ids = fields.One2many('utility.transformer', 'feeder_id', string='المحولات')
     meter_ids = fields.One2many('utility.meter', 'feeder_id', string='جميع العدادات')
@@ -59,39 +51,20 @@ class UtilityFeeder(models.Model):
         domain=[('reading_category', '=', 'feeder')],
     )
 
-    # ===== المشتركون (الخلية) =====
-    cell_account_ids = fields.One2many(
-        'utility.customer', 'cell_id',
-        string='عقود المشتركين',
-        help='عقود المشتركين المغذاة مباشرة من الفيدر/الخلية'
-    )
-
     # ===== الأرصدة والفاقد =====
-    customer_count = fields.Integer(
-        'عدد المشتركين',
-        compute='_compute_feeder_stats', store=True
-    )
-    total_consumption = fields.Float(
-        'إجمالي استهلاك المشتركين (kWh)',
+    transformer_count = fields.Integer(
+        'عدد المحولات',
         compute='_compute_feeder_stats', store=True
     )
     supplied_kwh = fields.Float(
         'الطاقة المزوّدة (kWh)',
         compute='_compute_feeder_stats', store=True
     )
-    loss_kwh = fields.Float(
-        'الفاقد (kWh)',
-        compute='_compute_feeder_stats', store=True
-    )
-    loss_percentage = fields.Float(
-        'نسبة الفاقد %',
-        compute='_compute_feeder_stats', store=True
-    )
 
     notes = fields.Text('ملاحظات')
 
     _sql_constraints = [
-        ('unique_feeder_code_zone', 'unique(code, zone_id)', 'رمز الفيدر يجب أن يكون فريداً داخل نفس المنطقة!'),
+        ('unique_feeder_code_substation', 'unique(code, substation_id)', 'رمز الفيدر يجب أن يكون فريداً داخل نفس المحطة!'),
     ]
 
     # ===== Compute =====
@@ -103,41 +76,16 @@ class UtilityFeeder(models.Model):
             else:
                 r.load_percentage = 0.0
 
-    @api.depends('cell_account_ids', 'coupling_reading_ids.consumption')
+    @api.depends('transformer_ids', 'coupling_reading_ids.consumption')
     def _compute_feeder_stats(self):
         Reading = self.env.get('utility.reading')
         for rec in self:
-            customers = rec.cell_account_ids
-            rec.customer_count = len(customers)
-
-            total = 0.0
-            if Reading:
-                for customer in customers:
-                    last = Reading.search([
-                        ('account_id', '=', customer.id),
-                        ('state', 'in', ['approved', 'billed']),
-                    ], order='reading_date desc', limit=1)
-                    total += last.consumption if last else 0.0
-            rec.total_consumption = total
+            rec.transformer_count = len(rec.transformer_ids)
 
             last_coupling = rec.coupling_reading_ids.filtered(
                 lambda r: r.state == 'approved'
             )[:1]
-            supplied = last_coupling.consumption if last_coupling else 0.0
-            rec.supplied_kwh = supplied
-            rec.loss_kwh = max(supplied - total, 0.0)
-            rec.loss_percentage = (rec.loss_kwh / supplied * 100) if supplied > 0 else 0.0
-
-    # ===== Actions =====
-    def action_view_customers(self):
-        self.ensure_one()
-        return {
-            'type': 'ir.actions.act_window',
-            'name': _('مشتركو %s') % self.name,
-            'res_model': 'utility.customer',
-            'domain': [('cell_id', '=', self.id)],
-            'views': [(False, 'tree'), (False, 'form')],
-        }
+            rec.supplied_kwh = last_coupling.consumption if last_coupling else 0.0
 
     def action_view_readings(self):
         self.ensure_one()
@@ -151,4 +99,15 @@ class UtilityFeeder(models.Model):
                 'default_feeder_id': self.id,
                 'default_reading_category': 'feeder',
             },
+        }
+
+    def action_view_meters(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('عدادات %s') % self.name,
+            'res_model': 'utility.meter',
+            'domain': [('feeder_id', '=', self.id)],
+            'views': [(False, 'tree'), (False, 'form')],
+            'context': {'default_feeder_id': self.id},
         }

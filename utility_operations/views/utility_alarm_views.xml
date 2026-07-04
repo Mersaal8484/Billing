@@ -24,13 +24,13 @@
                 <form>
                     <header>
                         <field name="state" widget="statusbar"/>
-                        <button name="action_acknowledge" string="Acknowledge" type="object"
+                        <button name="action_acknowledge" string="تأكيد الاستلام" type="object"
                                 states="new" class="btn-primary"/>
-                        <button name="action_resolve" string="Resolve" type="object"
+                        <button name="action_resolve" string="حل" type="object"
                                 states="acknowledged,in_progress" class="btn-primary"/>
-                        <button name="action_close" string="Close" type="object"
+                        <button name="action_close" string="إغلاق" type="object"
                                 states="resolved" class="btn-primary"/>
-                        <button name="action_create_service_order" string="Create Service Order" type="object"
+                        <button name="action_create_service_order" string="إنشاء أمر خدمة" type="object"
                                 states="new,acknowledged,in_progress" class="btn-secondary"/>
                     </header>
                     <sheet>
@@ -63,12 +63,12 @@
                             </group>
                         </group>
                         <notebook>
-                            <page string="Details">
+                            <page string="التفاصيل">
                                 <group>
                                     <field name="description" nolabel="1"/>
                                 </group>
                             </page>
-                            <page string="Resolution">
+                            <page string="الحل">
                                 <group>
                                     <field name="resolution"/>
                                     <field name="resolved_date"/>
@@ -82,7 +82,7 @@
         </record>
 
         <record id="action_utility_alarm" model="ir.actions.act_window">
-            <field name="name">Alarms</field>
+            <field name="name">الإنذارات</field>
             <field name="res_model">utility.alarm</field>
             <field name="view_mode">tree,form</field>
         </record>

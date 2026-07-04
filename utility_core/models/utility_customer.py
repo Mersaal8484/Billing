@@ -15,8 +15,8 @@ class UtilityCustomer(models.Model):
     active = fields.Boolean(default=True)
     company_id = fields.Many2one('res.company', 'Company', default=lambda self: self.env.company)
     customer_number = fields.Char('Customer Number', required=True, index=True, default=lambda self: _('New'))
-    account_number = fields.Char(related='customer_number', string='Account Number', store=True)
-    customer_id = fields.Many2one('utility.customer', compute='_compute_self_customer', string='Customer')
+    account_number = fields.Char(related='customer_number', string='رقم الحساب', store=True)
+    customer_id = fields.Many2one('utility.customer', compute='_compute_self_customer', string='العميل')
     partner_id = fields.Many2one('res.partner', 'العميل (شخص)', required=True, domain=[('is_company', '=', False)])
 
     def _compute_self_customer(self):
@@ -103,9 +103,9 @@ class UtilityCustomer(models.Model):
     cell_reading_ids = fields.One2many('utility.reading', 'account_id',
         string='قراءات الخلية', domain=[('reading_category', '=', 'transformer')])
     uploaded_reading_ids = fields.One2many('utility.reading', 'account_id',
-        domain=[('state', 'in', ['draft', 'under_review', 'approved'])], string='Uploaded Readings')
+        domain=[('state', 'in', ['draft', 'under_review', 'approved'])], string='القراءات المرفوعة')
     billed_reading_ids = fields.One2many('utility.reading', 'account_id',
-        domain=[('state', '=', 'billed')], string='Billed Readings')
+        domain=[('state', '=', 'billed')], string='القراءات المفوتورة')
 
     # الأزرار الذكية
     invoice_count = fields.Integer('عدد الفواتير', compute='_compute_smart_buttons')

@@ -3,7 +3,7 @@ from odoo import api, fields, models, _
 
 class UtilityWorkOrder(models.Model):
     _name = 'utility.work.order'
-    _description = 'Utility Work Order'
+    _description = 'أمر عمل'
     _rec_name = 'work_order_number'
     _order = 'date_created desc, id desc'
 
@@ -24,7 +24,7 @@ class UtilityWorkOrder(models.Model):
         ('meter_reading', 'Meter Reading'),
         ('site_visit', 'Site Visit'),
         ('other', 'Other'),
-    ], string='Work Type', required=True)
+    ], string='نوع العمل', required=True)
     description = fields.Text('Description', required=True)
     assigned_technician_id = fields.Many2one('res.users', 'Assigned Technician')
     team_id = fields.Many2one('utility.team', 'Team')
@@ -37,19 +37,19 @@ class UtilityWorkOrder(models.Model):
         ('normal', 'Normal'),
         ('high', 'High'),
         ('urgent', 'Urgent'),
-    ], string='Priority', default='normal')
+    ], string='الأولوية', default='normal')
     gps_check_in = fields.Char('GPS Check-In')
     gps_check_out = fields.Char('GPS Check-Out')
     customer_signature = fields.Binary('Customer Signature')
-    before_photos = fields.One2many('ir.attachment', 'res_id', string='Before Photos',
+    before_photos = fields.One2many('ir.attachment', 'res_id', string='الصور قبل',
                                     domain=[('res_model', '=', 'utility.work.order')])
-    after_photos = fields.One2many('ir.attachment', 'res_id', string='After Photos',
+    after_photos = fields.One2many('ir.attachment', 'res_id', string='الصور بعد',
                                    domain=[('res_model', '=', 'utility.work.order')])
     parts_used = fields.Text('Parts Used')
     labor_hours = fields.Float('Labor Hours')
     cost_estimate = fields.Monetary('Cost Estimate', currency_field='company_currency_id')
     actual_cost = fields.Monetary('Actual Cost', currency_field='company_currency_id')
-    company_currency_id = fields.Many2one('res.currency', related='company_id.currency_id', string='Currency')
+    company_currency_id = fields.Many2one('res.currency', related='company_id.currency_id', string='العملة')
     state = fields.Selection([
         ('draft', 'Draft'),
         ('assigned', 'Assigned'),
@@ -57,7 +57,7 @@ class UtilityWorkOrder(models.Model):
         ('completed', 'Completed'),
         ('verified', 'Verified'),
         ('cancelled', 'Cancelled'),
-    ], string='State', default='draft')
+    ], string='الحالة', default='draft')
     notes = fields.Text('Notes')
 
     @api.model_create_multi

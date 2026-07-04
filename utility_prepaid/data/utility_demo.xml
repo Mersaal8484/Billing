@@ -3,7 +3,7 @@
   <data>
     <record id="demo_customer_1" model="res.partner">
       <field name="name">Abdullah Al-Saud</field>
-      <field name="phone">+966 55 123 4567</field>
+      <field name="phone">771234567</field>
       <field name="email">abdullah@example.com</field>
     </record>
 

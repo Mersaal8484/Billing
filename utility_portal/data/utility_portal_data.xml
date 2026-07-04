@@ -2,4 +2,12 @@
 <odoo>
     <data noupdate="1">
     </data>
+
+    <record id="seq_utility_payment_gateway_transaction" model="ir.sequence">
+        <field name="name">Utility Payment Gateway Transaction</field>
+        <field name="code">utility.payment.gateway.transaction</field>
+        <field name="prefix">PG/%(year)s/</field>
+        <field name="padding">5</field>
+        <field name="company_id" eval="False"/>
+    </record>
 </odoo>

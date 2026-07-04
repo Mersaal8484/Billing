@@ -8,7 +8,7 @@
                 <field name="deposit_number"/>
                 <field name="customer_id"/>
                 <field name="deposit_date"/>
-                <field name="amount" sum="Total"/>
+                <field name="amount" sum="الإجمالي"/>
                 <field name="deposit_type"/>
                 <field name="status"/>
             </tree>

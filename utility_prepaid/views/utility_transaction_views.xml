@@ -20,7 +20,7 @@
   </record>
 
   <record id="action_utility_transaction" model="ir.actions.act_window">
-    <field name="name">Transactions</field>
+    <field name="name">المعاملات</field>
     <field name="res_model">utility.transaction</field>
     <field name="view_mode">tree</field>
   </record>

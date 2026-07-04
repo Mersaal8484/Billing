@@ -19,10 +19,9 @@ class DateRange(models.Model):
     def action_generate_bills(self):
         self.ensure_one()
         Reading = self.env['utility.reading']
-        account_domain = []
-        if self.region_id:
-            account_domain = [('customer_id.region_id', '=', self.region_id.id)]
-        accounts = self.env['utility.customer'].search(account_domain)
+
+        accounts = self.env['utility.customer'].search([])
+
         for account in accounts:
             reading = Reading.search([
                 ('account_id', '=', account.id),

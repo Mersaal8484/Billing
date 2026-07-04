@@ -7,6 +7,31 @@ class UtilityReading(models.Model):
 
     batch_id = fields.Many2one('utility.reading.batch', 'الدفعة', readonly=True, index=True)
 
+    def _get_billing_period_type(self):
+        self.ensure_one()
+        template = self.account_id.contract_template_id if self.account_id else False
+        recurring_type = template.recurring_rule_type if template else False
+        return {
+            'bi_monthly': 'biweekly',
+        }.get(recurring_type or 'monthly', recurring_type or 'monthly')
+
+    def _get_current_billing_date_range(self):
+        self.ensure_one()
+        billing_period = self._get_billing_period_type()
+        domain = [
+            ('is_current_period', '=', True),
+            ('work_type', '=', 'readings'),
+        ]
+        if billing_period:
+            domain.append(('billing_period', '=', billing_period))
+        period = self.env['date.range'].search(domain, limit=1)
+        if not period:
+            period = self.env['date.range'].search([
+                ('is_current_period', '=', True),
+                ('work_type', '=', 'readings'),
+            ], limit=1)
+        return period
+
     def action_generate_bill(self):
         """إنشاء أمر بيع (فاتورة) من القراءة المعتمدة وربط المرفق رسمياً"""
         self.ensure_one()
@@ -22,7 +47,13 @@ class UtilityReading(models.Model):
         if existing_order:
             raise ValidationError('تم إنشاء فاتورة لهذه القراءة مسبقاً!')
         if not self.date_range_id:
-            raise ValidationError('يجب تحديد فترة الفوترة على القراءة قبل إنشاء الفاتورة!')
+            period = self._get_current_billing_date_range()
+            if not period:
+                raise ValidationError(_(
+                    'يجب تحديد فترة الفوترة على القراءة قبل إنشاء الفاتورة، '
+                    'أو تعيين فترة نشطة حالية لنوع العمل "قراءات".'
+                ))
+            self.write({'date_range_id': period.id})
         template = self.account_id.contract_template_id
         consumption = self.consumption
         order = self.env['sale.order'].create({

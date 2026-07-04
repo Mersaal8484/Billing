@@ -100,7 +100,7 @@
                     <filter string="مفتوحة" name="filter_open" domain="[('state', '=', 'open')]"/>
                     <filter string="مغلقة" name="filter_closed" domain="[('state', '=', 'closed')]"/>
                     <filter string="يومياتي" name="filter_my_shifts" domain="[('collector_id', '=', uid)]"/>
-                    <group expand="0" string="Group By">
+                    <group expand="0" string="تصنيف حسب">
                         <filter string="المتحصل" name="group_by_collector" context="{'group_by': 'collector_id'}"/>
                         <filter string="المسار" name="group_by_route" context="{'group_by': 'route_id'}"/>
                         <filter string="الحالة" name="group_by_state" context="{'group_by': 'state'}"/>

@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_customer_statement_wizard_form" model="ir.ui.view">
+        <field name="name">utility.customer.statement.wizard.form</field>
+        <field name="model">utility.customer.statement.wizard</field>
+        <field name="arch" type="xml">
+            <form string="كشف حساب المشترك">
+                <sheet>
+                    <group>
+                        <field name="customer_id" options="{'no_create': True}"/>
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                        <field name="include_draft"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_print_statement" type="object" string="طباعة كشف الحساب" class="btn-primary"/>
+                    <button string="إلغاء" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_utility_customer_statement_wizard" model="ir.actions.act_window">
+        <field name="name">كشف حساب المشترك</field>
+        <field name="res_model">utility.customer.statement.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_utility_customer_statement_wizard_form"/>
+        <field name="target">new</field>
+    </record>
+
+    <record id="view_utility_customer_form_statement_button" model="ir.ui.view">
+        <field name="name">utility.customer.form.statement.button</field>
+        <field name="model">utility.customer</field>
+        <field name="inherit_id" ref="utility_core.view_utility_customer_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="%(action_utility_customer_statement_wizard)d"
+                        type="action"
+                        class="oe_stat_button"
+                        icon="fa-file-text-o"
+                        context="{'default_customer_id': active_id}">
+                    <div class="o_stat_info">
+                        <span class="o_stat_text">كشف الحساب</span>
+                    </div>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_report_customer_statement" model="ir.actions.report">
+        <field name="name">كشف حساب المشترك</field>
+        <field name="model">utility.customer.statement.wizard</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">utility_billing.report_customer_statement</field>
+        <field name="report_file">utility_billing.report_customer_statement</field>
+        <field name="print_report_name">'كشف حساب - %s' % (object.customer_id.customer_number)</field>
+        <field name="binding_model_id" ref="model_utility_customer_statement_wizard"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="report_customer_statement">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-set="statement" t-value="doc._prepare_report_values()"/>
+                <t t-set="totals" t-value="statement['totals']"/>
+                <t t-set="lines" t-value="statement['lines']"/>
+                <div class="page" dir="rtl" style="font-family: Arial, sans-serif; font-size: 12px;">
+                    <h2 style="text-align:center; margin-bottom: 4px;">كشف حساب المشترك</h2>
+                    <table style="width:100%; margin-bottom:12px; border-collapse:collapse;">
+                        <tr>
+                            <td><strong>رقم الحساب:</strong> <span t-esc="doc.customer_id.customer_number"/></td>
+                            <td><strong>المشترك:</strong> <span t-esc="doc.customer_id.partner_id.name"/></td>
+                        </tr>
+                        <tr>
+                            <td><strong>العداد:</strong> <span t-esc="doc.customer_id.meter_id.meter_number or ''"/></td>
+                            <td><strong>الفترة:</strong> <span t-esc="doc.date_from or 'البداية'"/> - <span t-esc="doc.date_to or 'اليوم'"/></td>
+                        </tr>
+                    </table>
+
+                    <table style="width:100%; border-collapse:collapse;" border="1">
+                        <thead>
+                            <tr style="background:#f0f0f0;">
+                                <th style="padding:5px;">التاريخ</th>
+                                <th style="padding:5px;">المرجع</th>
+                                <th style="padding:5px;">البيان</th>
+                                <th style="padding:5px;">مدين</th>
+                                <th style="padding:5px;">دائن</th>
+                                <th style="padding:5px;">الرصيد</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="5" style="padding:5px;"><strong>الرصيد الافتتاحي</strong></td>
+                                <td style="padding:5px; text-align:left;"><span t-esc="'%.2f' % totals['opening']"/></td>
+                            </tr>
+                            <tr t-foreach="lines" t-as="line">
+                                <td style="padding:5px;"><span t-esc="line['date']"/></td>
+                                <td style="padding:5px;"><span t-esc="line['ref']"/></td>
+                                <td style="padding:5px;"><span t-esc="line['description']"/></td>
+                                <td style="padding:5px; text-align:left;"><span t-esc="'%.2f' % line['debit']"/></td>
+                                <td style="padding:5px; text-align:left;"><span t-esc="'%.2f' % line['credit']"/></td>
+                                <td style="padding:5px; text-align:left;"><span t-esc="'%.2f' % line['balance']"/></td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr style="background:#f7f7f7; font-weight:bold;">
+                                <td colspan="3" style="padding:5px;">الإجمالي</td>
+                                <td style="padding:5px; text-align:left;"><span t-esc="'%.2f' % totals['debit']"/></td>
+                                <td style="padding:5px; text-align:left;"><span t-esc="'%.2f' % totals['credit']"/></td>
+                                <td style="padding:5px; text-align:left;"><span t-esc="'%.2f' % totals['closing']"/></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

@@ -4,13 +4,14 @@
         <field name="name">utility.staff.tree</field>
         <field name="model">utility.staff</field>
         <field name="arch" type="xml">
-            <tree>
+            <tree decoration-success="active == True" decoration-muted="active == False">
                 <field name="name"/>
                 <field name="employee_code"/>
-                <field name="user_role_id"/>
-                <field name="team_id"/>
-                <field name="mobile"/>
-                <field name="active"/>
+                <field name="user_role_id" optional="show"/>
+                <field name="team_id" optional="show"/>
+                <field name="phone" optional="hide"/>
+                <field name="mobile" optional="hide"/>
+                <field name="active" invisible="1"/>
             </tree>
         </field>
     </record>
@@ -19,24 +20,53 @@
         <field name="model">utility.staff</field>
         <field name="arch" type="xml">
             <form>
+                <header>
+                    <field name="active" invisible="1"/>
+                    <button name="toggle_active" type="object"
+                            attrs="{'invisible': [('active', '=', True)]}"
+                            string="تفعيل" class="btn-success"/>
+                    <button name="toggle_active" type="object"
+                            attrs="{'invisible': [('active', '=', False)]}"
+                            string="تعطيل" class="btn-danger"/>
+                </header>
                 <sheet>
+
                     <div class="oe_title">
-                        <h1><field name="name"/></h1>
+                        <label for="name" string="الاسم"/>
+                        <h1><field name="name" placeholder="اسم الموظف"/></h1>
                     </div>
                     <group>
-                        <group>
-                            <field name="employee_code"/>
-                            <field name="user_id"/>
-                            <field name="user_role_id"/>
-                            <field name="team_id"/>
-                            <field name="active"/>
-                            <field name="company_id" groups="base.group_multi_company"/>
+                        <group name="identity" string="معلومات أساسية">
+                            <field name="employee_code" placeholder="رمز الموظف"/>
+                            <field name="team_id" options="{'no_create': True}"/>
+                            <field name="user_role_id" options="{'no_create': True}"/>
                         </group>
-                        <group>
-                            <field name="phone"/>
-                            <field name="mobile"/>
+                        <group name="contact" string="معلومات الاتصال">
+                            <field name="phone" placeholder="رقم الهاتف"/>
+                            <field name="mobile" placeholder="رقم الجوال"/>
                         </group>
                     </group>
+                    <notebook>
+                        <page name="account" string="الحساب">
+                            <group>
+                                <group>
+                                    <field name="user_id" options="{'no_create': True}"/>
+                                    <field name="company_id" groups="base.group_multi_company"/>
+                                </group>
+                                <group>
+                                    <field name="active"/>
+                                </group>
+                            </group>
+                            <separator string="المجموعات المرتبطة بالدور"/>
+                            <field name="user_role_id" readonly="1">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="group_ids" widget="many2many_tags"
+                                           options="{'no_create': True}"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
                 </sheet>
             </form>
         </field>

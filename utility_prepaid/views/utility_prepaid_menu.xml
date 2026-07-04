@@ -1,56 +1,56 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <record id="action_utility_token" model="ir.actions.act_window">
-        <field name="name">Tokens</field>
+        <field name="name">الأكواد</field>
         <field name="res_model">utility.token</field>
         <field name="view_mode">tree,form</field>
     </record>
 
     <record id="action_utility_transaction" model="ir.actions.act_window">
-        <field name="name">Transactions</field>
+        <field name="name">المعاملات</field>
         <field name="res_model">utility.transaction</field>
         <field name="view_mode">tree,form</field>
     </record>
 
     <record id="action_utility_adjustment" model="ir.actions.act_window">
-        <field name="name">Adjustments</field>
+        <field name="name">التسويات</field>
         <field name="res_model">utility.adjustment</field>
         <field name="view_mode">tree,form</field>
     </record>
 
     <record id="action_utility_reversal" model="ir.actions.act_window">
-        <field name="name">Reversals</field>
+        <field name="name">الإلغاءات</field>
         <field name="res_model">utility.reversal</field>
         <field name="view_mode">tree,form</field>
     </record>
 
-    <menuitem id="menu_utility_prepaid_root" name="Utility Prepaid"
+    <menuitem id="menu_utility_prepaid_root" name="الدفع المسبق"
               sequence="15" parent="utility_core.menu_utility_root"/>
 
-    <menuitem id="menu_utility_prepaid_pos" name="Point of Sale"
+    <menuitem id="menu_utility_prepaid_pos" name="نقاط البيع"
               parent="menu_utility_prepaid_root" sequence="10"
               action="point_of_sale.action_pos_config_kanban"/>
 
-    <menuitem id="menu_utility_prepaid_tokens" name="Tokens"
+    <menuitem id="menu_utility_prepaid_tokens" name="الأكواد"
               parent="menu_utility_prepaid_root" sequence="15"
               action="action_utility_token"/>
 
-    <menuitem id="menu_utility_prepaid_cashiering" name="Cashiering"
+    <menuitem id="menu_utility_prepaid_cashiering" name="الكاشير"
               parent="menu_utility_prepaid_root" sequence="20"/>
 
-    <menuitem id="menu_utility_prepaid_cashier_shifts" name="Cashier Shifts"
+    <menuitem id="menu_utility_prepaid_cashier_shifts" name="ورديات الكاشير"
               parent="menu_utility_prepaid_cashiering" sequence="10"
               action="action_utility_cashier_shift"/>
 
-    <menuitem id="menu_utility_prepaid_adjustments" name="Adjustments"
+    <menuitem id="menu_utility_prepaid_adjustments" name="التسويات"
               parent="menu_utility_prepaid_root" sequence="25"
               action="action_utility_adjustment"/>
 
-    <menuitem id="menu_utility_prepaid_reversals" name="Reversals"
+    <menuitem id="menu_utility_prepaid_reversals" name="الإلغاءات"
               parent="menu_utility_prepaid_root" sequence="30"
               action="action_utility_reversal"/>
 
-    <menuitem id="menu_utility_prepaid_transactions" name="Transactions"
+    <menuitem id="menu_utility_prepaid_transactions" name="المعاملات"
               parent="menu_utility_prepaid_root" sequence="35"
               action="action_utility_transaction"/>
 </odoo>

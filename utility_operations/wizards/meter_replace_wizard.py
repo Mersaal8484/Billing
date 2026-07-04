@@ -17,7 +17,7 @@ class UtilityMeterReplaceWizard(models.TransientModel):
     def action_execute_replacement(self):
         self.ensure_one()
         replacement = self.env['utility.meter.replacement'].create({
-            'account_id': self.account_id.id,
+            'utility_account_id': self.account_id.id,
             'old_meter_id': self.old_meter_id.id,
             'new_meter_id': self.new_meter_id.id,
             'old_meter_final_reading': self.old_meter_final_reading,

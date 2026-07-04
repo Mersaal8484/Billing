@@ -11,12 +11,12 @@ class IrAttachment(models.Model):
     _inherit = 'ir.attachment'
 
     invoice_attachment_url = fields.Char(
-        string='Attachment URL',
+        string='رابط المرفق',
         compute='_compute_invoice_attachment_url',
         store=True,
     )
     custom_storage_path = fields.Char(
-        string='Custom Storage Path',
+        string='مسار التخزين المخصص',
         readonly=True,
     )
 

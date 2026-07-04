@@ -2,84 +2,68 @@
 <odoo>
     <data>
 
-        <menuitem id="menu_utility_operations_root"
-                  name="Utility Operations"
-                  sequence="20"
-                  web_icon="utility_operations,static/description/icon.png"/>
+        <!-- ====== تحت قائمة Utility الرئيسية ====== -->
+        <menuitem id="menu_utility_field_ops"
+                  name="العمليات الميدانية"
+                  parent="utility_core.menu_utility_root"
+                  sequence="25"/>
 
+        <!-- ====== أمور الخدمة ====== -->
         <menuitem id="menu_utility_service_orders"
-                  name="Service Orders"
-                  parent="menu_utility_operations_root"
+                  name="أمور الخدمة"
+                  parent="menu_utility_field_ops"
                   sequence="10"/>
 
         <menuitem id="menu_utility_service_order_list"
-                  name="Service Orders"
+                  name="أوامر الخدمة"
                   parent="menu_utility_service_orders"
                   action="action_utility_service_order"
                   sequence="10"/>
 
         <menuitem id="menu_utility_installation_list"
-                  name="Installations"
+                  name="التركيبات"
                   parent="menu_utility_service_orders"
                   action="action_utility_installation"
                   sequence="20"/>
 
         <menuitem id="menu_utility_inspection_list"
-                  name="Inspections"
+                  name="المعاينات"
                   parent="menu_utility_service_orders"
                   action="action_utility_inspection"
                   sequence="30"/>
 
-        <menuitem id="menu_utility_security"
-                  name="Security"
-                  parent="menu_utility_operations_root"
+        <!-- ====== الأمن ====== -->
+        <menuitem id="menu_utility_tamper_case_list"
+                  name="حالات التلاعب"
+                  parent="menu_utility_field_ops"
+                  action="action_utility_tamper_case"
                   sequence="20"/>
 
-        <menuitem id="menu_utility_tamper_case_list"
-                  name="Tamper Cases"
-                  parent="menu_utility_security"
-                  action="action_utility_tamper_case"
-                  sequence="10"/>
-
-        <menuitem id="menu_utility_monitoring"
-                  name="Monitoring"
-                  parent="menu_utility_operations_root"
+        <!-- ====== المراقبة ====== -->
+        <menuitem id="menu_utility_alarm_list"
+                  name="الإنذارات"
+                  parent="menu_utility_field_ops"
+                  action="action_utility_alarm"
                   sequence="30"/>
 
-        <menuitem id="menu_utility_alarm_list"
-                  name="Alarms"
-                  parent="menu_utility_monitoring"
-                  action="action_utility_alarm"
-                  sequence="10"/>
-
-        <menuitem id="menu_utility_field"
-                  name="Field"
-                  parent="menu_utility_operations_root"
+        <!-- ====== الأعمال الميدانية ====== -->
+        <menuitem id="menu_utility_work_order_list"
+                  name="أوامر العمل"
+                  parent="menu_utility_field_ops"
+                  action="action_utility_work_order"
                   sequence="40"/>
 
-        <menuitem id="menu_utility_work_order_list"
-                  name="Work Orders"
-                  parent="menu_utility_field"
-                  action="action_utility_work_order"
-                  sequence="10"/>
-
-        <!-- Maintenance & Actions Submenu -->
+        <!-- ====== الصيانة والإجراءات ====== -->
         <menuitem id="menu_utility_maintenance"
                   name="الصيانة والإجراءات"
-                  parent="menu_utility_operations_root"
+                  parent="menu_utility_field_ops"
                   sequence="50"/>
-
-        <menuitem id="menu_utility_meter_replacement"
-                  name="استبدال العدادات"
-                  parent="menu_utility_maintenance"
-                  action="action_utility_meter_replacement"
-                  sequence="10"/>
 
         <menuitem id="menu_utility_readings_settlement"
                   name="تسويات القراءات"
                   parent="menu_utility_maintenance"
                   action="action_utility_readings_settlement"
                   sequence="20"/>
+
     </data>
 </odoo>
-

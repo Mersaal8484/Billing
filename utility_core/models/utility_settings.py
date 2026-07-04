@@ -1,4 +1,4 @@
-from odoo import api, fields, models, _
+from odoo import api, fields, models
 
 
 class ResConfigSettings(models.TransientModel):
@@ -21,24 +21,6 @@ class ResConfigSettings(models.TransientModel):
     ], string='نوع التحقق من القراءة',
        config_parameter='utility.meter_reading_validation',
        default='both')
-
-    # --- Billing & Invoicing ---
-    enable_auto_invoice_confirm = fields.Boolean(
-        string='تأكيد الفواتير تلقائياً',
-        config_parameter='utility.enable_auto_invoice_confirm',
-        default=False)
-    auto_generate_bills = fields.Boolean(
-        string='توليد الفواتير تلقائياً',
-        config_parameter='utility.auto_generate_bills',
-        default=True)
-    billing_due_days = fields.Integer(
-        string='أيام الاستحقاق',
-        config_parameter='utility.billing_due_days',
-        default=30)
-    late_penalty_percentage = fields.Float(
-        string='نسبة غرامة التأخير (%)',
-        config_parameter='utility.late_penalty_percentage',
-        default=1.5)
 
     # --- Transformer ---
     max_transformer_loss_tolerance = fields.Float(
@@ -92,6 +74,10 @@ class ResConfigSettings(models.TransientModel):
     send_sms_on_payment = fields.Boolean(
         string='إرسال SMS عند الدفع',
         config_parameter='utility.send_sms_on_payment',
+        default=False)
+    send_sms_on_overdue = fields.Boolean(
+        string='إرسال SMS عند تأخر الفاتورة',
+        config_parameter='utility.send_sms_on_overdue',
         default=False)
     send_sms_on_low_credit = fields.Boolean(
         string='إرسال SMS عند انخفاض الرصيد',
@@ -154,3 +140,13 @@ class ResConfigSettings(models.TransientModel):
         related='company_id.local_fee_product_id',
         readonly=False,
         string='منتج المجالس المحلية')
+    writeoff_account_id = fields.Many2one(
+        'account.account',
+        related='company_id.writeoff_account_id',
+        readonly=False,
+        string='حساب الإعفاءات')
+    collection_journal_id = fields.Many2one(
+        'account.journal',
+        related='company_id.collection_journal_id',
+        readonly=False,
+        string='يومية التحصيل الافتراضية')

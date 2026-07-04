@@ -1,6 +1,10 @@
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
 
+import re
+
+PHONE_9_RE = re.compile(r'^\d{9}$')
+
 
 class UtilityCustomerWizard(models.TransientModel):
     _name = 'utility.customer.wizard'
@@ -100,7 +104,19 @@ class UtilityCustomerWizard(models.TransientModel):
         if self.transformer_feeder_id and self.transformer_feeder_id.zone_id:
             self.transformer_zone_id = self.transformer_feeder_id.zone_id
 
-    def _get_or_create_private_transformer(self, customer):
+    @api.constrains('mobile', 'phone')
+    def _check_phone_9_digits(self):
+        for rec in self:
+            if rec.mobile and not PHONE_9_RE.match(rec.mobile):
+                raise ValidationError(
+                    'رقم الجوال يجب أن يتكون من 9 أرقام فقط، بدون مفتاح دولة (+967/00) أو شرطات.'
+                )
+            if rec.phone and not PHONE_9_RE.match(rec.phone):
+                raise ValidationError(
+                    'رقم الهاتف يجب أن يتكون من 9 أرقام فقط، بدون مفتاح دولة (+967/00) أو شرطات.'
+                )
+
+    def _get_or_create_private_transformer(self, partner):
         if self.private_transformer_existing_id:
             t = self.private_transformer_existing_id
             if len(t.customer_ids) > 0:
@@ -114,7 +130,7 @@ class UtilityCustomerWizard(models.TransientModel):
             raise ValidationError(_('كود المحول مستخدم بالفعل.'))
 
         return self.env['utility.transformer'].create({
-            'name': self.transformer_name or f"محول خاص - {customer.partner_id.name}",
+            'name': self.transformer_name or f"محول خاص - {partner.name}",
             'code': self.transformer_code,
             'capacity': self.transformer_capacity,
             'phase': self.transformer_phase or (self.phase if self.phase else 'single'),
@@ -130,6 +146,8 @@ class UtilityCustomerWizard(models.TransientModel):
 
     def action_create_customer(self):
         self.ensure_one()
+        if not self.create_meter or not self.meter_number:
+            raise ValidationError(_('يجب إنشاء عداد وإدخال رقم العداد قبل حفظ المشترك.'))
 
         # 1. Create res.partner
         partner_vals = {
@@ -148,7 +166,29 @@ class UtilityCustomerWizard(models.TransientModel):
         }
         partner = self.env['res.partner'].create(partner_vals)
 
-        # 2. Create utility.customer (without cell_id yet)
+        # 2. Handle Private Transformer before customer creation
+        transformer = False
+        if self.use_private_transformer:
+            transformer = self._get_or_create_private_transformer(partner)
+
+        # 3. Create utility.meter before customer because meter_id is required
+        status_active = self.env['utility.meter.status'].search([('code', '=', 'ACTIVE')], limit=1)
+        meter_vals = {
+            'meter_number': self.meter_number,
+            'serial_number': self.serial_number or self.meter_number,
+            'manufacturer': self.manufacturer,
+            'meter_type_id': self.meter_type_id.id if self.meter_type_id else False,
+            'status_id': status_active.id if status_active else False,
+            'phase': self.phase,
+            'transformer_id': transformer.id if transformer else False,
+            'feeder_id': transformer.feeder_id.id if transformer and transformer.feeder_id else False,
+            'payment_type': self.payment_type,
+            'sts_key_revision': self.sts_key_revision if self.payment_type == 'prepaid' else False,
+            'communication_type': self.communication_type if self.payment_type == 'postpaid' else False,
+        }
+        meter = self.env['utility.meter'].create(meter_vals)
+
+        # 4. Create utility.customer
         customer_vals = {
             'partner_id': partner.id,
             'national_id': self.national_id,
@@ -158,38 +198,12 @@ class UtilityCustomerWizard(models.TransientModel):
             'route_id': self.route_id.id if self.route_id else False,
             'state': 'active',
             'contract_state': 'active',
+            'meter_id': meter.id,
+            'transformer_id': transformer.id if transformer else False,
+            'cell_id': transformer.feeder_id.id if transformer and transformer.feeder_id else False,
         }
         customer = self.env['utility.customer'].create(customer_vals)
-
-        # 3. Handle Private Transformer
-        transformer = False
-        if self.use_private_transformer:
-            transformer = self._get_or_create_private_transformer(customer)
-            customer.write({
-                'transformer_id': transformer.id,
-                'cell_id': transformer.feeder_id.id if transformer.feeder_id else False
-            })
-
-        # 4. Create utility.meter if enabled
-        meter = False
-        if self.create_meter and self.meter_number:
-            status_active = self.env['utility.meter.status'].search([('code', '=', 'ACTIVE')], limit=1)
-            meter_vals = {
-                'meter_number': self.meter_number,
-                'serial_number': self.serial_number or self.meter_number,
-                'manufacturer': self.manufacturer,
-                'meter_type_id': self.meter_type_id.id if self.meter_type_id else False,
-                'status_id': status_active.id if status_active else False,
-                'phase': self.phase,
-                'customer_id': customer.id,
-                'transformer_id': transformer.id if transformer else False,
-                'feeder_id': transformer.feeder_id.id if transformer and transformer.feeder_id else False,
-                'payment_type': self.payment_type,
-                'sts_key_revision': self.sts_key_revision if self.payment_type == 'prepaid' else False,
-                'communication_type': self.communication_type if self.payment_type == 'postpaid' else False,
-            }
-            meter = self.env['utility.meter'].create(meter_vals)
-            customer.write({'meter_id': meter.id})
+        meter.write({'customer_id': customer.id})
 
         # 5. Link meter as coupling meter for the private transformer
         if transformer and meter:

@@ -21,6 +21,7 @@ Notifications (Email/SMS/Push).
     'data': [
         'security/ir.model.access.csv',
         'views/utility_portal_templates.xml',
+        'views/utility_payment_gateway_views.xml',
         'data/utility_portal_data.xml',
     ],
     'demo': [],

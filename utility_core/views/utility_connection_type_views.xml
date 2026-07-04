@@ -36,7 +36,7 @@
         </field>
     </record>
     <record id="action_utility_connection_type" model="ir.actions.act_window">
-        <field name="name">Connection Types</field>
+        <field name="name">أنواع التوصيلات</field>
         <field name="res_model">utility.connection.type</field>
         <field name="view_mode">tree,form</field>
     </record>

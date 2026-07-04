@@ -25,3 +25,5 @@ from . import utility_ir_attachment
 from . import utility_meter_replacement
 from . import utility_reading
 from . import utility_res_company
+from . import utility_notification
+from . import utility_integration

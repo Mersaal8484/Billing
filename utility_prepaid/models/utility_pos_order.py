@@ -3,7 +3,7 @@ from odoo import api, fields, models, _
 
 class PosOrder(models.Model):
     _inherit = 'pos.order'
-    _description = 'Prepaid Token Sale (POS Order)'
+    _description = 'بيع كود شحن (أمر نقاط بيع)'
 
     account_id = fields.Many2one('utility.customer', string='حساب الكهرباء', index=True)
     meter_id = fields.Many2one('utility.meter', string='العداد')
@@ -19,6 +19,7 @@ class PosOrder(models.Model):
     balance_before = fields.Monetary(string='الرصيد قبل')
     balance_after = fields.Monetary(string='الرصيد بعد')
 
+    cashier_shift_id = fields.Many2one('utility.cashier.shift', string='الوردية', index=True)
     token_id = fields.Many2one('utility.token', string='الشفرة', readonly=True)
     token_status = fields.Selection([
         ('pending', 'قيد الانتظار'),
@@ -28,6 +29,18 @@ class PosOrder(models.Model):
     ], string='حالة الشفرة', default='pending')
     sms_sent = fields.Boolean(string='تم إرسال SMS')
     reversal_id = fields.Many2one('utility.reversal', string='الإلغاء')
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if not vals.get('cashier_shift_id'):
+                shift = self.env['utility.cashier.shift'].search([
+                    ('cashier_id', '=', self.env.user.id),
+                    ('state', '=', 'open'),
+                ], limit=1)
+                if shift:
+                    vals['cashier_shift_id'] = shift.id
+        return super().create(vals_list)
 
     def _generate_token(self):
         self.ensure_one()
@@ -84,7 +97,30 @@ class PosOrder(models.Model):
             return '<a href="%s">%s</a>' % (url, self.token_id.token_number or '')
         return ''
 
+    def action_pos_order_paid(self):
+        """
+        FIX-9: Odoo يستدعي هذه الدالة تلقائياً عند إغلاق طلب POS بعد الدفع.
+        نستخدمها لتوليد التوكن وتطبيق الرصيد تلقائياً بدون تدخل يدوي.
+        العملية آمنة (idempotent): إذا كان التوكن مولّداً مسبقاً لا يعيد التوليد.
+        """
+        res = super().action_pos_order_paid()
+        for order in self:
+            if not order.account_id or not order.meter_id:
+                continue
+            # idempotency: لا تُطبّق مرة ثانية إذا تمّت العملية
+            if order.token_status == 'generated':
+                continue
+            try:
+                order._generate_token()
+                order._apply_balance()
+            except Exception:
+                import logging
+                logging.getLogger(__name__).exception(
+                    'POS auto-token/balance failed for order %s', order.name
+                )
+        return res
+
 
 class PosOrderLine(models.Model):
     _inherit = 'pos.order.line'
-    _description = 'Prepaid Sale Line'
+    _description = 'بند بيع مسبق الدفع'

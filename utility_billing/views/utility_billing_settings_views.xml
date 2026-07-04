@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_billing_config_settings" model="ir.ui.view">
+        <field name="name">إعدادات الفوترة</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[hasclass('settings')]" position="inside">
+                <div class="app_settings_block" data-string="الفوترة الآجلة" string="الفوترة الآجلة" data-key="utility_billing" groups="utility_core.group_utility_admin">
+                    <h2>الفوترة</h2>
+                    <div class="row mt16 o_settings_container" id="utility_billing">
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="enable_auto_invoice_confirm"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="enable_auto_invoice_confirm"/>
+                                <div class="text-muted">
+                                    تأكيد الفواتير تلقائياً بعد إنشائها
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_left_pane">
+                                <field name="auto_generate_bills"/>
+                            </div>
+                            <div class="o_setting_right_pane">
+                                <label for="auto_generate_bills"/>
+                                <div class="text-muted">
+                                    توليد الفواتير تلقائياً حسب الدورات
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_right_pane">
+                                <label for="billing_due_days"/>
+                                <div class="text-muted">
+                                    عدد أيام الاستحقاق من تاريخ الفاتورة
+                                </div>
+                                <div class="content-group">
+                                    <div class="mt16">
+                                        <field name="billing_due_days" class="o_light_label"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_right_pane">
+                                <label for="late_penalty_percentage"/>
+                                <div class="text-muted">
+                                    نسبة غرامة التأخير عن السداد
+                                </div>
+                                <div class="content-group">
+                                    <div class="mt16">
+                                        <field name="late_penalty_percentage" class="o_light_label"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>

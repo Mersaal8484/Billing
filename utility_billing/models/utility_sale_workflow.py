@@ -34,7 +34,7 @@ def _resolve_domain(domain):
 
 class SaleWorkflowProcess(models.Model):
     _name = 'sale.workflow.process'
-    _description = 'Sale Workflow Process'
+    _description = 'عملية سير أمر البيع'
 
     name = fields.Char(required=True, string="اسم مسار العمل")
     picking_policy = fields.Selection([
@@ -65,7 +65,7 @@ class SaleWorkflowProcess(models.Model):
 
 class AutomaticWorkflowJob(models.Model):
     _name = 'automatic.workflow.job'
-    _description = 'Automatic Workflow Job'
+    _description = 'وظيفة سير تلقائي'
 
     @api.model
     def _validate_sale_orders(self, order_filter):

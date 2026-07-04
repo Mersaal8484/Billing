@@ -4,7 +4,7 @@ from .utility_date_range import BILLING_PERIOD_TYPES
 
 class UtilityRegion(models.Model):
     _name = 'utility.region'
-    _description = 'Utility Region'
+    _description = 'منطقة'
     _order = 'name'
 
     active = fields.Boolean(default=True)
@@ -16,13 +16,13 @@ class UtilityRegion(models.Model):
         ('region', 'Region'),
         ('area', 'Area'),
         ('zone', 'Zone'),
-    ], string='Type', default='region', required=True)
+    ], string='النوع', default='region', required=True)
     
-    parent_id = fields.Many2one('utility.region', string='Parent', index=True, ondelete='cascade')
-    child_ids = fields.One2many('utility.region', 'parent_id', string='Children')
+    parent_id = fields.Many2one('utility.region', string='العنصر الأب', index=True, ondelete='cascade')
+    child_ids = fields.One2many('utility.region', 'parent_id', string='العناصر الفرعية')
     
-    area_ids = fields.One2many('utility.region', 'parent_id', string='Areas', domain=[('type', '=', 'area')])
-    zone_ids = fields.One2many('utility.region', 'parent_id', string='Zones', domain=[('type', '=', 'zone')])
+    area_ids = fields.One2many('utility.region', 'parent_id', string='المناطق', domain=[('type', '=', 'area')])
+    zone_ids = fields.One2many('utility.region', 'parent_id', string='النواحي', domain=[('type', '=', 'zone')])
     
     area_count = fields.Integer('Area Count', compute='_compute_area_count', store=True)
     zone_count = fields.Integer('Zone Count', compute='_compute_zone_count', store=True)
