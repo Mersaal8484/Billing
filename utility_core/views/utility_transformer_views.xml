@@ -65,7 +65,6 @@
                         </group>
                         <group string="الموقع الجغرافي">
                             <field name="zone_region_id" readonly="1"/>
-                            <field name="zone_id" readonly="1"/>
                             <field name="area_id" readonly="1"/>
                             <field name="region_id" readonly="1"/>
                             <field name="address"/>

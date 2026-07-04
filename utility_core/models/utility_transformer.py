@@ -19,9 +19,8 @@ class UtilityTransformer(models.Model):
         domain="[('type', '=', 'zone')]",
         help='سجل المنطقة (zone) المنشأ تلقائياً في التدرج الهرمي للمناطق'
     )
-    zone_id = fields.Many2one('utility.region', 'Zone', related='feeder_id.zone_id', store=True)
-    area_id = fields.Many2one('utility.region', 'Area', related='zone_id.parent_id', store=True)
-    region_id = fields.Many2one('utility.region', 'Region', related='zone_id.parent_id.parent_id', store=True)
+    area_id = fields.Many2one('utility.region', 'Area', related='zone_region_id.parent_id', store=True)
+    region_id = fields.Many2one('utility.region', 'Region', related='zone_region_id.parent_id.parent_id', store=True)
 
     is_private = fields.Boolean(string='محول خاص', default=False, help='يُحدد ما إذا كان المحول خاصاً بمشترك واحد')
 

@@ -15,9 +15,8 @@ class UtilityFeeder(models.Model):
 
     # ===== الموقع في الشبكة =====
     substation_id = fields.Many2one('utility.substation', 'Substation', index=True)
-    zone_id = fields.Many2one('utility.region', 'Zone', related='substation_id.zone_id', store=True)
-    area_id = fields.Many2one('utility.region', 'Area', related='zone_id.parent_id', store=True)
-    region_id = fields.Many2one('utility.region', 'Region', related='zone_id.parent_id.parent_id', store=True)
+    area_id = fields.Many2one('utility.region', 'Area', related='substation_id.area_id', store=True)
+    region_id = fields.Many2one('utility.region', 'Region', related='substation_id.region_id', store=True)
 
     # ===== المواصفات الكهربائية =====
     voltage_level = fields.Selection([

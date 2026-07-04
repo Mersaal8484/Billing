@@ -101,8 +101,9 @@ class UtilityCustomerWizard(models.TransientModel):
 
     @api.onchange('transformer_feeder_id')
     def _onchange_transformer_feeder_id(self):
-        if self.transformer_feeder_id and self.transformer_feeder_id.zone_id:
-            self.transformer_zone_id = self.transformer_feeder_id.zone_id
+        substation = self.transformer_feeder_id.substation_id
+        if substation and substation.zone_id:
+            self.transformer_zone_id = substation.zone_id
 
     @api.constrains('mobile', 'phone')
     def _check_phone_9_digits(self):
