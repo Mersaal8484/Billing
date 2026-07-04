@@ -52,7 +52,7 @@
         <field name="name">ERP الكهرباء: الفوترة الجماعية للقراءات المعتمدة</field>
         <field name="model_id" ref="utility_billing.model_utility_reading"/>
         <field name="state">code</field>
-        <field name="code">model.action_generate_bills_batch()</field>
+        <field name="code">model.cron_queue_approved_readings()</field>
         <field name="user_id" ref="base.user_root"/>
         <field name="interval_number">1</field>
         <field name="interval_type">days</field>

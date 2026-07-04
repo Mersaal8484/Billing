@@ -26,6 +26,7 @@ class DateRange(models.Model):
             reading = Reading.search([
                 ('account_id', '=', account.id),
                 ('state', '=', 'approved'),
+                ('date_range_id', '=', self.id),
             ], order='reading_date desc', limit=1)
             if not reading:
                 continue

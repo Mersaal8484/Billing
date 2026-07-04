@@ -36,6 +36,8 @@ class UtilitySaleOrder(models.Model):
     amount_local_fee = fields.Float('الرسوم المحلية')
     amount_penalty = fields.Float('الغرامات', compute='_compute_amount_penalty', store=True)
     penalty_ids = fields.One2many('utility.penalty', 'sale_order_id', string='الغرامات')
+    utility_move_ids = fields.One2many(
+        'account.move', 'utility_sale_order_id', string='فواتير الكهرباء المحاسبية')
 
     qr_code_value = fields.Char('بيانات QR', compute='_compute_qr_code', readonly=True)
     qr_code_url = fields.Char('رابط QR', compute='_compute_qr_code', readonly=True)
@@ -118,6 +120,7 @@ class UtilitySaleOrder(models.Model):
 
     def _prepare_invoice(self):
         res = super(UtilitySaleOrder, self)._prepare_invoice()
+        res['utility_sale_order_id'] = self.id
         if self.workflow_process_id:
             res['workflow_process_id'] = self.workflow_process_id.id
         if self.current_reading:
@@ -298,16 +301,38 @@ class UtilitySaleOrder(models.Model):
             else:
                 order.transformer_reading_id = False
 
-    @api.depends('amount_total', 'invoice_ids.state', 'invoice_ids.payment_state', 'invoice_ids.amount_residual', 'state', 'date_order')
+    def _get_posted_utility_moves(self):
+        self.ensure_one()
+        return (self.invoice_ids | self.utility_move_ids).filtered(
+            lambda move: move.state == 'posted' and move.move_type in ('out_invoice', 'out_refund')
+        )
+
+    @api.depends(
+        'amount_total', 'amount_penalty', 'state', 'date_order',
+        'invoice_ids.state', 'invoice_ids.payment_state',
+        'invoice_ids.amount_total', 'invoice_ids.amount_residual', 'invoice_ids.move_type',
+        'utility_move_ids.state', 'utility_move_ids.payment_state',
+        'utility_move_ids.amount_total', 'utility_move_ids.amount_residual', 'utility_move_ids.move_type')
     def _compute_payment(self):
         for r in self:
-            posted_invoices = r.invoice_ids.filtered(lambda i: i.state == 'posted')
-            paid = sum(posted_invoices.mapped(lambda i: i.amount_total - i.amount_residual))
-            r.amount_paid = paid
-            r.balance_due = r.amount_total - paid
+            posted_moves = r._get_posted_utility_moves()
+            if posted_moves:
+                signed_total = sum(
+                    -move.amount_total if move.move_type == 'out_refund' else move.amount_total
+                    for move in posted_moves
+                )
+                signed_residual = sum(
+                    -move.amount_residual if move.move_type == 'out_refund' else move.amount_residual
+                    for move in posted_moves
+                )
+                r.amount_paid = signed_total - signed_residual
+                r.balance_due = signed_residual
+            else:
+                r.amount_paid = 0.0
+                r.balance_due = r.amount_total + r.amount_penalty
             r.is_overdue = r.balance_due > 0 and r.date_order and r.date_order.date() < date.today()
 
-    @api.depends('state', 'is_overdue', 'balance_due', 'invoice_ids.state', 'invoice_ids.payment_state')
+    @api.depends('state', 'is_overdue', 'balance_due', 'invoice_ids.state', 'invoice_ids.payment_state', 'utility_move_ids.state', 'utility_move_ids.payment_state')
     def _compute_bill_state(self):
         for r in self:
             if r.state == 'cancel':
@@ -315,7 +340,7 @@ class UtilitySaleOrder(models.Model):
             elif r.state == 'draft':
                 r.bill_state = 'draft'
             else:
-                posted_invoices = r.invoice_ids.filtered(lambda i: i.state == 'posted')
+                posted_invoices = r._get_posted_utility_moves()
                 # If fully paid (or amount is 0 and it is invoiced)
                 if posted_invoices and r.balance_due <= 0:
                     r.bill_state = 'paid'

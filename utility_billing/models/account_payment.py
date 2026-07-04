@@ -171,7 +171,7 @@ class AccountPayment(models.Model):
         order = self.utility_sale_order_id
         if not order or not self.move_id:
             return
-        invoices = order.invoice_ids.filtered(lambda m: m.state == 'posted' and m.payment_state != 'paid')
+        invoices = (order.invoice_ids | order.utility_move_ids).filtered(lambda m: m.state == 'posted' and m.payment_state != 'paid')
         if not invoices:
             return
         payment_lines = self.move_id.line_ids.filtered(

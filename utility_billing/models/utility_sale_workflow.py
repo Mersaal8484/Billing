@@ -15,16 +15,6 @@ def savepoint(cr):
         _logger.exception('Automatic Workflow Job failed (savepoint)')
 
 
-@contextmanager
-def force_company(env, company_id):
-    user = env.user
-    previous_company = user.company_id
-    user.company_id = company_id
-    try:
-        yield
-    finally:
-        user.company_id = previous_company
-
 
 def _resolve_domain(domain):
     if isinstance(domain, str):
@@ -129,5 +119,4 @@ class AutomaticWorkflowJob(models.Model):
         workflows = self.env['sale.workflow.process'].search([])
         for workflow in workflows:
             company = workflow.team_id.company_id or self.env.company
-            with force_company(self.env, company):
-                self.run_with_workflow(workflow)
+            self.with_company(company).run_with_workflow(workflow)

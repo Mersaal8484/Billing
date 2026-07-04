@@ -11,6 +11,15 @@ _logger = logging.getLogger(__name__)
 class UtilityReaderAPI(http.Controller):
     """REST API لتطبيق القارئ (Flutter) — رفع القراءات والصور على شكل دفعات"""
 
+    def _get_owned_batch(self, batch_id):
+        try:
+            batch_id = int(batch_id)
+        except (TypeError, ValueError):
+            return request.env['utility.reading.batch']
+        return request.env['utility.reading.batch'].search([
+            ('id', '=', batch_id),
+            ('user_id', '=', request.env.uid),
+        ], limit=1)
     # ================================================================
     # الخطوة 1: إنشاء سجل الدفعة
     # ================================================================
@@ -63,9 +72,9 @@ class UtilityReaderAPI(http.Controller):
         if not batch_id or not data:
             return {'success': False, 'error': 'batch_id and data are required'}
 
-        batch = request.env['utility.reading.batch'].browse(int(batch_id))
+        batch = self._get_owned_batch(batch_id)
         if not batch.exists():
-            return {'success': False, 'error': 'الدفعة غير موجودة'}
+            return {'success': False, 'error': 'الدفعة غير موجودة أو غير مملوكة للمستخدم الحالي'}
         if batch.state != 'uploaded':
             return {'success': False, 'error': 'لا يمكن تعديل دفعة تمت معالجتها'}
 
@@ -120,9 +129,11 @@ class UtilityReaderAPI(http.Controller):
         if not batch_id or not filename or not image_data:
             return {'success': False, 'error': 'batch_id, filename, and image are required'}
 
-        batch = request.env['utility.reading.batch'].browse(int(batch_id))
+        batch = self._get_owned_batch(batch_id)
         if not batch.exists():
-            return {'success': False, 'error': 'الدفعة غير موجودة'}
+            return {'success': False, 'error': 'الدفعة غير موجودة أو غير مملوكة للمستخدم الحالي'}
+        if batch.state != 'uploaded':
+            return {'success': False, 'error': 'لا يمكن تعديل دفعة تمت معالجتها'}
 
         # التحقق من حجم الصورة (الحد الأقصى 100 KB)
         max_size = int(request.env['ir.config_parameter'].sudo().get_param(
@@ -168,9 +179,9 @@ class UtilityReaderAPI(http.Controller):
         if not batch_id:
             return {'success': False, 'error': 'batch_id is required'}
 
-        batch = request.env['utility.reading.batch'].browse(int(batch_id))
+        batch = self._get_owned_batch(batch_id)
         if not batch.exists():
-            return {'success': False, 'error': 'الدفعة غير موجودة'}
+            return {'success': False, 'error': 'الدفعة غير موجودة أو غير مملوكة للمستخدم الحالي'}
 
         try:
             batch.action_confirm()
@@ -201,9 +212,9 @@ class UtilityReaderAPI(http.Controller):
         if not batch_id:
             return {'success': False, 'error': 'batch_id is required'}
 
-        batch = request.env['utility.reading.batch'].browse(int(batch_id))
+        batch = self._get_owned_batch(batch_id)
         if not batch.exists():
-            return {'success': False, 'error': 'الدفعة غير موجودة'}
+            return {'success': False, 'error': 'الدفعة غير موجودة أو غير مملوكة للمستخدم الحالي'}
 
         return {
             'success': True,

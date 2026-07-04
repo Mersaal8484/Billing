@@ -91,6 +91,9 @@ class UtilityReadingBatch(models.Model):
                 raise ValidationError('يمكن إعادة المحاولة فقط للدفعات بحالة خطأ أو مكتمل جزئياً!')
             batch.write({
                 'state': 'processing',
+                'processed_count': 0,
+                'error_count': 0,
+                'processed_offset': 0,
                 'error_log': False,
             })
 
@@ -152,6 +155,17 @@ class UtilityReadingBatch(models.Model):
                         raise ValueError(
                             f'العداد "{meter_number}" غير موجود في النظام')
 
+                    reading_date = entry.get('reading_date') or fields.Datetime.now()
+                    existing_reading = Reading.search([
+                        ('batch_id', '=', batch.id),
+                        ('meter_id', '=', meter.id),
+                        ('date_range_id', '=', batch.date_range_id.id),
+                        ('reading_date', '=', reading_date),
+                    ], limit=1)
+                    if existing_reading:
+                        processed += 1
+                        continue
+
                     # البحث عن صورة مطابقة
                     image_filename = entry.get('image_filename', '')
                     image_data = False
@@ -161,7 +175,7 @@ class UtilityReadingBatch(models.Model):
                     reading = Reading.create({
                         'meter_id': meter.id,
                         'reading_value': entry.get('reading_value', 0),
-                        'reading_date': entry.get('reading_date') or fields.Datetime.now(),
+                        'reading_date': reading_date,
                         'date_range_id': batch.date_range_id.id,
                         'reading_category': entry.get('reading_category', 'customer'),
                         'meter_image': image_data,

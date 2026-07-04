@@ -118,6 +118,21 @@ class UtilityReading(models.Model):
             }
         }
 
+    @api.model
+    def cron_queue_approved_readings(self):
+        batch_size = int(self.env['ir.config_parameter'].sudo().get_param(
+            'utility.billing_queue_batch_size', 1000))
+        readings = self.search([
+            ('state', '=', 'approved'),
+            '|',
+            ('reading_category', '=', 'customer'),
+            '&',
+            ('reading_category', '=', 'transformer'),
+            ('is_private_transformer', '=', True),
+        ], limit=batch_size, order='reading_date asc, id asc')
+        if readings:
+            readings.write({'state': 'queued', 'billing_error': False})
+        return len(readings)
     def action_requeue(self):
         for r in self:
             if r.state != 'error':
