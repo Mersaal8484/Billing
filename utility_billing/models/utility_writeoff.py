@@ -8,21 +8,28 @@ class UtilityWriteoff(models.Model):
     _order = 'date desc'
     _rec_name = 'writeoff_number'
     _rec_display_name = 'writeoff_number'
-    
-    active = fields.Boolean(default=True)
-    company_id = fields.Many2one('res.company', 'Company', default=lambda self: self.env.company)
-    writeoff_number = fields.Char('Writeoff Number', required=True, default=lambda self: _('New'))
-    customer_id = fields.Many2one('utility.customer', 'Customer')
-    account_id = fields.Many2one('utility.customer', 'Account', related='customer_id', store=True)
-    sale_order_id = fields.Many2one('sale.order', 'Sale Order')
-    amount = fields.Float('Amount')
-    reason = fields.Text('Reason')
-    approved_by = fields.Many2one('res.users', 'Approved By')
-    date = fields.Datetime('Date', default=fields.Datetime.now)
+
+    active = fields.Boolean('نشط', default=True)
+    company_id = fields.Many2one('res.company', 'الشركة', default=lambda self: self.env.company)
+    writeoff_number = fields.Char('رقم الإعفاء', required=True, default=lambda self: _('جديد'))
+    customer_id = fields.Many2one('utility.customer', 'العميل')
+    account_id = fields.Many2one('utility.customer', 'الحساب', related='customer_id', store=True)
+    sale_order_id = fields.Many2one('sale.order', 'أمر البيع')
+    currency_id = fields.Many2one(
+        'res.currency',
+        related='sale_order_id.currency_id',
+        string='العملة',
+        store=True,
+        readonly=True,
+    )
+    amount = fields.Monetary('المبلغ', currency_field='currency_id')
+    reason = fields.Text('السبب')
+    approved_by = fields.Many2one('res.users', 'اعتمد بواسطة')
+    date = fields.Datetime('التاريخ', default=fields.Datetime.now)
     state = fields.Selection([
-        ('draft', 'Draft'),
-        ('approved', 'Approved'),
-        ('applied', 'Applied'),
+        ('draft', 'مسودة'),
+        ('approved', 'معتمد'),
+        ('applied', 'مُطبّق'),
     ], string='الحالة', default='draft')
 
     # ربط القيد المحاسبي الناتج
@@ -37,8 +44,8 @@ class UtilityWriteoff(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
-            if vals.get('writeoff_number', _('New')) == _('New'):
-                vals['writeoff_number'] = self.env['ir.sequence'].next_by_code('utility.writeoff') or _('New')
+            if vals.get('writeoff_number', _('جديد')) == _('جديد'):
+                vals['writeoff_number'] = self.env['ir.sequence'].next_by_code('utility.writeoff') or _('جديد')
         return super().create(vals_list)
 
     def action_approve(self):
@@ -58,7 +65,7 @@ class UtilityWriteoff(models.Model):
     def action_apply(self):
         for rec in self:
             if rec.state != 'approved':
-                raise ValidationError( 
+                raise ValidationError(
                     'يجب اعتماد الإثبات أولاً قبل التطبيق. الحالة الحالية: %s' % rec.state
                 )
             if not rec.sale_order_id:

@@ -16,8 +16,8 @@ class UtilityPaymentGatewayTransaction(models.Model):
     sale_order_id = fields.Many2one('sale.order', string='الفاتورة', required=True, ondelete='restrict')
     customer_id = fields.Many2one('utility.customer', string='الحساب', related='sale_order_id.customer_id', store=True)
     partner_id = fields.Many2one('res.partner', string='المشترك', related='sale_order_id.partner_id', store=True)
-    amount = fields.Float('المبلغ', required=True)
     currency_id = fields.Many2one('res.currency', string='العملة', related='sale_order_id.currency_id', store=True)
+    amount = fields.Monetary('المبلغ', required=True, currency_field='currency_id')
     state = fields.Selection([
         ('draft', 'مسودة'),
         ('pending', 'بانتظار التأكيد'),

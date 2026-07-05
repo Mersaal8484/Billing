@@ -6,13 +6,13 @@ class UtilityRoute(models.Model):
     _description = 'مسار / خط'
     _order = 'name'
 
-    active = fields.Boolean(default=True)
-    company_id = fields.Many2one('res.company', 'Company', default=lambda self: self.env.company)
-    name = fields.Char('Route Name', required=True)
-    code = fields.Char('Route Code', required=True)
-    area_id = fields.Many2one('utility.region', 'Area', domain="[('type', '=', 'area')]")
-    zone_id = fields.Many2one('utility.region', 'Zone', domain="[('type', '=', 'zone')]")
-    region_id = fields.Many2one('utility.region', 'Region', related='area_id.parent_id', store=True)
+    active = fields.Boolean('نشط', default=True)
+    company_id = fields.Many2one('res.company', 'الشركة', default=lambda self: self.env.company)
+    name = fields.Char('اسم المسار', required=True)
+    code = fields.Char('رمز المسار', required=True)
+    area_id = fields.Many2one('utility.region', 'المنطقة الفرعية', domain="[('type', '=', 'area')]")
+    zone_id = fields.Many2one('utility.region', 'المنطقة التفصيلية', domain="[('type', '=', 'zone')]")
+    region_id = fields.Many2one('utility.region', 'المنطقة', related='area_id.parent_id', store=True)
     customer_ids = fields.One2many('utility.customer', 'route_id', string='عقود المشتركين')
     customer_count = fields.Integer('عدد المشتركين', compute='_compute_customer_count', store=True)
     inspector_ids = fields.Many2many(
@@ -28,7 +28,7 @@ class UtilityRoute(models.Model):
     supervisor_id = fields.Many2one('utility.staff', string='المشرف', domain="[('user_role_id.code', '=', 'supervisor')]")
 
     _sql_constraints = [
-        ('unique_route_code_area', 'unique(code, area_id)', 'Route code must be unique per area!'),
+        ('unique_route_code_area', 'unique(code, area_id)', 'رمز المسار يجب أن يكون فريداً لكل منطقة!'),
     ]
 
     @api.depends('customer_ids')

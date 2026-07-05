@@ -16,7 +16,7 @@ class UtilitySaleOrder(models.Model):
     meter_image = fields.Binary(related='reading_id.meter_image', string='صورة العداد', readonly=False)
     reading_reviewer = fields.Many2one(related='reading_id.reviewer_id', string='مراجع القراءة')
     attachment_id = fields.Many2one('ir.attachment', string='ملف صورة القراءة الرسمي')
-    
+
     transformer_reading_id = fields.Many2one('utility.reading', string='قراءة المحول/الخلية المرتبطة', compute='_compute_transformer_reading', store=True)
 
     workflow_process_id = fields.Many2one('sale.workflow.process', string='مسار العمل التلقائي', ondelete='restrict')
@@ -30,11 +30,11 @@ class UtilitySaleOrder(models.Model):
     consumption = fields.Float('الاستهلاك')
     contract_template_id = fields.Many2one('utility.contract.template', 'قالب العقد', related='customer_id.contract_template_id', store=True)
 
-    amount_energy = fields.Float('قيمة الطاقة')
-    amount_service = fields.Float('رسم الخدمة الثابت')
-    amount_discount = fields.Float('الخصومات')
-    amount_local_fee = fields.Float('الرسوم المحلية')
-    amount_penalty = fields.Float('الغرامات', compute='_compute_amount_penalty', store=True)
+    amount_energy = fields.Monetary('قيمة الطاقة', currency_field='currency_id')
+    amount_service = fields.Monetary('رسم الخدمة الثابت', currency_field='currency_id')
+    amount_discount = fields.Monetary('الخصومات', currency_field='currency_id')
+    amount_local_fee = fields.Monetary('الرسوم المحلية', currency_field='currency_id')
+    amount_penalty = fields.Monetary('الغرامات', compute='_compute_amount_penalty', store=True, currency_field='currency_id')
     penalty_ids = fields.One2many('utility.penalty', 'sale_order_id', string='الغرامات')
     utility_move_ids = fields.One2many(
         'account.move', 'utility_sale_order_id', string='فواتير الكهرباء المحاسبية')
@@ -47,12 +47,12 @@ class UtilitySaleOrder(models.Model):
     installment_plan_count = fields.Integer('عدد خطط التقسيط', compute='_compute_installment_plan_count')
 
 
-    amount_paid = fields.Float('المدفوع', compute='_compute_payment', store=True)
-    balance_due = fields.Float('المتبقي', compute='_compute_payment', store=True, index=True)
+    amount_paid = fields.Monetary('المدفوع', compute='_compute_payment', store=True, currency_field='currency_id')
+    balance_due = fields.Monetary('المتبقي', compute='_compute_payment', store=True, index=True, currency_field='currency_id')
     is_overdue = fields.Boolean('متأخر', compute='_compute_payment', store=True, index=True)
 
-    previous_balance = fields.Float('رصيد المتأخرات (سابق)', compute='_compute_previous_balance', store=True)
-    total_due_amount = fields.Float('إجمالي المطلوب سداده (فاتورة + متأخرات)', compute='_compute_total_due_amount', store=True)
+    previous_balance = fields.Monetary('رصيد المتأخرات (سابق)', compute='_compute_previous_balance', store=True, currency_field='currency_id')
+    total_due_amount = fields.Monetary('إجمالي المطلوب سداده (فاتورة + متأخرات)', compute='_compute_total_due_amount', store=True, currency_field='currency_id')
 
     bill_state = fields.Selection([
         ('draft', 'مسودة'),
@@ -196,7 +196,7 @@ class UtilitySaleOrder(models.Model):
                     'contract_template_id': line.product_id.contract_template_id.id if line.product_id.contract_template_id else False,
                 })
                 lines_mapping.append(line)
-        
+
         # 2. Execute Bulk Operation
         if contracts_to_create:
             contracts = self.env['account.analytic.account'].create(contracts_to_create)

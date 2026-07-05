@@ -8,18 +8,18 @@ class UtilityAdjustment(models.Model):
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'date desc, id desc'
 
-    active = fields.Boolean(default=True)
-    company_id = fields.Many2one('res.company', default=lambda self: self.env.company)
-    reference = fields.Char(required=True, default=lambda self: _('New'))
-    date = fields.Datetime(default=fields.Datetime.now)
+    active = fields.Boolean('نشط', default=True)
+    company_id = fields.Many2one('res.company', 'الشركة', default=lambda self: self.env.company)
+    reference = fields.Char('المرجع', required=True, default=lambda self: _('جديد'))
+    date = fields.Datetime('التاريخ', default=fields.Datetime.now)
     customer_id = fields.Many2one('res.partner', string='العميل', required=True)
     account_id = fields.Many2one('utility.customer', string='الحساب', required=True)
     adjustment_type = fields.Selection([
-        ('credit', 'Credit'),
-        ('debit', 'Debit'),
-        ('emergency_credit', 'Emergency Credit'),
-        ('compensation', 'Compensation'),
-        ('correction', 'Correction'),
+        ('credit', 'رصيد'),
+        ('debit', 'خصم'),
+        ('emergency_credit', 'رصيد طوارئ'),
+        ('compensation', 'تعويض'),
+        ('correction', 'تصحيح'),
     ], string='نوع التسوية', required=True)
     amount = fields.Monetary(string='المبلغ', required=True)
     currency_id = fields.Many2one('res.currency', related='company_id.currency_id')
@@ -29,10 +29,10 @@ class UtilityAdjustment(models.Model):
     approved_by = fields.Many2one('res.users', string='معتمد من')
     operator_id = fields.Many2one('res.users', string='المشغل', default=lambda self: self.env.user)
     state = fields.Selection([
-        ('draft', 'Draft'),
-        ('approved', 'Approved'),
-        ('applied', 'Applied'),
-        ('cancelled', 'Cancelled'),
+        ('draft', 'مسودة'),
+        ('approved', 'معتمد'),
+        ('applied', 'مُطبّق'),
+        ('cancelled', 'ملغى'),
     ], default='draft', string='الحالة', tracking=True)
 
     @api.depends('account_id', 'amount', 'adjustment_type')
@@ -57,7 +57,7 @@ class UtilityAdjustment(models.Model):
     def action_apply(self):
         self.ensure_one()
         if self.state != 'approved':
-            raise models.ValidationError(_('Adjustment must be approved before applying.'))
+            raise models.ValidationError(_('يجب اعتماد التسوية قبل تطبيقها.'))
         if self.adjustment_type in ('credit', 'emergency_credit', 'compensation'):
             self.account_id._update_balance(self.amount)
         elif self.adjustment_type in ('debit', 'correction'):
@@ -65,7 +65,7 @@ class UtilityAdjustment(models.Model):
         self.env['utility.transaction'].create_transaction(
             'adjustment' if self.adjustment_type != 'emergency_credit' else 'emergency_credit',
             self.account_id, self.amount, adjustment=self,
-            notes=_('Adjustment %s: %s') % (self.reference, self.reason),
+            notes=_('تسوية %s: %s') % (self.reference, self.reason),
         )
         self.state = 'applied'
 
@@ -75,6 +75,6 @@ class UtilityAdjustment(models.Model):
 
     @api.model
     def create(self, vals):
-        if vals.get('reference', _('New')) == _('New'):
-            vals['reference'] = self.env['ir.sequence'].next_by_code('utility.adjustment') or _('New')
+        if vals.get('reference', _('جديد')) == _('جديد'):
+            vals['reference'] = self.env['ir.sequence'].next_by_code('utility.adjustment') or _('جديد')
         return super(UtilityAdjustment, self).create(vals)

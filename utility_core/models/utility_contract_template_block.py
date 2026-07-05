@@ -10,6 +10,13 @@ class UtilityContractTemplateBlock(models.Model):
     template_id = fields.Many2one(
         'utility.contract.template', 'قالب العقد',
         required=True, index=True, ondelete='cascade')
+    currency_id = fields.Many2one(
+        'res.currency',
+        related='template_id.currency_id',
+        string='العملة',
+        store=True,
+        readonly=True,
+    )
     sequence = fields.Integer('الترتيب', default=10)
     block_sequence = fields.Integer(related='sequence', store=True, string='رقم الشريحة')
     name = fields.Char('اسم الشريحة')
@@ -17,7 +24,7 @@ class UtilityContractTemplateBlock(models.Model):
     from_kwh = fields.Float('من (kWh)', default=0.0)
     to_kwh = fields.Float('إلى (kWh)', default=0.0,
         help='0 = شريحة مفتوحة (لا حد أعلى)')
-    price_per_kwh = fields.Float('سعر الكيلوواط/ساعة', required=True)
+    price_per_kwh = fields.Monetary('سعر الكيلوواط/ساعة', required=True, currency_field='currency_id')
 
     from_month = fields.Selection([
         ('1', 'يناير'), ('2', 'فبراير'), ('3', 'مارس'),

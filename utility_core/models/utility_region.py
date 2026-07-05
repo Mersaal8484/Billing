@@ -7,15 +7,15 @@ class UtilityRegion(models.Model):
     _description = 'منطقة'
     _order = 'name'
 
-    active = fields.Boolean(default=True)
-    company_id = fields.Many2one('res.company', 'Company', default=lambda self: self.env.company)
-    name = fields.Char('Name', required=True, index=True)
-    code = fields.Char('Code', required=True, index=True)
+    active = fields.Boolean('نشط', default=True)
+    company_id = fields.Many2one('res.company', 'الشركة', default=lambda self: self.env.company)
+    name = fields.Char('الاسم', required=True, index=True)
+    code = fields.Char('الرمز', required=True, index=True)
     
     type = fields.Selection([
-        ('region', 'Region'),
-        ('area', 'Area'),
-        ('zone', 'Zone'),
+        ('region', 'منطقة'),
+        ('area', 'منطقة فرعية'),
+        ('zone', 'منطقة تفصيلية'),
     ], string='النوع', default='region', required=True)
     
     parent_id = fields.Many2one('utility.region', string='العنصر الأب', index=True, ondelete='cascade')
@@ -24,8 +24,8 @@ class UtilityRegion(models.Model):
     area_ids = fields.One2many('utility.region', 'parent_id', string='المناطق', domain=[('type', '=', 'area')])
     zone_ids = fields.One2many('utility.region', 'parent_id', string='النواحي', domain=[('type', '=', 'zone')])
     
-    area_count = fields.Integer('Area Count', compute='_compute_area_count', store=True)
-    zone_count = fields.Integer('Zone Count', compute='_compute_zone_count', store=True)
+    area_count = fields.Integer('عدد المناطق الفرعية', compute='_compute_area_count', store=True)
+    zone_count = fields.Integer('عدد المناطق التفصيلية', compute='_compute_zone_count', store=True)
     recurring_rule_type = fields.Selection(
         BILLING_PERIOD_TYPES,
         string='نوع دورة الفوترة',
@@ -50,7 +50,7 @@ class UtilityRegion(models.Model):
         help='إذا كان هذا الـ zone منشأً تلقائياً من محول، لا يمكن تعديله يدوياً')
 
     _sql_constraints = [
-        ('unique_code_parent_company', 'unique(code, parent_id, company_id)', 'Code must be unique per parent/company!'),
+        ('unique_code_parent_company', 'unique(code, parent_id, company_id)', 'الرمز يجب أن يكون فريداً لكل عنصر أب/شركة!'),
     ]
 
     @api.depends('area_ids')

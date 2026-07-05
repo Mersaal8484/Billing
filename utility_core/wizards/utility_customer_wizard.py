@@ -19,16 +19,23 @@ class UtilityCustomerWizard(models.TransientModel):
     city = fields.Char(string='المدينة', default='صنعاء')
     country_id = fields.Many2one('res.country', string='الدولة', default=lambda self: self.env.ref('base.ye', raise_if_not_found=False))
 
-    category_id = fields.Many2one('utility.subscriber.category', string='الفئة (نوع الحساب)', required=True)
-
-    subscriber_id = fields.Many2one('utility.subscriber', string='نوع المشترك', required=True)
+    category_id = fields.Many2one('utility.subscriber.category', string='فئة المشترك الرئيسية', required=True)
+    subscriber_id = fields.Many2one('utility.subscriber', string='نوع المشترك', required=True, domain="[('category_id', '=', category_id)]")
     sector_id = fields.Many2one('res.partner.sector', string='القطاع')
-    contract_template_id = fields.Many2one('utility.contract.template', string='قالب العقد الافتراضي', required=True)
+    contract_template_id = fields.Many2one('utility.contract.template',
+        string='قالب العقد الافتراضي', required=True,
+        domain="["
+               "('subscriber_category_ids', '=', category_id), "
+               "('subscriber_ids', '=', subscriber_id), "
+               "'|', ('scope', '=', 'global'), "
+               "'|', ('region_ids', '=', utility_region_id), "
+               "('area_ids', '=', utility_area_id)"
+               "]")
     route_id = fields.Many2one('utility.route', string='مسار القراءة الميداني')
 
-    utility_region_id = fields.Many2one('utility.region', string="المنطقة التشغيلية (Region)", domain="[('type', '=', 'region')]")
-    utility_area_id = fields.Many2one('utility.region', string="الفرع التشغيلي (Area)", domain="[('type', '=', 'area')]")
-    transformer_zone_id = fields.Many2one('utility.region', string="نطاق المحول (Zone)", domain="[('type', '=', 'zone')]")
+    utility_region_id = fields.Many2one('utility.region', string="المنطقة التشغيلية", domain="[('type', '=', 'region')]")
+    utility_area_id = fields.Many2one('utility.region', string="الفرع التشغيلي", domain="[('type', '=', 'area')]")
+    transformer_zone_id = fields.Many2one('utility.region', string="نطاق المحول", domain="[('type', '=', 'zone')]")
 
     # Private Transformer Fields
     use_private_transformer = fields.Boolean(
@@ -57,26 +64,26 @@ class UtilityCustomerWizard(models.TransientModel):
 
     # Optional Meter Creation
     create_meter = fields.Boolean(string='إنشاء وربط عداد جديد فوراً', default=True)
-    meter_number = fields.Char(string='رقم العداد (Meter Number)')
-    serial_number = fields.Char(string='الرقم التسلسلي للعداد (Serial)')
+    meter_number = fields.Char(string='رقم العداد')
+    serial_number = fields.Char(string='الرقم التسلسلي')
     manufacturer = fields.Char(string='الشركة المصنعة', default='Landis+Gyr')
     meter_type_id = fields.Many2one('utility.meter.type', string='نوع العداد')
     payment_type = fields.Selection([
-        ('postpaid', 'آجل الدفع (عن بُعد / ذكي)'),
-        ('prepaid', 'دفع مسبق (Prepaid)'),
-        ('manual', 'يدوي (Manual)')
+        ('postpaid', 'آجل الدفع'),
+        ('prepaid', 'دفع مسبق'),
+        ('manual', 'يدوي')
     ], string='نظام العداد', default='manual', required=True)
-    sts_key_revision = fields.Char(string='STS Key Revision')
+    sts_key_revision = fields.Char(string='مراجعة مفتاح STS')
     phase = fields.Selection([
-        ('single', 'أحادي الطور (Single Phase)'),
-        ('three', 'ثلاثي الطور (Three Phase)'),
-    ], string='الطور (Phase)', default='single')
+        ('single', 'أحادي الطور'),
+        ('three', 'ثلاثي الطور'),
+    ], string='الطور', default='single')
     communication_type = fields.Selection([
         ('none', 'بدون اتصال'),
-        ('ir', 'أشعة تحت الحمراء (IR)'),
-        ('rf', 'تردد لاسلكي (RF)'),
-        ('plc', 'ناقل خط الطاقة (PLC)'),
-        ('gsm', 'شبكة الجوال (GSM/GPRS)'),
+        ('ir', 'أشعة تحت الحمراء'),
+        ('rf', 'تردد لاسلكي'),
+        ('plc', 'ناقل خط الطاقة'),
+        ('gsm', 'شبكة الجوال'),
     ], string='نوع الاتصال', default='none')
 
     @api.onchange('category_id')
@@ -117,6 +124,26 @@ class UtilityCustomerWizard(models.TransientModel):
                     'رقم الهاتف يجب أن يتكون من 9 أرقام فقط، بدون مفتاح دولة (+967/00) أو شرطات.'
                 )
 
+    @api.constrains('contract_template_id', 'utility_region_id', 'utility_area_id')
+    def _check_wizard_contract_region_compatibility(self):
+        for rec in self:
+            template = rec.contract_template_id
+            if template and template.scope == 'restricted':
+                allowed_region_ids = template.region_ids.ids
+                allowed_area_ids = template.area_ids.ids
+                
+                region_id = rec.utility_region_id.id
+                area_id = rec.utility_area_id.id
+                
+                is_region_allowed = region_id in allowed_region_ids if region_id else False
+                is_area_allowed = area_id in allowed_area_ids if area_id else False
+                
+                if not (is_region_allowed or is_area_allowed):
+                    raise ValidationError(
+                        _("قالب العقد الافتراضي المختار '%s' لا يدعم المنطقة أو المنطقة الفرعية المحددة.")
+                        % template.name
+                    )
+
     def _get_or_create_private_transformer(self, partner):
         if self.private_transformer_existing_id:
             t = self.private_transformer_existing_id
@@ -149,6 +176,39 @@ class UtilityCustomerWizard(models.TransientModel):
         self.ensure_one()
         if not self.create_meter or not self.meter_number:
             raise ValidationError(_('يجب إنشاء عداد وإدخال رقم العداد قبل حفظ المشترك.'))
+
+        if self.subscriber_id and self.category_id and self.subscriber_id.category_id != self.category_id:
+            raise ValidationError(
+                _("نوع المشترك '%s' يجب أن ينتمي إلى فئة المشترك الرئيسية المحددة '%s'.")
+                % (self.subscriber_id.name, self.category_id.name)
+            )
+
+        if self.contract_template_id:
+            if self.category_id and self.category_id not in self.contract_template_id.subscriber_category_ids:
+                raise ValidationError(
+                    _("قالب العقد '%s' لا يدعم فئة المشترك الرئيسية '%s'.")
+                    % (self.contract_template_id.name, self.category_id.name)
+                )
+            if self.subscriber_id and self.subscriber_id not in self.contract_template_id.subscriber_ids:
+                raise ValidationError(
+                    _("قالب العقد '%s' لا يدعم نوع المشترك '%s'.")
+                    % (self.contract_template_id.name, self.subscriber_id.name)
+                )
+            if self.contract_template_id.scope == 'restricted':
+                allowed_region_ids = self.contract_template_id.region_ids.ids
+                allowed_area_ids = self.contract_template_id.area_ids.ids
+                
+                region_id = self.utility_region_id.id
+                area_id = self.utility_area_id.id
+                
+                is_region_allowed = region_id in allowed_region_ids if region_id else False
+                is_area_allowed = area_id in allowed_area_ids if area_id else False
+                
+                if not (is_region_allowed or is_area_allowed):
+                    raise ValidationError(
+                        _("قالب العقد المختار '%s' مخصص لمناطق محددة ولا يدعم المنطقة أو المنطقة الفرعية المحددة.")
+                        % self.contract_template_id.name
+                    )
 
         # 1. Create res.partner
         partner_vals = {

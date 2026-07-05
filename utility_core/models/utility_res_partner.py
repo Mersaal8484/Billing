@@ -11,24 +11,24 @@ class SaleOrderType(models.Model):
     _description = 'نوع أمر البيع'
     _order = 'sequence'
 
-    name = fields.Char(string='Name', required=True, translate=True)
-    code = fields.Char(string='Code')
-    active = fields.Boolean(default=True)
-    company_id = fields.Many2one('res.company', 'Company', default=lambda self: self.env.company)
+    name = fields.Char(string='الاسم', required=True, translate=True)
+    code = fields.Char(string='الرمز')
+    active = fields.Boolean(string='نشط', default=True)
+    company_id = fields.Many2one('res.company', 'الشركة', default=lambda self: self.env.company)
 
-    description = fields.Text(string='Description', translate=True)
-    sequence_id = fields.Many2one('ir.sequence', string='Entry Sequence', copy=False)
-    journal_id = fields.Many2one('account.journal', string='Billing Journal', domain="[('type', '=', 'sale')]")
-    warehouse_id = fields.Many2one('stock.warehouse', string='Warehouse')
+    description = fields.Text(string='الوصف', translate=True)
+    sequence_id = fields.Many2one('ir.sequence', string='تسلسل القيود', copy=False)
+    journal_id = fields.Many2one('account.journal', string='يومية الفوترة', domain="[('type', '=', 'sale')]")
+    warehouse_id = fields.Many2one('stock.warehouse', string='المستودع')
     picking_policy = fields.Selection([
-        ('direct', 'Deliver each product when available'),
-        ('one', 'Deliver all products at once'),
-    ], string='Shipping Policy', default='direct')
-    payment_term_id = fields.Many2one('account.payment.term', string='Payment Term')
-    pricelist_id = fields.Many2one('product.pricelist', string='Pricelist')
-    incoterm_id = fields.Many2one('account.incoterms', string='Incoterm')
-    sequence = fields.Integer(default=10)
-    rule_ids = fields.One2many('sale.order.type.rule', 'order_type_id', string='Rules', copy=True)
+        ('direct', 'تسليم كل منتج عند توفره'),
+        ('one', 'تسليم جميع المنتجات دفعة واحدة'),
+    ], string='سياسة الشحن', default='direct')
+    payment_term_id = fields.Many2one('account.payment.term', string='شروط الدفع')
+    pricelist_id = fields.Many2one('product.pricelist', string='قائمة الأسعار')
+    incoterm_id = fields.Many2one('account.incoterms', string='الإنكوتيرمز')
+    sequence = fields.Integer('التسلسل', default=10)
+    rule_ids = fields.One2many('sale.order.type.rule', 'order_type_id', string='القواعد', copy=True)
 
     def matches_order(self, order):
         self.ensure_one()
@@ -44,11 +44,11 @@ class SaleOrderTypeRule(models.Model):
     _description = 'قاعدة المطابقة التلقائية لنوع أمر البيع'
     _order = 'sequence'
 
-    name = fields.Char(required=True)
-    sequence = fields.Integer(default=10)
-    order_type_id = fields.Many2one('sale.order.type', string='Order Type', ondelete='cascade')
-    product_ids = fields.Many2many('product.product', string='Products')
-    product_category_ids = fields.Many2many('product.category', string='Product Categories')
+    name = fields.Char('الاسم', required=True)
+    sequence = fields.Integer('التسلسل', default=10)
+    order_type_id = fields.Many2one('sale.order.type', string='نوع أمر البيع', ondelete='cascade')
+    product_ids = fields.Many2many('product.product', string='المنتجات')
+    product_category_ids = fields.Many2many('product.category', string='فئات المنتجات')
 
     def matches_order(self, order):
         self.ensure_one()
@@ -88,9 +88,9 @@ class ResPartnerSector(models.Model):
     _name = 'res.partner.sector'
     _description = 'قطاع المشترك'
 
-    name = fields.Char(string="Name", required=True)
-    code = fields.Char(string="Code")
-    active = fields.Boolean(string="Active", default=True)
+    name = fields.Char(string="الاسم", required=True)
+    code = fields.Char(string="الرمز")
+    active = fields.Boolean(string="نشط", default=True)
 
 
 class ResPartner(models.Model):
@@ -101,7 +101,7 @@ class ResPartner(models.Model):
     zone_id = fields.Many2one('utility.region', string='المنطقة التفصيلية', domain="[('type', '=', 'zone')]")
 
     nickname = fields.Char(string="الاسم المختصر")
-    is_subscriber = fields.Boolean(string="مشترك كهرباء (Is Subscriber)", default=False, tracking=True)
+    is_subscriber = fields.Boolean(string="مشترك كهرباء", default=False, tracking=True)
     last_payment = fields.Monetary(string="آخر دفعة", compute='_compute_last_payment', store=False)
     last_payment_date = fields.Date(string="تاريخ آخر دفعة", compute='_compute_last_payment', store=False)
     last_invoice = fields.Monetary(string="آخر فاتورة", compute='_compute_last_invoice', store=False)
@@ -132,13 +132,13 @@ class ResPartner(models.Model):
 
     sale_type = fields.Many2one('sale.order.type', string='نوع أمر البيع', company_dependent=True)
     subscriber_id = fields.Many2one('utility.subscriber', string="نوع المشترك", tracking=True)
-    sector_id = fields.Many2one('res.partner.sector', string="القطاع (Sector)", tracking=True)
+    sector_id = fields.Many2one('res.partner.sector', string="القطاع", tracking=True)
 
-    utility_region_id = fields.Many2one('utility.region', string="المنطقة التشغيلية (Region)", domain="[('type', '=', 'region')]")
-    utility_area_id = fields.Many2one('utility.region', string="الفرع التشغيلي (Area)", domain="[('type', '=', 'area')]")
-    direct_branch_id = fields.Many2one('utility.region', string="فرع الخدمة المباشر (Direct Branch)", domain="[('type', '=', 'area')]")
-    transformer_zone_id = fields.Many2one('utility.region', string="نطاق المحول (Transformer Zone)", domain="[('type', '=', 'zone')]")
-    residential_compound_id = fields.Many2one('utility.region', string="الحي أو المجمع السكني (Compound)", domain="[('type', '=', 'zone')]")
+    utility_region_id = fields.Many2one('utility.region', string="المنطقة التشغيلية", domain="[('type', '=', 'region')]")
+    utility_area_id = fields.Many2one('utility.region', string="الفرع التشغيلي", domain="[('type', '=', 'area')]")
+    direct_branch_id = fields.Many2one('utility.region', string="فرع الخدمة المباشر", domain="[('type', '=', 'area')]")
+    transformer_zone_id = fields.Many2one('utility.region', string="نطاق المحول", domain="[('type', '=', 'zone')]")
+    residential_compound_id = fields.Many2one('utility.region', string="الحي أو المجمع السكني", domain="[('type', '=', 'zone')]")
     
     analytic_account_id = fields.Many2one(
         'account.analytic.account', 

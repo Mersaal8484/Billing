@@ -13,11 +13,11 @@ class UtilityTransaction(models.Model):
     reference = fields.Char(string='المرجع', required=True, index=True)
     date = fields.Datetime(default=fields.Datetime.now, string='التاريخ')
     transaction_type = fields.Selection([
-        ('sale', 'Sale'),
-        ('reversal', 'Reversal'),
-        ('adjustment', 'Adjustment'),
-        ('emergency_credit', 'Emergency Credit'),
-        ('refund', 'Refund'),
+        ('sale', 'بيع'),
+        ('reversal', 'إلغاء'),
+        ('adjustment', 'تسوية'),
+        ('emergency_credit', 'رصيد طوارئ'),
+        ('refund', 'استرداد'),
     ], string='نوع المعاملة', required=True)
     amount = fields.Monetary(string='المبلغ')
     currency_id = fields.Many2one('res.currency', related='company_id.currency_id')

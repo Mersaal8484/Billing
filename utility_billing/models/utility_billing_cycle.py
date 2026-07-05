@@ -6,8 +6,14 @@ class DateRange(models.Model):
     _inherit = 'date.range'
 
     sale_order_ids = fields.One2many('sale.order', 'date_range_id', string='أوامر البيع')
+    currency_id = fields.Many2one(
+        'res.currency',
+        string='العملة',
+        default=lambda self: self.env.company.currency_id,
+        readonly=True,
+    )
     total_bills = fields.Integer('عدد الفواتير', compute='_compute_bill_totals', store=True)
-    total_amount = fields.Float('الإجمالي', compute='_compute_bill_totals', store=True)
+    total_amount = fields.Monetary('الإجمالي', compute='_compute_bill_totals', store=True, currency_field='currency_id')
 
     @api.depends('sale_order_ids', 'sale_order_ids.amount_total')
     def _compute_bill_totals(self):

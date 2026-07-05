@@ -13,12 +13,19 @@ class UtilityInstallmentPlan(models.Model):
     sale_order_id = fields.Many2one('sale.order', string='الفاتورة', required=True, ondelete='restrict', index=True)
     customer_id = fields.Many2one('utility.customer', string='الحساب', related='sale_order_id.customer_id', store=True, readonly=True)
     partner_id = fields.Many2one('res.partner', string='المشترك', related='sale_order_id.partner_id', store=True, readonly=True)
-    amount_total = fields.Float('إجمالي التقسيط', required=True)
+    currency_id = fields.Many2one(
+        'res.currency',
+        string='العملة',
+        related='sale_order_id.currency_id',
+        store=True,
+        readonly=True,
+    )
+    amount_total = fields.Monetary('إجمالي التقسيط', required=True, currency_field='currency_id')
     installment_count = fields.Integer('عدد الأقساط', default=3, required=True)
     start_date = fields.Date('تاريخ أول قسط', default=fields.Date.context_today, required=True)
     line_ids = fields.One2many('utility.installment.plan.line', 'plan_id', string='الأقساط')
-    paid_amount = fields.Float('المدفوع', compute='_compute_amounts')
-    remaining_amount = fields.Float('المتبقي', compute='_compute_amounts')
+    paid_amount = fields.Monetary('المدفوع', compute='_compute_amounts', currency_field='currency_id')
+    remaining_amount = fields.Monetary('المتبقي', compute='_compute_amounts', currency_field='currency_id')
     state = fields.Selection([
         ('draft', 'مسودة'),
         ('active', 'نشطة'),
@@ -88,11 +95,18 @@ class UtilityInstallmentPlanLine(models.Model):
     _order = 'plan_id, sequence'
 
     plan_id = fields.Many2one('utility.installment.plan', string='خطة التقسيط', required=True, ondelete='cascade')
+    currency_id = fields.Many2one(
+        'res.currency',
+        string='العملة',
+        related='plan_id.currency_id',
+        store=True,
+        readonly=True,
+    )
     sequence = fields.Integer('القسط')
     due_date = fields.Date('تاريخ الاستحقاق', required=True)
-    amount = fields.Float('المبلغ', required=True)
-    paid_amount = fields.Float('المدفوع', compute='_compute_paid_state')
-    remaining_amount = fields.Float('المتبقي', compute='_compute_paid_state')
+    amount = fields.Monetary('المبلغ', required=True, currency_field='currency_id')
+    paid_amount = fields.Monetary('المدفوع', compute='_compute_paid_state', currency_field='currency_id')
+    remaining_amount = fields.Monetary('المتبقي', compute='_compute_paid_state', currency_field='currency_id')
     state = fields.Selection([
         ('pending', 'مستحق'),
         ('partial', 'مدفوع جزئياً'),

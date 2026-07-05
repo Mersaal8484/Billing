@@ -10,15 +10,15 @@ class UtilityReading(models.Model):
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'reading_date desc'
 
-    active = fields.Boolean(default=True)
-    company_id = fields.Many2one('res.company', 'Company', default=lambda self: self.env.company)
-    reading_id = fields.Char('Reading ID', default=lambda self: _('New'), readonly=True)
-    meter_id = fields.Many2one('utility.meter', 'Meter', required=True, index=True)
-    customer_id = fields.Many2one('utility.customer', 'Customer/Contract', related='meter_id.customer_id', store=True, index=True)
-    account_id = fields.Many2one('utility.customer', 'Account', related='customer_id', store=True)
-    reading_date = fields.Datetime('Reading Date', default=fields.Datetime.now, required=True)
-    reading_value = fields.Float('Reading Value', required=True)
-    consumption = fields.Float('Consumption', compute='_compute_consumption', store=True)
+    active = fields.Boolean('نشط', default=True)
+    company_id = fields.Many2one('res.company', 'الشركة', default=lambda self: self.env.company)
+    reading_id = fields.Char('رقم القراءة', default=lambda self: _('جديد'), readonly=True)
+    meter_id = fields.Many2one('utility.meter', 'العداد', required=True, index=True)
+    customer_id = fields.Many2one('utility.customer', 'العميل/العقد', related='meter_id.customer_id', store=True, index=True)
+    account_id = fields.Many2one('utility.customer', 'الحساب', related='customer_id', store=True)
+    reading_date = fields.Datetime('تاريخ القراءة', default=fields.Datetime.now, required=True)
+    reading_value = fields.Float('قيمة القراءة', required=True)
+    consumption = fields.Float('الاستهلاك', compute='_compute_consumption', store=True)
     reading_category = fields.Selection([
         ('customer', 'مشترك'),
         ('transformer', 'محول / خلية'),
@@ -30,7 +30,7 @@ class UtilityReading(models.Model):
     reading_type = fields.Selection([
         ('manual', 'يدوي'),
         ('estimated', 'تقديري'),
-        ('ami', 'AMI'),
+        ('ami', 'قراءة تلقائية (AMI)'),
     ], string='نوع القراءة', default='manual')
     is_estimated = fields.Boolean('تقديرية', default=False)
     meter_image = fields.Binary('صورة العداد', attachment=True,
@@ -51,8 +51,8 @@ class UtilityReading(models.Model):
     review_date = fields.Datetime('تاريخ المراجعة', readonly=True)
     review_notes = fields.Text('ملاحظات المراجعة')
     rejection_reason = fields.Text('سبب الرفض')
-    is_validated = fields.Boolean('Is Validated', default=False)
-    validator_id = fields.Many2one('res.users', 'Validator')
+    is_validated = fields.Boolean('تم التحقق', default=False)
+    validator_id = fields.Many2one('res.users', 'المُتحقّق')
     previous_reading = fields.Float('القراءة السابقة', compute='_compute_previous_reading', store=True)
     previous_reading_date = fields.Datetime('تاريخ القراءة السابقة', compute='_compute_previous_reading', store=True)
     consumption_difference = fields.Float('فرق الاستهلاك',
@@ -280,6 +280,6 @@ class UtilityReading(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
-            if vals.get('reading_id', _('New')) == _('New'):
-                vals['reading_id'] = self.env['ir.sequence'].next_by_code('utility.reading') or _('New')
+            if vals.get('reading_id', _('جديد')) == _('جديد'):
+                vals['reading_id'] = self.env['ir.sequence'].next_by_code('utility.reading') or _('جديد')
         return super().create(vals_list)

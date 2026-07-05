@@ -34,7 +34,11 @@
                     <group>
                         <group string="التهيئة الأساسية">
                             <field name="code"/>
-                            <field name="subscriber_ids" widget="many2many_tags" placeholder="أنواع المشتركين..."/>
+                            <field name="subscriber_category_ids" widget="many2many_tags" placeholder="فئات المشتركين الرئيسية..." required="1"/>
+                            <field name="subscriber_ids" widget="many2many_tags" placeholder="انواع المشتركين..." required="1" domain="[('category_id', 'in', subscriber_category_ids)]"/>
+                            <field name="scope" widget="radio" options="{'horizontal': true}"/>
+                            <field name="region_ids" widget="many2many_tags" placeholder="اختر المناطق الرئيسية المسموح بها..." attrs="{'invisible': [('scope', '!=', 'restricted')], 'required': [('scope', '=', 'restricted')]}"/>
+                            <field name="area_ids" widget="many2many_tags" placeholder="اختر المناطق الفرعية المسموح بها..." attrs="{'invisible': [('scope', '!=', 'restricted')], 'required': [('scope', '=', 'restricted')]}"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                             <field name="active"/>
                         </group>

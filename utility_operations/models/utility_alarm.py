@@ -7,52 +7,52 @@ class UtilityAlarm(models.Model):
     _rec_name = 'alarm_code'
     _order = 'alarm_date desc, id desc'
 
-    active = fields.Boolean(default=True)
-    company_id = fields.Many2one('res.company', 'Company', default=lambda self: self.env.company)
-    alarm_code = fields.Char('Alarm Code', required=True, index=True, default=lambda self: _('New'))
-    alarm_date = fields.Datetime('Alarm Date', default=fields.Datetime.now)
+    active = fields.Boolean('نشط', default=True)
+    company_id = fields.Many2one('res.company', 'الشركة', default=lambda self: self.env.company)
+    alarm_code = fields.Char('رمز الإنذار', required=True, index=True, default=lambda self: _('جديد'))
+    alarm_date = fields.Datetime('تاريخ الإنذار', default=fields.Datetime.now)
     alarm_type = fields.Selection([
-        ('low_credit', 'Low Credit'),
-        ('zero_credit', 'Zero Credit'),
-        ('tamper', 'Tamper'),
-        ('power_failure', 'Power Failure'),
-        ('comm_failure', 'Communication Failure'),
-        ('battery', 'Battery Low'),
-        ('reverse_energy', 'Reverse Energy'),
-        ('magnetic', 'Magnetic Tamper'),
-        ('over_voltage', 'Over Voltage'),
-        ('under_voltage', 'Under Voltage'),
-        ('over_current', 'Over Current'),
-        ('phase_failure', 'Phase Failure'),
-        ('other', 'Other'),
+        ('low_credit', 'رصيد منخفض'),
+        ('zero_credit', 'رصيد صفر'),
+        ('tamper', 'تلاعب'),
+        ('power_failure', 'انقطاع التيار'),
+        ('comm_failure', 'فشل الاتصال'),
+        ('battery', 'بطارية منخفضة'),
+        ('reverse_energy', 'طاقة عكسية'),
+        ('magnetic', 'تلاعب مغناطيسي'),
+        ('over_voltage', 'جهد زائد'),
+        ('under_voltage', 'جهد منخفض'),
+        ('over_current', 'تيار زائد'),
+        ('phase_failure', 'فشل طور'),
+        ('other', 'أخرى'),
     ], string='نوع الإنذار', required=True)
     severity = fields.Selection([
-        ('info', 'Info'),
-        ('warning', 'Warning'),
-        ('critical', 'Critical'),
-        ('emergency', 'Emergency'),
+        ('info', 'معلومات'),
+        ('warning', 'تحذير'),
+        ('critical', 'حرج'),
+        ('emergency', 'طوارئ'),
     ], string='الخطورة', default='warning')
-    customer_id = fields.Many2one('utility.customer', 'Customer')
-    account_id = fields.Many2one('utility.customer', 'Account', related='customer_id', store=True)
-    meter_id = fields.Many2one('utility.meter', 'Meter')
-    area_id = fields.Many2one('utility.region', 'Area', domain="[('type', '=', 'area')]")
-    region_id = fields.Many2one('utility.region', 'Region', related='area_id.parent_id', store=True)
-    description = fields.Text('Description', required=True)
-    meter_reading = fields.Float('Meter Reading')
-    voltage = fields.Float('Voltage (V)')
-    current = fields.Float('Current (A)')
-    power = fields.Float('Power (kW)')
+    customer_id = fields.Many2one('utility.customer', 'العميل')
+    account_id = fields.Many2one('utility.customer', 'الحساب', related='customer_id', store=True)
+    meter_id = fields.Many2one('utility.meter', 'العداد')
+    area_id = fields.Many2one('utility.region', 'المنطقة الفرعية', domain="[('type', '=', 'area')]")
+    region_id = fields.Many2one('utility.region', 'المنطقة', related='area_id.parent_id', store=True)
+    description = fields.Text('الوصف', required=True)
+    meter_reading = fields.Float('قراءة العداد')
+    voltage = fields.Float('الجهد (فولت)')
+    current = fields.Float('شدة التيار (أمبير)')
+    power = fields.Float('القدرة (كيلوواط)')
     state = fields.Selection([
-        ('new', 'New'),
-        ('acknowledged', 'Acknowledged'),
-        ('in_progress', 'In Progress'),
-        ('resolved', 'Resolved'),
-        ('closed', 'Closed'),
+        ('new', 'جديد'),
+        ('acknowledged', 'مُسلّم به'),
+        ('in_progress', 'قيد التنفيذ'),
+        ('resolved', 'مُحلّى'),
+        ('closed', 'مغلق'),
     ], string='الحالة', default='new')
-    assigned_to = fields.Many2one('res.users', 'Assigned To')
-    resolution = fields.Text('Resolution')
-    resolved_date = fields.Datetime('Resolved Date')
-    service_order_id = fields.Many2one('utility.service.order', 'Service Order')
+    assigned_to = fields.Many2one('res.users', 'مُعيّن لـ')
+    resolution = fields.Text('الحل')
+    resolved_date = fields.Datetime('تاريخ الحل')
+    service_order_id = fields.Many2one('utility.service.order', 'أمر الخدمة')
 
     def action_acknowledge(self):
         self.state = 'acknowledged'
@@ -100,7 +100,7 @@ class UtilityAlarm(models.Model):
             self.create({
                 'alarm_type': 'low_credit',
                 'severity': 'critical' if account.balance == 0 else 'warning',
-                'description': _('Account %s has low balance: %s') % (account.customer_number, account.balance),
+                'description': _('الحساب %s لديه رصيد منخفض: %s') % (account.customer_number, account.balance),
                 'customer_id': account.id,
                 'account_id': account.id,
                 'meter_id': account.meter_id.id,
@@ -111,6 +111,6 @@ class UtilityAlarm(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
-            if vals.get('alarm_code', _('New')) == _('New'):
-                vals['alarm_code'] = self.env['ir.sequence'].next_by_code('utility.alarm') or _('New')
+            if vals.get('alarm_code', _('جديد')) == _('جديد'):
+                vals['alarm_code'] = self.env['ir.sequence'].next_by_code('utility.alarm') or _('جديد')
         return super().create(vals_list)

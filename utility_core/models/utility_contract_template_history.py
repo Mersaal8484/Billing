@@ -11,12 +11,19 @@ class UtilityContractTemplateHistory(models.Model):
     template_id = fields.Many2one(
         'utility.contract.template', 'قالب العقد',
         required=True, index=True, ondelete='cascade')
+    currency_id = fields.Many2one(
+        'res.currency',
+        related='template_id.currency_id',
+        string='العملة',
+        store=True,
+        readonly=True,
+    )
 
     change_date = fields.Datetime('تاريخ التغيير', default=fields.Datetime.now)
-    old_price = fields.Float('السعر القديم (لكل kWh)')
-    new_price = fields.Float('السعر الجديد (لكل kWh)')
-    old_service_charge = fields.Float('رسم الخدمة الثابت القديم')
-    new_service_charge = fields.Float('رسم الخدمة الثابت الجديد')
+    old_price = fields.Monetary('السعر القديم (لكل kWh)', currency_field='currency_id')
+    new_price = fields.Monetary('السعر الجديد (لكل kWh)', currency_field='currency_id')
+    old_service_charge = fields.Monetary('رسم الخدمة الثابت القديم', currency_field='currency_id')
+    new_service_charge = fields.Monetary('رسم الخدمة الثابت الجديد', currency_field='currency_id')
     reason = fields.Char('السبب')
     changed_by = fields.Many2one('res.users', 'بواسطة')
 

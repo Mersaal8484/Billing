@@ -8,9 +8,16 @@ class UtilityContractTemplate(models.Model):
     _name = 'utility.contract.template'
     _description = 'قالب عقد الكهرباء'
 
-    name = fields.Char(required=True, translate=True)
-    code = fields.Char(required=True)
-    company_id = fields.Many2one('res.company', default=lambda self: self.env.company)
+    name = fields.Char('الاسم', required=True, translate=True)
+    code = fields.Char('الرمز', required=True)
+    company_id = fields.Many2one('res.company', 'الشركة', default=lambda self: self.env.company)
+    currency_id = fields.Many2one(
+        'res.currency',
+        related='company_id.currency_id',
+        string='العملة',
+        store=True,
+        readonly=True,
+    )
 
     # تكوين التكرار والفوترة
     recurring_rule_type = fields.Selection([
@@ -20,18 +27,41 @@ class UtilityContractTemplate(models.Model):
         ('yearly', 'سنوي'),
     ], default='monthly', required=True)
     recurring_invoicing_type = fields.Selection([
-        ('postpaid', 'آجل (Post-paid)'),
-        ('prepaid', 'مسبق (Pre-paid)'),
+        ('postpaid', 'آجل'),
+        ('prepaid', 'مسبق'),
     ], default='postpaid', required=True)
     recurring_interval = fields.Integer(default=1, string='الفاصل الزمني للدورة')
 
     # البنود
     line_ids = fields.One2many('utility.contract.template.line', 'template_id', copy=True, string='بنود العقد')
-    subscriber_ids = fields.Many2many('utility.subscriber', string='أنواع المشتركين')
+    subscriber_category_ids = fields.Many2many('utility.subscriber.category', string='فئات المشتركين الرئيسية', required=True)
+    subscriber_ids = fields.Many2many('utility.subscriber', string='انواع المشتركين', required=True)
+    scope = fields.Selection([
+        ('global', 'عام على جميع المناطق'),
+        ('restricted', 'مخصص لمناطق محددة')
+    ], string='نطاق التغطية الجغرافية', default='global', required=True)
+    region_ids = fields.Many2many(
+        'utility.region',
+        'utility_contract_template_region_rel',
+        'template_id',
+        'region_id',
+        string='المناطق الرئيسية المسموح بها',
+        domain="[('type', '=', 'region')]",
+        help="المناطق الرئيسية المسموح بها لهذا القالب"
+    )
+    area_ids = fields.Many2many(
+        'utility.region',
+        'utility_contract_template_area_rel',
+        'template_id',
+        'region_id',
+        string='المناطق الفرعية المسموح بها',
+        domain="[('type', '=', 'area')]",
+        help="المناطق الفرعية/الفروع المسموح بها لهذا القالب"
+    )
 
     # إعدادات الحسابات والتعرفة
-    pricelist_id = fields.Many2one('product.pricelist')
-    journal_id = fields.Many2one('account.journal', domain="[('type', 'in', ['sale', 'general'])]")
+    pricelist_id = fields.Many2one('product.pricelist', 'قائمة الأسعار')
+    journal_id = fields.Many2one('account.journal', 'اليومية', domain="[('type', 'in', ['sale', 'general'])]")
 
     # ── تسعير (دمج utility.tariff) ──────────────────────────────────────
     pricing_mode = fields.Selection([
@@ -41,33 +71,34 @@ class UtilityContractTemplate(models.Model):
         ('seasonal', 'موسمي'),
         ('tou', 'حسب وقت الاستخدام'),
     ], string='نمط التسعير', default='flat')
-    price_per_kwh = fields.Float('سعر الكيلوواط/ساعة', default=0.0)
-    service_charge = fields.Float('رسم الخدمة الثابت', default=0.0,
+    price_per_kwh = fields.Monetary('سعر الكيلوواط/ساعة', default=0.0, currency_field='currency_id')
+    service_charge = fields.Monetary('رسم الخدمة الثابت', default=0.0, currency_field='currency_id',
         help='مبلغ شهري ثابت لا يتأثر بالاستهلاك (رسوم الاشتراك والصيانة)')
-    fixed_charge = fields.Float(
+    fixed_charge = fields.Monetary(
         string='رسم ثابت (مرادف)',
         related='service_charge',
         store=True,
         readonly=False,
+        currency_field='currency_id',
         help='هذا الحقل مرادف لـ service_charge. تم الاحتفاظ به للتوافق مع الإصدارات السابقة.'
     )
-    min_charge = fields.Float('الحد الأدنى للفوترة', default=0.0)
-    max_charge = fields.Float('الحد الأقصى للفوترة', default=0.0)
+    min_charge = fields.Monetary('الحد الأدنى للفوترة', default=0.0, currency_field='currency_id')
+    max_charge = fields.Monetary('الحد الأقصى للفوترة', default=0.0, currency_field='currency_id')
     effective_date = fields.Date('تاريخ السريان')
     end_date = fields.Date('تاريخ الانتهاء')
     is_active = fields.Boolean('فعّال', compute='_compute_is_active', store=True)
 
     # رسوم محلية (معلم/نظافة/مجلس محلي) — تُحسب على أساس الاستهلاك
-    local_fee_per_kwh = fields.Float('رسم محلي لكل kWh (افتراضي)', default=0.0,
+    local_fee_per_kwh = fields.Monetary('رسم محلي لكل kWh (افتراضي)', default=0.0, currency_field='currency_id',
         help='السعر الموحد للرسوم المحلية عند استخدام meter_line_type=local_fee')
-    local_fee_mu_allim = fields.Float('رسم المعلم لكل kWh', default=0.0)
-    local_fee_cleaning = fields.Float('رسم النظافة لكل kWh', default=0.0)
+    local_fee_mu_allim = fields.Monetary('رسم المعلم لكل kWh', default=0.0, currency_field='currency_id')
+    local_fee_cleaning = fields.Monetary('رسم النظافة لكل kWh', default=0.0, currency_field='currency_id')
 
     # خصم الدعم — أول N وحدة تُخصم على الجهة الداعمة
     sponsor_id = fields.Many2one('res.partner', string='الجهة الداعمة (Sponsor)', help='الجهة التي سيتم تقييد الخصم عليها')
     discount_first_units = fields.Float('وحدات الدعم الأولى', default=0.0,
         help='عدد الوحدات (kWh) المدعومة في الفاتورة')
-    discount_unit_value = fields.Float('قيمة الخصم للوحدة', default=0.0,
+    discount_unit_value = fields.Monetary('قيمة الخصم للوحدة', default=0.0, currency_field='currency_id',
         help='قيمة الخصم المحتسبة لكل وحدة مدعومة')
 
     # الشرائح التدريجية — تظهر فقط حين pricing_mode in (block,tier,seasonal,tou)
@@ -79,14 +110,13 @@ class UtilityContractTemplate(models.Model):
     # سير العمل الآلي
     sale_autoconfirm = fields.Boolean(default=True, string='تأكيد أمر البيع تلقائياً')
     create_invoice_automatically = fields.Boolean(default=True, string='إنشاء الفاتورة تلقائياً')
-    validate_invoice_automatically = fields.Boolean(default=False)
+    validate_invoice_automatically = fields.Boolean(default=False, string='التحقق من الفاتورة تلقائياً')
 
     # الدفع التلقائي
     is_auto_pay = fields.Boolean(string='دفع تلقائي')
-    auto_pay_retries = fields.Integer(default=3)
-    auto_pay_retry_hours = fields.Integer(default=1)
-
-    active = fields.Boolean(default=True)
+    auto_pay_retries = fields.Integer('عدد محاولات الدفع الافتراضي', default=3)
+    auto_pay_retry_hours = fields.Integer('ساعات الانتظار بين المحاولات', default=1)
+    active = fields.Boolean('نشط', default=True)
 
     _sql_constraints = [
         # FIX: منع تكرار رمز القالب داخل نفس الشركة
@@ -124,6 +154,26 @@ class UtilityContractTemplate(models.Model):
                 raise ValidationError('سعر الكيلووات/ساعة لا يمكن أن يكون سالباً.')
             if r.service_charge < 0:
                 raise ValidationError('رسم الخدمة الثابت لا يمكن أن يكون سالباً.')
+
+    @api.constrains('subscriber_category_ids', 'subscriber_ids')
+    def _check_categories_and_types_compatibility(self):
+        for rec in self:
+            if not rec.subscriber_category_ids:
+                raise ValidationError(_('يجب اختيار فئات المشتركين الرئيسية لقالب العقد!'))
+            if not rec.subscriber_ids:
+                raise ValidationError(_('يجب اختيار انواع المشتركين لقالب العقد!'))
+            for sub in rec.subscriber_ids:
+                if sub.category_id not in rec.subscriber_category_ids:
+                    raise ValidationError(
+                        _("نوع المشترك '%s' لا يتبع أي من فئات المشتركين الرئيسية المحددة لقالب العقد.")
+                        % sub.name
+                    )
+
+    @api.constrains('scope', 'region_ids', 'area_ids')
+    def _check_scope_regions(self):
+        for rec in self:
+            if rec.scope == 'restricted' and not rec.region_ids and not rec.area_ids:
+                raise ValidationError(_("يجب اختيار منطقة رئيسية أو منطقة فرعية واحدة على الأقل عند تحديد نطاق التغطية كمخصص!"))
 
     def write(self, vals):
         """عند تغيير الأسعار الرئيسية، سجّل التاريخ تلقائياً."""
@@ -271,21 +321,28 @@ class UtilityContractTemplateLine(models.Model):
     _name = 'utility.contract.template.line'
     _description = 'بند قالب العقد'
 
-    template_id = fields.Many2one('utility.contract.template', required=True, ondelete='cascade')
-    sequence = fields.Integer(default=10)
+    template_id = fields.Many2one('utility.contract.template', 'قالب العقد', required=True, ondelete='cascade')
+    sequence = fields.Integer('التسلسل', default=10)
 
-    product_id = fields.Many2one('product.product', required=True)
+    product_id = fields.Many2one('product.product', 'المنتج', required=True)
     name = fields.Text(string='الوصف', translate=True)
 
-    quantity = fields.Float(default=1.0)
-    uom_id = fields.Many2one('uom.uom')
+    quantity = fields.Float('الكمية', default=1.0)
+    uom_id = fields.Many2one('uom.uom', 'وحدة القياس')
 
     price_type = fields.Selection([
         ('fixed', 'سعر ثابت'),
         ('meter_reading', 'حسب قراءة العداد'),
     ], default='fixed', required=True)
 
-    specific_price = fields.Float(string='السعر')
+    currency_id = fields.Many2one(
+        'res.currency',
+        related='template_id.currency_id',
+        string='العملة',
+        store=True,
+        readonly=True,
+    )
+    specific_price = fields.Monetary('السعر المحدد', currency_field='currency_id')
 
     # تصنيف البند للفوترة
     meter_line_type = fields.Selection([
@@ -303,4 +360,3 @@ class UtilityContractTemplateLine(models.Model):
         help='معادلة ديناميكية تحسب الكمية تلقائياً (متغيرات: consumption, template, account, category)')
     is_subsidized = fields.Boolean('خصم مدعوم',
         help='يطبق الخصم حسب فئة المشترك — يعمل فقط مع meter_line_type=discount')
-

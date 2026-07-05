@@ -8,15 +8,15 @@ class UtilityFeeder(models.Model):
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'name'
 
-    active = fields.Boolean(default=True)
-    company_id = fields.Many2one('res.company', 'Company', default=lambda self: self.env.company)
+    active = fields.Boolean('نشط', default=True)
+    company_id = fields.Many2one('res.company', 'الشركة', default=lambda self: self.env.company)
     name = fields.Char('اسم الفيدر / الخلية', required=True, tracking=True)
     code = fields.Char('الرمز', required=True)
 
     # ===== الموقع في الشبكة =====
-    substation_id = fields.Many2one('utility.substation', 'Substation', index=True)
-    area_id = fields.Many2one('utility.region', 'Area', related='substation_id.area_id', store=True)
-    region_id = fields.Many2one('utility.region', 'Region', related='substation_id.region_id', store=True)
+    substation_id = fields.Many2one('utility.substation', 'المحطة', index=True)
+    area_id = fields.Many2one('utility.region', 'المنطقة الفرعية', related='substation_id.area_id', store=True)
+    region_id = fields.Many2one('utility.region', 'المنطقة', related='substation_id.region_id', store=True)
 
     # ===== المواصفات الكهربائية =====
     voltage_level = fields.Selection([

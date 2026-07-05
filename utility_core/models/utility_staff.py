@@ -11,15 +11,15 @@ class UtilityStaff(models.Model):
     _description = 'موظف'
     _order = 'name'
 
-    active = fields.Boolean(default=True)
-    company_id = fields.Many2one('res.company', 'Company', default=lambda self: self.env.company)
-    user_id = fields.Many2one('res.users', 'User')
-    employee_code = fields.Char('Employee Code')
-    name = fields.Char('Name', required=True)
-    team_id = fields.Many2one('utility.team', 'Team')
-    user_role_id = fields.Many2one('utility.user.role', string='Role / الدور')
-    phone = fields.Char('Phone')
-    mobile = fields.Char('Mobile')
+    active = fields.Boolean('نشط', default=True)
+    company_id = fields.Many2one('res.company', 'الشركة', default=lambda self: self.env.company)
+    user_id = fields.Many2one('res.users', 'المستخدم')
+    employee_code = fields.Char('رمز الموظف')
+    name = fields.Char('الاسم', required=True)
+    team_id = fields.Many2one('utility.team', 'الفريق')
+    user_role_id = fields.Many2one('utility.user.role', string='الدور')
+    phone = fields.Char('الهاتف')
+    mobile = fields.Char('الجوال')
 
     _sql_constraints = [
         # FIX-14: منع تعيين نفس المستخدم لأكثر من موظف في نفس الشركة

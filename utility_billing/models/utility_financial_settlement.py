@@ -7,7 +7,15 @@ class UtilityFinancialSettlement(models.Model):
     _description = 'تسوية مالية'
     _order = 'date desc'
 
-    name = fields.Char('رقم التسوية المالية', default=lambda self: _('New'), readonly=True)
+    name = fields.Char('رقم التسوية المالية', default=lambda self: _('جديد'), readonly=True)
+    company_id = fields.Many2one('res.company', 'الشركة', default=lambda self: self.env.company)
+    currency_id = fields.Many2one(
+        'res.currency',
+        related='company_id.currency_id',
+        string='العملة',
+        store=True,
+        readonly=True,
+    )
     account_id = fields.Many2one('utility.customer', 'حساب الكهرباء', required=True)
     customer_id = fields.Many2one('utility.customer', related='account_id', store=True)
     partner_id = fields.Many2one('res.partner', related='customer_id.partner_id', store=True)
@@ -17,7 +25,7 @@ class UtilityFinancialSettlement(models.Model):
         ('credit', 'دائن (خصم للمشترك)'),
         ('debit', 'مدين (غرامة/إضافة على المشترك)'),
     ], string='نوع التسوية المالية', required=True)
-    amount = fields.Float('مبلغ التسوية', required=True)
+    amount = fields.Monetary('مبلغ التسوية', required=True, currency_field='currency_id')
     reason = fields.Text('سبب التسوية المالية', required=True)
     date = fields.Date('تاريخ التسوية', default=fields.Date.today, readonly=True)
     state = fields.Selection([
@@ -30,8 +38,8 @@ class UtilityFinancialSettlement(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
-            if vals.get('name', _('New')) == _('New'):
-                vals['name'] = self.env['ir.sequence'].next_by_code('utility.financial.settlement') or _('New')
+            if vals.get('name', _('جديد')) == _('جديد'):
+                vals['name'] = self.env['ir.sequence'].next_by_code('utility.financial.settlement') or _('جديد')
         return super().create(vals_list)
 
     def _get_company_config(self, company_field, config_key):
@@ -45,28 +53,28 @@ class UtilityFinancialSettlement(models.Model):
         self.ensure_one()
         if self.state == 'applied':
             raise ValidationError('تم تطبيق هذه التسوية بالفعل!')
-            
+
         settlement_journal_id = self._get_company_config('settlement_journal_id', 'utility.settlement_journal_id')
         settlement_account_id = self._get_company_config('settlement_account_id', 'utility.settlement_account_id')
-        
+
         if not settlement_journal_id or not settlement_account_id:
             raise ValidationError('يرجى تحديد يومية التسويات وحساب التسويات في إعدادات النظام أولاً.')
-            
+
         partner = self.account_id.partner_id
         if not partner:
             raise ValidationError('حساب الكهرباء غير مربوط بعميل (Partner).')
-            
+
         partner_account_id = partner.property_account_receivable_id.id
         if not partner_account_id:
             raise ValidationError('العميل ليس لديه حساب مستحقات (Receivable Account) معرف.')
-            
+
         move_vals = {
             'journal_id': settlement_journal_id,
             'date': self.date or fields.Date.today(),
             'ref': f"تسوية مالية: {self.name} - {self.reason}",
             'line_ids': []
         }
-        
+
         if self.settlement_type == 'credit':
             move_vals['line_ids'].append((0, 0, {
                 'account_id': settlement_account_id,
@@ -95,10 +103,10 @@ class UtilityFinancialSettlement(models.Model):
                 'debit': 0.0,
                 'credit': self.amount,
             }))
-            
+
         move = self.env['account.move'].create(move_vals)
         move.action_post()
-        
+
         self.move_id = move.id
         self.state = 'applied'
         return True

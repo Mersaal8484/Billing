@@ -10,8 +10,8 @@ class UtilitySubscriberCategory(models.Model):
     code = fields.Char('الكود', required=True)
     sequence = fields.Integer('الترتيب', default=10)
     description = fields.Text('الوصف')
-    active = fields.Boolean(default=True)
-    company_id = fields.Many2one('res.company', 'Company', default=lambda self: self.env.company)
+    active = fields.Boolean('نشط', default=True)
+    company_id = fields.Many2one('res.company', 'الشركة', default=lambda self: self.env.company)
 
     _sql_constraints = [
         ('code_unique_per_company', 'unique(code, company_id)',

@@ -11,7 +11,7 @@ class PosOrder(models.Model):
 
     amount_paid = fields.Monetary(string='المدفوع')
     kwh_purchased = fields.Float(string='kWh المشتراة')
-    unit_price = fields.Float(string='سعر الوحدة')
+    unit_price = fields.Monetary(string='سعر الوحدة')
     energy_charge = fields.Monetary(string='قيمة الطاقة')
     service_charge = fields.Monetary(string='رسم الخدمة')
     tax_amount = fields.Monetary(string='الضريبة')

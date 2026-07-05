@@ -6,40 +6,40 @@ class UtilityTransformer(models.Model):
     _description = 'محول كهرباء'
     _order = 'name'
 
-    active = fields.Boolean(default=True)
-    company_id = fields.Many2one('res.company', 'Company', default=lambda self: self.env.company)
+    active = fields.Boolean('نشط', default=True)
+    company_id = fields.Many2one('res.company', 'الشركة', default=lambda self: self.env.company)
     name = fields.Char('اسم المحول', required=True)
     code = fields.Char('رمز المحول', required=True)
 
     # ===== الموقع في الشبكة =====
-    substation_id = fields.Many2one('utility.substation', 'Substation')
+    substation_id = fields.Many2one('utility.substation', 'المحطة')
     feeder_id = fields.Many2one('utility.feeder', 'الفيدر / الخلية', index=True)
     zone_region_id = fields.Many2one(
         'utility.region', 'المنطقة (zone)',
         domain="[('type', '=', 'zone')]",
         help='سجل المنطقة (zone) المنشأ تلقائياً في التدرج الهرمي للمناطق'
     )
-    area_id = fields.Many2one('utility.region', 'Area', related='zone_region_id.parent_id', store=True)
-    region_id = fields.Many2one('utility.region', 'Region', related='zone_region_id.parent_id.parent_id', store=True)
+    area_id = fields.Many2one('utility.region', 'المنطقة الفرعية', related='zone_region_id.parent_id', store=True)
+    region_id = fields.Many2one('utility.region', 'المنطقة', related='zone_region_id.parent_id.parent_id', store=True)
 
     is_private = fields.Boolean(string='محول خاص', default=False, help='يُحدد ما إذا كان المحول خاصاً بمشترك واحد')
 
     # ===== المواصفات الفنية =====
-    capacity = fields.Float('Capacity (kVA)')
+    capacity = fields.Float('القدرة (kVA)')
     phase = fields.Selection([
-        ('single', 'Single Phase'),
-        ('three', 'Three Phase'),
+        ('single', 'طور واحد'),
+        ('three', 'ثلاثة أطوار'),
     ], string='الطور')
-    manufacturer = fields.Char('Manufacturer')
-    serial_number = fields.Char('Serial Number')
-    voltage_primary = fields.Float('Primary Voltage (V)')
-    voltage_secondary = fields.Float('Secondary Voltage (V)')
-    address = fields.Text('Address')
+    manufacturer = fields.Char('الشركة المصنّعة')
+    serial_number = fields.Char('الرقم التسلسلي')
+    voltage_primary = fields.Float('الجهد الابتدائي (فولت)')
+    voltage_secondary = fields.Float('الجهد الثانوي (فولت)')
+    address = fields.Text('العنوان')
     status = fields.Selection([
-        ('active', 'Active'),
-        ('inactive', 'Inactive'),
-        ('fault', 'Fault'),
-        ('maintenance', 'Maintenance'),
+        ('active', 'نشط'),
+        ('inactive', 'غير نشط'),
+        ('fault', 'عطل'),
+        ('maintenance', 'صيانة'),
     ], string='الحالة', default='active')
 
     # ===== الربط بالمشتركين والعدادات =====
@@ -59,7 +59,7 @@ class UtilityTransformer(models.Model):
 
     _sql_constraints = [
         ('unique_transformer_code_substation', 'unique(code, substation_id)',
-         'Transformer code must be unique per substation!'),
+         'رمز المحول يجب أن يكون فريداً لكل محطة!'),
     ]
 
     # ===== Compute =====

@@ -12,8 +12,8 @@ class UtilityToken(models.Model):
     _rec_name = 'token_number'
     _inherit = ['mail.thread', 'mail.activity.mixin']
 
-    active = fields.Boolean(default=True)
-    company_id = fields.Many2one('res.company', default=lambda self: self.env.company)
+    active = fields.Boolean('نشط', default=True)
+    company_id = fields.Many2one('res.company', 'الشركة', default=lambda self: self.env.company)
     token_number = fields.Char(string='رقم الكود', index=True)
     token_identifier = fields.Char(string='معرف الكود (TID)')
     sequence_number = fields.Integer(string='الرقم التسلسلي')
@@ -30,11 +30,11 @@ class UtilityToken(models.Model):
     response_code = fields.Char(string='رمز الرد')
     response_message = fields.Text(string='رسالة الرد')
     status = fields.Selection([
-        ('pending', 'Pending'),
-        ('success', 'Success'),
-        ('failed', 'Failed'),
-        ('retry', 'Retry'),
-        ('cancelled', 'Cancelled'),
+        ('pending', 'قيد الانتظار'),
+        ('success', 'ناجح'),
+        ('failed', 'فشل'),
+        ('retry', 'إعادة محاولة'),
+        ('cancelled', 'ملغى'),
     ], default='pending', string='الحالة', tracking=True)
     retry_count = fields.Integer(string='عدد إعادة المحاولة', default=0)
     last_retry_date = fields.Datetime(string='تاريخ آخر محاولة')
@@ -71,7 +71,7 @@ class UtilityToken(models.Model):
             'sequence_number': self.retry_count + 1,
             'response_date': fields.Datetime.now(),
             'response_code': '00',
-            'response_message': _('Token generated successfully'),
+            'response_message': _('تم إنشاء الرمز بنجاح'),
             'status': 'success',
             'raw_request': 'SIMULATED_REQUEST|amount=%s|kwh=%s|meter=%s' % (
                 self.amount, self.kwh, self.meter_id.name if self.meter_id else '',
@@ -94,5 +94,5 @@ class UtilityToken(models.Model):
         self.write({
             'status': 'cancelled',
             'response_date': fields.Datetime.now(),
-            'response_message': _('Token request cancelled by operator'),
+            'response_message': _('تم إلغاء طلب الرمز بواسطة المشغل'),
         })

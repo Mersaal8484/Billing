@@ -11,6 +11,7 @@
                 <field name="customer_number"/>
                 <field name="partner_id"/>
                 <field name="national_id"/>
+                <field name="category_id"/>
                 <field name="subscriber_id"/>
                 <field name="state" widget="badge" decoration-success="state == 'active'" decoration-warning="state in ('suspended', 'disconnected')" decoration-danger="state == 'closed'"/>
                 <field name="region_id"/>
@@ -61,7 +62,8 @@
                         <group string="معلومات الهوية والنوع">
                             <field name="partner_id"/>
                             <field name="national_id"/>
-                            <field name="subscriber_id"/>
+                            <field name="category_id" options="{'no_create': True}"/>
+                            <field name="subscriber_id" options="{'no_create': True}"/>
                             <field name="payment_type" widget="badge" decoration-info="payment_type == 'prepaid'" decoration-success="payment_type == 'postpaid'"/>
                             <field name="active"/>
                             <field name="company_id" groups="base.group_multi_company"/>

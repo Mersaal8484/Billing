@@ -10,7 +10,7 @@ class UtilityPenaltyType(models.Model):
     name = fields.Char('اسم الغرامة', required=True, translate=True)
     code = fields.Char('الرمز', required=True)
     description = fields.Text('الوصف')
-    active = fields.Boolean(default=True)
+    active = fields.Boolean('نشط', default=True)
 
 
 class UtilityPenalty(models.Model):
@@ -20,14 +20,21 @@ class UtilityPenalty(models.Model):
 
     name = fields.Char(string="الاسم", compute="_compute_name", store=True)
 
-    active = fields.Boolean(default=True)
-    company_id = fields.Many2one('res.company', 'Company', default=lambda self: self.env.company)
-    sale_order_id = fields.Many2one('sale.order', 'Sale Order', index=True)
-    customer_id = fields.Many2one('utility.customer', 'Customer')
+    active = fields.Boolean('نشط', default=True)
+    company_id = fields.Many2one('res.company', 'الشركة', default=lambda self: self.env.company)
+    sale_order_id = fields.Many2one('sale.order', 'أمر البيع', index=True)
+    customer_id = fields.Many2one('utility.customer', 'العميل')
     partner_id = fields.Many2one('res.partner', related='customer_id.partner_id', store=True)
     region_id = fields.Many2one(related='partner_id.region_id', store=True, string='المنطقة')
     area_id = fields.Many2one(related='partner_id.area_id', store=True, string='المنطقة الفرعية')
-    account_id = fields.Many2one('utility.customer', 'Account', related='customer_id', store=True)
+    account_id = fields.Many2one('utility.customer', 'الحساب', related='customer_id', store=True)
+    currency_id = fields.Many2one(
+        'res.currency',
+        related='sale_order_id.currency_id',
+        string='العملة',
+        store=True,
+        readonly=True,
+    )
 
     @api.depends('penalty_type_id', 'sale_order_id')
     def _compute_name(self):
@@ -38,15 +45,15 @@ class UtilityPenalty(models.Model):
                 rec.name = "غرامة جديدة"
 
     penalty_type_id = fields.Many2one('utility.penalty.type', string='نوع الغرامة', required=True)
-    amount = fields.Float('Amount')
-    calculated_date = fields.Date('Calculated Date')
-    reason = fields.Text('Reason')
-    waived = fields.Boolean('Waived', default=False)
-    waived_by = fields.Many2one('res.users', 'Waived By')
+    amount = fields.Monetary('المبلغ', currency_field='currency_id')
+    calculated_date = fields.Date('تاريخ الحساب')
+    reason = fields.Text('السبب')
+    waived = fields.Boolean('تم الإعفاء', default=False)
+    waived_by = fields.Many2one('res.users', 'أعفى بواسطة')
     state = fields.Selection([
-        ('calculated', 'Calculated'),
-        ('applied', 'Applied'),
-        ('waived', 'Waived'),
+        ('calculated', 'محتسبة'),
+        ('applied', 'مُطبّقة'),
+        ('waived', 'مُعفاة'),
     ], string='الحالة', default='calculated')
 
     move_id = fields.Many2one('account.move', string='فاتورة الغرامة', readonly=True)

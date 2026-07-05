@@ -8,13 +8,13 @@ class UtilityReversal(models.Model):
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'date desc, id desc'
 
-    active = fields.Boolean(default=True)
-    company_id = fields.Many2one('res.company', default=lambda self: self.env.company)
-    reference = fields.Char(required=True, default=lambda self: _('New'))
-    date = fields.Datetime(default=fields.Datetime.now)
+    active = fields.Boolean('نشط', default=True)
+    company_id = fields.Many2one('res.company', 'الشركة', default=lambda self: self.env.company)
+    reference = fields.Char('المرجع', required=True, default=lambda self: _('جديد'))
+    date = fields.Datetime('التاريخ', default=fields.Datetime.now)
     reversal_type = fields.Selection([
-        ('full', 'Full'),
-        ('partial', 'Partial'),
+        ('full', 'كامل'),
+        ('partial', 'جزئي'),
     ], string='نوع الإلغاء', required=True, default='full')
     amount = fields.Monetary(string='المبلغ', required=True)
     currency_id = fields.Many2one('res.currency', related='company_id.currency_id')
@@ -26,10 +26,10 @@ class UtilityReversal(models.Model):
     approved_by = fields.Many2one('res.users', string='معتمد من')
     operator_id = fields.Many2one('res.users', string='المشغل', default=lambda self: self.env.user)
     state = fields.Selection([
-        ('draft', 'Draft'),
-        ('approved', 'Approved'),
-        ('completed', 'Completed'),
-        ('rejected', 'Rejected'),
+        ('draft', 'مسودة'),
+        ('approved', 'معتمد'),
+        ('completed', 'مكتمل'),
+        ('rejected', 'مرفوض'),
     ], default='draft', string='الحالة', tracking=True)
 
     def action_approve(self):
@@ -42,7 +42,7 @@ class UtilityReversal(models.Model):
     def action_complete(self):
         self.ensure_one()
         if self.state != 'approved':
-            raise models.ValidationError(_('Reversal must be approved before completing.'))
+            raise models.ValidationError(_('يجب اعتماد الإلغاء قبل إكماله.'))
         self.account_id._update_balance(-self.amount)
         if self.pos_order_id:
             self.pos_order_id.write({
@@ -51,7 +51,7 @@ class UtilityReversal(models.Model):
         self.env['utility.transaction'].create_transaction(
             'reversal', self.account_id, self.amount, reversal=self,
             pos_order=self.pos_order_id,
-            notes=_('Reversal %s: %s') % (self.reference, self.reason),
+            notes=_('إلغاء %s: %s') % (self.reference, self.reason),
         )
         self.state = 'completed'
 
@@ -61,6 +61,6 @@ class UtilityReversal(models.Model):
 
     @api.model
     def create(self, vals):
-        if vals.get('reference', _('New')) == _('New'):
-            vals['reference'] = self.env['ir.sequence'].next_by_code('utility.reversal') or _('New')
+        if vals.get('reference', _('جديد')) == _('جديد'):
+            vals['reference'] = self.env['ir.sequence'].next_by_code('utility.reversal') or _('جديد')
         return super(UtilityReversal, self).create(vals)

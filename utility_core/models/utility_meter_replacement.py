@@ -12,8 +12,8 @@ class UtilityMeterReplacement(models.Model):
 
     # Primary Required Field: utility.customer
     utility_account_id = fields.Many2one('utility.customer', required=True, string="حساب الكهرباء / المشترك", tracking=True)
-    partner_id = fields.Many2one('res.partner', related='utility_account_id.partner_id', string="العميل (Customer)", store=True)
-    contract_id = fields.Many2one('account.analytic.account', string="العقد التحليلي (Contract)", compute="_compute_contract_id", store=True, readonly=False, tracking=True)
+    partner_id = fields.Many2one('res.partner', related='utility_account_id.partner_id', string="العميل", store=True)
+    contract_id = fields.Many2one('account.analytic.account', string="العقد التحليلي", compute="_compute_contract_id", store=True, readonly=False, tracking=True)
 
     @api.depends('utility_account_id')
     def _compute_name(self):
@@ -28,10 +28,10 @@ class UtilityMeterReplacement(models.Model):
     old_meter_number = fields.Char(string="رقم العداد القديم", readonly=True)
     old_meter_type_id = fields.Many2one('utility.meter.type', string="نوع العداد القديم", readonly=True)
     old_phase = fields.Selection([
-        ('single', 'Single Phase (واحد فاز)'),
-        ('three', 'Three Phase (ثلاثة فاز)'),
-    ], string="فاز العداد القديم", readonly=True)
-    old_closing_reading = fields.Float(string="القراءة الختامية (Closing Reading)", digits=(12, 3), required=True, tracking=True)
+        ('single', 'طور واحد'),
+        ('three', 'ثلاثة أطوار'),
+    ], string="طور العداد القديم", readonly=True)
+    old_closing_reading = fields.Float(string="القراءة الختامية", digits=(12, 3), required=True, tracking=True)
     old_last_invo_reading = fields.Float(string="آخر قراءة مفوترة", digits=(12, 3), readonly=True)
     old_uninvoiced_consumption = fields.Float(string="الاستهلاك غير المفوتر", digits=(12, 3), compute="_compute_old_uninvoiced", store=True)
 
@@ -40,11 +40,11 @@ class UtilityMeterReplacement(models.Model):
     new_meter_number = fields.Char(string="رقم العداد الجديد (لإنشاء جديد)", tracking=True)
     new_meter_type_id = fields.Many2one('utility.meter.type', string="نوع العداد الجديد")
     new_phase = fields.Selection([
-        ('single', 'Single Phase (واحد فاز)'),
-        ('three', 'Three Phase (ثلاثة فاز)'),
-    ], string="فاز العداد الجديد", default='single')
-    new_opening_reading = fields.Float(string="القراءة الافتتاحية (Opening Reading)", digits=(12, 3), required=True, tracking=True)
-    new_meter_val = fields.Float(string="معامل الضرب الجديد (Multiplier)", default=1.0, tracking=True)
+        ('single', 'طور واحد'),
+        ('three', 'ثلاثة أطوار'),
+    ], string="طور العداد الجديد", default='single')
+    new_opening_reading = fields.Float(string="القراءة الافتتاحية", digits=(12, 3), required=True, tracking=True)
+    new_meter_val = fields.Float(string="معامل الضرب", default=1.0, tracking=True)
 
     replace_date = fields.Datetime(string="تاريخ الاستبدال", default=fields.Datetime.now, required=True, tracking=True)
     reason = fields.Selection([
@@ -55,7 +55,7 @@ class UtilityMeterReplacement(models.Model):
         ('other', 'أخرى'),
     ], string="سبب الاستبدال", required=True, tracking=True)
     notes = fields.Text(string="ملاحظات")
-    user_id = fields.Many2one('res.users', string="المستخدم/المسؤول", default=lambda self: self.env.user)
+    user_id = fields.Many2one('res.users', string="المستخدم", default=lambda self: self.env.user)
     state = fields.Selection([
         ('draft', 'مسودة'),
         ('done', 'تم الاستبدال (Done)'),

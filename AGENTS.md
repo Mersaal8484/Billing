@@ -36,6 +36,14 @@ No test infrastructure exists yet. All `tests/` directories are empty. Do not ru
 - **Security groups** are flat (all imply `group_utility_admin`). Not a proper hierarchy — a known issue from the gap analysis.
 - **Arabic UI** — model descriptions, field strings, menu labels, and view content are in Arabic (using `translate=True` on many fields).
 - **Config settings** live in `utility_core/models/utility_settings.py` as `res.config.settings` inherit with `config_parameter` keys (`utility.*`).
+- **Communication & Notifications** — NEVER use Odoo's standard `mail` module or email functionality, as there is no mail server. All customer notifications must be routed through SMS or a local WhatsApp provider.
+- **Subscriber Terminology & Rules**:
+  - `utility.subscriber.category` = **فئات المشتركين الرئيسية** (Subscriber Categories)
+  - `utility.subscriber` = **انواع المشتركين** (Subscriber Types)
+  - Both fields are mandatory on contract templates (`utility.contract.template`) and subscriber accounts (`utility.customer`). The selected type must belong to the selected category, and both must be compatible with the selected contract template.
+  - In `utility.customer` and `utility.customer.wizard`, the contract template field (`contract_template_id`) must only display and accept templates that are suitable for both the selected subscriber classification (categories & types) and the geographic location (regions & areas).
+
+
 
 ## Important files
 

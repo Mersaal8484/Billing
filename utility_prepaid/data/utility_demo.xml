@@ -11,6 +11,8 @@
       <field name="customer_number">ACC-2024-0001</field>
       <field name="partner_id" ref="demo_customer_1"/>
       <field name="balance">500.00</field>
+      <field name="category_id" ref="utility_core.cat_public"/>
+      <field name="subscriber_id" ref="utility_core.sub_category_public"/>
     </record>
 
     <record id="demo_meter_1" model="utility.meter">
@@ -22,6 +24,8 @@
       <field name="name">Residential Standard Prepaid</field>
       <field name="code">RES-STD-PRE</field>
       <field name="price_per_kwh">0.25</field>
+      <field name="subscriber_category_ids" eval="[(6, 0, [ref('utility_core.cat_public')])]"/>
+      <field name="subscriber_ids" eval="[(6, 0, [ref('utility_core.sub_category_public')])]"/>
     </record>
 
     <record id="demo_shift_1" model="utility.cashier.shift">

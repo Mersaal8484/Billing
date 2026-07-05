@@ -4,6 +4,13 @@ from odoo import api, fields, models
 class ResConfigSettings(models.TransientModel):
     _inherit = 'res.config.settings'
 
+    currency_id = fields.Many2one(
+        'res.currency',
+        related='company_id.currency_id',
+        string='العملة',
+        readonly=True,
+    )
+
     # --- Meter Reading ---
     meter_review_required = fields.Boolean(
         string='مطلوب مراجعة صورة العداد',
@@ -39,16 +46,18 @@ class ResConfigSettings(models.TransientModel):
         default=50.0)
 
     # --- Prepaid / Emergency ---
-    emergency_credit_amount = fields.Float(
+    emergency_credit_amount = fields.Monetary(
         string='قيمة رصيد الطوارئ الافتراضي',
+        currency_field='currency_id',
         config_parameter='utility.emergency_credit_amount',
         default=50.0)
     emergency_credit_grace_days = fields.Integer(
         string='فترة سماح رصيد الطوارئ (أيام)',
         config_parameter='utility.emergency_credit_grace_days',
         default=7)
-    low_credit_threshold = fields.Float(
+    low_credit_threshold = fields.Monetary(
         string='حد الرصيد المنخفض',
+        currency_field='currency_id',
         config_parameter='utility.low_credit_threshold',
         default=100.0)
 

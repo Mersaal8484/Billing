@@ -12,9 +12,9 @@ class UtilityCustomer(models.Model):
     _rec_name = 'customer_number'
     _order = 'customer_number asc'
 
-    active = fields.Boolean(default=True)
-    company_id = fields.Many2one('res.company', 'Company', default=lambda self: self.env.company)
-    customer_number = fields.Char('Customer Number', required=True, index=True, default=lambda self: _('New'))
+    active = fields.Boolean('نشط', default=True)
+    company_id = fields.Many2one('res.company', 'الشركة', default=lambda self: self.env.company)
+    customer_number = fields.Char('رقم العميل', required=True, index=True, default=lambda self: _('جديد'))
     account_number = fields.Char(related='customer_number', string='رقم الحساب', store=True)
     customer_id = fields.Many2one('utility.customer', compute='_compute_self_customer', string='العميل')
     partner_id = fields.Many2one('res.partner', 'العميل (شخص)', required=True, domain=[('is_company', '=', False)])
@@ -22,12 +22,12 @@ class UtilityCustomer(models.Model):
     def _compute_self_customer(self):
         for rec in self:
             rec.customer_id = rec.id
-    category_id = fields.Many2one('utility.subscriber.category', string='الفئة (نوع الحساب)')
+    category_id = fields.Many2one('utility.subscriber.category', string='فئة المشترك الرئيسية', required=True)
     phone = fields.Char(related='partner_id.phone', string='رقم الجوال')
     mobile = fields.Char(related='partner_id.mobile', string='الجوال')
     email = fields.Char(related='partner_id.email', string='البريد الإلكتروني')
     national_id = fields.Char(string='الهوية الوطنية')
-    subscriber_id = fields.Many2one('utility.subscriber', string='نوع المشترك')
+    subscriber_id = fields.Many2one('utility.subscriber', string='نوع المشترك', required=True, domain="[('category_id', '=', category_id)]")
     state = fields.Selection([
         ('draft', 'مسودة'),
         ('active', 'فعال'),
@@ -46,7 +46,13 @@ class UtilityCustomer(models.Model):
         help='حالة الاشتراك الحالية للمشترك')
     contract_template_id = fields.Many2one('utility.contract.template',
         string='نموذج العقد',
-        domain="[('subscriber_ids', '=', subscriber_id)]")
+        domain="["
+               "('subscriber_category_ids', '=', category_id), "
+               "('subscriber_ids', '=', subscriber_id), "
+               "'|', ('scope', '=', 'global'), "
+               "'|', ('region_ids', '=', region_id), "
+               "('area_ids', '=', area_id)"
+               "]")
     contract_start_date = fields.Date('تاريخ بداية العقد')
     contract_end_date = fields.Date('تاريخ نهاية العقد')
     date_contract = fields.Date(string='تاريخ العقد')
@@ -60,7 +66,7 @@ class UtilityCustomer(models.Model):
     # الفيدر / الخلية
     cell_id = fields.Many2one('utility.feeder', string='الفيدر / الخلية',
         domain="[('active', '=', True)]")
-    
+
     # المحول
     transformer_id = fields.Many2one('utility.transformer', string='المحول',
         domain="[('active', '=', True)]")
@@ -82,10 +88,10 @@ class UtilityCustomer(models.Model):
     payment_type = fields.Selection(related='meter_id.payment_type', store=True, string='نظام الدفع (آجل/مسبق)', readonly=True)
 
     # الرصيد والمشتريات
-    balance = fields.Float('الرصيد', default=0.0, help='الرصيد الحالي للمشترك')
-    emergency_credit = fields.Float('رصيد الطوارئ', default=0.0)
-    credit_limit = fields.Float('حد الائتمان', default=0.0)
-    total_purchases = fields.Float(string='إجمالي المشتريات')
+    balance = fields.Monetary('الرصيد', default=0.0, currency_field='company_currency_id', help='الرصيد الحالي للمشترك')
+    emergency_credit = fields.Monetary('رصيد الطوارئ', default=0.0, currency_field='company_currency_id')
+    credit_limit = fields.Monetary('حد الائتمان', default=0.0, currency_field='company_currency_id')
+    total_purchases = fields.Monetary(string='إجمالي المشتريات', currency_field='company_currency_id')
     total_kwh_purchased = fields.Float(string='إجمالي الكيلووات المشترى')
     last_purchase_date = fields.Date(string='تاريخ آخر شراء')
 
@@ -114,7 +120,7 @@ class UtilityCustomer(models.Model):
 
     _sql_constraints = [
         ('unique_customer_number_company', 'unique(customer_number, company_id)',
-         'Customer number must be unique per company!'),
+         'رقم العميل يجب أن يكون فريداً لكل شركة!'),
     ]
 
 
@@ -122,11 +128,11 @@ class UtilityCustomer(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
-            if vals.get('customer_number', _('New')) == _('New'):
-                vals['customer_number'] = self.env['ir.sequence'].next_by_code('utility.customer') or _('New')
-        
+            if vals.get('customer_number', _('جديد')) == _('جديد'):
+                vals['customer_number'] = self.env['ir.sequence'].next_by_code('utility.customer') or _('جديد')
+
         customers = super().create(vals_list)
-        
+
         for customer in customers:
             # تعيين المشترك كعميل في قائمة العملاء (res.partner)
             if customer.partner_id:
@@ -143,14 +149,14 @@ class UtilityCustomer(models.Model):
                     plan = self.env['account.analytic.plan'].search([], limit=1)
                 if not plan:
                     plan = self.env['account.analytic.plan'].create({'name': 'Default Plan'})
-                
+
                 analytic_account = self.env['account.analytic.account'].create({
                     'name': f"{partner_name} - {customer.customer_number}",
                     'partner_id': customer.partner_id.id,
                     'plan_id': plan.id
                 })
                 customer.write({'analytic_account_id': analytic_account.id})
-                
+
         return customers
 
     def write(self, vals):
@@ -198,21 +204,48 @@ class UtilityCustomer(models.Model):
                     matching_template = self.subscriber_id.default_contract_template_id
                 self.contract_template_id = matching_template
 
-    @api.constrains('contract_template_id', 'subscriber_id')
-    def _check_contract_subscriber_compatibility(self):
-        strict_compatibility = self.env['ir.config_parameter'].sudo().get_param('utility.strict_contract_tariff_compatibility', 'False') == 'True'
-        
+    @api.constrains('category_id', 'subscriber_id')
+    def _check_subscriber_category_compatibility(self):
         for rec in self:
-            if not strict_compatibility:
-                continue
-                
-            template = rec.contract_template_id
-            if template:
-                if template.subscriber_ids and rec.subscriber_id and rec.subscriber_id not in template.subscriber_ids:
+            if rec.category_id and rec.subscriber_id:
+                if rec.subscriber_id.category_id != rec.category_id:
                     raise ValidationError(
-                        f"آلية التناغم الصارمة: قالب العقد '{template.name}' لا يدعم المشترك من نوع '{rec.subscriber_id.name}'. "
-                        f"يرجى اختيار قالب عقد متوافق."
+                        _("نوع المشترك '%s' يجب أن ينتمي إلى فئة المشترك الرئيسية المحددة '%s'.")
+                        % (rec.subscriber_id.name, rec.category_id.name)
                     )
+
+    @api.constrains('contract_template_id', 'category_id', 'subscriber_id', 'region_id', 'area_id')
+    def _check_contract_subscriber_compatibility(self):
+        for rec in self:
+            template = rec.contract_template_id
+            subscriber = rec.subscriber_id
+            category = rec.category_id
+            if template:
+                if category and category not in template.subscriber_category_ids:
+                    raise ValidationError(
+                        _("قالب العقد '%s' لا يدعم فئة المشترك الرئيسية '%s'.")
+                        % (template.name, category.name)
+                    )
+                if subscriber and subscriber not in template.subscriber_ids:
+                    raise ValidationError(
+                        _("قالب العقد '%s' لا يدعم نوع المشترك '%s'.")
+                        % (template.name, subscriber.name)
+                    )
+                if template.scope == 'restricted':
+                    allowed_region_ids = template.region_ids.ids
+                    allowed_area_ids = template.area_ids.ids
+
+                    customer_region_id = rec.region_id.id
+                    customer_area_id = rec.area_id.id
+
+                    is_region_allowed = customer_region_id in allowed_region_ids if customer_region_id else False
+                    is_area_allowed = customer_area_id in allowed_area_ids if customer_area_id else False
+
+                    if not (is_region_allowed or is_area_allowed):
+                        raise ValidationError(
+                            _("قالب العقد المختار '%s' مخصص لمناطق محددة ولا يدعم المنطقة أو المنطقة الفرعية لهذا المشترك.")
+                            % template.name
+                        )
 
     def name_get(self):
         res = []
@@ -246,7 +279,7 @@ class UtilityCustomer(models.Model):
         self.ensure_one()
         return {
             'type': 'ir.actions.act_window',
-            'name': _('Bills'),
+            'name': _('الفواتير'),
             'res_model': 'sale.order',
             'domain': [('customer_id', '=', self.id)],
             'views': [(False, 'tree'), (False, 'form')],
@@ -256,7 +289,7 @@ class UtilityCustomer(models.Model):
         self.ensure_one()
         return {
             'type': 'ir.actions.act_window',
-            'name': _('Readings'),
+            'name': _('القراءات'),
             'res_model': 'utility.reading',
             'domain': [('customer_id', '=', self.id)],
             'views': [(False, 'tree'), (False, 'form')],
@@ -266,7 +299,7 @@ class UtilityCustomer(models.Model):
         self.ensure_one()
         return {
             'type': 'ir.actions.act_window',
-            'name': _('Payments'),
+            'name': _('الدفعات'),
             'res_model': 'account.payment',
             'domain': [('utility_sale_order_id.customer_id', '=', self.id)],
             'views': [(False, 'tree'), (False, 'form')],

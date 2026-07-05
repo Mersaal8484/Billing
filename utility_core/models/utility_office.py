@@ -11,18 +11,18 @@ class UtilityOffice(models.Model):
     _description = 'مكتب'
     _order = 'name'
 
-    active = fields.Boolean(default=True)
-    company_id = fields.Many2one('res.company', 'Company', default=lambda self: self.env.company)
-    name = fields.Char('Office Name', required=True)
-    code = fields.Char('Office Code', required=True)
-    area_id = fields.Many2one('utility.region', 'Area', domain="[('type', '=', 'area')]")
-    region_id = fields.Many2one('utility.region', 'Region', related='area_id.parent_id', store=True)
-    phone = fields.Char('Phone')
-    address = fields.Text('Address')
-    manager_id = fields.Many2one('res.users', 'Manager')
+    active = fields.Boolean('نشط', default=True)
+    company_id = fields.Many2one('res.company', 'الشركة', default=lambda self: self.env.company)
+    name = fields.Char('اسم المكتب', required=True)
+    code = fields.Char('رمز المكتب', required=True)
+    area_id = fields.Many2one('utility.region', 'المنطقة الفرعية', domain="[('type', '=', 'area')]")
+    region_id = fields.Many2one('utility.region', 'المنطقة', related='area_id.parent_id', store=True)
+    phone = fields.Char('الهاتف')
+    address = fields.Text('العنوان')
+    manager_id = fields.Many2one('res.users', 'المدير')
 
     _sql_constraints = [
-        ('unique_office_code_company', 'unique(code, company_id)', 'Office code must be unique per company!'),
+        ('unique_office_code_company', 'unique(code, company_id)', 'رمز المكتب يجب أن يكون فريداً لكل شركة!'),
     ]
 
     @api.constrains('phone')

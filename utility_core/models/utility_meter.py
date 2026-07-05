@@ -26,48 +26,48 @@ class UtilityMeter(models.Model):
     _order = 'meter_number'
     _rec_name = 'meter_number'
 
-    active = fields.Boolean(default=True)
-    company_id = fields.Many2one('res.company', 'Company', default=lambda self: self.env.company)
-    meter_number = fields.Char('Meter Number', required=True, index=True, default=lambda self: _('New'))
-    serial_number = fields.Char('Serial Number', index=True)
-    manufacturer = fields.Char('Manufacturer')
-    model_id = fields.Many2one('utility.meter.model', 'Model')
+    active = fields.Boolean('نشط', default=True)
+    company_id = fields.Many2one('res.company', 'الشركة', default=lambda self: self.env.company)
+    meter_number = fields.Char('رقم العداد', required=True, index=True, default=lambda self: _('جديد'))
+    serial_number = fields.Char('الرقم التسلسلي', index=True)
+    manufacturer = fields.Char('الشركة المصنّعة')
+    model_id = fields.Many2one('utility.meter.model', 'الموديل')
     payment_type = fields.Selection([
-        ('postpaid', 'آجل الدفع (عن بُعد / ذكي)'),
-        ('prepaid', 'دفع مسبق (Prepaid)'),
-        ('manual', 'يدوي (Manual)')
+        ('postpaid', 'آجل الدفع'),
+        ('prepaid', 'دفع مسبق'),
+        ('manual', 'يدوي')
     ], string='نظام العداد', default='manual', required=True)
-    meter_type_id = fields.Many2one('utility.meter.type', 'Meter Type')
-    status_id = fields.Many2one('utility.meter.status', 'Status')
+    meter_type_id = fields.Many2one('utility.meter.type', 'نوع العداد')
+    status_id = fields.Many2one('utility.meter.status', 'الحالة')
     phase = fields.Selection([
-        ('single', 'Single Phase'),
-        ('three', 'Three Phase'),
+        ('single', 'طور واحد'),
+        ('three', 'ثلاثة أطوار'),
     ], string='الطور')
-    voltage = fields.Float('Voltage (V)')
-    current_rating = fields.Float('Current Rating (A)')
-    power_rating = fields.Float('Power Rating (kW)')
-    sts_key_revision = fields.Char('STS Key Revision')
-    customer_id = fields.Many2one('utility.customer', 'Customer/Contract', index=True)
+    voltage = fields.Float('الجهد (فولت)')
+    current_rating = fields.Float('شدة التيار (أمبير)')
+    power_rating = fields.Float('القدرة (كيلوواط)')
+    sts_key_revision = fields.Char('مراجعة مفتاح STS')
+    customer_id = fields.Many2one('utility.customer', 'العميل/العقد', index=True)
     account_id = fields.Many2one('utility.customer', string='الحساب', related='customer_id', store=True)
-    area_id = fields.Many2one('utility.region', 'Area', domain="[('type', '=', 'area')]")
-    zone_id = fields.Many2one('utility.region', 'Zone', domain="[('type', '=', 'zone')]")
-    region_id = fields.Many2one('utility.region', 'Region', related='area_id.parent_id', store=True)
-    route_id = fields.Many2one('utility.route', 'Route', related='customer_id.route_id', store=True)
-    feeder_id = fields.Many2one('utility.feeder', 'Feeder')
-    transformer_id = fields.Many2one('utility.transformer', 'Transformer')
-    substation_id = fields.Many2one('utility.substation', 'Substation')
-    installation_date = fields.Date('Installation Date')
-    address = fields.Text('Address')
+    area_id = fields.Many2one('utility.region', 'المنطقة الفرعية', domain="[('type', '=', 'area')]")
+    zone_id = fields.Many2one('utility.region', 'المنطقة التفصيلية', domain="[('type', '=', 'zone')]")
+    region_id = fields.Many2one('utility.region', 'المنطقة', related='area_id.parent_id', store=True)
+    route_id = fields.Many2one('utility.route', 'خط السير', related='customer_id.route_id', store=True)
+    feeder_id = fields.Many2one('utility.feeder', 'الفيدر')
+    transformer_id = fields.Many2one('utility.transformer', 'المحول')
+    substation_id = fields.Many2one('utility.substation', 'المحطة')
+    installation_date = fields.Date('تاريخ التركيب')
+    address = fields.Text('العنوان')
     communication_type = fields.Selection([
-        ('gsm', 'GSM'),
-        ('nbiot', 'NB-IoT'),
-        ('lora', 'LoRa'),
-        ('rf', 'RF'),
-        ('plc', 'PLC'),
-        ('manual', 'Manual'),
+        ('gsm', 'جي إس إم (GSM)'),
+        ('nbiot', 'إن بي آي أو تي (NB-IoT)'),
+        ('lora', 'لورا (LoRa)'),
+        ('rf', 'تردد لاسلكي (RF)'),
+        ('plc', 'خط الطاقة (PLC)'),
+        ('manual', 'يدوي'),
     ], string='نوع الاتصال')
-    sim_number = fields.Char('SIM Number')
-    last_read_date = fields.Datetime('Last Read Date')
+    sim_number = fields.Char('رقم شريحة SIM')
+    last_read_date = fields.Datetime('تاريخ آخر قراءة')
     qr_code_value = fields.Char('بيانات QR', compute='_compute_qr_code', readonly=True)
     qr_code_url = fields.Char('رابط QR', compute='_compute_qr_code', readonly=True)
 
@@ -92,8 +92,8 @@ class UtilityMeter(models.Model):
             meter.qr_code_url = '/report/barcode/?type=QR&value=%s' % quote(payload)
     _sql_constraints = [
         ('unique_meter_number_company', 'unique(meter_number, company_id)',
-         'Meter number must be unique per company!'),
-        ('unique_serial_number', 'unique(serial_number)', 'Serial number must be unique!'),
+         'رقم العداد يجب أن يكون فريداً لكل شركة!'),
+        ('unique_serial_number', 'unique(serial_number)', 'الرقم التسلسلي يجب أن يكون فريداً!'),
     ]
 
     def action_request_ami_reading(self):
@@ -126,8 +126,8 @@ class UtilityMeter(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
-            if vals.get('meter_number', _('New')) == _('New'):
-                vals['meter_number'] = self.env['ir.sequence'].next_by_code('utility.meter') or _('New')
+            if vals.get('meter_number', _('جديد')) == _('جديد'):
+                vals['meter_number'] = self.env['ir.sequence'].next_by_code('utility.meter') or _('جديد')
         return super().create(vals_list)
 
     @api.model
@@ -157,13 +157,13 @@ class UtilityMeterType(models.Model):
     _description = 'نوع العداد'
     _order = 'name'
 
-    name = fields.Char('Name', required=True)
-    code = fields.Char('Code', required=True)
+    name = fields.Char('الاسم', required=True)
+    code = fields.Char('الرمز', required=True)
     phase = fields.Selection([
-        ('single', 'Single Phase'),
-        ('three', 'Three Phase'),
+        ('single', 'طور واحد'),
+        ('three', 'ثلاثة أطوار'),
     ], string='الطور')
-    description = fields.Text('Description')
+    description = fields.Text('الوصف')
 
 
 class UtilityMeterModel(models.Model):
@@ -171,19 +171,19 @@ class UtilityMeterModel(models.Model):
     _description = 'موديل العداد'
     _order = 'name'
 
-    name = fields.Char('Model Name', required=True)
-    code = fields.Char('Model Code', required=True)
-    manufacturer = fields.Char('Manufacturer')
-    meter_type_id = fields.Many2one('utility.meter.type', 'Meter Type')
+    name = fields.Char('اسم الموديل', required=True)
+    code = fields.Char('رمز الموديل', required=True)
+    manufacturer = fields.Char('الشركة المصنّعة')
+    meter_type_id = fields.Many2one('utility.meter.type', 'نوع العداد')
     phase = fields.Selection([
-        ('single', 'Single Phase'),
-        ('three', 'Three Phase'),
+        ('single', 'طور واحد'),
+        ('three', 'ثلاثة أطوار'),
     ], string='الطور')
-    voltage_range = fields.Char('Voltage Range')
-    current_range = fields.Char('Current Range')
-    sts_supported = fields.Boolean('STS Supported')
-    communication_types = fields.Char('Communication Types')
-    description = fields.Text('Description')
+    voltage_range = fields.Char('نطاق الجهد')
+    current_range = fields.Char('نطاق شدة التيار')
+    sts_supported = fields.Boolean('يدعم STS')
+    communication_types = fields.Char('أنواع الاتصال')
+    description = fields.Text('الوصف')
     product_id = fields.Many2one(
         'product.product', 'المنتج',
         help="المنتج الذي يمثل هذا الموديل في نظام المخزون والمحاسبة",
@@ -207,7 +207,7 @@ class UtilityMeterStatus(models.Model):
     _description = 'حالة العداد'
     _order = 'sequence, name'
 
-    name = fields.Char('Name', required=True)
-    code = fields.Char('Code', required=True)
-    sequence = fields.Integer('Sequence')
-    description = fields.Text('Description')
+    name = fields.Char('الاسم', required=True)
+    code = fields.Char('الرمز', required=True)
+    sequence = fields.Integer('التسلسل')
+    description = fields.Text('الوصف')

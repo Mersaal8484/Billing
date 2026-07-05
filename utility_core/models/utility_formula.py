@@ -39,8 +39,8 @@ class UtilityFormula(models.Model):
              '- line_name: str - اسم بند العقد\n'
              '- result: float - يجب تعيينها بقيمة الكمية المحسوبة\n'
              '- name: str - يمكن تغييرها لوصف مخصص')
-    active = fields.Boolean(default=True)
-    company_id = fields.Many2one('res.company', default=lambda self: self.env.company)
+    active = fields.Boolean('نشط', default=True)
+    company_id = fields.Many2one('res.company', 'الشركة', default=lambda self: self.env.company)
     contract_line_count = fields.Integer(
         'عدد بنود العقود',
         compute='_compute_contract_line_count'

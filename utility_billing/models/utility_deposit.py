@@ -8,39 +8,46 @@ class UtilityDeposit(models.Model):
     _rec_name = 'deposit_number'
     _order = 'deposit_date desc'
 
-    active = fields.Boolean(default=True)
-    company_id = fields.Many2one('res.company', 'Company', default=lambda self: self.env.company)
-    deposit_number = fields.Char('Deposit Number', required=True, default=lambda self: _('New'))
-    customer_id = fields.Many2one('utility.customer', 'Customer')
+    active = fields.Boolean('نشط', default=True)
+    company_id = fields.Many2one('res.company', 'الشركة', default=lambda self: self.env.company)
+    deposit_number = fields.Char('رقم التأمين', required=True, default=lambda self: _('جديد'))
+    customer_id = fields.Many2one('utility.customer', 'العميل')
     partner_id = fields.Many2one('res.partner', related='customer_id.partner_id', store=True)
     region_id = fields.Many2one(related='partner_id.region_id', store=True, string='المنطقة')
     area_id = fields.Many2one(related='partner_id.area_id', store=True, string='المنطقة الفرعية')
-    account_id = fields.Many2one('utility.customer', 'Account', related='customer_id', store=True)
-    meter_id = fields.Many2one('utility.meter', 'Meter')
-    amount = fields.Float('Amount')
-    deposit_date = fields.Date('Deposit Date')
+    account_id = fields.Many2one('utility.customer', 'الحساب', related='customer_id', store=True)
+    meter_id = fields.Many2one('utility.meter', 'العداد')
+    currency_id = fields.Many2one(
+        'res.currency',
+        related='company_id.currency_id',
+        string='العملة',
+        store=True,
+        readonly=True,
+    )
+    amount = fields.Monetary('المبلغ', currency_field='currency_id')
+    deposit_date = fields.Date('تاريخ التأمين')
     deposit_type = fields.Selection([
-        ('connection', 'Connection'),
-        ('security', 'Security'),
-        ('meter', 'Meter'),
+        ('connection', 'توصيل'),
+        ('security', 'أمان'),
+        ('meter', 'عداد'),
     ], string='نوع التأمين', default='security')
     status = fields.Selection([
         ('draft', 'مسودة'),
-        ('held', 'محتجزة (مقبوضة)'),
+        ('held', 'محتجزة'),
         ('released', 'مستردة'),
         ('forfeited', 'مصادرة'),
     ], string='الحالة', default='draft')
-    release_date = fields.Date('Release Date')
-    notes = fields.Text('Notes')
-    
+    release_date = fields.Date('تاريخ الاسترداد')
+    notes = fields.Text('ملاحظات')
+
     payment_id = fields.Many2one('account.payment', string='سند القبض', readonly=True)
     move_id = fields.Many2one('account.move', string='القيد المحاسبي', readonly=True)
 
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
-            if vals.get('deposit_number', _('New')) == _('New'):
-                vals['deposit_number'] = self.env['ir.sequence'].next_by_code('utility.deposit') or _('New')
+            if vals.get('deposit_number', _('جديد')) == _('جديد'):
+                vals['deposit_number'] = self.env['ir.sequence'].next_by_code('utility.deposit') or _('جديد')
         return super().create(vals_list)
 
     # ── FIX-10: منع مبلغ وديعة صفر أو سالب ─────────────────────────────────

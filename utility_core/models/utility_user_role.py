@@ -6,7 +6,7 @@ class UtilityUserRole(models.Model):
     _description = 'صلاحية مستخدم'
     _order = 'name'
 
-    name = fields.Char('Role Name', required=True)
-    code = fields.Char('Code', required=True)
+    name = fields.Char('الاسم', required=True)
+    code = fields.Char('الرمز', required=True)
     group_ids = fields.Many2many('res.groups', string='المجموعات')
-    description = fields.Text('Description')
+    description = fields.Text('الوصف')

@@ -13,7 +13,7 @@ class UtilityNotificationLog(models.Model):
 
     name = fields.Char('العنوان', required=True)
     channel = fields.Selection([
-        ('sms', 'SMS'),
+        ('sms', 'رسائل قصيرة (SMS)'),
         ('portal', 'البوابة'),
         ('internal', 'داخلي'),
     ], string='القناة', required=True, default='internal')

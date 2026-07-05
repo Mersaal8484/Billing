@@ -15,20 +15,20 @@ class UtilityIntegrationProvider(models.Model):
 
     name = fields.Char('الاسم', required=True)
     sequence = fields.Integer('الترتيب', default=10)
-    active = fields.Boolean(default=True)
+    active = fields.Boolean('نشط', default=True)
     provider_type = fields.Selection([
-        ('sms', 'SMS'),
-        ('ami', 'AMI'),
+        ('sms', 'رسائل قصيرة (SMS)'),
+        ('ami', 'قراءة تلقائية (AMI)'),
         ('payment_gateway', 'بوابة دفع'),
     ], string='نوع المزود', required=True, index=True)
     mode = fields.Selection([
         ('manual', 'يدوي/تجريبي'),
-        ('http_json', 'HTTP JSON'),
+        ('http_json', 'اتصال HTTP (JSON)'),
     ], string='وضع التكامل', default='manual', required=True)
     endpoint_url = fields.Char('Endpoint URL')
     api_key = fields.Char('API Key')
     webhook_secret = fields.Char('Webhook Secret')
-    timeout = fields.Integer('Timeout seconds', default=15)
+    timeout = fields.Integer('مهلة الانتظار (ثواني)', default=15)
     last_error = fields.Text('آخر خطأ', readonly=True)
 
     def _build_headers(self):
@@ -90,7 +90,7 @@ class UtilityIntegrationLog(models.Model):
     res_id = fields.Integer('معرف السجل')
     request_payload = fields.Text('الطلب')
     response_payload = fields.Text('الاستجابة')
-    http_status = fields.Integer('HTTP Status')
+    http_status = fields.Integer('حالة HTTP')
     state = fields.Selection([
         ('pending', 'قيد التنفيذ'),
         ('success', 'ناجح'),
