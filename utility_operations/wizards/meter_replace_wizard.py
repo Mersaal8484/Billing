@@ -4,7 +4,7 @@ from odoo.exceptions import ValidationError
 
 class UtilityMeterReplaceWizard(models.TransientModel):
     _name = 'utility.meter.replace.wizard'
-    _description = 'Meter Replacement Wizard'
+    _description = 'معالج استبدال العداد'
 
     account_id = fields.Many2one('utility.customer', 'حساب الكهرباء', required=True)
     old_meter_id = fields.Many2one('utility.meter', 'العداد القديم', related='account_id.meter_id', readonly=True)

@@ -3,7 +3,7 @@
     <data noupdate="1">
 
         <record id="seq_utility_reading" model="ir.sequence">
-            <field name="name">Utility Reading</field>
+            <field name="name">تسلسل قراءات العدادات</field>
             <field name="code">utility.reading</field>
             <field name="prefix">RD/%(year)s/</field>
             <field name="padding">5</field>
@@ -11,7 +11,7 @@
         </record>
 
         <record id="seq_utility_writeoff" model="ir.sequence">
-            <field name="name">Utility Writeoff</field>
+            <field name="name">تسلسل الإعفاءات</field>
             <field name="code">utility.writeoff</field>
             <field name="prefix">WO/%(year)s/</field>
             <field name="padding">5</field>
@@ -19,7 +19,7 @@
         </record>
 
         <record id="seq_utility_deposit" model="ir.sequence">
-            <field name="name">Utility Deposit</field>
+            <field name="name">تسلسل التأمينات</field>
             <field name="code">utility.deposit</field>
             <field name="prefix">DEP/%(year)s/</field>
             <field name="padding">5</field>
@@ -27,14 +27,14 @@
         </record>
 
         <record id="seq_utility_financial_settlement" model="ir.sequence">
-            <field name="name">Utility Financial Settlement</field>
+            <field name="name">تسلسل التسويات المالية</field>
             <field name="code">utility.financial.settlement</field>
             <field name="prefix">FS/%(year)s/</field>
             <field name="padding">5</field>
             <field name="company_id" eval="False"/>
         </record>
         <record id="seq_utility_collector_shift" model="ir.sequence">
-            <field name="name">Utility Collector Shift</field>
+            <field name="name">تسلسل يوميات التحصيل</field>
             <field name="code">utility.collector.shift</field>
             <field name="prefix">CS/%(year)s/</field>
             <field name="padding">5</field>
@@ -43,7 +43,7 @@
 
 
         <record id="seq_utility_installment_plan" model="ir.sequence">
-            <field name="name">Utility Installment Plan</field>
+            <field name="name">تسلسل خطط التقسيط</field>
             <field name="code">utility.installment.plan</field>
             <field name="prefix">INST/%(year)s/</field>
             <field name="padding">5</field>

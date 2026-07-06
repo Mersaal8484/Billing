@@ -70,7 +70,7 @@
         </field>
     </record>
     <record id="action_utility_team" model="ir.actions.act_window">
-        <field name="name">Teams</field>
+        <field name="name">فرق العمل</field>
         <field name="res_model">utility.team</field>
         <field name="view_mode">tree,form</field>
         <field name="search_view_id" ref="view_utility_team_search"/>

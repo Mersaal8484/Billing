@@ -741,21 +741,50 @@ class UtilitySaleOrder(models.Model):
                 name = type_labels.get(line.meter_line_type, 'رسم محلي')
 
         elif line.meter_line_type == 'discount':
-            # خصم الدعم — أول N وحدة مدعومة
-            if (category and getattr(category, 'subsidized_enabled', False) and consumption > 0):
-                qty, price, name = category._get_subsidized_amount(consumption, template)
-                price = -abs(price)
-                sponsor_id = category.sponsor_id.id if hasattr(category, 'sponsor_id') and category.sponsor_id else False
+            # الخصم: المعادلة تحدد عدد الوحدات، وشرائح الخصم تحدد قيمة الخصم لكل وحدة.
+            discount_units = 0.0
+            if line.qty_formula_id:
+                discount_units, name = line.qty_formula_id.execute(
+                    consumption=consumption,
+                    previous_reading=self.previous_reading,
+                    current_reading=self.current_reading,
+                    template=template,
+                    account=account,
+                    category=category,
+                    line=line,
+                )
+            elif template and template.discount_formula_id:
+                discount_units, name = template.discount_formula_id.execute(
+                    consumption=consumption,
+                    previous_reading=self.previous_reading,
+                    current_reading=self.current_reading,
+                    template=template,
+                    account=account,
+                    category=category,
+                    line=line,
+                )
+
+            discount_units = max(discount_units or 0.0, 0.0)
+            sponsor_id = template.sponsor_id.id if template and template.sponsor_id else False
+            if template and template.discount_block_ids and discount_units > 0:
+                discount_amount = 0.0
+                for block in template.discount_block_ids.sorted(lambda b: (b.from_kwh, b.sequence, b.id)):
+                    block_from = block.from_kwh or 0.0
+                    block_to = block.to_kwh if block.to_kwh > 0 else discount_units
+                    qty_in_block = max(0.0, min(discount_units, block_to) - block_from)
+                    if qty_in_block <= 0:
+                        continue
+                    discount_amount += qty_in_block * block.price_per_kwh
+                qty = 1.0
+                price = -abs(discount_amount)
+                if not name:
+                    name = f"خصم استهلاك مدعوم - {discount_units:.0f} وحدة"
+            elif discount_units > 0 and line.specific_price:
+                qty = discount_units
+                price = -abs(line.specific_price)
             else:
-                # حساب خصم قائم على discount_first_units في القالب
-                if template and template.discount_first_units > 0 and consumption > 0:
-                    units = min(consumption, template.discount_first_units)
-                    qty = 1.0
-                    price = -(units * (template.discount_unit_value or 0.0))
-                else:
-                    qty = 1.0
-                    price = -(line.specific_price or 0.0)
-                sponsor_id = template.sponsor_id.id if template and template.sponsor_id else False
+                qty = 1.0
+                price = 0.0
 
         return qty, price, name, product_id, sponsor_id
 
@@ -803,7 +832,7 @@ class UtilitySaleOrderLine(models.Model):
     )
     sponsor_id = fields.Many2one(
         'res.partner',
-        string='الجهة الداعمة (Sponsor)',
+        string='الجهة الداعمة',
     )
     meter_line_type = fields.Selection([
         ('consumption', 'استهلاك'),

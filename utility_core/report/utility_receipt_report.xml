@@ -3,7 +3,7 @@
     <report
         id="action_report_utility_receipt"
         model="utility.customer"
-        string="Receipt Report"
+        string="تقرير الإيصال"
         report_type="qweb-pdf"
         name="utility_core.receipt_report"
         file="utility_core.receipt_report"

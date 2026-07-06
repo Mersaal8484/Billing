@@ -5,7 +5,7 @@
         <field name="name">sale.order.type.tree</field>
         <field name="model">sale.order.type</field>
         <field name="arch" type="xml">
-            <tree string="Sale Order Types">
+            <tree string="أنواع أوامر البيع">
                 <field name="sequence" widget="handle"/>
                 <field name="name"/>
                 <field name="code"/>
@@ -23,7 +23,7 @@
         <field name="name">sale.order.type.form</field>
         <field name="model">sale.order.type</field>
         <field name="arch" type="xml">
-            <form string="Sale Order Type">
+            <form string="نوع أمر البيع">
                 <sheet>
                     <div class="oe_button_box" name="button_box">
                         <button name="toggle_active" type="object" class="oe_stat_button" icon="fa-archive">
@@ -53,7 +53,7 @@
                         </group>
                     </group>
                     <notebook>
-                        <page string="قواعد المطابقة التلقائية (Rules)" name="matching_rules">
+                        <page string="قواعد المطابقة التلقائية" name="matching_rules">
                             <field name="rule_ids">
                                 <tree string="قواعد المطابقة">
                                     <field name="sequence" widget="handle"/>
@@ -85,12 +85,12 @@
         <field name="name">sale.order.type.search</field>
         <field name="model">sale.order.type</field>
         <field name="arch" type="xml">
-            <search string="Search Sale Order Type">
+            <search string="البحث في أنواع أوامر البيع">
                 <field name="name"/>
                 <field name="code"/>
                 <field name="journal_id"/>
                 <separator/>
-                <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
+                <filter string="مؤرشف" name="inactive" domain="[('active', '=', False)]"/>
             </search>
         </field>
     </record>
@@ -116,7 +116,7 @@
         <field name="name">res.partner.sector.tree</field>
         <field name="model">res.partner.sector</field>
         <field name="arch" type="xml">
-            <tree string="Customer Sectors">
+            <tree string="قطاعات المشتركين">
                 <field name="name"/>
                 <field name="code"/>
                 <field name="active" widget="boolean_toggle"/>
@@ -129,7 +129,7 @@
         <field name="name">res.partner.sector.form</field>
         <field name="model">res.partner.sector</field>
         <field name="arch" type="xml">
-            <form string="Customer Sector">
+            <form string="قطاع المشترك">
                 <sheet>
                     <div class="oe_button_box" name="button_box">
                         <button name="toggle_active" type="object" class="oe_stat_button" icon="fa-archive">
@@ -152,7 +152,7 @@
 
     <!-- res.partner.sector action -->
     <record id="action_res_partner_sector" model="ir.actions.act_window">
-        <field name="name">قطاعات العملاء</field>
+        <field name="name">قطاعات المشتركين</field>
         <field name="res_model">res.partner.sector</field>
         <field name="view_mode">tree,form</field>
         <field name="help" type="html">

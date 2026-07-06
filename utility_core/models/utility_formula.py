@@ -37,6 +37,7 @@ class UtilityFormula(models.Model):
              '- category_name: str - اسم فئة المشترك\n'
              '- line_id: int - معرف بند العقد\n'
              '- line_name: str - اسم بند العقد\n'
+             '- discount_first_units: float - حد الوحدات المدعومة المشتق من شرائح الخصم\n'
              '- result: float - يجب تعيينها بقيمة الكمية المحسوبة\n'
              '- name: str - يمكن تغييرها لوصف مخصص')
     active = fields.Boolean('نشط', default=True)
@@ -93,7 +94,7 @@ class UtilityFormula(models.Model):
 
     def execute(self, consumption=0, previous_reading=0, current_reading=0,
                 tariff=None, account=None, category=None, line=None,
-                template=None):
+                template=None, discount_first_units=None):
         """تنفيذ المعادلة مع المتغيرات الممررة.
 
         الأمان:
@@ -104,6 +105,10 @@ class UtilityFormula(models.Model):
         self.ensure_one()
         result = 0.0
         name = self.name
+
+        if discount_first_units is None and template and hasattr(template, 'discount_block_ids'):
+            finite_limits = template.discount_block_ids.filtered(lambda block: block.to_kwh and block.to_kwh > 0).mapped('to_kwh')
+            discount_first_units = max(finite_limits) if finite_limits else 0.0
 
         locals_dict = {
             'consumption': float(consumption or 0.0),
@@ -117,6 +122,7 @@ class UtilityFormula(models.Model):
             'category_name': category.name if category else '',
             'line_id': line.id if line else 0,
             'line_name': line.name if line else '',
+            'discount_first_units': float(discount_first_units or 0.0),
             'result': result,
             'name': name,
         }

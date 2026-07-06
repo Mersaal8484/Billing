@@ -90,20 +90,20 @@ class UtilityContractTemplate(models.Model):
 
     # رسوم محلية (معلم/نظافة/مجلس محلي) — تُحسب على أساس الاستهلاك
     local_fee_per_kwh = fields.Monetary('رسم محلي لكل kWh (افتراضي)', default=0.0, currency_field='currency_id',
-        help='السعر الموحد للرسوم المحلية عند استخدام meter_line_type=local_fee')
+        help='السعر الموحد للرسوم المحلية عند استخدام نوع بند العداد = رسوم محلية')
     local_fee_mu_allim = fields.Monetary('رسم المعلم لكل kWh', default=0.0, currency_field='currency_id')
     local_fee_cleaning = fields.Monetary('رسم النظافة لكل kWh', default=0.0, currency_field='currency_id')
 
     # خصم الدعم — أول N وحدة تُخصم على الجهة الداعمة
-    sponsor_id = fields.Many2one('res.partner', string='الجهة الداعمة (Sponsor)', help='الجهة التي سيتم تقييد الخصم عليها')
-    discount_first_units = fields.Float('وحدات الدعم الأولى', default=0.0,
-        help='عدد الوحدات (kWh) المدعومة في الفاتورة')
-    discount_unit_value = fields.Monetary('قيمة الخصم للوحدة', default=0.0, currency_field='currency_id',
-        help='قيمة الخصم المحتسبة لكل وحدة مدعومة')
+    sponsor_id = fields.Many2one('res.partner', string='الجهة الداعمة', help='الجهة التي سيتم تقييد الخصم عليها')
+    discount_formula_id = fields.Many2one('utility.formula', string='معادلة الخصم',
+        help='معادلة ديناميكية لحساب كمية الخصم')
+    discount_block_ids = fields.One2many('utility.contract.template.block', 'template_id',
+        domain=[('is_discount', '=', True)], string='شرائح الخصم التدريجية', copy=True)
 
     # الشرائح التدريجية — تظهر فقط حين pricing_mode in (block,tier,seasonal,tou)
     block_ids = fields.One2many('utility.contract.template.block', 'template_id',
-        string='الشرائح التدريجية', copy=True)
+        domain=[('is_discount', '=', False)], string='الشرائح التدريجية', copy=True)
     history_ids = fields.One2many('utility.contract.template.history', 'template_id',
         string='سجل التغييرات', readonly=True)
 
@@ -223,6 +223,11 @@ class UtilityContractTemplate(models.Model):
             self.env.ref('utility_core.utility_product_service_charge', raise_if_not_found=False)
             or Product.search([('type', '=', 'service')], limit=1)
         )
+        discount_product = (
+            self.env.ref('utility_core.utility_product_discount', raise_if_not_found=False)
+            or Product.search([('name', 'like', 'خصم')], limit=1)
+            or service_product
+        )
 
         # FIX: التحقق من وجود المنتجات قبل إنشاء البنود
         if not kwh_product:
@@ -297,6 +302,20 @@ class UtilityContractTemplate(models.Model):
                     'specific_price': template.local_fee_per_kwh,
                 })
 
+            # الخصم المدعوم
+            if 'discount' not in existing_types and template.discount_formula_id:
+                self.env['utility.contract.template.line'].create({
+                    'template_id': template.id,
+                    'sequence': 45,
+                    'product_id': discount_product.id if discount_product else False,
+                    'name': f'خصم استهلاك مدعوم ({template.name})',
+                    'price_type': 'fixed',
+                    'meter_line_type': 'discount',
+                    'qty_formula_id': template.discount_formula_id.id,
+                    'is_subsidized': True,
+                    'specific_price': 0.0,
+                })
+
             # تحديث الأسعار للبنود الحالية لتتطابق تماماً مع بيانات القالب
             for line in template.line_ids:
                 if line.meter_line_type == 'consumption':
@@ -309,6 +328,10 @@ class UtilityContractTemplate(models.Model):
                     line.specific_price = template.local_fee_cleaning
                 elif line.meter_line_type == 'municipality':
                     line.specific_price = template.local_fee_per_kwh
+                elif line.meter_line_type == 'discount':
+                    if template.discount_formula_id:
+                        line.qty_formula_id = template.discount_formula_id.id
+                        line.specific_price = 0.0
 
         if len(self) == 1:
             return {
@@ -357,6 +380,6 @@ class UtilityContractTemplateLine(models.Model):
 
     # الربط مع معادلات محرك الاحتساب
     qty_formula_id = fields.Many2one('utility.formula', 'معادلة الكمية',
-        help='معادلة ديناميكية تحسب الكمية تلقائياً (متغيرات: consumption, template, account, category)')
+        help='معادلة ديناميكية تحسب الكمية تلقائياً (متغيرات: الاستهلاك، قالب العقد، الحساب، الفئة)')
     is_subsidized = fields.Boolean('خصم مدعوم',
-        help='يطبق الخصم حسب فئة المشترك — يعمل فقط مع meter_line_type=discount')
+        help='يطبق الخصم حسب فئة المشترك — يعمل فقط مع نوع بند العداد = خصم')

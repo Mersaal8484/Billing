@@ -77,58 +77,58 @@
 
         <!-- Meter Statuses -->
         <record id="meter_status_active" model="utility.meter.status">
-            <field name="name">Active</field>
+            <field name="name">نشط</field>
             <field name="code">ACTIVE</field>
             <field name="sequence">10</field>
         </record>
         <record id="meter_status_inactive" model="utility.meter.status">
-            <field name="name">Inactive</field>
+            <field name="name">غير نشط</field>
             <field name="code">INACTIVE</field>
             <field name="sequence">20</field>
         </record>
         <record id="meter_status_faulty" model="utility.meter.status">
-            <field name="name">Faulty</field>
+            <field name="name">معطل</field>
             <field name="code">FAULTY</field>
             <field name="sequence">30</field>
         </record>
         <record id="meter_status_tampered" model="utility.meter.status">
-            <field name="name">Tampered</field>
+            <field name="name">تم العبث به</field>
             <field name="code">TAMPERED</field>
             <field name="sequence">40</field>
         </record>
         <record id="meter_status_decommissioned" model="utility.meter.status">
-            <field name="name">Decommissioned</field>
+            <field name="name">خارج الخدمة</field>
             <field name="code">DECOMM</field>
             <field name="sequence">50</field>
         </record>
 
         <!-- Connection Types -->
         <record id="connection_type_new" model="utility.connection.type">
-            <field name="name">New Connection</field>
+            <field name="name">توصيلة جديدة</field>
             <field name="code">NEW</field>
             <field name="voltage_level">lv</field>
             <field name="phase">single</field>
         </record>
         <record id="connection_type_residential" model="utility.connection.type">
-            <field name="name">Residential</field>
+            <field name="name">سكني</field>
             <field name="code">RES</field>
             <field name="voltage_level">lv</field>
             <field name="phase">single</field>
         </record>
         <record id="connection_type_commercial" model="utility.connection.type">
-            <field name="name">Commercial</field>
+            <field name="name">تجاري</field>
             <field name="code">COM</field>
             <field name="voltage_level">lv</field>
             <field name="phase">three</field>
         </record>
         <record id="connection_type_industrial" model="utility.connection.type">
-            <field name="name">Industrial</field>
+            <field name="name">صناعي</field>
             <field name="code">IND</field>
             <field name="voltage_level">mv</field>
             <field name="phase">three</field>
         </record>
         <record id="connection_type_agricultural" model="utility.connection.type">
-            <field name="name">Agricultural</field>
+            <field name="name">زراعي</field>
             <field name="code">AGR</field>
             <field name="voltage_level">lv</field>
             <field name="phase">single</field>

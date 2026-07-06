@@ -3,7 +3,7 @@ from odoo import api, models, _
 
 class ReportUtilityReceipt(models.AbstractModel):
     _name = 'report.utility_core.receipt_report'
-    _description = 'Utility Receipt Report'
+    _description = 'تقرير إيصال الكهرباء'
 
     @api.model
     def _get_report_values(self, docids, data=None):

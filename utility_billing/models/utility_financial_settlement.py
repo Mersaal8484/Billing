@@ -66,7 +66,7 @@ class UtilityFinancialSettlement(models.Model):
 
         partner_account_id = partner.property_account_receivable_id.id
         if not partner_account_id:
-            raise ValidationError('العميل ليس لديه حساب مستحقات (Receivable Account) معرف.')
+            raise ValidationError('العميل ليس لديه حساب مستحقات معرف.')
 
         move_vals = {
             'journal_id': settlement_journal_id,

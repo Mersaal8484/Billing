@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <record id="view_utility_config_settings" model="ir.ui.view">
-        <field name="name">Utility Settings</field>
+        <field name="name">إعدادات الكهرباء</field>
         <field name="model">res.config.settings</field>
         <field name="inherit_id" ref="base.res_config_settings_view_form"/>
         <field name="arch" type="xml">
             <xpath expr="//div[hasclass('settings')]" position="inside">
-                <div class="app_settings_block" data-string="Utility ERP" string="Utility ERP" data-key="utility_core" groups="utility_core.group_utility_admin">
+                <div class="app_settings_block" data-string="إدارة الكهرباء" string="إدارة الكهرباء" data-key="utility_core" groups="utility_core.group_utility_admin">
                     <h2>عدادات وإعدادات القراءة</h2>
                     <div class="row mt16 o_settings_container" id="utility_meter">
                         <div class="col-12 col-lg-6 o_setting_box">

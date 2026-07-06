@@ -59,7 +59,7 @@
         </field>
     </record>
     <record id="action_utility_office" model="ir.actions.act_window">
-        <field name="name">Offices</field>
+        <field name="name">المكاتب</field>
         <field name="res_model">utility.office</field>
         <field name="view_mode">tree,form</field>
         <field name="search_view_id" ref="view_utility_office_search"/>

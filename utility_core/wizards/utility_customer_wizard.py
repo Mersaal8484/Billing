@@ -8,7 +8,7 @@ PHONE_9_RE = re.compile(r'^\d{9}$')
 
 class UtilityCustomerWizard(models.TransientModel):
     _name = 'utility.customer.wizard'
-    _description = 'معالج تسجيل مشترك وعداد موحد (Unified Subscriber Wizard)'
+    _description = 'معالج تسجيل مشترك وعداد موحد'
 
     name = fields.Char(string='اسم المشترك / الجهة', required=True)
     mobile = fields.Char(string='رقم الجوال', required=True)
@@ -41,7 +41,7 @@ class UtilityCustomerWizard(models.TransientModel):
     use_private_transformer = fields.Boolean(
         string='محول خاص (المحول للمشترك وحده)',
         default=False,
-        help='عند التفعيل: ينشئ الـ wizard محولاً خاصاً جديداً في utility.transformer ويربطه بالمشترك كخلية خاصة. عدّاد الربط يُنشأ تلقائياً.'
+        help='عند التفعيل: ينشئ المعالج محولاً خاصاً جديداً في utility.transformer ويربطه بالمشترك كخلية خاصة. عدّاد الربط يُنشأ تلقائياً.'
     )
     private_transformer_existing_id = fields.Many2one(
         'utility.transformer', string='محول قائم',

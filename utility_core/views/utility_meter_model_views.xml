@@ -52,7 +52,7 @@
         </field>
     </record>
     <record id="action_utility_meter_model" model="ir.actions.act_window">
-        <field name="name">Meter Models</field>
+        <field name="name">موديلات العدادات</field>
         <field name="res_model">utility.meter.model</field>
         <field name="view_mode">tree,form</field>
     </record>

@@ -3,76 +3,76 @@
     <data noupdate="0">
         <!-- Category -->
         <record id="module_category_utility_erp" model="ir.module.category">
-            <field name="name">Utility ERP</field>
+            <field name="name">نظام إدارة الكهرباء</field>
             <field name="description">صلاحيات نظام إدارة الكهرباء</field>
             <field name="sequence">10</field>
         </record>
 
         <!-- Read Only -->
         <record id="group_utility_readonly" model="res.groups">
-            <field name="name">Read Only (للقراءة فقط)</field>
+            <field name="name">للقراءة فقط</field>
             <field name="category_id" ref="module_category_utility_erp"/>
         </record>
 
         <!-- Cashier -->
         <record id="group_utility_cashier" model="res.groups">
-            <field name="name">Cashier (أمين صندوق)</field>
+            <field name="name">أمين صندوق</field>
             <field name="category_id" ref="module_category_utility_erp"/>
             <field name="implied_ids" eval="[(4, ref('group_utility_readonly'))]"/>
         </record>
 
         <!-- Field Collector -->
         <record id="group_utility_collector" model="res.groups">
-            <field name="name">Field Collector (متحصل ميداني)</field>
+            <field name="name">متحصل ميداني</field>
             <field name="category_id" ref="module_category_utility_erp"/>
             <field name="implied_ids" eval="[(4, ref('group_utility_readonly'))]"/>
         </record>
 
         <!-- Technician -->
         <record id="group_utility_technician" model="res.groups">
-            <field name="name">Technician (فني/عمليات)</field>
+            <field name="name">فني عمليات</field>
             <field name="category_id" ref="module_category_utility_erp"/>
             <field name="implied_ids" eval="[(4, ref('group_utility_readonly'))]"/>
         </record>
 
         <!-- Field Inspector -->
         <record id="group_utility_field_inspector" model="res.groups">
-            <field name="name">Field Inspector (مفتش ميداني)</field>
+            <field name="name">مفتش ميداني</field>
             <field name="category_id" ref="module_category_utility_erp"/>
             <field name="implied_ids" eval="[(4, ref('group_utility_technician'))]"/>
         </record>
 
         <!-- Supervisor -->
         <record id="group_utility_supervisor" model="res.groups">
-            <field name="name">Supervisor (مشرف)</field>
+            <field name="name">مشرف</field>
             <field name="category_id" ref="module_category_utility_erp"/>
             <field name="implied_ids" eval="[(4, ref('group_utility_cashier')), (4, ref('group_utility_collector')), (4, ref('group_utility_technician'))]"/>
         </record>
 
         <!-- Billing Manager -->
         <record id="group_utility_billing_manager" model="res.groups">
-            <field name="name">Billing Manager (مدير الفوترة)</field>
+            <field name="name">مدير الفوترة</field>
             <field name="category_id" ref="module_category_utility_erp"/>
             <field name="implied_ids" eval="[(4, ref('group_utility_supervisor'))]"/>
         </record>
 
         <!-- Revenue Manager -->
         <record id="group_utility_revenue_manager" model="res.groups">
-            <field name="name">Revenue Manager (مدير الإيرادات)</field>
+            <field name="name">مدير الإيرادات</field>
             <field name="category_id" ref="module_category_utility_erp"/>
             <field name="implied_ids" eval="[(4, ref('group_utility_billing_manager'))]"/>
         </record>
 
         <!-- Auditor -->
         <record id="group_utility_auditor" model="res.groups">
-            <field name="name">Auditor (مراجع/مدقق)</field>
+            <field name="name">مراجع / مدقق</field>
             <field name="category_id" ref="module_category_utility_erp"/>
             <field name="implied_ids" eval="[(4, ref('group_utility_readonly'))]"/>
         </record>
 
         <!-- Admin Group -->
         <record id="group_utility_admin" model="res.groups">
-            <field name="name">Administrator (مدير النظام)</field>
+            <field name="name">مدير النظام</field>
             <field name="category_id" ref="module_category_utility_erp"/>
             <field name="implied_ids" eval="[(4, ref('group_utility_revenue_manager')), (4, ref('group_utility_auditor')), (4, ref('group_utility_field_inspector'))]"/>
             <field name="users" eval="[(4, ref('base.user_admin')), (4, ref('base.user_root'))]"/>

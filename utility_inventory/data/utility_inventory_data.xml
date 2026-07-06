@@ -72,7 +72,7 @@
         </record>
 
         <record id="product_template_meter_prepaid" model="product.template">
-            <field name="name">عداد كهرباء مسبق الدفع (Prepaid)</field>
+            <field name="name">عداد كهرباء مسبق الدفع</field>
             <field name="type">product</field>
             <field name="tracking">serial</field>
             <field name="categ_id" ref="product.product_category_all"/>

@@ -88,7 +88,7 @@ class UtilityCustomer(models.Model):
     payment_type = fields.Selection(related='meter_id.payment_type', store=True, string='نظام الدفع (آجل/مسبق)', readonly=True)
 
     # الرصيد والمشتريات
-    balance = fields.Monetary('الرصيد', default=0.0, currency_field='company_currency_id', help='الرصيد الحالي للمشترك')
+    balance = fields.Monetary('الرصيد', compute='_compute_balance', store=True, currency_field='company_currency_id', help='الرصيد الحالي للمشترك')
     emergency_credit = fields.Monetary('رصيد الطوارئ', default=0.0, currency_field='company_currency_id')
     credit_limit = fields.Monetary('حد الائتمان', default=0.0, currency_field='company_currency_id')
     total_purchases = fields.Monetary(string='إجمالي المشتريات', currency_field='company_currency_id')
@@ -115,6 +115,7 @@ class UtilityCustomer(models.Model):
 
     # الأزرار الذكية
     invoice_count = fields.Integer('عدد الفواتير', compute='_compute_smart_buttons')
+    accounting_invoice_count = fields.Integer('عدد الفواتير المحاسبية', compute='_compute_smart_buttons')
     reading_count = fields.Integer('عدد القراءات', compute='_compute_smart_buttons')
     payment_count = fields.Integer('عدد الدفعات', compute='_compute_smart_buttons')
 
@@ -266,12 +267,33 @@ class UtilityCustomer(models.Model):
     def cron_retry_auto_pay(self):
         _logger.info("Retrying auto pay for active accounts...")
 
+    @api.depends('partner_id')
+    def _compute_balance(self):
+        Move = self.env.get('account.move')
+        for rec in self:
+            if Move:
+                posted_moves = Move.search([
+                    ('partner_id', '=', rec.partner_id.id),
+                    ('state', '=', 'posted'),
+                    ('move_type', 'in', ('out_invoice', 'out_refund')),
+                ])
+                rec.balance = sum(posted_moves.mapped('amount_residual_signed'))
+            else:
+                rec.balance = 0.0
+
+    @api.depends('partner_id')
     def _compute_smart_buttons(self):
         SaleOrder = self.env.get('sale.order')
         Reading = self.env.get('utility.reading')
         Payment = self.env.get('account.payment')
+        Move = self.env.get('account.move')
         for rec in self:
             rec.invoice_count = SaleOrder.search_count([('customer_id', '=', rec.id)]) if SaleOrder else 0
+            rec.accounting_invoice_count = Move.search_count([
+                ('partner_id', '=', rec.partner_id.id),
+                ('state', '=', 'posted'),
+                ('move_type', 'in', ('out_invoice', 'out_refund')),
+            ]) if Move else 0
             rec.reading_count = Reading.search_count([('customer_id', '=', rec.id)]) if Reading else 0
             rec.payment_count = Payment.search_count([('utility_sale_order_id.customer_id', '=', rec.id)]) if Payment else 0
 
@@ -282,6 +304,20 @@ class UtilityCustomer(models.Model):
             'name': _('الفواتير'),
             'res_model': 'sale.order',
             'domain': [('customer_id', '=', self.id)],
+            'views': [(False, 'tree'), (False, 'form')],
+        }
+
+    def action_view_accounting_invoices(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('الفواتير المحاسبية'),
+            'res_model': 'account.move',
+            'domain': [
+                ('partner_id', '=', self.partner_id.id),
+                ('state', '=', 'posted'),
+                ('move_type', 'in', ('out_invoice', 'out_refund')),
+            ],
             'views': [(False, 'tree'), (False, 'form')],
         }
 

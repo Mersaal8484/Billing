@@ -115,7 +115,7 @@
         </field>
     </record>
     <record id="action_utility_tariff" model="ir.actions.act_window">
-        <field name="name">Tariffs</field>
+        <field name="name">التعرفات</field>
         <field name="res_model">utility.tariff</field>
         <field name="view_mode">tree,form</field>
         <field name="search_view_id" ref="view_utility_tariff_search"/>

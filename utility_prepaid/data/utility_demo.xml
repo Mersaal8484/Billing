@@ -2,7 +2,7 @@
 <odoo>
   <data>
     <record id="demo_customer_1" model="res.partner">
-      <field name="name">Abdullah Al-Saud</field>
+      <field name="name">عبد الله السعود</field>
       <field name="phone">771234567</field>
       <field name="email">abdullah@example.com</field>
     </record>
@@ -21,7 +21,7 @@
     </record>
 
     <record id="demo_contract_1" model="utility.contract.template">
-      <field name="name">Residential Standard Prepaid</field>
+      <field name="name">دفع مسبق سكني قياسي</field>
       <field name="code">RES-STD-PRE</field>
       <field name="price_per_kwh">0.25</field>
       <field name="subscriber_category_ids" eval="[(6, 0, [ref('utility_core.cat_public')])]"/>
@@ -29,7 +29,7 @@
     </record>
 
     <record id="demo_shift_1" model="utility.cashier.shift">
-      <field name="name">Demo Morning Shift</field>
+      <field name="name">وردية صباحية تجريبية</field>
       <field name="cashier_id" ref="base.user_admin"/>
       <field name="start_time">2024-06-27 08:00:00</field>
       <field name="opening_balance">1000.00</field>

@@ -102,7 +102,7 @@
     </record>
 
     <record id="action_utility_region" model="ir.actions.act_window">
-        <field name="name">Regions</field>
+        <field name="name">المناطق الرئيسية</field>
         <field name="res_model">utility.region</field>
         <field name="view_mode">tree,form</field>
         <field name="domain">[('type', '=', 'region')]</field>
@@ -111,7 +111,7 @@
     </record>
 
     <record id="action_utility_area" model="ir.actions.act_window">
-        <field name="name">Areas</field>
+        <field name="name">المناطق الفرعية</field>
         <field name="res_model">utility.region</field>
         <field name="view_mode">tree,form</field>
         <field name="domain">[('type', '=', 'area')]</field>
@@ -120,7 +120,7 @@
     </record>
 
     <record id="action_utility_zone" model="ir.actions.act_window">
-        <field name="name">Zones</field>
+        <field name="name">المناطق التفصيلية</field>
         <field name="res_model">utility.region</field>
         <field name="view_mode">tree,form</field>
         <field name="domain">[('type', '=', 'zone')]</field>

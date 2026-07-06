@@ -32,7 +32,7 @@
         </field>
     </record>
     <record id="action_utility_tariff_category" model="ir.actions.act_window">
-        <field name="name">Tariff Categories</field>
+        <field name="name">فئات التعرفة</field>
         <field name="res_model">utility.tariff.category</field>
         <field name="view_mode">tree,form</field>
     </record>

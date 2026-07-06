@@ -47,7 +47,7 @@
         </field>
     </record>
     <record id="action_utility_tariff_block" model="ir.actions.act_window">
-        <field name="name">Tariff Blocks</field>
+        <field name="name">شرائح التعرفة</field>
         <field name="res_model">utility.tariff.block</field>
         <field name="view_mode">tree,form</field>
     </record>

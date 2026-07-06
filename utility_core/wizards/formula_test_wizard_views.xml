@@ -8,12 +8,14 @@
                 <field name="state" invisible="1"/>
                 <group>
                     <field name="formula_id"/>
+                    <field name="template_id"/>
                 </group>
                 <group attrs="{'invisible': [('state', '!=', 'input')]}">
                     <group string="قيم الاختبار">
                         <field name="consumption"/>
                         <field name="previous_reading"/>
                         <field name="current_reading"/>
+                        <field name="discount_first_units"/>
                     </group>
                 </group>
                 <group attrs="{'invisible': [('state', '!=', 'result')]}">

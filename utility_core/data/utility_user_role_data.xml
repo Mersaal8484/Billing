@@ -3,37 +3,37 @@
     <data noupdate="1">
         <!-- Roles Data -->
         <record id="role_inspector" model="utility.user.role">
-            <field name="name">مفتش ميداني (Inspector)</field>
+            <field name="name">مفتش ميداني</field>
             <field name="code">inspector</field>
             <field name="group_ids" eval="[(4, ref('utility_core.group_utility_field_inspector'))]"/>
         </record>
         
         <record id="role_cashier" model="utility.user.role">
-            <field name="name">أمين صندوق (Cashier)</field>
+            <field name="name">أمين صندوق</field>
             <field name="code">cashier</field>
             <field name="group_ids" eval="[(4, ref('utility_core.group_utility_cashier'))]"/>
         </record>
 
         <record id="role_collector" model="utility.user.role">
-            <field name="name">متحصل ميداني (Collector)</field>
+            <field name="name">متحصل ميداني</field>
             <field name="code">collector</field>
             <field name="group_ids" eval="[(4, ref('utility_core.group_utility_collector'))]"/>
         </record>
 
         <record id="role_supervisor" model="utility.user.role">
-            <field name="name">مشرف (Supervisor)</field>
+            <field name="name">مشرف</field>
             <field name="code">supervisor</field>
             <field name="group_ids" eval="[(4, ref('utility_core.group_utility_supervisor'))]"/>
         </record>
 
         <record id="role_technician" model="utility.user.role">
-            <field name="name">فني (Technician)</field>
+            <field name="name">فني</field>
             <field name="code">technician</field>
             <field name="group_ids" eval="[(4, ref('utility_core.group_utility_technician'))]"/>
         </record>
 
         <record id="role_manager" model="utility.user.role">
-            <field name="name">مدير (Manager)</field>
+            <field name="name">مدير</field>
             <field name="code">manager</field>
             <field name="group_ids" eval="[(4, ref('utility_core.group_utility_revenue_manager'))]"/>
         </record>

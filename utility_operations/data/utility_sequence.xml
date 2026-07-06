@@ -3,7 +3,7 @@
     <data noupdate="1">
 
         <record id="seq_utility_service_order" model="ir.sequence">
-            <field name="name">Utility Service Order</field>
+            <field name="name">تسلسل أوامر الخدمة</field>
             <field name="code">utility.service.order</field>
             <field name="prefix">SO</field>
             <field name="padding">6</field>
@@ -11,7 +11,7 @@
         </record>
 
         <record id="seq_utility_installation" model="ir.sequence">
-            <field name="name">Utility Installation</field>
+            <field name="name">تسلسل التركيبات</field>
             <field name="code">utility.installation</field>
             <field name="prefix">INST</field>
             <field name="padding">6</field>
@@ -19,7 +19,7 @@
         </record>
 
         <record id="seq_utility_inspection" model="ir.sequence">
-            <field name="name">Utility Inspection</field>
+            <field name="name">تسلسل المعاينات</field>
             <field name="code">utility.inspection</field>
             <field name="prefix">INSP</field>
             <field name="padding">6</field>
@@ -27,7 +27,7 @@
         </record>
 
         <record id="seq_utility_tamper_case" model="ir.sequence">
-            <field name="name">Utility Tamper Case</field>
+            <field name="name">تسلسل حالات التلاعب</field>
             <field name="code">utility.tamper.case</field>
             <field name="prefix">TC</field>
             <field name="padding">6</field>
@@ -35,7 +35,7 @@
         </record>
 
         <record id="seq_utility_alarm" model="ir.sequence">
-            <field name="name">Utility Alarm</field>
+            <field name="name">تسلسل الإنذارات</field>
             <field name="code">utility.alarm</field>
             <field name="prefix">ALM</field>
             <field name="padding">6</field>
@@ -43,7 +43,7 @@
         </record>
 
         <record id="seq_utility_work_order" model="ir.sequence">
-            <field name="name">Utility Work Order</field>
+            <field name="name">تسلسل أوامر العمل</field>
             <field name="code">utility.work.order</field>
             <field name="prefix">WO</field>
             <field name="padding">6</field>

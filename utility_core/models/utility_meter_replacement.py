@@ -4,7 +4,7 @@ from odoo.exceptions import UserError
 
 class UtilityMeterReplacement(models.Model):
     _name = 'utility.meter.replacement'
-    _description = 'سجل استبدال العدادات عبر حساب المشترك (Meter Replacement History)'
+    _description = 'سجل استبدال العدادات عبر حساب المشترك'
     _inherit = ['mail.thread']
     _order = 'replace_date desc'
 

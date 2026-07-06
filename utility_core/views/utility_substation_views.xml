@@ -85,7 +85,7 @@
         </field>
     </record>
     <record id="action_utility_substation" model="ir.actions.act_window">
-        <field name="name">Substations</field>
+        <field name="name">المحطات الفرعية</field>
         <field name="res_model">utility.substation</field>
         <field name="view_mode">tree,form</field>
         <field name="search_view_id" ref="view_utility_substation_search"/>

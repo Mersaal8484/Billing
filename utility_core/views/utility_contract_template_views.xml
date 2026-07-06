@@ -90,14 +90,13 @@
                                     <field name="local_fee_cleaning"/>
                                 </group>
                             </group>
-                            <group string="خصم الدعم (أول N وحدة)">
+                            <group string="خصم الدعم">
                                 <field name="sponsor_id"/>
-                                <field name="discount_first_units"/>
-                                <field name="discount_unit_value"/>
+                                <field name="discount_formula_id"/>
                             </group>
                         </page>
                         <page string="الشرائح التدريجية"
-                              attrs="{'invisible': [('pricing_mode', 'not in', ['block', 'tier', 'seasonal', 'tou'])]}">
+                               attrs="{'invisible': [('pricing_mode', 'not in', ['block', 'tier', 'seasonal', 'tou'])]}">
                             <field name="block_ids">
                                 <tree editable="bottom">
                                     <field name="sequence" widget="handle"/>
@@ -105,6 +104,22 @@
                                     <field name="from_kwh"/>
                                     <field name="to_kwh"/>
                                     <field name="price_per_kwh"/>
+                                    <field name="from_month" optional="hide"/>
+                                    <field name="to_month" optional="hide"/>
+                                    <field name="time_from" optional="hide"/>
+                                    <field name="time_to" optional="hide"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="شرائح الخصم التدريجية" attrs="{'invisible': [('discount_formula_id', '=', False)]}">
+                            <field name="discount_block_ids" context="{'default_is_discount': True}">
+                                <tree editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="is_discount" invisible="1"/>
+                                    <field name="name"/>
+                                    <field name="from_kwh"/>
+                                    <field name="to_kwh"/>
+                                    <field name="price_per_kwh" string="قيمة الخصم لكل kWh"/>
                                     <field name="from_month" optional="hide"/>
                                     <field name="to_month" optional="hide"/>
                                     <field name="time_from" optional="hide"/>
@@ -165,5 +180,5 @@
         <field name="view_mode">tree,form</field>
     </record>
 
-    <menuitem id="menu_utility_contract_template" name="Contract Templates" parent="utility_core.menu_utility_customer_management" action="action_utility_contract_template" sequence="50"/>
+    <menuitem id="menu_utility_contract_template" name="قوالب العقود" parent="utility_core.menu_utility_customer_management" action="action_utility_contract_template" sequence="50"/>
 </odoo>

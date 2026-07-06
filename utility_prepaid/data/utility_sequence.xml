@@ -2,7 +2,7 @@
 <odoo>
   <data noupdate="1">
     <record id="seq_utility_token" model="ir.sequence">
-      <field name="name">Utility Token</field>
+      <field name="name">تسلسل أكواد الشحن</field>
       <field name="code">utility.token</field>
       <field name="prefix">TKN/%(year)s/</field>
       <field name="padding">6</field>
@@ -10,7 +10,7 @@
     </record>
 
     <record id="seq_utility_transaction" model="ir.sequence">
-      <field name="name">Utility Transaction</field>
+      <field name="name">تسلسل معاملات الدفع المسبق</field>
       <field name="code">utility.transaction</field>
       <field name="prefix">TXN/%(year)s/</field>
       <field name="padding">8</field>
@@ -18,7 +18,7 @@
     </record>
 
     <record id="seq_utility_adjustment" model="ir.sequence">
-      <field name="name">Utility Adjustment</field>
+      <field name="name">تسلسل تسويات الدفع المسبق</field>
       <field name="code">utility.adjustment</field>
       <field name="prefix">ADJ/%(year)s/</field>
       <field name="padding">6</field>
@@ -26,7 +26,7 @@
     </record>
 
     <record id="seq_utility_reversal" model="ir.sequence">
-      <field name="name">Utility Reversal</field>
+      <field name="name">تسلسل إلغاءات الدفع المسبق</field>
       <field name="code">utility.reversal</field>
       <field name="prefix">REV/%(year)s/</field>
       <field name="padding">6</field>
@@ -34,7 +34,7 @@
     </record>
 
     <record id="seq_utility_cashier_shift" model="ir.sequence">
-      <field name="name">Utility Cashier Shift</field>
+      <field name="name">تسلسل ورديات الكاشير</field>
       <field name="code">utility.cashier.shift</field>
       <field name="prefix">SFT/%(year)s/</field>
       <field name="padding">6</field>

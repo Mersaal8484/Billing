@@ -46,18 +46,16 @@ class ResConfigSettings(models.TransientModel):
         default=50.0)
 
     # --- Prepaid / Emergency ---
-    emergency_credit_amount = fields.Monetary(
+    emergency_credit_amount = fields.Float(
         string='قيمة رصيد الطوارئ الافتراضي',
-        currency_field='currency_id',
         config_parameter='utility.emergency_credit_amount',
         default=50.0)
     emergency_credit_grace_days = fields.Integer(
         string='فترة سماح رصيد الطوارئ (أيام)',
         config_parameter='utility.emergency_credit_grace_days',
         default=7)
-    low_credit_threshold = fields.Monetary(
+    low_credit_threshold = fields.Float(
         string='حد الرصيد المنخفض',
-        currency_field='currency_id',
         config_parameter='utility.low_credit_threshold',
         default=100.0)
 

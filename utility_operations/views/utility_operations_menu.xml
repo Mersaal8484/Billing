@@ -10,7 +10,7 @@
 
         <!-- ====== أمور الخدمة ====== -->
         <menuitem id="menu_utility_service_orders"
-                  name="أمور الخدمة"
+                  name="أوامر الخدمة"
                   parent="menu_utility_field_ops"
                   sequence="10"/>
 

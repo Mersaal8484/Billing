@@ -88,14 +88,16 @@ class UtilityReading(models.Model):
         'draft': {'meter_id', 'reading_date', 'reading_value', 'reading_category',
                   'reading_type', 'is_estimated', 'meter_image', 'meter_image_secondary',
                   'image_state', 'rejection_reason', 'remarks', 'date_range_id',
-                  'reading_source', 'active'},
+                  'reading_source', 'active', 'is_validated', 'validator_id',
+                  'reviewer_id', 'review_date'},
         'under_review': {'meter_image', 'meter_image_secondary', 'image_state',
-                         'review_notes', 'rejection_reason', 'state'},
-        'approved': {'rejection_reason', 'state', 'active'},
-        'queued': {'state'},
-        'billed': {'active', 'remarks'},
+                          'review_notes', 'rejection_reason', 'state',
+                          'is_validated', 'validator_id', 'reviewer_id', 'review_date'},
+        'approved': {'rejection_reason', 'state', 'active', 'attachment_id', 'date_range_id', 'billing_error'},
+        'queued': {'state', 'attachment_id', 'billing_error'},
+        'billed': {'active', 'remarks', 'billing_error'},
         'error': {'reading_date', 'reading_value', 'meter_image', 'meter_image_secondary',
-                  'image_state', 'remarks', 'date_range_id', 'state'},
+                  'image_state', 'remarks', 'date_range_id', 'state', 'billing_error'},
     }
 
     def write(self, vals):
@@ -217,11 +219,13 @@ class UtilityReading(models.Model):
             if is_billable:
                 r.state = 'under_review'
             else:
-                r.state = 'approved'
-                r.is_validated = True
-                r.validator_id = self.env.user.id
-                r.reviewer_id = self.env.user.id
-                r.review_date = fields.Datetime.now()
+                r.write({
+                    'state': 'approved',
+                    'is_validated': True,
+                    'validator_id': self.env.user.id,
+                    'reviewer_id': self.env.user.id,
+                    'review_date': fields.Datetime.now(),
+                })
 
     def action_approve(self):
         for r in self:

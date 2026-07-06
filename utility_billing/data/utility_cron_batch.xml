@@ -2,7 +2,7 @@
 <odoo>
     <!-- ============= Cron: Batch Generate Bills ============= -->
     <record id="ir_cron_generate_batch_bills" model="ir.cron">
-        <field name="name">Utility: Batch Generate Bills</field>
+        <field name="name">الكهرباء: توليد الفواتير بالدفعات</field>
         <field name="model_id" ref="model_utility_reading"/>
         <field name="state">code</field>
         <field name="code">model._cron_generate_bills()</field>
@@ -15,7 +15,7 @@
 
     <!-- ============= Cron: Process Uploaded Readings ============= -->
     <record id="ir_cron_process_staging_readings" model="ir.cron">
-        <field name="name">Utility: Process Uploaded Readings</field>
+        <field name="name">الكهرباء: معالجة القراءات المرفوعة</field>
         <field name="model_id" ref="model_utility_reading_batch"/>
         <field name="state">code</field>
         <field name="code">model._cron_process_readings()</field>
@@ -28,7 +28,7 @@
 
     <!-- ============= Cron: Cleanup Old Batch Files ============= -->
     <record id="ir_cron_cleanup_batch_files" model="ir.cron">
-        <field name="name">Utility: Cleanup Old Batch Files</field>
+        <field name="name">الكهرباء: تنظيف ملفات الدفعات القديمة</field>
         <field name="model_id" ref="model_utility_reading_batch"/>
         <field name="state">code</field>
         <field name="code">model._cron_cleanup_old_batches()</field>
@@ -41,7 +41,7 @@
 
     <!-- ============= Sequence: Reading Batch ============= -->
     <record id="seq_utility_reading_batch" model="ir.sequence">
-        <field name="name">Utility Reading Batch</field>
+        <field name="name">تسلسل دفعات القراءات</field>
         <field name="code">utility.reading.batch</field>
         <field name="prefix">BATCH-</field>
         <field name="padding">5</field>

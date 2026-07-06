@@ -89,7 +89,7 @@
         </field>
     </record>
     <record id="action_utility_staff" model="ir.actions.act_window">
-        <field name="name">Staff</field>
+        <field name="name">الموظفون</field>
         <field name="res_model">utility.staff</field>
         <field name="view_mode">tree,form</field>
         <field name="search_view_id" ref="view_utility_staff_search"/>

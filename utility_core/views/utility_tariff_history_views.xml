@@ -39,7 +39,7 @@
         </field>
     </record>
     <record id="action_utility_tariff_history" model="ir.actions.act_window">
-        <field name="name">Tariff History</field>
+        <field name="name">سجل التعرفة</field>
         <field name="res_model">utility.tariff.history</field>
         <field name="view_mode">tree,form</field>
     </record>

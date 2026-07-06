@@ -32,7 +32,7 @@
         </field>
     </record>
     <record id="action_utility_meter_status" model="ir.actions.act_window">
-        <field name="name">Meter Statuses</field>
+        <field name="name">حالات العدادات</field>
         <field name="res_model">utility.meter.status</field>
         <field name="view_mode">tree,form</field>
     </record>

@@ -2,7 +2,7 @@
 <odoo>
     <data noupdate="1">
         <record id="seq_utility_customer" model="ir.sequence">
-            <field name="name">Utility Customer Number</field>
+            <field name="name">تسلسل أرقام المشتركين</field>
             <field name="code">utility.customer</field>
             <field name="prefix">CUS/%(year)s/</field>
             <field name="padding">6</field>
@@ -11,7 +11,7 @@
 
 
         <record id="seq_utility_meter" model="ir.sequence">
-            <field name="name">Utility Meter Number</field>
+            <field name="name">تسلسل أرقام العدادات</field>
             <field name="code">utility.meter</field>
             <field name="prefix">MET/%(year)s/</field>
             <field name="padding">6</field>
@@ -19,7 +19,7 @@
         </record>
 
         <record id="seq_utility_connection" model="ir.sequence">
-            <field name="name">Utility Connection Number</field>
+            <field name="name">تسلسل أرقام التوصيلات</field>
             <field name="code">utility.connection</field>
             <field name="prefix">CON/%(year)s/</field>
             <field name="padding">6</field>

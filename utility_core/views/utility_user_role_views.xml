@@ -33,7 +33,7 @@
         </field>
     </record>
     <record id="action_utility_user_role" model="ir.actions.act_window">
-        <field name="name">User Roles</field>
+        <field name="name">أدوار المستخدمين</field>
         <field name="res_model">utility.user.role</field>
         <field name="view_mode">tree,form</field>
     </record>

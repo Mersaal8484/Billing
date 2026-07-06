@@ -46,7 +46,7 @@
                         <page string="الطلب">
                             <field name="request_payload" nolabel="1"/>
                         </page>
-                        <page string="Callback">
+                        <page string="رد المزود">
                             <field name="callback_payload" nolabel="1"/>
                             <field name="error_message" nolabel="1" attrs="{'invisible': [('error_message', '=', False)]}"/>
                         </page>

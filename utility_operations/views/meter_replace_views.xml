@@ -87,7 +87,7 @@
                 </sheet>
                 <footer>
                     <button name="action_execute_replacement" string="تنفيذ الاستبدال فوراً" type="object" class="oe_highlight"/>
-                    <button string="إلغلاق" class="btn-secondary" special="cancel"/>
+                    <button string="إغلاق" class="btn-secondary" special="cancel"/>
                 </footer>
             </form>
         </field>

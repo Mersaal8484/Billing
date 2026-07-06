@@ -3,7 +3,7 @@
     <data noupdate="1">
 
         <record id="seq_utility_inventory_movement" model="ir.sequence">
-            <field name="name">Utility Inventory Movement</field>
+            <field name="name">تسلسل حركات المخزون</field>
             <field name="code">utility.inventory.movement</field>
             <field name="prefix">MOV</field>
             <field name="padding">6</field>
@@ -11,7 +11,7 @@
         </record>
 
         <record id="seq_utility_inventory_count" model="ir.sequence">
-            <field name="name">Utility Inventory Count</field>
+            <field name="name">تسلسل جرد المخزون</field>
             <field name="code">utility.inventory.count</field>
             <field name="prefix">CNT</field>
             <field name="padding">6</field>
