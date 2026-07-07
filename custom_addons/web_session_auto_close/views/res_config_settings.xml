@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_res_config_settings" model="ir.ui.view">
+        <field name="name">web_session_auto_close.res_config_settings</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base_setup.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[hasclass('settings')]" position="inside">
+                <div class="app_settings_block" data-string="Session Auto Close" string="Session Auto Close"
+                     data-key="web_session_auto_close">
+                    <div class="settings_header">
+                        <h2>
+                            <span class="fa fa-clock-o mr-2"/>Session Auto Close
+                        </h2>
+                        <p class="text-muted">Automatically close user session after a period of inactivity.</p>
+                    </div>
+
+                    <div class="row mt16 o_settings_container">
+                        <div class="col-12">
+                            <div class="o_setting_box o_searchable_setting">
+                                <div class="o_setting_left_pane"></div>
+                                <div class="o_setting_right_pane">
+                                    <div class="row mt16">
+                                        <div class="o_setting_box o_searchable_setting col-12 col-lg-6">
+                                            <div class="o_setting_left_pane"></div>
+                                            <div class="o_setting_right_pane">
+                                                <span class="o_form_label">Session Timeout</span>
+                                                <div class="text-muted">
+                                                    Auto-logout after inactivity (in seconds)
+                                                </div>
+                                                <field name="session_auto_close_timeout" widget="integer"/>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>

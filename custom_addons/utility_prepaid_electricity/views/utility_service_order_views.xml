@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_service_order_tree" model="ir.ui.view">
+        <field name="name">utility.service.order.tree</field>
+        <field name="model">utility.service.order</field>
+        <field name="arch" type="xml">
+            <tree string="Service Orders" decoration-danger="state == 'cancelled'" decoration-success="state == 'completed'" decoration-warning="priority in ('high','urgent')">
+                <field name="order_number"/>
+                <field name="date_requested"/>
+                <field name="service_type"/>
+                <field name="priority"/>
+                <field name="customer_id"/>
+                <field name="account_id"/>
+                <field name="meter_id"/>
+                <field name="technician_id"/>
+                <field name="state"/>
+                <field name="date_scheduled"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_utility_service_order_form" model="ir.ui.view">
+        <field name="name">utility.service.order.form</field>
+        <field name="model">utility.service.order</field>
+        <field name="arch" type="xml">
+            <form string="Service Order">
+                <header>
+                    <field name="state" widget="statusbar"/>
+                    <button name="action_approve" string="Approve" type="object" states="draft" class="btn-primary"/>
+                    <button name="action_schedule" string="Schedule" type="object" states="approved"/>
+                    <button name="action_start" string="Start" type="object" states="scheduled" class="btn-primary"/>
+                    <button name="action_complete" string="Complete" type="object" states="in_progress" class="btn-primary"/>
+                    <button name="action_cancel" string="Cancel" type="object" states="draft,approved,scheduled"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="order_number"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="service_type"/>
+                            <field name="priority"/>
+                            <field name="customer_id"/>
+                            <field name="account_id"/>
+                            <field name="meter_id"/>
+                        </group>
+                        <group>
+                            <field name="alarm_id"/>
+                            <field name="technician_id"/>
+                            <field name="date_requested"/>
+                            <field name="date_scheduled"/>
+                            <field name="date_completed"/>
+                        </group>
+                    </group>
+                    <field name="description"/>
+                    <notebook>
+                        <page name="meter_info" string="Meter Info">
+                            <group>
+                                <group>
+                                    <field name="old_meter_id"/>
+                                    <field name="seal_number_old"/>
+                                    <field name="meter_reading_before"/>
+                                </group>
+                                <group>
+                                    <field name="new_meter_id"/>
+                                    <field name="seal_number_new"/>
+                                    <field name="meter_reading_after"/>
+                                </group>
+                            </group>
+                            <field name="tamper_evidence"/>
+                            <field name="tamper_notes" attrs="{'invisible':[('tamper_evidence','=',False)],'required':[('tamper_evidence','=',True)]}"/>
+                        </page>
+                        <page name="results" string="Results">
+                            <field name="findings"/>
+                            <field name="team_members"/>
+                            <group>
+                                <group>
+                                    <field name="cost_estimate"/>
+                                </group>
+                                <group>
+                                    <field name="actual_cost"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page name="notes" string="Notes">
+                            <field name="notes"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_utility_service_order_search" model="ir.ui.view">
+        <field name="name">utility.service.order.search</field>
+        <field name="model">utility.service.order</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="order_number"/>
+                <field name="service_type"/>
+                <field name="priority"/>
+                <field name="state"/>
+                <field name="customer_id"/>
+                <field name="technician_id"/>
+                <filter name="open" string="Open" domain="[('state','not in',('completed','cancelled'))]"/>
+                <group expand="0" string="Group By">
+                    <filter name="g_type" string="Service Type" context="{'group_by':'service_type'}"/>
+                    <filter name="g_state" string="Status" context="{'group_by':'state'}"/>
+                    <filter name="g_priority" string="Priority" context="{'group_by':'priority'}"/>
+                    <filter name="g_technician" string="Technician" context="{'group_by':'technician_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_utility_service_order" model="ir.actions.act_window">
+        <field name="name">Service Orders</field>
+        <field name="res_model">utility.service.order</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_utility_service_order_search"/>
+    </record>
+
+    <record id="menu_utility_service_order" model="ir.ui.menu">
+        <field name="name">Service Orders</field>
+        <field name="parent_id">menu_utility_operations</field>
+        <field name="action" ref="action_utility_service_order"/>
+        <field name="sequence">60</field>
+    </record>
+</odoo>

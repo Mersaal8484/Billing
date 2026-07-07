@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_report_tree" model="ir.ui.view">
+        <field name="name">utility.report.tree</field>
+        <field name="model">utility.report</field>
+        <field name="arch" type="xml">
+            <tree string="Reports">
+                <field name="name"/>
+                <field name="report_type"/>
+                <field name="date_from"/>
+                <field name="date_to"/>
+                <field name="region_id"/>
+                <field name="generated_date"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_utility_report_form" model="ir.ui.view">
+        <field name="name">utility.report.form</field>
+        <field name="model">utility.report</field>
+        <field name="arch" type="xml">
+            <form string="Report">
+                <header>
+                    <button name="action_generate" string="Generate Report" type="object" class="btn-primary"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="report_type"/>
+                        </group>
+                        <group>
+                            <field name="generated_date"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group>
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                        </group>
+                        <group>
+                            <field name="region_id"/>
+                            <field name="area_id"/>
+                            <field name="tariff_id"/>
+                            <field name="operator_id"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_utility_report" model="ir.actions.act_window">
+        <field name="name">Reports</field>
+        <field name="res_model">utility.report</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="menu_utility_report" model="ir.ui.menu">
+        <field name="name">Reports</field>
+        <field name="parent_id">menu_utility_root</field>
+        <field name="action" ref="action_utility_report"/>
+        <field name="sequence">90</field>
+    </record>
+</odoo>

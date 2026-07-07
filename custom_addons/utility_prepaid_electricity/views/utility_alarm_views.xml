@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_alarm_tree" model="ir.ui.view">
+        <field name="name">utility.alarm.tree</field>
+        <field name="model">utility.alarm</field>
+        <field name="arch" type="xml">
+            <tree string="Alarms" limit="40" decoration-danger="severity in ('critical','emergency')" decoration-warning="severity == 'warning'">
+                <field name="alarm_code"/>
+                <field name="alarm_date"/>
+                <field name="alarm_type"/>
+                <field name="severity"/>
+                <field name="customer_id"/>
+                <field name="account_id"/>
+                <field name="meter_id"/>
+                <field name="state"/>
+                <field name="assigned_to"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_utility_alarm_form" model="ir.ui.view">
+        <field name="name">utility.alarm.form</field>
+        <field name="model">utility.alarm</field>
+        <field name="arch" type="xml">
+            <form string="Alarm">
+                <header>
+                    <field name="state" widget="statusbar"/>
+                    <button name="action_acknowledge" string="Acknowledge" type="object" states="new"/>
+                    <button name="action_start" string="Start Processing" type="object" states="acknowledged"/>
+                    <button name="action_resolve" string="Resolve" type="object" states="in_progress"/>
+                    <button name="action_create_service_order" string="Create Service Order" type="object" states="new,acknowledged,in_progress" class="btn-primary"/>
+                    <button name="action_close" string="Close" type="object" states="resolved"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="alarm_code"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="alarm_type"/>
+                            <field name="severity"/>
+                            <field name="alarm_date"/>
+                        </group>
+                        <group>
+                            <field name="customer_id"/>
+                            <field name="account_id"/>
+                            <field name="meter_id"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="description"/>
+                    </group>
+                    <group string="Meter Readings">
+                        <group>
+                            <field name="meter_reading"/>
+                            <field name="voltage"/>
+                        </group>
+                        <group>
+                            <field name="current"/>
+                            <field name="power"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page name="resolution" string="Resolution">
+                            <group>
+                                <group>
+                                    <field name="assigned_to"/>
+                                    <field name="service_order_id"/>
+                                </group>
+                                <group>
+                                    <field name="resolved_date"/>
+                                    <field name="closed_date"/>
+                                </group>
+                            </group>
+                            <field name="resolution"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_utility_alarm_search" model="ir.ui.view">
+        <field name="name">utility.alarm.search</field>
+        <field name="model">utility.alarm</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="alarm_type"/>
+                <field name="severity"/>
+                <field name="state"/>
+                <field name="customer_id"/>
+                <field name="meter_id"/>
+                <field name="assigned_to"/>
+                <filter name="open" string="Open" domain="[('state','not in',('resolved','closed'))]"/>
+                <group expand="0" string="Group By">
+                    <filter name="g_type" string="Type" context="{'group_by':'alarm_type'}"/>
+                    <filter name="g_severity" string="Severity" context="{'group_by':'severity'}"/>
+                    <filter name="g_state" string="Status" context="{'group_by':'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_utility_alarm_pivot" model="ir.ui.view">
+        <field name="name">utility.alarm.pivot</field>
+        <field name="model">utility.alarm</field>
+        <field name="arch" type="xml">
+            <pivot>
+                <field name="alarm_type" type="row"/>
+                <field name="severity" type="col"/>
+                <field name="id" type="value"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="action_utility_alarm" model="ir.actions.act_window">
+        <field name="name">Alarms</field>
+        <field name="res_model">utility.alarm</field>
+        <field name="view_mode">tree,form,pivot</field>
+        <field name="search_view_id" ref="view_utility_alarm_search"/>
+    </record>
+
+    <record id="menu_utility_alarm" model="ir.ui.menu">
+        <field name="name">Alarms</field>
+        <field name="parent_id">menu_utility_monitoring</field>
+        <field name="action" ref="action_utility_alarm"/>
+        <field name="sequence">10</field>
+    </record>
+</odoo>

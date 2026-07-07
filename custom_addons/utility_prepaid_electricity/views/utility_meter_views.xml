@@ -1,0 +1,215 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_meter_type_tree" model="ir.ui.view">
+        <field name="name">utility.meter.type.tree</field>
+        <field name="model">utility.meter.type</field>
+        <field name="arch" type="xml">
+            <tree string="Meter Types">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="phase"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_utility_meter_type_form" model="ir.ui.view">
+        <field name="name">utility.meter.type.form</field>
+        <field name="model">utility.meter.type</field>
+        <field name="arch" type="xml">
+            <form string="Meter Type">
+                <group>
+                    <field name="name"/>
+                    <field name="code"/>
+                    <field name="phase"/>
+                    <field name="description"/>
+                </group>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_utility_meter_status_tree" model="ir.ui.view">
+        <field name="name">utility.meter.status.tree</field>
+        <field name="model">utility.meter.status</field>
+        <field name="arch" type="xml">
+            <tree string="Meter Statuses">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="code"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_utility_meter_status_form" model="ir.ui.view">
+        <field name="name">utility.meter.status.form</field>
+        <field name="model">utility.meter.status</field>
+        <field name="arch" type="xml">
+            <form string="Meter Status">
+                <group>
+                    <field name="name"/>
+                    <field name="code"/>
+                    <field name="description"/>
+                </group>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_utility_meter_tree" model="ir.ui.view">
+        <field name="name">utility.meter.tree</field>
+        <field name="model">utility.meter</field>
+        <field name="arch" type="xml">
+            <tree string="Meters" decoration-danger="not active" limit="40">
+                <field name="meter_number"/>
+                <field name="serial_number"/>
+                <field name="meter_type_id"/>
+                <field name="status_id"/>
+                <field name="phase"/>
+                <field name="customer_id"/>
+                <field name="area_id"/>
+                <field name="communication_type"/>
+                <field name="last_sale_date"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_utility_meter_form" model="ir.ui.view">
+        <field name="name">utility.meter.form</field>
+        <field name="model">utility.meter</field>
+        <field name="arch" type="xml">
+            <form string="Meter">
+                <header>
+                    <field name="active" invisible="1"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="meter_number"/></h1>
+                        <h2><field name="serial_number"/></h2>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="meter_type_id"/>
+                            <field name="status_id"/>
+                            <field name="manufacturer"/>
+                            <field name="model"/>
+                            <field name="firmware_version"/>
+                            <field name="sts_key_revision"/>
+                        </group>
+                        <group>
+                            <field name="phase"/>
+                            <field name="voltage"/>
+                            <field name="current_rating"/>
+                            <field name="power_rating"/>
+                            <field name="installation_date"/>
+                            <field name="last_read_date"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page name="assignment" string="Assignment">
+                            <group>
+                                <group>
+                                    <field name="account_id"/>
+                                    <field name="customer_id"/>
+                                </group>
+                                <group>
+                                    <field name="region_id"/>
+                                    <field name="area_id"/>
+                                    <field name="feeder_id"/>
+                                    <field name="transformer_id"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page name="communication" string="Communication">
+                            <group>
+                                <group>
+                                    <field name="communication_type"/>
+                                    <field name="sim_number"/>
+                                </group>
+                                <group>
+                                    <field name="gps_latitude"/>
+                                    <field name="gps_longitude"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page name="sales" string="Sales History">
+                            <field name="sale_ids">
+                                <tree>
+                                    <field name="receipt_number"/>
+                                    <field name="date"/>
+                                    <field name="amount_paid"/>
+                                    <field name="kwh_purchased"/>
+                                    <field name="state"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page name="alarms" string="Alarms">
+                            <field name="alarm_ids">
+                                <tree>
+                                    <field name="alarm_code"/>
+                                    <field name="alarm_date"/>
+                                    <field name="alarm_type"/>
+                                    <field name="severity"/>
+                                    <field name="state"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_utility_meter_search" model="ir.ui.view">
+        <field name="name">utility.meter.search</field>
+        <field name="model">utility.meter</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="meter_number"/>
+                <field name="serial_number"/>
+                <field name="customer_id"/>
+                <field name="area_id"/>
+                <field name="status_id"/>
+                <field name="meter_type_id"/>
+                <field name="communication_type"/>
+                <filter name="active" string="Active" domain="[('active','=',True)]"/>
+                <separator/>
+                <filter name="single_phase" string="Single Phase" domain="[('phase','=','single')]"/>
+                <filter name="three_phase" string="Three Phase" domain="[('phase','=','three')]"/>
+                <group expand="0" string="Group By">
+                    <filter name="g_area" string="Area" context="{'group_by':'area_id'}"/>
+                    <filter name="g_status" string="Status" context="{'group_by':'status_id'}"/>
+                    <filter name="g_type" string="Meter Type" context="{'group_by':'meter_type_id'}"/>
+                    <filter name="g_comm" string="Communication" context="{'group_by':'communication_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_utility_meter_pivot" model="ir.ui.view">
+        <field name="name">utility.meter.pivot</field>
+        <field name="model">utility.meter</field>
+        <field name="arch" type="xml">
+            <pivot>
+                <field name="sale_count" type="value"/>
+                <field name="area_id" type="row"/>
+                <field name="status_id" type="col"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="action_utility_meter" model="ir.actions.act_window">
+        <field name="name">Meters</field>
+        <field name="res_model">utility.meter</field>
+        <field name="view_mode">tree,form,pivot</field>
+        <field name="search_view_id" ref="view_utility_meter_search"/>
+        <field name="help" type="html">
+            <p>Manage electricity meters. Search by meter number or serial number.</p>
+        </field>
+    </record>
+
+    <record id="menu_utility_meter" model="ir.ui.menu">
+        <field name="name">Meters</field>
+        <field name="parent_id">menu_utility_metering</field>
+        <field name="action" ref="action_utility_meter"/>
+        <field name="sequence">10</field>
+    </record>
+</odoo>

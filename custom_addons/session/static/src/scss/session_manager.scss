@@ -1,0 +1,27 @@
+.o_session_manager {
+    .session-list {
+        max-height: 500px;
+        overflow-y: auto;
+
+        .session-item {
+            border-left: 3px solid theme-color('success');
+            &.inactive {
+                border-left-color: theme-color('danger');
+                opacity: 0.6;
+            }
+
+            .session-info {
+                small {
+                    color: $text-muted;
+                }
+            }
+        }
+    }
+
+    .js_session_warning {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 9999;
+    }
+}

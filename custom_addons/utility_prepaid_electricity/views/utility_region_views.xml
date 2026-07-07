@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_region_tree" model="ir.ui.view">
+        <field name="name">utility.region.tree</field>
+        <field name="model">utility.region</field>
+        <field name="arch" type="xml">
+            <tree string="Regions" decoration-danger="not active">
+                <field name="code"/>
+                <field name="name"/>
+                <field name="manager_id"/>
+                <field name="area_count"/>
+                <field name="customer_count"/>
+                <field name="meter_count"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_utility_region_form" model="ir.ui.view">
+        <field name="name">utility.region.form</field>
+        <field name="model">utility.region</field>
+        <field name="arch" type="xml">
+            <form string="Region">
+                <header>
+                    <field name="active" invisible="1"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                        <h2><field name="code"/></h2>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="manager_id"/>
+                            <field name="description"/>
+                        </group>
+                        <group>
+                            <field name="area_count"/>
+                            <field name="customer_count"/>
+                            <field name="meter_count"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page name="areas" string="Service Areas">
+                            <field name="area_ids">
+                                <tree>
+                                    <field name="code"/>
+                                    <field name="name"/>
+                                    <field name="customer_count"/>
+                                    <field name="meter_count"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_utility_region_search" model="ir.ui.view">
+        <field name="name">utility.region.search</field>
+        <field name="model">utility.region</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="manager_id"/>
+                <filter name="active" string="Active" domain="[('active','=',True)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_utility_region_pivot" model="ir.ui.view">
+        <field name="name">utility.region.pivot</field>
+        <field name="model">utility.region</field>
+        <field name="arch" type="xml">
+            <pivot>
+                <field name="area_count" type="value"/>
+                <field name="customer_count" type="value"/>
+                <field name="meter_count" type="value"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="action_utility_region" model="ir.actions.act_window">
+        <field name="name">Regions</field>
+        <field name="res_model">utility.region</field>
+        <field name="view_mode">tree,form,pivot</field>
+        <field name="search_view_id" ref="view_utility_region_search"/>
+        <field name="help" type="html">
+            <p>Manage utility service regions here.</p>
+        </field>
+    </record>
+
+    <record id="menu_utility_region" model="ir.ui.menu">
+        <field name="name">Regions</field>
+        <field name="parent_id">menu_utility_configuration</field>
+        <field name="action" ref="action_utility_region"/>
+        <field name="sequence">10</field>
+    </record>
+</odoo>

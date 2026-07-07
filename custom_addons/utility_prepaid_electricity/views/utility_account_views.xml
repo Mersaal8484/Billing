@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_account_tree" model="ir.ui.view">
+        <field name="name">utility.account.tree</field>
+        <field name="model">utility.account</field>
+        <field name="arch" type="xml">
+            <tree string="Utility Accounts" decoration-danger="state not in ('active','')" limit="40">
+                <field name="account_number"/>
+                <field name="customer_id"/>
+                <field name="meter_id"/>
+                <field name="tariff_id"/>
+                <field name="balance" sum="Total"/>
+                <field name="available_emergency_credit"/>
+                <field name="debt_amount"/>
+                <field name="state"/>
+                <field name="last_purchase_date"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_utility_account_form" model="ir.ui.view">
+        <field name="name">utility.account.form</field>
+        <field name="model">utility.account</field>
+        <field name="arch" type="xml">
+            <form string="Utility Account">
+                <header>
+                    <field name="state" widget="statusbar"/>
+                    <button name="action_set_active" string="Activate" type="object" states="draft,suspended"/>
+                    <button name="action_suspend" string="Suspend" type="object" states="active"/>
+                    <button name="action_disconnect" string="Disconnect" type="object" states="active,suspended"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="account_number"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="customer_id"/>
+                            <field name="meter_id"/>
+                            <field name="tariff_id"/>
+                        </group>
+                        <group>
+                            <field name="balance" widget="monetary"/>
+                            <field name="debt_amount" widget="monetary"/>
+                            <field name="emergency_credit" widget="monetary"/>
+                            <field name="available_emergency_credit" widget="monetary"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page name="financials" string="Financials">
+                            <group>
+                                <group>
+                                    <field name="total_purchases"/>
+                                    <field name="total_kwh_purchased"/>
+                                </group>
+                                <group>
+                                    <field name="last_purchase_date"/>
+                                    <field name="last_token_date"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page name="sales" string="Sales History">
+                            <field name="sale_ids">
+                                <tree>
+                                    <field name="receipt_number"/>
+                                    <field name="date"/>
+                                    <field name="amount_paid"/>
+                                    <field name="kwh_purchased"/>
+                                    <field name="state"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page name="transactions" string="Transactions">
+                            <field name="transaction_ids">
+                                <tree>
+                                    <field name="reference"/>
+                                    <field name="date"/>
+                                    <field name="transaction_type"/>
+                                    <field name="amount"/>
+                                    <field name="balance_before"/>
+                                    <field name="balance_after"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page name="adjustments" string="Adjustments">
+                            <field name="adjustment_ids">
+                                <tree>
+                                    <field name="reference"/>
+                                    <field name="date"/>
+                                    <field name="adjustment_type"/>
+                                    <field name="amount"/>
+                                    <field name="state"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page name="alarms" string="Alarms">
+                            <field name="alarm_ids">
+                                <tree>
+                                    <field name="alarm_code"/>
+                                    <field name="alarm_type"/>
+                                    <field name="severity"/>
+                                    <field name="state"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_utility_account_search" model="ir.ui.view">
+        <field name="name">utility.account.search</field>
+        <field name="model">utility.account</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="account_number"/>
+                <field name="customer_id"/>
+                <field name="meter_id"/>
+                <field name="tariff_id"/>
+                <field name="state"/>
+                <filter name="active_acct" string="Active" domain="[('state','=','active')]"/>
+                <filter name="low_balance" string="Low Balance (&lt;50)" domain="[('balance','&gt;',0),('balance','&lt;',50)]"/>
+                <filter name="zero_balance" string="Zero Balance" domain="[('balance','&lt;=',0)]"/>
+                <filter name="debt" string="Has Debt" domain="[('debt_amount','&gt;',0)]"/>
+                <group expand="0" string="Group By">
+                    <filter name="g_state" string="Status" context="{'group_by':'state'}"/>
+                    <filter name="g_tariff" string="Tariff" context="{'group_by':'tariff_id'}"/>
+                    <filter name="g_region" string="Region" context="{'group_by':'region_id'}"/>
+                    <filter name="g_area" string="Area" context="{'group_by':'area_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_utility_account" model="ir.actions.act_window">
+        <field name="name">Utility Accounts</field>
+        <field name="res_model">utility.account</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_utility_account_search"/>
+    </record>
+
+    <record id="menu_utility_account" model="ir.ui.menu">
+        <field name="name">Utility Accounts</field>
+        <field name="parent_id">menu_utility_customer_mgmt</field>
+        <field name="action" ref="action_utility_account"/>
+        <field name="sequence">20</field>
+    </record>
+</odoo>

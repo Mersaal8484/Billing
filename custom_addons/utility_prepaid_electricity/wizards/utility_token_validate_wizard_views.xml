@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_token_validate_wizard" model="ir.ui.view">
+        <field name="name">utility.token.validate.wizard</field>
+        <field name="model">utility.token.validate.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Validate STS Token">
+                <group>
+                    <field name="token_number"/>
+                    <field name="meter_id"/>
+                    <field name="customer_id"/>
+                </group>
+                <group>
+                    <field name="result" readonly="1"/>
+                </group>
+                <footer>
+                    <button name="action_validate" string="Validate" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-default" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_utility_token_validate" model="ir.actions.act_window">
+        <field name="name">Validate Token</field>
+        <field name="res_model">utility.token.validate.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

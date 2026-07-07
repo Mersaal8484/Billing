@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Low Credit Monitoring Cron (runs daily at 6:00 AM) -->
+        <record id="cron_utility_low_credit_check" model="ir.cron">
+            <field name="name">Low Credit Monitoring Check</field>
+            <field name="model_id" ref="model_utility_alarm"/>
+            <field name="state">code</field>
+            <field name="code">model.cron_check_low_credit()</field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">days</field>
+            <field name="numbercall">-1</field>
+            <field name="active">True</field>
+            <field name="user_id" ref="base.user_root"/>
+            <field name="hour">6</field>
+            <field name="minute">0</field>
+        </record>
+    </data>
+</odoo>

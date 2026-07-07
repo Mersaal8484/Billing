@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_utility_receipt">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <div class="page">
+                        <h2 class="text-center">Prepaid Electricity Receipt</h2>
+                        <h3 class="text-center"><span t-field="doc.company_id.name"/></h3>
+                        <hr/>
+                        <div class="row">
+                            <div class="col-xs-6">
+                                <strong>Receipt No:</strong> <span t-field="doc.receipt_number"/><br/>
+                                <strong>Date:</strong> <span t-field="doc.date"/><br/>
+                                <strong>Customer:</strong> <span t-field="doc.customer_id.partner_id.name"/><br/>
+                                <strong>Account:</strong> <span t-field="doc.account_id.account_number"/><br/>
+                                <strong>Meter:</strong> <span t-field="doc.meter_id.meter_number"/>
+                            </div>
+                            <div class="col-xs-6">
+                                <strong>Tariff:</strong> <span t-field="doc.tariff_id.name"/><br/>
+                                <strong>Payment Method:</strong> <span t-field="doc.payment_method"/><br/>
+                                <strong>Operator:</strong> <span t-field="doc.operator_id.name"/>
+                            </div>
+                        </div>
+                        <hr/>
+                        <table class="table table-bordered">
+                            <tr>
+                                <td><strong>Amount Paid:</strong></td>
+                                <td><span t-field="doc.amount_paid" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
+                            </tr>
+                            <tr>
+                                <td><strong>kWh Purchased:</strong></td>
+                                <td><span t-field="doc.kwh_purchased"/></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Unit Price:</strong></td>
+                                <td><span t-field="doc.unit_price" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Energy Charge:</strong></td>
+                                <td><span t-field="doc.energy_charge" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Fixed Charge:</strong></td>
+                                <td><span t-field="doc.fixed_charge" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Service Charge:</strong></td>
+                                <td><span t-field="doc.service_charge" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Fuel Adjustment:</strong></td>
+                                <td><span t-field="doc.fuel_adjustment" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Tax:</strong></td>
+                                <td><span t-field="doc.tax_amount" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Total Charges:</strong></td>
+                                <td><span t-field="doc.total_charge" t-options="{'widget': 'monetary', 'display_currency': doc.currency_id}"/></td>
+                            </tr>
+                        </table>
+                        <t t-if="doc.token_id.token_number">
+                            <h4>STS Token</h4>
+                            <div class="alert alert-info text-center" style="font-size: 24px; letter-spacing: 4px;">
+                                <span t-field="doc.token_id.token_number"/>
+                            </div>
+                        </t>
+                        <p class="text-muted">Generated on <span t-field="datetime.datetime.now()" t-options='{"format": "dd/MM/yyyy HH:mm"}'/></p>
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

@@ -1,0 +1,704 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- ================================================ -->
+        <!-- Yemen-Specific Demo Data                          -->
+        <!-- ================================================ -->
+
+        <!-- Yemeni Rial currency -->
+        <record id="YER" model="res.currency">
+            <field name="name">YER</field>
+            <field name="symbol">﷼</field>
+            <field name="position">after</field>
+            <field name="rounding">1.0</field>
+            <field name="active">True</field>
+        </record>
+
+        <!-- ==================== PARTNERS ==================== -->
+        <record id="partner_ye_1" model="res.partner">
+            <field name="name">علي محمد حسن</field>
+            <field name="street">شارع الزبيري</field>
+            <field name="city">صنعاء</field>
+            <field name="country_id" ref="base.ye"/>
+            <field name="phone">+967712345678</field>
+            <field name="mobile">+967733456789</field>
+            <field name="email">ali.mohamed@example.ye</field>
+        </record>
+
+        <record id="partner_ye_2" model="res.partner">
+            <field name="name">خالد أحمد عبدالملك</field>
+            <field name="street">شارع حدة</field>
+            <field name="city">صنعاء</field>
+            <field name="country_id" ref="base.ye"/>
+            <field name="phone">+967712345679</field>
+            <field name="mobile">+967734567890</field>
+        </record>
+
+        <record id="partner_ye_3" model="res.partner">
+            <field name="name">محلات الشرق التجارية</field>
+            <field name="street">شارع تعز</field>
+            <field name="city">صنعاء</field>
+            <field name="country_id" ref="base.ye"/>
+            <field name="phone">+967711234567</field>
+            <field name="company_type">company</field>
+        </record>
+
+        <record id="partner_ye_4" model="res.partner">
+            <field name="name">فاطمة عبدالرحمن السقاف</field>
+            <field name="street">شارع المطار</field>
+            <field name="city">عدن</field>
+            <field name="country_id" ref="base.ye"/>
+            <field name="mobile">+967770123456</field>
+        </record>
+
+        <record id="partner_ye_5" model="res.partner">
+            <field name="name">مصنع اليمن للاسمنت</field>
+            <field name="street">المنطقة الصناعية</field>
+            <field name="city">الحديدة</field>
+            <field name="country_id" ref="base.ye"/>
+            <field name="phone">+967345678901</field>
+            <field name="company_type">company</field>
+        </record>
+
+        <record id="partner_ye_6" model="res.partner">
+            <field name="name">مستشفى الثورة العام</field>
+            <field name="street">شارع الخمسين</field>
+            <field name="city">صنعاء</field>
+            <field name="country_id" ref="base.ye"/>
+            <field name="phone">+96712567890</field>
+            <field name="company_type">company</field>
+        </record>
+
+        <!-- ==================== REGIONS (محافظات) ==================== -->
+        <record id="region_amana" model="utility.region">
+            <field name="name">أمانة العاصمة صنعاء</field>
+            <field name="code">SA</field>
+        </record>
+
+        <record id="region_aden" model="utility.region">
+            <field name="name">محافظة عدن</field>
+            <field name="code">AD</field>
+        </record>
+
+        <record id="region_hudaydah" model="utility.region">
+            <field name="name">محافظة الحديدة</field>
+            <field name="code">HD</field>
+        </record>
+
+        <record id="region_taiz" model="utility.region">
+            <field name="name">محافظة تعز</field>
+            <field name="code">TA</field>
+        </record>
+
+        <record id="region_hadramawt" model="utility.region">
+            <field name="name">محافظة حضرموت</field>
+            <field name="code">HA</field>
+        </record>
+
+        <!-- ==================== AREAS (مديريات صنعاء) ==================== -->
+        <record id="area_shaub" model="utility.area">
+            <field name="name">مديرية شعوب</field>
+            <field name="code">SH</field>
+            <field name="region_id" ref="region_amana"/>
+        </record>
+
+        <record id="area_safiyah" model="utility.area">
+            <field name="name">مديرية الصافية</field>
+            <field name="code">SF</field>
+            <field name="region_id" ref="region_amana"/>
+        </record>
+
+        <record id="area_maeen" model="utility.area">
+            <field name="name">مديرية معين</field>
+            <field name="code">MN</field>
+            <field name="region_id" ref="region_amana"/>
+        </record>
+
+        <record id="area_tahrir" model="utility.area">
+            <field name="name">مديرية التحرير</field>
+            <field name="code">TH</field>
+            <field name="region_id" ref="region_amana"/>
+        </record>
+
+        <record id="area_aden_khora" model="utility.area">
+            <field name="name">مديرية خور مكسر</field>
+            <field name="code">KM</field>
+            <field name="region_id" ref="region_aden"/>
+        </record>
+
+        <record id="area_hudaydah_1" model="utility.area">
+            <field name="name">مديرية الحوك</field>
+            <field name="code">HK</field>
+            <field name="region_id" ref="region_hudaydah"/>
+        </record>
+
+        <!-- ==================== FEEDERS ==================== -->
+        <record id="feeder_shaub_1" model="utility.feeder">
+            <field name="name">مغذي شعوب الرئيسي</field>
+            <field name="code">F-SH-01</field>
+            <field name="area_id" ref="area_shaub"/>
+            <field name="voltage_level">mv</field>
+            <field name="rated_capacity">8000</field>
+            <field name="current_load">4800</field>
+        </record>
+
+        <record id="feeder_shaub_2" model="utility.feeder">
+            <field name="name">مغذي شعوب الصناعي</field>
+            <field name="code">F-SH-02</field>
+            <field name="area_id" ref="area_shaub"/>
+            <field name="voltage_level">mv</field>
+            <field name="rated_capacity">4000</field>
+            <field name="current_load">3200</field>
+        </record>
+
+        <record id="feeder_safiyah_1" model="utility.feeder">
+            <field name="name">مغذي الصافية</field>
+            <field name="code">F-SF-01</field>
+            <field name="area_id" ref="area_safiyah"/>
+            <field name="voltage_level">lv</field>
+            <field name="rated_capacity">3000</field>
+            <field name="current_load">2100</field>
+        </record>
+
+        <record id="feeder_maeen_1" model="utility.feeder">
+            <field name="name">مغذي معين</field>
+            <field name="code">F-MN-01</field>
+            <field name="area_id" ref="area_maeen"/>
+            <field name="voltage_level">mv</field>
+            <field name="rated_capacity">6000</field>
+            <field name="current_load">4200</field>
+        </record>
+
+        <!-- ==================== TRANSFORMERS ==================== -->
+        <record id="transformer_shaub_1" model="utility.transformer">
+            <field name="name">محول شعوب 1</field>
+            <field name="code">T-SH-01</field>
+            <field name="area_id" ref="area_shaub"/>
+            <field name="feeder_id" ref="feeder_shaub_1"/>
+            <field name="capacity">1000</field>
+            <field name="phase">three</field>
+            <field name="voltage_primary">33/11 kV</field>
+            <field name="voltage_secondary">11/0.4 kV</field>
+            <field name="manufacturer">ABB</field>
+            <field name="status">active</field>
+            <field name="gps_latitude">15.3694</field>
+            <field name="gps_longitude">44.1910</field>
+        </record>
+
+        <record id="transformer_shaub_2" model="utility.transformer">
+            <field name="name">محول شعوب 2</field>
+            <field name="code">T-SH-02</field>
+            <field name="area_id" ref="area_shaub"/>
+            <field name="feeder_id" ref="feeder_shaub_1"/>
+            <field name="capacity">630</field>
+            <field name="phase">three</field>
+            <field name="voltage_primary">11/0.4 kV</field>
+            <field name="manufacturer">Siemens</field>
+            <field name="status">active</field>
+            <field name="gps_latitude">15.3761</field>
+            <field name="gps_longitude">44.2000</field>
+        </record>
+
+        <record id="transformer_safiyah_1" model="utility.transformer">
+            <field name="name">محول الصافية</field>
+            <field name="code">T-SF-01</field>
+            <field name="area_id" ref="area_safiyah"/>
+            <field name="feeder_id" ref="feeder_safiyah_1"/>
+            <field name="capacity">400</field>
+            <field name="phase">three</field>
+            <field name="status">active</field>
+        </record>
+
+        <record id="transformer_maeen_1" model="utility.transformer">
+            <field name="name">محول معين المركزي</field>
+            <field name="code">T-MN-01</field>
+            <field name="area_id" ref="area_maeen"/>
+            <field name="feeder_id" ref="feeder_maeen_1"/>
+            <field name="capacity">1500</field>
+            <field name="phase">three</field>
+            <field name="status">active</field>
+        </record>
+
+        <!-- ==================== RTUs ==================== -->
+        <record id="rtu_shaub_1" model="utility.rtu">
+            <field name="name">RTU شعوب الرئيسي</field>
+            <field name="code">RTU-SH-01</field>
+            <field name="serial_number">RTU-SN-001-YE</field>
+            <field name="rtu_type">feeder</field>
+            <field name="manufacturer">Schneider Electric</field>
+            <field name="model">SCADAPack 357</field>
+            <field name="firmware_version">v4.2.1</field>
+            <field name="communication_type">gprs</field>
+            <field name="protocol">dnp3</field>
+            <field name="ip_address">10.0.1.10</field>
+            <field name="port">20000</field>
+            <field name="sim_number">967700100001</field>
+            <field name="feeder_id" ref="feeder_shaub_1"/>
+            <field name="status">online</field>
+            <field name="signal_strength">85</field>
+            <field name="battery_level">92</field>
+            <field name="gps_latitude">15.3694</field>
+            <field name="gps_longitude">44.1910</field>
+        </record>
+
+        <record id="rtu_shaub_2" model="utility.rtu">
+            <field name="name">RTU محول شعوب 2</field>
+            <field name="code">RTU-SH-02</field>
+            <field name="serial_number">RTU-SN-002-YE</field>
+            <field name="rtu_type">transformer</field>
+            <field name="manufacturer">Schneider Electric</field>
+            <field name="model">SCADAPack 357</field>
+            <field name="communication_type">gprs</field>
+            <field name="protocol">dnp3</field>
+            <field name="ip_address">10.0.1.11</field>
+            <field name="port">20000</field>
+            <field name="sim_number">967700100002</field>
+            <field name="transformer_id" ref="transformer_shaub_2"/>
+            <field name="status">online</field>
+            <field name="signal_strength">78</field>
+            <field name="battery_level">88</field>
+        </record>
+
+        <record id="rtu_maeen_1" model="utility.rtu">
+            <field name="name">RTU معين</field>
+            <field name="code">RTU-MN-01</field>
+            <field name="serial_number">RTU-SN-003-YE</field>
+            <field name="rtu_type">feeder</field>
+            <field name="manufacturer">ABB</field>
+            <field name="model">RTU540</field>
+            <field name="communication_type">fiber</field>
+            <field name="protocol">iec104</field>
+            <field name="ip_address">10.0.2.10</field>
+            <field name="port">2404</field>
+            <field name="feeder_id" ref="feeder_maeen_1"/>
+            <field name="status">online</field>
+            <field name="signal_strength">99</field>
+        </record>
+
+        <!-- ==================== CUSTOMERS ==================== -->
+        <record id="ye_customer_1" model="utility.customer">
+            <field name="customer_number">CUS/2024/YE0001</field>
+            <field name="partner_id" ref="partner_ye_1"/>
+            <field name="national_id">101-2345678-9</field>
+            <field name="mobile">+967733456789</field>
+            <field name="customer_type">residential</field>
+            <field name="category_id" ref="cust_cat_individual"/>
+            <field name="connection_status">active</field>
+            <field name="region_id" ref="region_amana"/>
+            <field name="area_id" ref="area_shaub"/>
+            <field name="address_street">شارع الزبيري، حي النصر</field>
+            <field name="address_city">صنعاء</field>
+            <field name="country_id" ref="base.ye"/>
+            <field name="gps_latitude">15.3725</field>
+            <field name="gps_longitude">44.1950</field>
+        </record>
+
+        <record id="ye_customer_2" model="utility.customer">
+            <field name="customer_number">CUS/2024/YE0002</field>
+            <field name="partner_id" ref="partner_ye_2"/>
+            <field name="national_id">101-3456789-0</field>
+            <field name="mobile">+967734567890</field>
+            <field name="customer_type">residential</field>
+            <field name="category_id" ref="cust_cat_individual"/>
+            <field name="connection_status">active</field>
+            <field name="region_id" ref="region_amana"/>
+            <field name="area_id" ref="area_safiyah"/>
+            <field name="address_street">شارع حدة، جولة السبعين</field>
+            <field name="address_city">صنعاء</field>
+            <field name="country_id" ref="base.ye"/>
+        </record>
+
+        <record id="ye_customer_3" model="utility.customer">
+            <field name="customer_number">CUS/2024/YE0003</field>
+            <field name="partner_id" ref="partner_ye_3"/>
+            <field name="mobile">+967711234567</field>
+            <field name="customer_type">commercial</field>
+            <field name="category_id" ref="cust_cat_company"/>
+            <field name="connection_status">active</field>
+            <field name="region_id" ref="region_amana"/>
+            <field name="area_id" ref="area_maeen"/>
+            <field name="address_street">شارع تعز، جولة البلعيسي</field>
+            <field name="address_city">صنعاء</field>
+            <field name="country_id" ref="base.ye"/>
+        </record>
+
+        <record id="ye_customer_4" model="utility.customer">
+            <field name="customer_number">CUS/2024/YE0004</field>
+            <field name="partner_id" ref="partner_ye_4"/>
+            <field name="national_id">201-4567890-1</field>
+            <field name="mobile">+967770123456</field>
+            <field name="customer_type">residential</field>
+            <field name="category_id" ref="cust_cat_individual"/>
+            <field name="connection_status">active</field>
+            <field name="region_id" ref="region_aden"/>
+            <field name="area_id" ref="area_aden_khora"/>
+            <field name="address_street">شارع المطار، خور مكسر</field>
+            <field name="address_city">عدن</field>
+            <field name="country_id" ref="base.ye"/>
+        </record>
+
+        <record id="ye_customer_5" model="utility.customer">
+            <field name="customer_number">CUS/2024/YE0005</field>
+            <field name="partner_id" ref="partner_ye_5"/>
+            <field name="mobile">+967345678901</field>
+            <field name="customer_type">industrial</field>
+            <field name="category_id" ref="cust_cat_company"/>
+            <field name="connection_status">active</field>
+            <field name="region_id" ref="region_hudaydah"/>
+            <field name="area_id" ref="area_hudaydah_1"/>
+            <field name="address_street">المنطقة الصناعية، الحوك</field>
+            <field name="address_city">الحديدة</field>
+            <field name="country_id" ref="base.ye"/>
+        </record>
+
+        <record id="ye_customer_6" model="utility.customer">
+            <field name="customer_number">CUS/2024/YE0006</field>
+            <field name="partner_id" ref="partner_ye_6"/>
+            <field name="mobile">+96712567890</field>
+            <field name="customer_type">government</field>
+            <field name="category_id" ref="cust_cat_government"/>
+            <field name="connection_status">active</field>
+            <field name="region_id" ref="region_amana"/>
+            <field name="area_id" ref="area_tahrir"/>
+            <field name="address_street">شارع الخمسين، التحرير</field>
+            <field name="address_city">صنعاء</field>
+            <field name="country_id" ref="base.ye"/>
+        </record>
+
+        <!-- ==================== METERS ==================== -->
+        <record id="ye_meter_1" model="utility.meter">
+            <field name="meter_number">MTR/YE/000001</field>
+            <field name="serial_number">SN-2024-YE-001</field>
+            <field name="manufacturer">نظامي</field>
+            <field name="model">Nizami STS-1P</field>
+            <field name="meter_type_id" ref="meter_type_single_phase"/>
+            <field name="status_id" ref="meter_status_active"/>
+            <field name="phase">single</field>
+            <field name="sts_key_revision">2</field>
+            <field name="voltage">230V</field>
+            <field name="current_rating">80A</field>
+            <field name="installation_date">2024-06-15</field>
+            <field name="region_id" ref="region_amana"/>
+            <field name="area_id" ref="area_shaub"/>
+            <field name="feeder_id" ref="feeder_shaub_1"/>
+            <field name="transformer_id" ref="transformer_shaub_1"/>
+            <field name="gps_latitude">15.3728</field>
+            <field name="gps_longitude">44.1953</field>
+        </record>
+
+        <record id="ye_meter_2" model="utility.meter">
+            <field name="meter_number">MTR/YE/000002</field>
+            <field name="serial_number">SN-2024-YE-002</field>
+            <field name="manufacturer">نظامي</field>
+            <field name="model">Nizami STS-1P</field>
+            <field name="meter_type_id" ref="meter_type_single_phase"/>
+            <field name="status_id" ref="meter_status_active"/>
+            <field name="phase">single</field>
+            <field name="sts_key_revision">2</field>
+            <field name="voltage">230V</field>
+            <field name="current_rating">80A</field>
+            <field name="installation_date">2024-07-01</field>
+            <field name="region_id" ref="region_amana"/>
+            <field name="area_id" ref="area_safiyah"/>
+            <field name="feeder_id" ref="feeder_safiyah_1"/>
+            <field name="transformer_id" ref="transformer_safiyah_1"/>
+        </record>
+
+        <record id="ye_meter_3" model="utility.meter">
+            <field name="meter_number">MTR/YE/000003</field>
+            <field name="serial_number">SN-2024-YE-003</field>
+            <field name="manufacturer">هانيويل</field>
+            <field name="model">Honeywell STS-3P</field>
+            <field name="meter_type_id" ref="meter_type_three_phase"/>
+            <field name="status_id" ref="meter_status_active"/>
+            <field name="phase">three</field>
+            <field name="sts_key_revision">2</field>
+            <field name="voltage">400V</field>
+            <field name="current_rating">100A</field>
+            <field name="installation_date">2024-05-20</field>
+            <field name="region_id" ref="region_amana"/>
+            <field name="area_id" ref="area_maeen"/>
+            <field name="feeder_id" ref="feeder_maeen_1"/>
+            <field name="transformer_id" ref="transformer_maeen_1"/>
+        </record>
+
+        <record id="ye_meter_4" model="utility.meter">
+            <field name="meter_number">MTR/YE/000004</field>
+            <field name="serial_number">SN-2024-YE-004</field>
+            <field name="manufacturer">نظامي</field>
+            <field name="model">Nizami STS-1P</field>
+            <field name="meter_type_id" ref="meter_type_single_phase"/>
+            <field name="status_id" ref="meter_status_active"/>
+            <field name="phase">single</field>
+            <field name="sts_key_revision">2</field>
+            <field name="voltage">230V</field>
+            <field name="installation_date">2024-08-10</field>
+            <field name="region_id" ref="region_aden"/>
+            <field name="area_id" ref="area_aden_khora"/>
+        </record>
+
+        <record id="ye_meter_5" model="utility.meter">
+            <field name="meter_number">MTR/YE/000005</field>
+            <field name="serial_number">SN-2024-YE-005</field>
+            <field name="manufacturer">Siemens</field>
+            <field name="model">Siemens 7KE6250</field>
+            <field name="meter_type_id" ref="meter_type_three_phase"/>
+            <field name="status_id" ref="meter_status_active"/>
+            <field name="phase">three</field>
+            <field name="voltage">400V</field>
+            <field name="current_rating">200A</field>
+            <field name="power_rating">150</field>
+            <field name="installation_date">2024-04-01</field>
+            <field name="region_id" ref="region_hudaydah"/>
+            <field name="area_id" ref="area_hudaydah_1"/>
+        </record>
+
+        <!-- ==================== ACCOUNTS ==================== -->
+        <record id="ye_account_1" model="utility.account">
+            <field name="account_number">ACC/YE/2024/0001</field>
+            <field name="customer_id" ref="ye_customer_1"/>
+            <field name="meter_id" ref="ye_meter_1"/>
+            <field name="tariff_id" ref="tariff_residential_flat"/>
+            <field name="balance">12450</field>
+            <field name="state">active</field>
+        </record>
+
+        <record id="ye_account_2" model="utility.account">
+            <field name="account_number">ACC/YE/2024/0002</field>
+            <field name="customer_id" ref="ye_customer_2"/>
+            <field name="meter_id" ref="ye_meter_2"/>
+            <field name="tariff_id" ref="tariff_residential_flat"/>
+            <field name="balance">8700</field>
+            <field name="state">active</field>
+        </record>
+
+        <record id="ye_account_3" model="utility.account">
+            <field name="account_number">ACC/YE/2024/0003</field>
+            <field name="customer_id" ref="ye_customer_3"/>
+            <field name="meter_id" ref="ye_meter_3"/>
+            <field name="tariff_id" ref="tariff_commercial_block"/>
+            <field name="balance">45200</field>
+            <field name="total_purchases">285000</field>
+            <field name="total_kwh_purchased">125000</field>
+            <field name="state">active</field>
+        </record>
+
+        <record id="ye_account_4" model="utility.account">
+            <field name="account_number">ACC/YE/2024/0004</field>
+            <field name="customer_id" ref="ye_customer_4"/>
+            <field name="meter_id" ref="ye_meter_4"/>
+            <field name="tariff_id" ref="tariff_residential_flat"/>
+            <field name="balance">3200</field>
+            <field name="state">active</field>
+        </record>
+
+        <record id="ye_account_5" model="utility.account">
+            <field name="account_number">ACC/YE/2024/0005</field>
+            <field name="customer_id" ref="ye_customer_5"/>
+            <field name="meter_id" ref="ye_meter_5"/>
+            <field name="tariff_id" ref="tariff_industrial_flat"/>
+            <field name="balance">28700</field>
+            <field name="total_purchases">1250000</field>
+            <field name="total_kwh_purchased">850000</field>
+            <field name="state">active</field>
+        </record>
+
+        <record id="ye_account_6" model="utility.account">
+            <field name="account_number">ACC/YE/2024/0006</field>
+            <field name="customer_id" ref="ye_customer_6"/>
+            <field name="tariff_id" ref="tariff_government_flat"/>
+            <field name="balance">65000</field>
+            <field name="state">active</field>
+        </record>
+
+        <!-- ==================== SAMPLE SALES ==================== -->
+        <record id="ye_sale_1" model="utility.sale">
+            <field name="receipt_number">SL/2024/YE000001</field>
+            <field name="customer_id" ref="ye_customer_1"/>
+            <field name="account_id" ref="ye_account_1"/>
+            <field name="meter_id" ref="ye_meter_1"/>
+            <field name="tariff_id" ref="tariff_residential_flat"/>
+            <field name="amount_paid">5000</field>
+            <field name="kwh_purchased">208.33</field>
+            <field name="unit_price">24.0</field>
+            <field name="energy_charge">5000</field>
+            <field name="fixed_charge">0</field>
+            <field name="service_charge">0</field>
+            <field name="tax_amount">0</field>
+            <field name="total_charge">5000</field>
+            <field name="payment_method">cash</field>
+            <field name="state">completed</field>
+            <field name="token_status">generated</field>
+            <field name="balance_before">7450</field>
+            <field name="date">2024-12-15 09:30:00</field>
+        </record>
+
+        <record id="ye_sale_2" model="utility.sale">
+            <field name="receipt_number">SL/2024/YE000002</field>
+            <field name="customer_id" ref="ye_customer_3"/>
+            <field name="account_id" ref="ye_account_3"/>
+            <field name="meter_id" ref="ye_meter_3"/>
+            <field name="tariff_id" ref="tariff_commercial_block"/>
+            <field name="amount_paid">25000</field>
+            <field name="kwh_purchased">892.86</field>
+            <field name="unit_price">28.0</field>
+            <field name="energy_charge">25000</field>
+            <field name="payment_method">bank</field>
+            <field name="state">completed</field>
+            <field name="token_status">generated</field>
+            <field name="date">2024-12-14 11:15:00</field>
+        </record>
+
+        <!-- ==================== TARIFF CATEGORIES (Yemen) ==================== -->
+        <record id="ye_tariff_cat_res" model="utility.tariff.category">
+            <field name="name">سكني</field>
+            <field name="code">YE-RES</field>
+            <field name="sequence">1</field>
+            <field name="description">التعرفة السكنية للمنازل</field>
+        </record>
+
+        <record id="ye_tariff_cat_com" model="utility.tariff.category">
+            <field name="name">تجاري</field>
+            <field name="code">YE-COM</field>
+            <field name="sequence">2</field>
+            <field name="description">التعرفة التجارية للمحلات والشركات</field>
+        </record>
+
+        <record id="ye_tariff_cat_ind" model="utility.tariff.category">
+            <field name="name">صناعي</field>
+            <field name="code">YE-IND</field>
+            <field name="sequence">3</field>
+            <field name="description">التعرفة الصناعية للمصانع</field>
+        </record>
+
+        <record id="ye_tariff_cat_gov" model="utility.tariff.category">
+            <field name="name">حكومي</field>
+            <field name="code">YE-GOV</field>
+            <field name="sequence">4</field>
+            <field name="description">التعرفة الحكومية للجهات العامة</field>
+        </record>
+
+        <!-- ==================== TARIFFS (Yemen Block Tariffs - YER) ====================
+             Based on typical Yemeni electricity tariff structure.
+             Prices in Yemeni Rial (YER) per kWh. -->
+
+        <!-- Residential Block Tariff -->
+        <record id="ye_tariff_res_block" model="utility.tariff">
+            <field name="name">تعرفة سكني شرائح</field>
+            <field name="code">YE-RES-BLK</field>
+            <field name="category_id" ref="ye_tariff_cat_res"/>
+            <field name="tariff_type">block</field>
+            <field name="fixed_charge">500</field>
+            <field name="service_charge">250</field>
+            <field name="effective_date">2024-01-01</field>
+        </record>
+
+        <record id="ye_tariff_res_b1" model="utility.tariff.block">
+            <field name="tariff_id" ref="ye_tariff_res_block"/>
+            <field name="sequence">10</field>
+            <field name="name">الشريحة الأولى (1-200)</field>
+            <field name="from_kwh">0</field>
+            <field name="to_kwh">200</field>
+            <field name="price_per_kwh">15</field>
+        </record>
+
+        <record id="ye_tariff_res_b2" model="utility.tariff.block">
+            <field name="tariff_id" ref="ye_tariff_res_block"/>
+            <field name="sequence">20</field>
+            <field name="name">الشريحة الثانية (201-400)</field>
+            <field name="from_kwh">201</field>
+            <field name="to_kwh">400</field>
+            <field name="price_per_kwh">25</field>
+        </record>
+
+        <record id="ye_tariff_res_b3" model="utility.tariff.block">
+            <field name="tariff_id" ref="ye_tariff_res_block"/>
+            <field name="sequence">30</field>
+            <field name="name">الشريحة الثالثة (401-700)</field>
+            <field name="from_kwh">401</field>
+            <field name="to_kwh">700</field>
+            <field name="price_per_kwh">35</field>
+        </record>
+
+        <record id="ye_tariff_res_b4" model="utility.tariff.block">
+            <field name="tariff_id" ref="ye_tariff_res_block"/>
+            <field name="sequence">40</field>
+            <field name="name">الشريحة الرابعة (700+)</field>
+            <field name="from_kwh">701</field>
+            <field name="price_per_kwh">50</field>
+        </record>
+
+        <!-- Commercial Block Tariff -->
+        <record id="ye_tariff_com_block" model="utility.tariff">
+            <field name="name">تعرفة تجاري شرائح</field>
+            <field name="code">YE-COM-BLK</field>
+            <field name="category_id" ref="ye_tariff_cat_com"/>
+            <field name="tariff_type">block</field>
+            <field name="fixed_charge">1500</field>
+            <field name="service_charge">500</field>
+            <field name="effective_date">2024-01-01</field>
+        </record>
+
+        <record id="ye_tariff_com_b1" model="utility.tariff.block">
+            <field name="tariff_id" ref="ye_tariff_com_block"/>
+            <field name="sequence">10</field>
+            <field name="name">الشريحة الأولى (1-500)</field>
+            <field name="from_kwh">0</field>
+            <field name="to_kwh">500</field>
+            <field name="price_per_kwh">30</field>
+        </record>
+
+        <record id="ye_tariff_com_b2" model="utility.tariff.block">
+            <field name="tariff_id" ref="ye_tariff_com_block"/>
+            <field name="sequence">20</field>
+            <field name="name">الشريحة الثانية (500+)</field>
+            <field name="from_kwh">501</field>
+            <field name="price_per_kwh">45</field>
+        </record>
+
+        <!-- Industrial Flat Tariff -->
+        <record id="ye_tariff_ind_flat" model="utility.tariff">
+            <field name="name">تعرفة صناعي موحد</field>
+            <field name="code">YE-IND-FLT</field>
+            <field name="category_id" ref="ye_tariff_cat_ind"/>
+            <field name="tariff_type">flat</field>
+            <field name="price_per_kwh">20</field>
+            <field name="fixed_charge">5000</field>
+            <field name="service_charge">2000</field>
+            <field name="effective_date">2024-01-01</field>
+        </record>
+
+        <!-- Government Flat Tariff -->
+        <record id="ye_tariff_gov_flat" model="utility.tariff">
+            <field name="name">تعرفة حكومي موحد</field>
+            <field name="code">YE-GOV-FLT</field>
+            <field name="category_id" ref="ye_tariff_cat_gov"/>
+            <field name="tariff_type">flat</field>
+            <field name="price_per_kwh">25</field>
+            <field name="fixed_charge">1000</field>
+            <field name="service_charge">500</field>
+            <field name="effective_date">2024-01-01</field>
+        </record>
+
+        <!-- ==================== ALARMS ==================== -->
+        <record id="ye_alarm_1" model="utility.alarm">
+            <field name="alarm_type">low_credit</field>
+            <field name="severity">warning</field>
+            <field name="customer_id" ref="ye_customer_4"/>
+            <field name="account_id" ref="ye_account_4"/>
+            <field name="description">رصيد منخفض: 3,200 ريال متبقية في حساب عدن</field>
+            <field name="state">new</field>
+        </record>
+
+        <record id="ye_service_order_1" model="utility.service.order">
+            <field name="service_type">meter_replacement</field>
+            <field name="priority">high</field>
+            <field name="customer_id" ref="ye_customer_1"/>
+            <field name="account_id" ref="ye_account_1"/>
+            <field name="meter_id" ref="ye_meter_1"/>
+            <field name="old_meter_id" ref="ye_meter_1"/>
+            <field name="description">استبدال عداد معطل - عداد شعوب 1 يظهر خطأ في الشاشة</field>
+            <field name="state">draft</field>
+        </record>
+    </data>
+</odoo>

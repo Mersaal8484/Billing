@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_sale_tree" model="ir.ui.view">
+        <field name="name">utility.sale.tree</field>
+        <field name="model">utility.sale</field>
+        <field name="arch" type="xml">
+            <tree string="Prepaid Sales" limit="40" decoration-danger="state in ('cancelled','reversed')" decoration-success="state == 'completed'">
+                <field name="receipt_number"/>
+                <field name="date"/>
+                <field name="customer_id"/>
+                <field name="account_id"/>
+                <field name="meter_id"/>
+                <field name="amount_paid" sum="Total"/>
+                <field name="kwh_purchased" sum="Total"/>
+                <field name="payment_method"/>
+                <field name="operator_id"/>
+                <field name="state"/>
+                <field name="token_status"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_utility_sale_form" model="ir.ui.view">
+        <field name="name">utility.sale.form</field>
+        <field name="model">utility.sale</field>
+        <field name="arch" type="xml">
+            <form string="Prepaid Sale">
+                <header>
+                    <field name="state" widget="statusbar"/>
+                    <button name="action_confirm" string="Confirm" type="object" states="draft" class="btn-primary"/>
+                    <button name="action_generate_token" string="Generate Token" type="object" states="draft,confirmed" class="btn-primary"/>
+                    <button name="action_complete" string="Complete Sale" type="object" states="token_generated" class="btn-primary"/>
+                    <button name="action_send_sms" string="Send SMS" type="object" states="completed"/>
+                    <button name="action_reverse" string="Reverse" type="object" states="completed"/>
+                    <button name="action_cancel" string="Cancel" type="object" states="draft"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="receipt_number"/></h1>
+                        <h2>
+                            <field name="date"/>
+                        </h2>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="customer_id"/>
+                            <field name="account_id"/>
+                            <field name="meter_id"/>
+                            <field name="tariff_id"/>
+                        </group>
+                        <group>
+                            <field name="payment_method"/>
+                            <field name="payment_reference"/>
+                            <field name="operator_id"/>
+                        </group>
+                    </group>
+                    <group string="Sale Details">
+                        <group>
+                            <field name="amount_paid"/>
+                            <field name="kwh_purchased"/>
+                            <field name="unit_price"/>
+                        </group>
+                        <group>
+                            <field name="energy_charge"/>
+                            <field name="fixed_charge"/>
+                            <field name="service_charge"/>
+                            <field name="fuel_adjustment"/>
+                            <field name="tax_amount"/>
+                            <field name="total_charge"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group>
+                            <field name="balance_before"/>
+                            <field name="balance_after"/>
+                        </group>
+                        <group>
+                            <field name="token_id"/>
+                            <field name="token_status"/>
+                            <field name="payment_id"/>
+                            <field name="reversal_id"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page name="lines" string="Sale Lines">
+                            <field name="line_ids">
+                                <tree editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name"/>
+                                    <field name="quantity"/>
+                                    <field name="unit"/>
+                                    <field name="unit_price"/>
+                                    <field name="subtotal"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page name="notes" string="Notes">
+                            <field name="notes"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_utility_sale_search" model="ir.ui.view">
+        <field name="name">utility.sale.search</field>
+        <field name="model">utility.sale</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="receipt_number"/>
+                <field name="customer_id"/>
+                <field name="account_id"/>
+                <field name="meter_id"/>
+                <field name="operator_id"/>
+                <field name="payment_method"/>
+                <field name="state"/>
+                <filter name="today" string="Today" domain="[('date','&gt;=',context_today().strftime('%Y-%m-%d 00:00:00'))]"/>
+                <filter name="completed" string="Completed" domain="[('state','=','completed')]"/>
+                <filter name="failed_token" string="Token Failed" domain="[('token_status','=','failed')]"/>
+                <group expand="0" string="Group By">
+                    <filter name="g_date" string="Date" context="{'group_by':'date'}"/>
+                    <filter name="g_method" string="Payment Method" context="{'group_by':'payment_method'}"/>
+                    <filter name="g_state" string="Status" context="{'group_by':'state'}"/>
+                    <filter name="g_region" string="Region" context="{'group_by':'region_id'}"/>
+                    <filter name="g_area" string="Area" context="{'group_by':'area_id'}"/>
+                    <filter name="g_operator" string="Operator" context="{'group_by':'operator_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_utility_sale_pivot" model="ir.ui.view">
+        <field name="name">utility.sale.pivot</field>
+        <field name="model">utility.sale</field>
+        <field name="arch" type="xml">
+            <pivot>
+                <field name="amount_paid" type="value"/>
+                <field name="kwh_purchased" type="value"/>
+                <field name="date" type="row"/>
+                <field name="payment_method" type="col"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_utility_sale_graph" model="ir.ui.view">
+        <field name="name">utility.sale.graph</field>
+        <field name="model">utility.sale</field>
+        <field name="arch" type="xml">
+            <graph type="bar" stacked="True">
+                <field name="date"/>
+                <field name="amount_paid" type="value"/>
+                <field name="payment_method"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="action_utility_sale" model="ir.actions.act_window">
+        <field name="name">Prepaid Sales</field>
+        <field name="res_model">utility.sale</field>
+        <field name="view_mode">tree,form,pivot,graph</field>
+        <field name="search_view_id" ref="view_utility_sale_search"/>
+        <field name="help" type="html">
+            <p>Process prepaid electricity sales. Enter amount to calculate kWh and generate STS token.</p>
+        </field>
+    </record>
+
+    <record id="menu_utility_sale" model="ir.ui.menu">
+        <field name="name">Prepaid Sales</field>
+        <field name="parent_id">menu_utility_operations</field>
+        <field name="action" ref="action_utility_sale"/>
+        <field name="sequence">10</field>
+    </record>
+</odoo>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="demo_session_1" model="session.manager">
+        <field name="name">dummy_session_id_1234567890abcdef</field>
+        <field name="user_id" ref="base.user_admin"/>
+        <field name="db_name">demo_db</field>
+        <field name="login">admin</field>
+        <field name="create_date" eval="(DateTime.now() - timedelta(hours=2)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        <field name="last_access" eval="DateTime.now().strftime('%Y-%m-%d %H:%M:%S')"/>
+        <field name="expiry_date" eval="(DateTime.now() + timedelta(hours=166)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        <field name="ip_address">192.168.1.100</field>
+        <field name="user_agent">Mozilla/5.0 (Windows NT 10.0; Win64; x64)</field>
+        <field name="is_active">True</field>
+    </record>
+</odoo>

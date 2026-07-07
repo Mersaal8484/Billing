@@ -1,0 +1,13 @@
+<!-- data/session_manager_data.xml -->
+
+<odoo>
+    <record id="ir_cron_update_sessions" model="ir.cron">
+        <field name="name">Update Session Information</field>
+        <field name="model_id" ref="model_session_manager"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_update_sessions()</field>
+        <field name="interval_number">5</field>
+        <field name="interval_type">minutes</field>
+        <field name="active">True</field>
+    </record>
+</odoo>

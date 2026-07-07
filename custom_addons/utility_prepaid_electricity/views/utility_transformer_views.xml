@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_transformer_tree" model="ir.ui.view">
+        <field name="name">utility.transformer.tree</field>
+        <field name="model">utility.transformer</field>
+        <field name="arch" type="xml">
+            <tree string="Transformers" decoration-danger="not active" decoration-warning="load_percentage > 80">
+                <field name="code"/>
+                <field name="name"/>
+                <field name="area_id"/>
+                <field name="feeder_id"/>
+                <field name="capacity"/>
+                <field name="load_percentage" widget="progressbar"/>
+                <field name="status"/>
+                <field name="meter_count"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_utility_transformer_form" model="ir.ui.view">
+        <field name="name">utility.transformer.form</field>
+        <field name="model">utility.transformer</field>
+        <field name="arch" type="xml">
+            <form string="Transformer">
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                        <h2><field name="code"/></h2>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="area_id"/>
+                            <field name="feeder_id"/>
+                            <field name="status"/>
+                            <field name="phase"/>
+                        </group>
+                        <group>
+                            <field name="meter_count"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page name="specs" string="Technical Specs">
+                            <group>
+                                <group>
+                                    <field name="manufacturer"/>
+                                    <field name="model"/>
+                                    <field name="serial_number"/>
+                                    <field name="year_manufactured"/>
+                                    <field name="installation_date"/>
+                                </group>
+                                <group>
+                                    <field name="capacity"/>
+                                    <field name="voltage_primary"/>
+                                    <field name="voltage_secondary"/>
+                                    <field name="current_load"/>
+                                    <field name="load_percentage" widget="progressbar"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page name="location" string="Location">
+                            <group>
+                                <field name="gps_latitude"/>
+                                <field name="gps_longitude"/>
+                            </group>
+                        </page>
+                        <page name="rtus" string="RTUs">
+                            <field name="rtu_ids">
+                                <tree>
+                                    <field name="code"/>
+                                    <field name="name"/>
+                                    <field name="status"/>
+                                    <field name="protocol"/>
+                                    <field name="last_communication"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page name="meters" string="Meters">
+                            <field name="meter_ids">
+                                <tree>
+                                    <field name="meter_number"/>
+                                    <field name="serial_number"/>
+                                    <field name="status_id"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_utility_transformer_search" model="ir.ui.view">
+        <field name="name">utility.transformer.search</field>
+        <field name="model">utility.transformer</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="area_id"/>
+                <field name="feeder_id"/>
+                <field name="status"/>
+                <field name="serial_number"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_utility_transformer" model="ir.actions.act_window">
+        <field name="name">Transformers</field>
+        <field name="res_model">utility.transformer</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_utility_transformer_search"/>
+    </record>
+
+    <record id="menu_utility_transformer" model="ir.ui.menu">
+        <field name="name">Transformers</field>
+        <field name="parent_id">menu_utility_network</field>
+        <field name="action" ref="action_utility_transformer"/>
+        <field name="sequence">20</field>
+    </record>
+</odoo>

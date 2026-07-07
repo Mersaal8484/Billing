@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Root Menu -->
+    <menuitem id="menu_utility_root"
+              name="Utility"
+              sequence="10"
+              web_icon="utility_prepaid_electricity,static/description/icon.png"/>
+
+    <!-- Configuration Menu -->
+    <menuitem id="menu_utility_configuration"
+              name="Configuration"
+              parent_id="menu_utility_root"
+              sequence="100"/>
+
+    <!-- Customer Management Menu -->
+    <menuitem id="menu_utility_customer_mgmt"
+              name="Customers"
+              parent_id="menu_utility_root"
+              sequence="20"/>
+
+    <!-- Metering Menu -->
+    <menuitem id="menu_utility_metering"
+              name="Metering"
+              parent_id="menu_utility_root"
+              sequence="30"/>
+
+    <!-- Network Menu -->
+    <menuitem id="menu_utility_network"
+              name="Network"
+              parent_id="menu_utility_root"
+              sequence="40"/>
+
+    <!-- Operations Menu -->
+    <menuitem id="menu_utility_operations"
+              name="Operations"
+              parent_id="menu_utility_root"
+              sequence="50"/>
+
+    <!-- Monitoring Menu -->
+    <menuitem id="menu_utility_monitoring"
+              name="Monitoring"
+              parent_id="menu_utility_root"
+              sequence="60"/>
+
+    <!-- Tariff Category -->
+    <menuitem id="menu_utility_tariff_category"
+              name="Tariff Categories"
+              parent_id="menu_utility_configuration"
+              action="action_utility_tariff_category"
+              sequence="5"/>
+
+    <!-- Customer Category -->
+    <menuitem id="menu_utility_customer_category"
+              name="Customer Categories"
+              parent_id="menu_utility_configuration"
+              action="action_utility_customer_category"
+              sequence="35"/>
+
+    <!-- Meter Type Config -->
+    <menuitem id="menu_utility_meter_type_config"
+              name="Meter Types"
+              parent_id="menu_utility_configuration"
+              sequence="40"/>
+
+    <!-- Meter Status Config -->
+    <menuitem id="menu_utility_meter_status_config"
+              name="Meter Statuses"
+              parent_id="menu_utility_configuration"
+              sequence="50"/>
+
+    <!-- Transactions Menu -->
+    <menuitem id="menu_utility_transaction"
+              name="Transactions"
+              parent_id="menu_utility_operations"
+              action="action_utility_transaction"
+              sequence="70"/>
+
+    <!-- Configuration Actions that need records -->
+    <record id="action_utility_tariff_category" model="ir.actions.act_window">
+        <field name="name">Tariff Categories</field>
+        <field name="res_model">utility.tariff.category</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="action_utility_customer_category" model="ir.actions.act_window">
+        <field name="name">Customer Categories</field>
+        <field name="res_model">utility.customer.category</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="view_utility_meter_type_menu" model="ir.ui.view">
+        <field name="name">utility.meter.type.tree.menu</field>
+        <field name="model">utility.meter.type</field>
+        <field name="arch" type="xml">
+            <tree string="Meter Types">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="phase"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_utility_meter_type_menu" model="ir.actions.act_window">
+        <field name="name">Meter Types</field>
+        <field name="res_model">utility.meter.type</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="action_utility_meter_status_menu" model="ir.actions.act_window">
+        <field name="name">Meter Statuses</field>
+        <field name="res_model">utility.meter.status</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="action_utility_transaction" model="ir.actions.act_window">
+        <field name="name">Transactions</field>
+        <field name="res_model">utility.transaction</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <menuitem id="menu_utility_meter_type_menu_item"
+              name="Meter Types"
+              parent_id="menu_utility_configuration"
+              action="action_utility_meter_type_menu"
+              sequence="40"/>
+
+    <menuitem id="menu_utility_meter_status_menu_item"
+              name="Meter Statuses"
+              parent_id="menu_utility_configuration"
+              action="action_utility_meter_status_menu"
+              sequence="50"/>
+</odoo>

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_report_utility_receipt" model="ir.actions.report">
+        <field name="name">Utility Receipt</field>
+        <field name="model">utility.sale</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">utility_prepaid_electricity.report_utility_receipt</field>
+        <field name="report_file">utility_prepaid_electricity.report_utility_receipt</field>
+        <field name="binding_model_id" ref="model_utility_sale"/>
+        <field name="binding_type">report</field>
+        <field name="print_report_name">'Receipt - %s' % (object.receipt_number)</field>
+    </record>
+</odoo>

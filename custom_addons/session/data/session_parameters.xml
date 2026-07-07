@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="param_session_lifetime" model="ir.config_parameter">
+        <field name="key">session_lifetime</field>
+        <field name="value">168</field> <!-- Default 1 week (in hours) -->
+    </record>
+    <record id="param_session_inactivity" model="ir.config_parameter">
+        <field name="key">session_inactivity_timeout</field>
+        <field name="value">30</field> <!-- Default 30 minutes -->
+    </record>
+    <record id="param_session_extension" model="ir.config_parameter">
+        <field name="key">session_extension_enabled</field>
+        <field name="value">True</field>
+    </record>
+</odoo>

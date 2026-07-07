@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="group_session_manager" model="res.groups">
+        <field name="name">Session Manager</field>
+        <field name="category_id" ref="base.module_category_administration"/>
+    </record>
+
+    <record id="access_session_manager" model="ir.model.access">
+        <field name="name">session.manager.access</field>
+        <field name="model_id" ref="model_session_manager"/>
+        <field name="group_id" ref="group_session_manager"/>
+        <field name="perm_read">1</field>
+        <field name="perm_write">1</field>
+        <field name="perm_create">1</field>
+        <field name="perm_unlink">1</field>
+    </record>
+</odoo>

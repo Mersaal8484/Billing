@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_feeder_tree" model="ir.ui.view">
+        <field name="name">utility.feeder.tree</field>
+        <field name="model">utility.feeder</field>
+        <field name="arch" type="xml">
+            <tree string="Feeders" decoration-danger="not active" decoration-warning="load_percentage > 80">
+                <field name="code"/>
+                <field name="name"/>
+                <field name="area_id"/>
+                <field name="voltage_level"/>
+                <field name="rated_capacity"/>
+                <field name="load_percentage" widget="progressbar"/>
+                <field name="transformer_count"/>
+                <field name="meter_count"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_utility_feeder_form" model="ir.ui.view">
+        <field name="name">utility.feeder.form</field>
+        <field name="model">utility.feeder</field>
+        <field name="arch" type="xml">
+            <form string="Feeder">
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                        <h2><field name="code"/></h2>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="area_id"/>
+                            <field name="voltage_level"/>
+                            <field name="rated_capacity"/>
+                            <field name="current_load"/>
+                            <field name="load_percentage" widget="progressbar"/>
+                        </group>
+                        <group>
+                            <field name="transformer_count"/>
+                            <field name="meter_count"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page name="transformers" string="Transformers">
+                            <field name="transformer_ids">
+                                <tree>
+                                    <field name="code"/>
+                                    <field name="name"/>
+                                    <field name="capacity"/>
+                                    <field name="status"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page name="rtus" string="RTUs">
+                            <field name="rtu_ids">
+                                <tree>
+                                    <field name="code"/>
+                                    <field name="name"/>
+                                    <field name="status"/>
+                                    <field name="protocol"/>
+                                    <field name="last_communication"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_utility_feeder_search" model="ir.ui.view">
+        <field name="name">utility.feeder.search</field>
+        <field name="model">utility.feeder</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="area_id"/>
+                <field name="voltage_level"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_utility_feeder" model="ir.actions.act_window">
+        <field name="name">Feeders</field>
+        <field name="res_model">utility.feeder</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_utility_feeder_search"/>
+    </record>
+
+    <record id="menu_utility_feeder" model="ir.ui.menu">
+        <field name="name">Feeders</field>
+        <field name="parent_id">menu_utility_network</field>
+        <field name="action" ref="action_utility_feeder"/>
+        <field name="sequence">10</field>
+    </record>
+</odoo>

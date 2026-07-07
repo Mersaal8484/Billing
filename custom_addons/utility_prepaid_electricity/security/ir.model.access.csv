@@ -1,0 +1,148 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+# Region
+access_utility_region_admin,utility.region.admin,model_utility_region,group_utility_admin,1,1,1,1
+access_utility_region_tech,utility.region.tech,model_utility_region,group_utility_technical_manager,1,1,1,0
+access_utility_region_rev,utility.region.rev,model_utility_region,group_utility_revenue_manager,1,0,0,0
+access_utility_region_auditor,utility.region.auditor,model_utility_region,group_utility_auditor,1,0,0,0
+
+# Area
+access_utility_area_admin,utility.area.admin,model_utility_area,group_utility_admin,1,1,1,1
+access_utility_area_tech,utility.area.tech,model_utility_area,group_utility_technical_manager,1,1,1,0
+access_utility_area_rev,utility.area.rev,model_utility_area,group_utility_revenue_manager,1,0,0,0
+access_utility_area_auditor,utility.area.auditor,model_utility_area,group_utility_auditor,1,0,0,0
+
+# Feeder
+access_utility_feeder_admin,utility.feeder.admin,model_utility_feeder,group_utility_admin,1,1,1,1
+access_utility_feeder_tech,utility.feeder.tech,model_utility_feeder,group_utility_technical_manager,1,1,1,0
+access_utility_feeder_meter,utility.feeder.meter,model_utility_feeder,group_utility_meter_engineer,1,0,0,0
+access_utility_feeder_auditor,utility.feeder.auditor,model_utility_feeder,group_utility_auditor,1,0,0,0
+
+# Transformer
+access_utility_transformer_admin,utility.transformer.admin,model_utility_transformer,group_utility_admin,1,1,1,1
+access_utility_transformer_tech,utility.transformer.tech,model_utility_transformer,group_utility_technical_manager,1,1,1,0
+access_utility_transformer_meter,utility.transformer.meter,model_utility_transformer,group_utility_meter_engineer,1,0,0,0
+access_utility_transformer_auditor,utility.transformer.auditor,model_utility_transformer,group_utility_auditor,1,0,0,0
+
+# Meter
+access_utility_meter_admin,utility.meter.admin,model_utility_meter,group_utility_admin,1,1,1,1
+access_utility_meter_tech,utility.meter.tech,model_utility_meter,group_utility_technical_manager,1,1,1,0
+access_utility_meter_engineer,utility.meter.engineer,model_utility_meter,group_utility_meter_engineer,1,1,1,0
+access_utility_meter_cashier,utility.meter.cashier,model_utility_meter,group_utility_cashier,1,0,0,0
+access_utility_meter_auditor,utility.meter.auditor,model_utility_meter,group_utility_auditor,1,0,0,0
+
+# Meter Type
+access_utility_meter_type_admin,utility.meter.type.admin,model_utility_meter_type,group_utility_admin,1,1,1,1
+access_utility_meter_type_tech,utility.meter.type.tech,model_utility_meter_type,group_utility_technical_manager,1,1,1,0
+
+# Meter Status
+access_utility_meter_status_admin,utility.meter.status.admin,model_utility_meter_status,group_utility_admin,1,1,1,1
+access_utility_meter_status_tech,utility.meter.status.tech,model_utility_meter_status,group_utility_technical_manager,1,1,1,0
+
+# Customer
+access_utility_customer_admin,utility.customer.admin,model_utility_customer,group_utility_admin,1,1,1,1
+access_utility_customer_supervisor,utility.customer.supervisor,model_utility_customer,group_utility_supervisor,1,1,1,0
+access_utility_customer_cashier,utility.customer.cashier,model_utility_customer,group_utility_cashier,1,1,0,0
+access_utility_customer_tech,utility.customer.tech,model_utility_customer,group_utility_technical_manager,1,1,0,0
+access_utility_customer_revenue,utility.customer.revenue,model_utility_customer,group_utility_revenue_manager,1,0,0,0
+access_utility_customer_auditor,utility.customer.auditor,model_utility_customer,group_utility_auditor,1,0,0,0
+
+# Account
+access_utility_account_admin,utility.account.admin,model_utility_account,group_utility_admin,1,1,1,1
+access_utility_account_supervisor,utility.account.supervisor,model_utility_account,group_utility_supervisor,1,1,1,0
+access_utility_account_cashier,utility.account.cashier,model_utility_account,group_utility_cashier,1,1,0,0
+access_utility_account_tech,utility.account.tech,model_utility_account,group_utility_technical_manager,1,1,1,0
+access_utility_account_revenue,utility.account.revenue,model_utility_account,group_utility_revenue_manager,1,0,0,0
+access_utility_account_auditor,utility.account.auditor,model_utility_account,group_utility_auditor,1,0,0,0
+
+# Tariff
+access_utility_tariff_admin,utility.tariff.admin,model_utility_tariff,group_utility_admin,1,1,1,1
+access_utility_tariff_revenue,utility.tariff.revenue,model_utility_tariff,group_utility_revenue_manager,1,1,1,0
+access_utility_tariff_auditor,utility.tariff.auditor,model_utility_tariff,group_utility_auditor,1,0,0,0
+
+# Tariff Block
+access_utility_tariff_block_admin,utility.tariff.block.admin,model_utility_tariff_block,group_utility_admin,1,1,1,1
+access_utility_tariff_block_revenue,utility.tariff.block.revenue,model_utility_tariff_block,group_utility_revenue_manager,1,1,1,0
+
+# Tariff History
+access_utility_tariff_history_admin,utility.tariff.history.admin,model_utility_tariff_history,group_utility_admin,1,1,1,1
+access_utility_tariff_history_revenue,utility.tariff.history.revenue,model_utility_tariff_history,group_utility_revenue_manager,1,1,1,0
+access_utility_tariff_history_auditor,utility.tariff.history.auditor,model_utility_tariff_history,group_utility_auditor,1,0,0,0
+
+# Sale
+access_utility_sale_admin,utility.sale.admin,model_utility_sale,group_utility_admin,1,1,1,1
+access_utility_sale_supervisor,utility.sale.supervisor,model_utility_sale,group_utility_supervisor,1,1,1,0
+access_utility_sale_cashier,utility.sale.cashier,model_utility_sale,group_utility_cashier,1,1,1,0
+access_utility_sale_revenue,utility.sale.revenue,model_utility_sale,group_utility_revenue_manager,1,0,0,0
+access_utility_sale_auditor,utility.sale.auditor,model_utility_sale,group_utility_auditor,1,0,0,0
+
+# Sale Line
+access_utility_sale_line_admin,utility.sale.line.admin,model_utility_sale_line,group_utility_admin,1,1,1,1
+access_utility_sale_line_cashier,utility.sale.line.cashier,model_utility_sale_line,group_utility_cashier,1,1,1,0
+
+# Token
+access_utility_token_admin,utility.token.admin,model_utility_token,group_utility_admin,1,1,1,1
+access_utility_token_supervisor,utility.token.supervisor,model_utility_token,group_utility_supervisor,1,1,1,0
+access_utility_token_cashier,utility.token.cashier,model_utility_token,group_utility_cashier,1,1,1,0
+access_utility_token_auditor,utility.token.auditor,model_utility_token,group_utility_auditor,1,0,0,0
+
+# Payment
+access_utility_payment_admin,utility.payment.admin,model_utility_payment,group_utility_admin,1,1,1,1
+access_utility_payment_supervisor,utility.payment.supervisor,model_utility_payment,group_utility_supervisor,1,1,1,0
+access_utility_payment_cashier,utility.payment.cashier,model_utility_payment,group_utility_cashier,1,1,1,0
+access_utility_payment_revenue,utility.payment.revenue,model_utility_payment,group_utility_revenue_manager,1,0,0,0
+access_utility_payment_auditor,utility.payment.auditor,model_utility_payment,group_utility_auditor,1,0,0,0
+
+# Transaction
+access_utility_transaction_admin,utility.transaction.admin,model_utility_transaction,group_utility_admin,1,1,1,1
+access_utility_transaction_supervisor,utility.transaction.supervisor,model_utility_transaction,group_utility_supervisor,1,1,1,0
+access_utility_transaction_cashier,utility.transaction.cashier,model_utility_transaction,group_utility_cashier,1,1,1,0
+access_utility_transaction_revenue,utility.transaction.revenue,model_utility_transaction,group_utility_revenue_manager,1,0,0,0
+access_utility_transaction_auditor,utility.transaction.auditor,model_utility_transaction,group_utility_auditor,1,0,0,0
+
+# Adjustment
+access_utility_adjustment_admin,utility.adjustment.admin,model_utility_adjustment,group_utility_admin,1,1,1,1
+access_utility_adjustment_supervisor,utility.adjustment.supervisor,model_utility_adjustment,group_utility_supervisor,1,1,1,0
+access_utility_adjustment_revenue,utility.adjustment.revenue,model_utility_adjustment,group_utility_revenue_manager,1,1,0,0
+access_utility_adjustment_auditor,utility.adjustment.auditor,model_utility_adjustment,group_utility_auditor,1,0,0,0
+
+# Reversal
+access_utility_reversal_admin,utility.reversal.admin,model_utility_reversal,group_utility_admin,1,1,1,1
+access_utility_reversal_supervisor,utility.reversal.supervisor,model_utility_reversal,group_utility_supervisor,1,1,1,0
+access_utility_reversal_revenue,utility.reversal.revenue,model_utility_reversal,group_utility_revenue_manager,1,0,0,0
+access_utility_reversal_auditor,utility.reversal.auditor,model_utility_reversal,group_utility_auditor,1,0,0,0
+
+# Alarm
+access_utility_alarm_admin,utility.alarm.admin,model_utility_alarm,group_utility_admin,1,1,1,1
+access_utility_alarm_tech,utility.alarm.tech,model_utility_alarm,group_utility_technical_manager,1,1,1,0
+access_utility_alarm_meter,utility.alarm.meter,model_utility_alarm,group_utility_meter_engineer,1,1,0,0
+access_utility_alarm_auditor,utility.alarm.auditor,model_utility_alarm,group_utility_auditor,1,0,0,0
+
+# Service Order
+access_utility_service_order_admin,utility.service.order.admin,model_utility_service_order,group_utility_admin,1,1,1,1
+access_utility_service_order_tech,utility.service.order.tech,model_utility_service_order,group_utility_technical_manager,1,1,1,0
+access_utility_service_order_meter,utility.service.order.meter,model_utility_service_order,group_utility_meter_engineer,1,1,1,0
+access_utility_service_order_auditor,utility.service.order.auditor,model_utility_service_order,group_utility_auditor,1,0,0,0
+
+# Audit
+access_utility_audit_admin,utility.audit.admin,model_utility_audit,group_utility_admin,1,0,0,0
+access_utility_audit_supervisor,utility.audit.supervisor,model_utility_audit,group_utility_supervisor,1,0,0,0
+access_utility_audit_auditor,utility.audit.auditor,model_utility_audit,group_utility_auditor,1,0,0,0
+
+# RTU
+access_utility_rtu_admin,utility.rtu.admin,model_utility_rtu,group_utility_admin,1,1,1,1
+access_utility_rtu_tech,utility.rtu.tech,model_utility_rtu,group_utility_technical_manager,1,1,1,0
+access_utility_rtu_meter,utility.rtu.meter,model_utility_rtu,group_utility_meter_engineer,1,1,0,0
+access_utility_rtu_auditor,utility.rtu.auditor,model_utility_rtu,group_utility_auditor,1,0,0,0
+
+# Dashboard (read-only for all utility users)
+access_utility_dashboard_admin,utility.dashboard.admin,model_utility_dashboard,group_utility_admin,1,0,0,0
+access_utility_dashboard_supervisor,utility.dashboard.supervisor,model_utility_dashboard,group_utility_supervisor,1,0,0,0
+access_utility_dashboard_revenue,utility.dashboard.revenue,model_utility_dashboard,group_utility_revenue_manager,1,0,0,0
+access_utility_dashboard_auditor,utility.dashboard.auditor,model_utility_dashboard,group_utility_auditor,1,0,0,0
+access_utility_dashboard_readonly,utility.dashboard.readonly,model_utility_dashboard,group_utility_readonly,1,0,0,0
+
+# Report
+access_utility_report_admin,utility.report.admin,model_utility_report,group_utility_admin,1,0,0,0
+access_utility_report_revenue,utility.report.revenue,model_utility_report,group_utility_revenue_manager,1,0,0,0
+access_utility_report_auditor,utility.report.auditor,model_utility_report,group_utility_auditor,1,0,0,0
+access_utility_report_readonly,utility.report.readonly,model_utility_report,group_utility_readonly,1,0,0,0

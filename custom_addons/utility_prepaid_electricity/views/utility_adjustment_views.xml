@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_adjustment_tree" model="ir.ui.view">
+        <field name="name">utility.adjustment.tree</field>
+        <field name="model">utility.adjustment</field>
+        <field name="arch" type="xml">
+            <tree string="Adjustments" decoration-danger="state == 'cancelled'" decoration-success="state == 'applied'">
+                <field name="reference"/>
+                <field name="date"/>
+                <field name="customer_id"/>
+                <field name="account_id"/>
+                <field name="adjustment_type"/>
+                <field name="amount"/>
+                <field name="state"/>
+                <field name="approved_by"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_utility_adjustment_form" model="ir.ui.view">
+        <field name="name">utility.adjustment.form</field>
+        <field name="model">utility.adjustment</field>
+        <field name="arch" type="xml">
+            <form string="Adjustment">
+                <header>
+                    <field name="state" widget="statusbar"/>
+                    <button name="action_approve" string="Approve" type="object" states="draft" class="btn-primary"/>
+                    <button name="action_apply" string="Apply to Account" type="object" states="approved" class="btn-primary"/>
+                    <button name="action_cancel" string="Cancel" type="object" states="draft,approved"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="reference"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="customer_id"/>
+                            <field name="account_id"/>
+                            <field name="adjustment_type"/>
+                        </group>
+                        <group>
+                            <field name="amount"/>
+                            <field name="balance_before"/>
+                            <field name="balance_after"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="reason"/>
+                    </group>
+                    <group>
+                        <group>
+                            <field name="approved_by"/>
+                        </group>
+                        <group>
+                            <field name="operator_id"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_utility_adjustment_search" model="ir.ui.view">
+        <field name="name">utility.adjustment.search</field>
+        <field name="model">utility.adjustment</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="reference"/>
+                <field name="customer_id"/>
+                <field name="account_id"/>
+                <field name="adjustment_type"/>
+                <field name="state"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_utility_adjustment" model="ir.actions.act_window">
+        <field name="name">Adjustments</field>
+        <field name="res_model">utility.adjustment</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_utility_adjustment_search"/>
+    </record>
+
+    <record id="menu_utility_adjustment" model="ir.ui.menu">
+        <field name="name">Adjustments</field>
+        <field name="parent_id">menu_utility_operations</field>
+        <field name="action" ref="action_utility_adjustment"/>
+        <field name="sequence">40</field>
+    </record>
+
+    <record id="view_utility_reversal_tree" model="ir.ui.view">
+        <field name="name">utility.reversal.tree</field>
+        <field name="model">utility.reversal</field>
+        <field name="arch" type="xml">
+            <tree string="Reversals" decoration-danger="state == 'rejected'" decoration-success="state == 'completed'">
+                <field name="reference"/>
+                <field name="date"/>
+                <field name="customer_id"/>
+                <field name="account_id"/>
+                <field name="sale_id"/>
+                <field name="reversal_type"/>
+                <field name="amount"/>
+                <field name="state"/>
+                <field name="approved_by"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_utility_reversal_form" model="ir.ui.view">
+        <field name="name">utility.reversal.form</field>
+        <field name="model">utility.reversal</field>
+        <field name="arch" type="xml">
+            <form string="Reversal">
+                <header>
+                    <field name="state" widget="statusbar"/>
+                    <button name="action_approve" string="Approve" type="object" states="draft" class="btn-primary"/>
+                    <button name="action_complete" string="Complete Reversal" type="object" states="approved" class="btn-primary"/>
+                    <button name="action_reject" string="Reject" type="object" states="draft,approved"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="reference"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="customer_id"/>
+                            <field name="account_id"/>
+                            <field name="meter_id"/>
+                            <field name="reversal_type"/>
+                        </group>
+                        <group>
+                            <field name="sale_id"/>
+                            <field name="payment_id"/>
+                            <field name="amount"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="reason"/>
+                    </group>
+                    <group>
+                        <group>
+                            <field name="approved_by"/>
+                        </group>
+                        <group>
+                            <field name="operator_id"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_utility_reversal_search" model="ir.ui.view">
+        <field name="name">utility.reversal.search</field>
+        <field name="model">utility.reversal</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="reference"/>
+                <field name="customer_id"/>
+                <field name="account_id"/>
+                <field name="sale_id"/>
+                <field name="state"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_utility_reversal" model="ir.actions.act_window">
+        <field name="name">Reversals</field>
+        <field name="res_model">utility.reversal</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_utility_reversal_search"/>
+    </record>
+
+    <record id="menu_utility_reversal" model="ir.ui.menu">
+        <field name="name">Reversals</field>
+        <field name="parent_id">menu_utility_operations</field>
+        <field name="action" ref="action_utility_reversal"/>
+        <field name="sequence">50</field>
+    </record>
+</odoo>

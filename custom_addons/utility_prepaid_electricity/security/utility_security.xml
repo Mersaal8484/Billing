@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- Top-level Utility Admin group -->
+        <record id="group_utility_admin" model="res.groups">
+            <field name="name">Utility Administrator</field>
+            <field name="comment">Full access to all utility features</field>
+            <field name="category_id" ref="base.module_category_hidden"/>
+        </record>
+
+        <record id="group_utility_cashier" model="res.groups">
+            <field name="name">Cashier</field>
+            <field name="comment">Process prepaid sales and payments</field>
+            <field name="category_id" ref="base.module_category_hidden"/>
+        </record>
+
+        <record id="group_utility_supervisor" model="res.groups">
+            <field name="name">Supervisor</field>
+            <field name="comment">Override transactions, manage reversals</field>
+            <field name="category_id" ref="base.module_category_hidden"/>
+            <field name="implied_ids" eval="[(4, ref('group_utility_cashier'))]"/>
+        </record>
+
+        <record id="group_utility_revenue_manager" model="res.groups">
+            <field name="name">Revenue Manager</field>
+            <field name="comment">Revenue reports, reconciliation, tariff management</field>
+            <field name="category_id" ref="base.module_category_hidden"/>
+            <field name="implied_ids" eval="[(4, ref('group_utility_supervisor'))]"/>
+        </record>
+
+        <record id="group_utility_technical_manager" model="res.groups">
+            <field name="name">Technical Manager</field>
+            <field name="comment">Meter management, service orders, technical operations</field>
+            <field name="category_id" ref="base.module_category_hidden"/>
+            <field name="implied_ids" eval="[(4, ref('group_utility_cashier'))]"/>
+        </record>
+
+        <record id="group_utility_meter_engineer" model="res.groups">
+            <field name="name">Meter Engineer</field>
+            <field name="comment">Meter installation, maintenance, service orders</field>
+            <field name="category_id" ref="base.module_category_hidden"/>
+        </record>
+
+        <record id="group_utility_auditor" model="res.groups">
+            <field name="name">Auditor</field>
+            <field name="comment">Read-only access to all records for auditing</field>
+            <field name="category_id" ref="base.module_category_hidden"/>
+        </record>
+
+        <record id="group_utility_readonly" model="res.groups">
+            <field name="name">Read Only</field>
+            <field name="comment">View-only access to reports and dashboards</field>
+            <field name="category_id" ref="base.module_category_hidden"/>
+        </record>
+    </data>
+</odoo>

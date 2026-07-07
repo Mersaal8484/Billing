@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_payment_tree" model="ir.ui.view">
+        <field name="name">utility.payment.tree</field>
+        <field name="model">utility.payment</field>
+        <field name="arch" type="xml">
+            <tree string="Payments" decoration-danger="state in ('reversed','failed')" decoration-success="state in ('confirmed','reconciled')">
+                <field name="payment_reference"/>
+                <field name="payment_date"/>
+                <field name="customer_id"/>
+                <field name="account_id"/>
+                <field name="amount" sum="Total"/>
+                <field name="payment_method"/>
+                <field name="operator_id"/>
+                <field name="state"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_utility_payment_form" model="ir.ui.view">
+        <field name="name">utility.payment.form</field>
+        <field name="model">utility.payment</field>
+        <field name="arch" type="xml">
+            <form string="Payment">
+                <header>
+                    <field name="state" widget="statusbar"/>
+                    <button name="action_confirm" string="Confirm" type="object" states="draft" class="btn-primary"/>
+                    <button name="action_reconcile" string="Reconcile" type="object" states="confirmed"/>
+                    <button name="action_reverse" string="Reverse" type="object" states="confirmed,reconciled"/>
+                    <button name="action_fail" string="Mark Failed" type="object" states="draft"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="payment_reference"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="sale_id"/>
+                            <field name="customer_id"/>
+                            <field name="account_id"/>
+                            <field name="amount"/>
+                            <field name="payment_date"/>
+                        </group>
+                        <group>
+                            <field name="payment_method"/>
+                            <field name="reference_number"/>
+                            <field name="operator_id"/>
+                            <field name="reversal_id"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page name="details" string="Payment Details">
+                            <group>
+                                <group>
+                                    <field name="bank_name" attrs="{'invisible':[('payment_method','!=','bank')]}"/>
+                                    <field name="check_number" attrs="{'invisible':[('payment_method','!=','bank')]}"/>
+                                    <field name="mobile_provider" attrs="{'invisible':[('payment_method','!=','mobile_money')]}"/>
+                                </group>
+                                <group>
+                                    <field name="wallet_provider" attrs="{'invisible':[('payment_method','!=','wallet')]}"/>
+                                    <field name="online_gateway" attrs="{'invisible':[('payment_method','!=','online')]}"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page name="notes" string="Notes">
+                            <field name="notes"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_utility_payment_search" model="ir.ui.view">
+        <field name="name">utility.payment.search</field>
+        <field name="model">utility.payment</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="payment_reference"/>
+                <field name="customer_id"/>
+                <field name="account_id"/>
+                <field name="payment_method"/>
+                <field name="state"/>
+                <group expand="0" string="Group By">
+                    <filter name="g_date" string="Date" context="{'group_by':'payment_date'}"/>
+                    <filter name="g_method" string="Method" context="{'group_by':'payment_method'}"/>
+                    <filter name="g_state" string="Status" context="{'group_by':'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_utility_payment_pivot" model="ir.ui.view">
+        <field name="name">utility.payment.pivot</field>
+        <field name="model">utility.payment</field>
+        <field name="arch" type="xml">
+            <pivot>
+                <field name="amount" type="value"/>
+                <field name="payment_date" type="row"/>
+                <field name="payment_method" type="col"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="action_utility_payment" model="ir.actions.act_window">
+        <field name="name">Payments</field>
+        <field name="res_model">utility.payment</field>
+        <field name="view_mode">tree,form,pivot</field>
+        <field name="search_view_id" ref="view_utility_payment_search"/>
+    </record>
+
+    <record id="menu_utility_payment" model="ir.ui.menu">
+        <field name="name">Payments</field>
+        <field name="parent_id">menu_utility_operations</field>
+        <field name="action" ref="action_utility_payment"/>
+        <field name="sequence">30</field>
+    </record>
+</odoo>

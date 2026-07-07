@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_tariff_category_tree" model="ir.ui.view">
+        <field name="name">utility.tariff.category.tree</field>
+        <field name="model">utility.tariff.category</field>
+        <field name="arch" type="xml">
+            <tree string="Tariff Categories">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="code"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_utility_tariff_tree" model="ir.ui.view">
+        <field name="name">utility.tariff.tree</field>
+        <field name="model">utility.tariff</field>
+        <field name="arch" type="xml">
+            <tree string="Tariffs" decoration-danger="not active" decoration-success="is_active">
+                <field name="code"/>
+                <field name="name"/>
+                <field name="category_id"/>
+                <field name="tariff_type"/>
+                <field name="price_per_kwh"/>
+                <field name="is_active"/>
+                <field name="account_count"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_utility_tariff_form" model="ir.ui.view">
+        <field name="name">utility.tariff.form</field>
+        <field name="model">utility.tariff</field>
+        <field name="arch" type="xml">
+            <form string="Tariff">
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                        <h2><field name="code"/></h2>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="category_id"/>
+                            <field name="tariff_type"/>
+                            <field name="effective_date"/>
+                            <field name="end_date"/>
+                            <field name="is_active" decoration-success="is_active"/>
+                        </group>
+                        <group>
+                            <field name="account_count"/>
+                            <field name="sale_count"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page name="pricing" string="Pricing">
+                            <group>
+                                <group>
+                                    <field name="price_per_kwh" attrs="{'invisible': [('tariff_type','not in',('flat','seasonal','tou'))], 'required': [('tariff_type','=','flat')]}"/>
+                                    <field name="fixed_charge"/>
+                                    <field name="service_charge"/>
+                                    <field name="tax_percentage"/>
+                                </group>
+                                <group>
+                                    <field name="fuel_adjustment"/>
+                                    <field name="minimum_charge"/>
+                                    <field name="maximum_charge"/>
+                                </group>
+                            </group>
+                            <field name="block_ids">
+                                <tree string="Pricing Blocks" editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name"/>
+                                    <field name="from_kwh"/>
+                                    <field name="to_kwh"/>
+                                    <field name="price_per_kwh"/>
+                                    <field name="from_month"/>
+                                    <field name="to_month"/>
+                                    <field name="time_from"/>
+                                    <field name="time_to"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page name="history" string="Change History">
+                            <field name="history_ids">
+                                <tree>
+                                    <field name="change_date"/>
+                                    <field name="old_price"/>
+                                    <field name="new_price"/>
+                                    <field name="reason"/>
+                                    <field name="changed_by"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page name="accounts" string="Accounts">
+                            <field name="account_ids">
+                                <tree>
+                                    <field name="account_number"/>
+                                    <field name="customer_id"/>
+                                    <field name="balance"/>
+                                    <field name="state"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_utility_tariff_search" model="ir.ui.view">
+        <field name="name">utility.tariff.search</field>
+        <field name="model">utility.tariff</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="category_id"/>
+                <field name="tariff_type"/>
+                <filter name="active" string="Active" domain="[('is_active','=',True)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_utility_tariff" model="ir.actions.act_window">
+        <field name="name">Tariffs</field>
+        <field name="res_model">utility.tariff</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_utility_tariff_search"/>
+    </record>
+
+    <record id="menu_utility_tariff" model="ir.ui.menu">
+        <field name="name">Tariffs</field>
+        <field name="parent_id">menu_utility_configuration</field>
+        <field name="action" ref="action_utility_tariff"/>
+        <field name="sequence">30</field>
+    </record>
+</odoo>

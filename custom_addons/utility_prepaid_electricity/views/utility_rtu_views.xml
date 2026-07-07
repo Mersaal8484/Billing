@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_rtu_tree" model="ir.ui.view">
+        <field name="name">utility.rtu.tree</field>
+        <field name="model">utility.rtu</field>
+        <field name="arch" type="xml">
+            <tree string="Remote Terminal Units" decoration-danger="status in ('offline','fault')" decoration-warning="status == 'maintenance'" decoration-success="status == 'online'">
+                <field name="code"/>
+                <field name="name"/>
+                <field name="serial_number"/>
+                <field name="rtu_type"/>
+                <field name="communication_type"/>
+                <field name="protocol"/>
+                <field name="feeder_id"/>
+                <field name="transformer_id"/>
+                <field name="status"/>
+                <field name="last_communication"/>
+                <field name="signal_strength"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_utility_rtu_form" model="ir.ui.view">
+        <field name="name">utility.rtu.form</field>
+        <field name="model">utility.rtu</field>
+        <field name="arch" type="xml">
+            <form string="Remote Terminal Unit">
+                <header>
+                    <field name="active" invisible="1"/>
+                    <field name="status" widget="statusbar"/>
+                    <button name="action_online" string="Set Online" type="object" states="offline,fault,maintenance" class="btn-primary"/>
+                    <button name="action_offline" string="Set Offline" type="object" states="online,fault"/>
+                    <button name="action_maintenance" string="Maintenance" type="object" states="online,offline,fault"/>
+                    <button name="action_decommission" string="Decommission" type="object" states="online,offline,fault,maintenance"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                        <h2><field name="code"/></h2>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="serial_number"/>
+                            <field name="rtu_type"/>
+                            <field name="manufacturer"/>
+                            <field name="model"/>
+                            <field name="firmware_version"/>
+                        </group>
+                        <group>
+                            <field name="installation_date"/>
+                            <field name="last_maintenance_date"/>
+                            <field name="last_communication"/>
+                            <field name="uptime_days"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page name="communication" string="Communication">
+                            <group>
+                                <group>
+                                    <field name="communication_type"/>
+                                    <field name="protocol"/>
+                                    <field name="ip_address"/>
+                                    <field name="port"/>
+                                    <field name="sim_number"/>
+                                </group>
+                                <group>
+                                    <field name="signal_strength" widget="progressbar"/>
+                                    <field name="battery_level" widget="progressbar"/>
+                                    <field name="gps_latitude"/>
+                                    <field name="gps_longitude"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page name="assignment" string="Assignment">
+                            <group>
+                                <group>
+                                    <field name="feeder_id"/>
+                                </group>
+                                <group>
+                                    <field name="transformer_id"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page name="notes" string="Notes">
+                            <field name="description"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_utility_rtu_search" model="ir.ui.view">
+        <field name="name">utility.rtu.search</field>
+        <field name="model">utility.rtu</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="serial_number"/>
+                <field name="rtu_type"/>
+                <field name="status"/>
+                <field name="feeder_id"/>
+                <field name="transformer_id"/>
+                <filter name="online" string="Online" domain="[('status','=','online')]"/>
+                <filter name="offline" string="Offline" domain="[('status','=','offline')]"/>
+                <filter name="fault" string="Fault" domain="[('status','=','fault')]"/>
+                <group expand="0" string="Group By">
+                    <filter name="g_status" string="Status" context="{'group_by':'status'}"/>
+                    <filter name="g_type" string="Type" context="{'group_by':'rtu_type'}"/>
+                    <filter name="g_comm" string="Communication" context="{'group_by':'communication_type'}"/>
+                    <filter name="g_area" string="Area" context="{'group_by':'area_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_utility_rtu" model="ir.actions.act_window">
+        <field name="name">Remote Terminal Units</field>
+        <field name="res_model">utility.rtu</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_utility_rtu_search"/>
+        <field name="help" type="html">
+            <p>Manage Remote Terminal Units (RTUs) for SCADA/AMI integration.</p>
+        </field>
+    </record>
+
+    <record id="menu_utility_rtu" model="ir.ui.menu">
+        <field name="name">Remote Terminal Units</field>
+        <field name="parent_id">menu_utility_network</field>
+        <field name="action" ref="action_utility_rtu"/>
+        <field name="sequence">30</field>
+    </record>
+</odoo>

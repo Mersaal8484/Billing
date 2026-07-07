@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_dashboard_tree" model="ir.ui.view">
+        <field name="name">utility.dashboard.tree</field>
+        <field name="model">utility.dashboard</field>
+        <field name="arch" type="xml">
+            <tree string="Dashboard" editable="false">
+                <field name="region_id"/>
+                <field name="area_id"/>
+                <field name="total_customers"/>
+                <field name="active_customers"/>
+                <field name="disconnected_customers"/>
+                <field name="total_meters"/>
+                <field name="today_sales_count"/>
+                <field name="today_revenue" sum="Total"/>
+                <field name="today_kwh" sum="Total"/>
+                <field name="active_alarms"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_utility_dashboard_pivot" model="ir.ui.view">
+        <field name="name">utility.dashboard.pivot</field>
+        <field name="model">utility.dashboard</field>
+        <field name="arch" type="xml">
+            <pivot>
+                <field name="region_id" type="row"/>
+                <field name="tariff_id" type="col"/>
+                <field name="total_customers" type="value"/>
+                <field name="today_revenue" type="value"/>
+                <field name="today_kwh" type="value"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_utility_dashboard_graph" model="ir.ui.view">
+        <field name="name">utility.dashboard.graph</field>
+        <field name="model">utility.dashboard</field>
+        <field name="arch" type="xml">
+            <graph type="bar">
+                <field name="region_id"/>
+                <field name="today_revenue" type="value"/>
+                <field name="today_kwh" type="value"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="action_utility_dashboard" model="ir.actions.act_window">
+        <field name="name">Dashboard</field>
+        <field name="res_model">utility.dashboard</field>
+        <field name="view_mode">tree,pivot,graph</field>
+        <field name="help" type="html">
+            <p>Real-time utility dashboard with key performance indicators.</p>
+        </field>
+    </record>
+
+    <record id="menu_utility_dashboard" model="ir.ui.menu">
+        <field name="name">Dashboard</field>
+        <field name="parent_id">menu_utility_root</field>
+        <field name="action" ref="action_utility_dashboard"/>
+        <field name="sequence">1</field>
+    </record>
+</odoo>

@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_token_tree" model="ir.ui.view">
+        <field name="name">utility.token.tree</field>
+        <field name="model">utility.token</field>
+        <field name="arch" type="xml">
+            <tree string="STS Tokens" decoration-danger="status in ('failed','cancelled')" decoration-success="status == 'success'">
+                <field name="token_number"/>
+                <field name="sale_id"/>
+                <field name="meter_id"/>
+                <field name="account_id"/>
+                <field name="amount"/>
+                <field name="kwh"/>
+                <field name="status"/>
+                <field name="request_date"/>
+                <field name="response_date"/>
+                <field name="retry_count"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_utility_token_form" model="ir.ui.view">
+        <field name="name">utility.token.form</field>
+        <field name="model">utility.token</field>
+        <field name="arch" type="xml">
+            <form string="STS Token">
+                <header>
+                    <field name="status" widget="statusbar"/>
+                    <button name="action_retry" string="Retry" type="object" states="failed,retry" class="btn-primary"/>
+                    <button name="action_cancel" string="Cancel" type="object" states="pending,retry"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="token_number"/></h1>
+                        <h2><field name="token_identifier"/></h2>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="sale_id"/>
+                            <field name="meter_id"/>
+                            <field name="account_id"/>
+                            <field name="customer_id"/>
+                            <field name="tariff_id"/>
+                        </group>
+                        <group>
+                            <field name="amount"/>
+                            <field name="kwh"/>
+                            <field name="sequence_number"/>
+                            <field name="sts_server"/>
+                        </group>
+                    </group>
+                    <group string="Response">
+                        <group>
+                            <field name="response_code"/>
+                            <field name="response_message"/>
+                        </group>
+                        <group>
+                            <field name="request_date"/>
+                            <field name="response_date"/>
+                            <field name="retry_count"/>
+                            <field name="last_retry_date"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_utility_token_search" model="ir.ui.view">
+        <field name="name">utility.token.search</field>
+        <field name="model">utility.token</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="token_number"/>
+                <field name="meter_id"/>
+                <field name="account_id"/>
+                <field name="status"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_utility_token" model="ir.actions.act_window">
+        <field name="name">STS Tokens</field>
+        <field name="res_model">utility.token</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_utility_token_search"/>
+    </record>
+
+    <record id="menu_utility_token" model="ir.ui.menu">
+        <field name="name">STS Tokens</field>
+        <field name="parent_id">menu_utility_operations</field>
+        <field name="action" ref="action_utility_token"/>
+        <field name="sequence">20</field>
+    </record>
+</odoo>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates id="template" xml:space="preserve">
+    <t t-name="SessionManager.Widget">
+        <div class="alert alert-warning js_session_warning d-none">
+            Your session will expire due to inactivity soon.
+            <a href="#" class="js_session_warning">Click here</a> to extend your session.
+        </div>
+    </t>
+</templates>

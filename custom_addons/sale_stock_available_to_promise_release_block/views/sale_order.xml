@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- Copyright 2023 ACSONE SA/NV
+     Copyright 2024 Camptocamp SA
+     License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl). -->
+<odoo>
+
+    <record id="view_order_form" model="ir.ui.view">
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form" />
+        <field name="arch" type="xml">
+            <div name="button_box" position="inside">
+                <button
+                    name="action_open_available_move_to_unblock"
+                    type="object"
+                    class="oe_stat_button"
+                    icon="fa-lock"
+                    help="Deliveries that could be unblocked at order confirmation."
+                    attrs="{'invisible': [
+                      '|',
+                      ('available_move_to_unblock_count', '=', 0),
+                      ('state', 'in', ('sale', 'done'))
+                    ]}"
+                >
+                    <field
+                        name="available_move_to_unblock_count"
+                        widget="statinfo"
+                        string="Backorders"
+                    />
+                </button>
+                <button
+                    name="action_open_move_to_unblock"
+                    type="object"
+                    class="oe_stat_button"
+                    icon="fa-unlock"
+                    help="Deliveries that will be unblocked at order confirmation."
+                    attrs="{'invisible': [('move_to_unblock_count', '=', 0)]}"
+                >
+                    <field
+                        name="move_to_unblock_count"
+                        widget="statinfo"
+                        string="Backorders"
+                    />
+                </button>
+            </div>
+            <field name="payment_term_id" position="after">
+                <field name="block_release" />
+            </field>
+            <xpath
+                expr="//field[@name='order_line']/tree/field[@name='company_id']"
+                position="after"
+            >
+              <field
+                    name="release_blocked_label"
+                    widget="badge"
+                    decoration-danger="True"
+                    optional="hide"
+                />
+            </xpath>
+        </field>
+    </record>
+
+</odoo>
