@@ -88,7 +88,7 @@ class UtilityCustomer(models.Model):
     payment_type = fields.Selection(related='meter_id.payment_type', store=True, string='نظام الدفع (آجل/مسبق)', readonly=True)
 
     # الرصيد والمشتريات
-    balance = fields.Monetary('الرصيد', compute='_compute_balance', store=True, currency_field='company_currency_id', help='الرصيد الحالي للمشترك')
+    balance = fields.Monetary('الرصيد', compute='_compute_balance', currency_field='company_currency_id', help='الرصيد الحالي للمشترك')
     emergency_credit = fields.Monetary('رصيد الطوارئ', default=0.0, currency_field='company_currency_id')
     credit_limit = fields.Monetary('حد الائتمان', default=0.0, currency_field='company_currency_id')
     total_purchases = fields.Monetary(string='إجمالي المشتريات', currency_field='company_currency_id')
@@ -267,7 +267,6 @@ class UtilityCustomer(models.Model):
     def cron_retry_auto_pay(self):
         _logger.info("Retrying auto pay for active accounts...")
 
-    @api.depends('partner_id')
     def _compute_balance(self):
         Move = self.env.get('account.move')
         for rec in self:
@@ -281,7 +280,6 @@ class UtilityCustomer(models.Model):
             else:
                 rec.balance = 0.0
 
-    @api.depends('partner_id')
     def _compute_smart_buttons(self):
         SaleOrder = self.env.get('sale.order')
         Reading = self.env.get('utility.reading')

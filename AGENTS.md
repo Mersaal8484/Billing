@@ -163,3 +163,565 @@ Output Format:
 
 Maintain a professional, highly technical, and direct tone. Do not write placeholders like "# TODO: implement this". Provide fully realized code.
 
+# Odoo 16 UI/UX Design Instructions for Any Module
+
+You are working on an **Odoo 16 Community/Enterprise** project.
+For every module, feature, model, menu, wizard, dashboard, or report you build, you must produce a **high-quality Odoo-native UI/UX** that is practical, clean, fast, and consistent with Odoo 16 design patterns.
+
+These instructions apply to **any Odoo 16 application**, regardless of business domain.
+
+---
+
+## 1. Core UI/UX Principles
+
+Always design for:
+
+* fast daily operations
+* minimal clicks
+* clear navigation
+* clean forms
+* readable list views
+* useful search filters
+* meaningful group-by options
+* smart buttons for drill-downs
+* clear workflow states
+* strong auditability
+* low user training cost
+* Odoo-native look and behavior
+
+Do not create cluttered screens.
+Do not expose technical fields unless they are truly useful for the user.
+
+---
+
+## 2. Menu Design
+
+Every module must have a clear menu hierarchy.
+
+Use this structure when suitable:
+
+```text
+App / Main Menu
+├── Operations
+├── Master Data
+├── Reports
+└── Configuration
+```
+
+Guidelines:
+
+* Put daily-use screens under **Operations**.
+* Put setup records under **Master Data** or **Configuration**.
+* Put analysis, pivots, dashboards, and summaries under **Reports**.
+* Do not bury common actions too deep.
+* Use short, business-friendly menu names.
+* Avoid duplicate menus with similar meanings.
+
+---
+
+## 3. List / Tree View Design
+
+Every important model must have a useful tree view.
+
+Include:
+
+* reference/name
+* date
+* main partner/entity
+* important amount/status fields
+* responsible user/team if applicable
+* company if multi-company matters
+* state
+* linked document if useful
+
+Rules:
+
+* Put the most important fields first.
+* Use `widget="monetary"` for amounts.
+* Use `widget="badge"` where helpful.
+* Use decorations for states:
+
+  * draft / cancelled → muted
+  * confirmed / posted / done → success
+  * waiting / pending / partial → warning
+  * error / rejected / overdue → danger
+* Avoid too many columns.
+* Default sort should match daily work, usually newest first.
+
+---
+
+## 4. Form View Design
+
+Every form should be easy to understand in the first 5 seconds.
+
+Use this structure:
+
+```xml
+<header>
+    <!-- action buttons -->
+    <field name="state" widget="statusbar"/>
+</header>
+
+<sheet>
+    <div class="oe_button_box" name="button_box">
+        <!-- smart buttons -->
+    </div>
+
+    <group>
+        <group>
+            <!-- primary business fields -->
+        </group>
+        <group>
+            <!-- dates, responsible user, company, references -->
+        </group>
+    </group>
+
+    <notebook>
+        <!-- details, lines, accounting, notes, technical info -->
+    </notebook>
+</sheet>
+
+<div class="oe_chatter">
+    <field name="message_follower_ids"/>
+    <field name="activity_ids"/>
+    <field name="message_ids"/>
+</div>
+```
+
+Rules:
+
+* Put essential business fields in the first visible area.
+* Put secondary details in notebook tabs.
+* Put technical/accounting/debug fields in a separate tab.
+* Use readonly rules after confirmation/posting.
+* Use domains and context defaults to reduce user mistakes.
+* Use onchange/helper fields where they improve clarity.
+* Use `mail.thread` and chatter for important business documents.
+
+---
+
+## 5. Header Buttons & States
+
+Every workflow document should have a clear state machine.
+
+Common states:
+
+```text
+Draft → Confirmed → Posted/Done → Cancelled
+```
+
+or:
+
+```text
+Draft → Submitted → Approved → Done → Cancelled
+```
+
+Button rules:
+
+* Show only valid actions for the current state.
+* Use clear verbs: Confirm, Approve, Post, Validate, Cancel, Reset to Draft.
+* Avoid too many buttons.
+* Dangerous actions should be restricted and clear.
+* Posted/done documents should mostly be readonly.
+
+---
+
+## 6. Search View Design
+
+Every operational model must have a strong search view.
+
+Include search by:
+
+* reference/name
+* partner/customer/vendor/employee
+* date
+* state
+* responsible user
+* company
+* currency if relevant
+* related document if relevant
+
+Add filters such as:
+
+```text
+Today
+This Week
+This Month
+Draft
+Confirmed
+Posted
+Done
+Cancelled
+My Records
+Overdue
+Needs Attention
+```
+
+Add group-by options such as:
+
+```text
+State
+Date
+Partner
+Responsible User
+Company
+Currency
+Category
+```
+
+Search views must be designed for real users, not generated mechanically.
+
+---
+
+## 7. Smart Buttons
+
+Use smart buttons to make drill-downs easy.
+
+Good smart buttons include:
+
+* Journal Entries
+* Invoices
+* Payments
+* Orders
+* Pickings
+* Attachments
+* Tasks
+* Related Records
+* Ledger / Statement
+* History
+* Reports
+
+Rules:
+
+* Only add smart buttons that users actually need.
+* Smart buttons should show counts where useful.
+* Place them inside `oe_button_box`.
+* Use clear icons and labels.
+
+---
+
+## 8. Notebook Tabs
+
+Use notebook tabs to organize information.
+
+Common tabs:
+
+```text
+Lines
+Details
+Accounting
+Logistics
+Approvals
+Attachments
+Notes
+Technical
+```
+
+Rules:
+
+* Do not use tabs for 2 or 3 fields only.
+* Keep the first tab focused on the main business content.
+* Put notes and chatter lower in the form.
+* Put technical fields in a Technical tab and restrict if needed.
+
+---
+
+## 9. Wizards
+
+Use wizards for guided actions.
+
+Good wizard use cases:
+
+* confirmation actions
+* bulk updates
+* posting/validation with options
+* cancellations with reason
+* approvals
+* settlement/allocation
+* report generation
+
+Wizard design rules:
+
+* Keep wizards short.
+* Show only fields needed for the decision.
+* Add clear helper text.
+* Validate before applying changes.
+* Return the user to a useful view after completion.
+
+---
+
+## 10. Dashboards, Kanban, Pivot, Graph
+
+Use analytical views where they add value.
+
+Recommended:
+
+* Kanban for operational stages or visual cards.
+* Pivot for financial/quantitative analysis.
+* Graph for trends and summaries.
+* Dashboard for KPIs and “needs attention” records.
+
+Dashboard cards may include:
+
+```text
+Today
+This Month
+Pending
+Approved
+Posted
+Overdue
+Outstanding
+Total Amount
+```
+
+Do not create dashboards that duplicate list views without adding insight.
+
+---
+
+## 11. Reporting UX
+
+Reports must be easy to find.
+
+Place reports under:
+
+```text
+Reports
+```
+
+Good reports include:
+
+* daily summary
+* monthly summary
+* outstanding balances
+* activity by user/team
+* financial summary
+* status report
+* exceptions/errors report
+
+Each report should support filters by date, state, partner/entity, company, and currency where relevant.
+
+---
+
+## 12. Configuration UX
+
+Configuration screens must be clean and grouped.
+
+Typical sections:
+
+```text
+General Settings
+Accounting
+Sequences
+Journals
+Approvals
+Notifications
+Security
+Integrations
+```
+
+Rules:
+
+* Use clear labels.
+* Add help text for risky settings.
+* Do not expose technical parameters without explanation.
+* Keep configuration separate from daily operations.
+* Reuse existing settings fields when they already exist.
+
+---
+
+## 13. Field Naming & Labels
+
+Use business-friendly labels.
+
+Examples:
+
+* `partner_id` → Customer / Vendor / Contact depending on context
+* `user_id` → Responsible
+* `move_id` → Journal Entry
+* `picking_id` → Delivery / Transfer
+* `amount_total` → Total
+* `state` → Status
+
+Labels must match the business process, not just the technical model.
+
+---
+
+## 14. Readonly, Required, Domains
+
+Apply field behavior carefully.
+
+Rules:
+
+* Required fields must be truly required.
+* Fields should become readonly after confirmation/posting.
+* Use domains to filter valid records.
+* Use context defaults to reduce manual entry.
+* Prevent editing posted accounting-sensitive records unless using controlled reversal/reset flows.
+
+---
+
+## 15. Multi-Company & Multi-Currency UX
+
+If the module supports multi-company or multi-currency:
+
+* Show company only where it matters.
+* Default company from the environment.
+* Use currency fields consistently.
+* Put currency next to amount fields.
+* Use `widget="monetary"` for all money values.
+* Avoid mixing amounts without clear currency context.
+
+---
+
+## 16. Error Prevention
+
+The UI must prevent mistakes before they happen.
+
+Use:
+
+* domains
+* warnings
+* onchange validations
+* clear button visibility
+* readonly states
+* confirmation wizards
+* business constraints
+
+Error messages must be human-readable and explain how to fix the issue.
+
+---
+
+## 17. Auditability
+
+Important business documents should include:
+
+* creator
+* responsible user
+* confirmation user/date
+* posting user/date
+* cancellation user/date/reason
+* linked accounting/logistics documents
+* chatter tracking
+* activities if follow-up is needed
+
+---
+
+## 18. Odoo XML Quality Rules
+
+When writing XML:
+
+* use clean `record` IDs
+* use clear action names
+* define tree, form, search views for core models
+* define menus in logical order
+* use `attrs` / modifiers correctly
+* use `context` and `domain` intentionally
+* avoid duplicated XML
+* avoid huge unreadable forms
+* keep view inheritance minimal and targeted
+
+---
+
+## 19. Access & Security UX
+
+Security should support the user experience.
+
+Typical groups:
+
+```text
+User
+Manager
+Accountant
+Administrator
+```
+
+Rules:
+
+* Users should see only actions they can perform.
+* Managers can approve/cancel.
+* Accountants can post or review accounting entries.
+* Technical settings should be restricted.
+* Record rules must not break operational usability.
+
+---
+
+## 20. Final Quality Standard
+
+For every Odoo 16 feature, deliver UI/UX that feels:
+
+* native to Odoo
+* clean
+* fast
+* business-friendly
+* auditable
+* scalable
+* easy to train
+* safe for accounting and operations
+
+Never produce only backend models without considering:
+
+* menus
+* actions
+* views
+* filters
+* group-bys
+* smart buttons
+* states
+* reports
+* configuration
+* user workflow.
+
+# Odoo 16 ORM & Performance Guidelines
+
+## 1. Avoid N+1 Queries
+* NEVER place `search()`, `search_count()`, or `browse()` inside a `for` loop. 
+* Fetch all needed records in a single query before the loop, or use `.mapped()` and `.filtered()`.
+
+## 2. Bulk Operations
+* Always use bulk `create()` and `write()` operations instead of iterating over records to write one by one.
+* Example: `self.env['model'].create([{'val': 1}, {'val': 2}])`
+
+## 3. Efficient Data Processing
+* Use `read_group()` when aggregating data (SUM, COUNT, AVG) instead of searching all records and looping through them in Python.
+* Use `search_read()` instead of `search()` followed by a loop if you only need dictionary data for an API response.
+
+## 4. Compute Fields Optimization
+* Heavy compute fields MUST use `compute_sudo=True` carefully and rely on indexed fields.
+* Always define proper `inverse` methods if the field should be editable.
+* Use `@api.depends_context('company')` if the compute field result depends on the active company.
+
+## 5. SQL Queries
+* Avoid raw SQL (`self.env.cr.execute`) unless absolutely necessary for complex joins or extreme performance bottlenecks.
+* If raw SQL is used, ALWAYS use parameterized queries to prevent SQL Injection (e.g., `execute("SELECT id FROM table WHERE name = %s", [name])`).
+* Always call `self.env.flush_all()` before executing raw SQL to ensure ORM changes are committed to the DB first.
+
+# Odoo 16 Security & Multi-Company Guidelines
+
+## 1. Multi-Company Compliance
+* EVERY new model containing business data MUST have a `company_id` field.
+* `company_id` should default to `lambda self: self.env.company`.
+* Always add the standard multi-company record rule to new models:
+  `['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]`
+
+## 2. Use of sudo()
+* Use `.sudo()` ONLY when crossing access rights boundaries intentionally (e.g., a portal user submitting a form that creates a backend record).
+* NEVER use `.sudo()` just to bypass poor access right design. Explain why `.sudo()` is used in a comment.
+
+## 3. Exceptions and Error Handling
+* NEVER use Python's generic `Exception` or `print()` statements for business logic errors.
+* Always import and raise `from odoo.exceptions import UserError, ValidationError, AccessError`.
+* Error messages must be clear, human-readable, and ideally translated.
+
+# Odoo 16 Clean Code & Internationalization (i18n)
+
+## 1. Translation Ready
+* Hardcoded strings in Python that appear to users MUST be wrapped in the translation function `_()`. 
+* Example: `raise UserError(_("The requested quantity is not available."))`
+
+## 2. Logging vs Printing
+* NEVER leave `print()` statements in production code. 
+* Use Python's `logging` module (`_logger = logging.getLogger(__name__)`) for debugging and system warnings.
+
+## 3. Code Documentation
+* Every non-standard or complex method must have a Python docstring briefly explaining the expected inputs, outputs, and side effects.
+

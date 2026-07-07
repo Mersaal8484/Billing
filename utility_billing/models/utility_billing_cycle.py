@@ -58,6 +58,13 @@ class DateRange(models.Model):
                 'contract_template_id': template.id if template else False,
             })
             order._calculate_amounts()
+            
+            # تأكيد أمر البيع وإنشاء الفاتورة المحاسبية وترحيلها تلقائياً
+            order.action_confirm()
+            invoices = order._create_invoices()
+            for inv in invoices:
+                inv.action_post()
+            
             reading.state = 'billed'
         return True
 

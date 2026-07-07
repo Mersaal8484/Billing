@@ -73,6 +73,12 @@ class UtilityReading(models.Model):
         if template:
             order._calculate_amounts()
 
+        # تأكيد أمر البيع وإنشاء الفاتورة المحاسبية وترحيلها تلقائياً
+        order.action_confirm()
+        invoices = order._create_invoices()
+        for inv in invoices:
+            inv.action_post()
+
         if self.meter_image:
             attach = self.env['ir.attachment'].create({
                 'name': f'invoice_meter_{order.name or self.reading_id}.png',

@@ -73,33 +73,39 @@ class UtilityContractTemplateBlock(models.Model):
     def _check_no_overlapping_blocks(self):
         """منع تداخل نطاقات الشرائح داخل نفس القالب."""
         for rec in self:
-            if not rec.template_id or rec.to_kwh == 0:
-                # الشريحة المفتوحة لا تتداخل بحكم التعريف — نتحقق أنه ليس هناك شريحة مفتوحة أخرى
-                other_open = self.search([
-                    ('template_id', '=', rec.template_id.id),
-                    ('is_discount', '=', rec.is_discount),
-                    ('to_kwh', '=', 0),
-                    ('id', '!=', rec.id),
-                ], limit=1)
-                if rec.to_kwh == 0 and other_open:
+            if not rec.template_id:
+                continue
+
+            blocks = rec.template_id.block_ids.filtered(lambda b: b.is_discount == rec.is_discount)
+            
+            if rec.to_kwh == 0:
+                open_blocks = blocks.filtered(lambda b: b.to_kwh == 0 and b.id != rec.id)
+                if open_blocks:
                     raise ValidationError(
                         'يوجد بالفعل شريحة مفتوحة بدون حد أعلى في القالب لهذا النوع. '
                         'لا يمكن وجود أكثر من شريحة مفتوحة واحدة.'
                     )
+                overlapping = blocks.filtered(lambda b: b.to_kwh > 0 and b.id != rec.id and b.to_kwh > rec.from_kwh)
+                if overlapping:
+                    raise ValidationError(
+                        'الشريحة المفتوحة تتداخل مع شريحة مغلقة أخرى في القالب. '
+                        'تأكد من أن بداية الشريحة المفتوحة أكبر من أو تساوي نهاية جميع الشرائح المغلقة.'
+                    )
                 continue
-            # تحقق من تداخل الشرائح المغلقة
-            overlapping = self.search([
-                ('template_id', '=', rec.template_id.id),
-                ('is_discount', '=', rec.is_discount),
-                ('id', '!=', rec.id),
-                ('from_kwh', '<', rec.to_kwh),
-                '|',
-                ('to_kwh', '=', 0),           # شريحة مفتوحة
-                ('to_kwh', '>', rec.from_kwh),  # شريحة تتداخل
-            ], limit=1)
-            if overlapping:
-                raise ValidationError(
-                    'الشريحة [%s: %.0f – %.0f] تتداخل مع شريحة أخرى في القالب لهذا النوع. '
-                    'تأكد من عدم تداخل نطاقات kWh.'
-                    % (rec.name or rec.sequence, rec.from_kwh, rec.to_kwh)
-                )
+
+            for other in blocks:
+                if other.id == rec.id:
+                    continue
+                if other.to_kwh == 0:
+                    if other.from_kwh < rec.to_kwh:
+                        raise ValidationError(
+                            'الشريحة [%s: %.0f – %.0f] تتداخل مع شريحة مفتوحة في القالب. '
+                            % (rec.name or rec.sequence, rec.from_kwh, rec.to_kwh)
+                        )
+                else:
+                    if rec.from_kwh < other.to_kwh and other.from_kwh < rec.to_kwh:
+                        raise ValidationError(
+                            'الشريحة [%s: %.0f – %.0f] تتداخل مع شريحة أخرى في القالب. '
+                            'تأكد من عدم تداخل نطاقات kWh.'
+                            % (rec.name or rec.sequence, rec.from_kwh, rec.to_kwh)
+                        )
