@@ -33,6 +33,7 @@ class UtilityReading(models.Model):
         ('ami', 'قراءة تلقائية (AMI)'),
     ], string='نوع القراءة', default='manual')
     is_estimated = fields.Boolean('تقديرية', default=False)
+    is_initial_reading = fields.Boolean('قراءة افتتاحية', default=False)
     meter_image = fields.Binary('صورة العداد', attachment=True,
         help='الصورة الملتقطة للعداد وقت القراءة')
     meter_image_secondary = fields.Binary('صورة إضافية', attachment=True)
@@ -86,7 +87,7 @@ class UtilityReading(models.Model):
 
     STATE_EDITABLE = {
         'draft': {'meter_id', 'reading_date', 'reading_value', 'reading_category',
-                  'reading_type', 'is_estimated', 'meter_image', 'meter_image_secondary',
+                  'reading_type', 'is_estimated', 'is_initial_reading', 'meter_image', 'meter_image_secondary',
                   'image_state', 'rejection_reason', 'remarks', 'date_range_id',
                   'reading_source', 'active', 'is_validated', 'validator_id',
                   'reviewer_id', 'review_date'},
@@ -141,10 +142,13 @@ class UtilityReading(models.Model):
                     % (r.meter_id.meter_number, r.date_range_id.name)
                 )
 
-    @api.depends('reading_value', 'previous_reading')
+    @api.depends('reading_value', 'previous_reading', 'is_initial_reading')
     def _compute_consumption(self):
         for r in self:
-            r.consumption = r.reading_value - (r.previous_reading or 0.0)
+            if r.is_initial_reading:
+                r.consumption = 0.0
+            else:
+                r.consumption = r.reading_value - (r.previous_reading or 0.0)
 
     @api.depends('consumption', 'meter_id')
     def _compute_consumption_analysis(self):

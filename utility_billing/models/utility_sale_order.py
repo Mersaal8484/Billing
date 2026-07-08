@@ -538,8 +538,8 @@ class UtilitySaleOrder(models.Model):
         # ─────────────────────────────────────────────────────────────
         if template:
             for line in template.line_ids.sorted('sequence'):
-                # تجاوز الاستهلاك العادي إذا كان التسعير بالشرائح
-                if template.pricing_mode == 'block' and line.meter_line_type == 'consumption':
+                # تجاوز الاستهلاك العادي إذا كان التسعير بالشرائح أو مستوى واحد
+                if template.pricing_mode in ('block', 'tier') and line.meter_line_type == 'consumption':
                     continue
 
                 # إذا كان الخصم يعتمد على شرائح، نحسب الوحدات هنا ونولد سطوراً مفصلة لكل شريحة خصم
@@ -592,11 +592,16 @@ class UtilitySaleOrder(models.Model):
                 }))
                 self._accumulate_amount(line.meter_line_type, amount)
 
-            # ── التسعير بالشرائح (block) ────────────────────────────────
-            if template.pricing_mode == 'block' and consumption > 0:
-                block_lines, block_amount = self._prepare_block_consumption_lines(
-                    template, consumption, kwh_product
-                )
+            # ── التسعير بالشرائح (block) أو المستوى (tier) ────────────────────────────────
+            if template.pricing_mode in ('block', 'tier') and consumption > 0:
+                if template.pricing_mode == 'block':
+                    block_lines, block_amount = self._prepare_block_consumption_lines(
+                        template, consumption, kwh_product
+                    )
+                else:
+                    block_lines, block_amount = self._prepare_tier_consumption_lines(
+                        template, consumption, kwh_product
+                    )
                 lines.extend(block_lines)
                 self.amount_energy += block_amount
 
@@ -688,8 +693,9 @@ class UtilitySaleOrder(models.Model):
         lines = []
         priced_qty = 0.0
         amount_energy = 0.0
+        current_kwh = 0.0
         for block in template.block_ids.sorted(lambda b: (b.from_kwh, b.sequence, b.id)):
-            block_from = block.from_kwh or 0.0
+            block_from = current_kwh
             block_to = block.to_kwh if block.to_kwh > 0 else consumption
             qty_in_block = max(0.0, min(consumption, block_to) - block_from)
             if qty_in_block <= 0:
@@ -700,13 +706,14 @@ class UtilitySaleOrder(models.Model):
             block_name = block.name or _('الشريحة %s') % block.sequence
             lines.append((0, 0, {
                 'product_id': kwh_product.id if kwh_product else False,
-                'name': _('%s: %.0f - %s kWh') % (block_name, block_from, block_to_label),
+                'name': _('%s: %.0f - %s kWh') % (block_name, block.from_kwh or 0.0, block_to_label),
                 'product_uom_qty': qty_in_block,
                 'price_unit': block.price_per_kwh,
                 'meter_line_type': 'consumption',
                 'tax_id': [(5, 0, 0)],
             }))
             priced_qty += qty_in_block
+            current_kwh += qty_in_block
             amount_energy += amount
 
         if consumption - priced_qty > 0.000001:
@@ -720,8 +727,9 @@ class UtilitySaleOrder(models.Model):
         """إعداد بنود الخصم بالتفصيل لكل شريحة لتظهر على الفاتورة بشكل واضح"""
         lines = []
         amount_discount = 0.0
+        current_kwh = 0.0
         for block in template.discount_block_ids.sorted(lambda b: (b.from_kwh, b.sequence, b.id)):
-            block_from = block.from_kwh or 0.0
+            block_from = current_kwh
             block_to = block.to_kwh if block.to_kwh > 0 else discount_units
             qty_in_block = max(0.0, min(discount_units, block_to) - block_from)
             if qty_in_block <= 0:
@@ -729,7 +737,7 @@ class UtilitySaleOrder(models.Model):
 
             price = -abs(block.price_per_kwh)
             amount = qty_in_block * price
-            block_name = f"{base_name or 'خصم استهلاك مدعوم'} - شريحة الخصم ({block_from:.0f} إلى {block.to_kwh if block.to_kwh > 0 else 'ما لا نهاية'})"
+            block_name = f"{base_name or 'خصم استهلاك مدعوم'} - شريحة الخصم ({(block.from_kwh or 0.0):.0f} إلى {block.to_kwh if block.to_kwh > 0 else 'ما لا نهاية'})"
             lines.append((0, 0, {
                 'product_id': product_id,
                 'name': block_name,
@@ -740,7 +748,39 @@ class UtilitySaleOrder(models.Model):
                 'tax_id': [(5, 0, 0)],
             }))
             amount_discount += amount
+            current_kwh += qty_in_block
         return lines, amount_discount
+
+    def _prepare_tier_consumption_lines(self, template, consumption, kwh_product):
+        """Build consumption line for tier pricing (single level)."""
+        lines = []
+        amount_energy = 0.0
+        applicable_block = None
+
+        for block in template.block_ids.sorted(lambda b: (b.from_kwh, b.sequence, b.id)):
+            if block.from_kwh <= consumption and (block.to_kwh >= consumption or block.to_kwh == 0.0):
+                applicable_block = block
+                break
+
+        if not applicable_block and template.block_ids:
+            applicable_block = template.block_ids.sorted(lambda b: (b.from_kwh, b.sequence, b.id))[-1]
+
+        price = applicable_block.price_per_kwh if applicable_block else (template.price_per_kwh or 0.0)
+        name = applicable_block.name if applicable_block and applicable_block.name else 'استهلاك (مستوى واحد)'
+
+        if price > 0:
+            amount = consumption * price
+            lines.append((0, 0, {
+                'product_id': kwh_product.id if kwh_product else False,
+                'name': name,
+                'product_uom_qty': consumption,
+                'price_unit': price,
+                'meter_line_type': 'consumption',
+                'tax_id': [(5, 0, 0)],
+            }))
+            amount_energy += amount
+
+        return lines, amount_energy
 
     def _compute_line_amounts(self, line, consumption, account, category, template):
         """حساب (qty, price, name, product_id, sponsor_id) لبند قالب عقد واحد."""

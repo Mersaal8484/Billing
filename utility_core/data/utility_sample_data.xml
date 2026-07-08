@@ -246,9 +246,9 @@
         <record id="demo_tmpl_pub_monthly_block1" model="utility.contract.template.block">
             <field name="template_id" ref="demo_tmpl_pub_monthly"/>
             <field name="sequence">10</field>
-            <field name="name">الشريحة الأولى (1-2,999)</field>
-            <field name="from_kwh">1</field>
-            <field name="to_kwh">2999</field>
+            <field name="name">الشريحة الأولى (0-2,999)</field>
+            <field name="from_kwh">0</field>
+            <field name="to_kwh">3000</field>
             <field name="price_per_kwh">230</field>
         </record>
         <record id="demo_tmpl_pub_monthly_block2" model="utility.contract.template.block">
@@ -256,7 +256,7 @@
             <field name="sequence">20</field>
             <field name="name">الشريحة الثانية (3,000-9,999)</field>
             <field name="from_kwh">3000</field>
-            <field name="to_kwh">9999</field>
+            <field name="to_kwh">10000</field>
             <field name="price_per_kwh">220</field>
         </record>
         <record id="demo_tmpl_pub_monthly_block3" model="utility.contract.template.block">
@@ -264,7 +264,7 @@
             <field name="sequence">30</field>
             <field name="name">الشريحة الثالثة (10,000-19,999)</field>
             <field name="from_kwh">10000</field>
-            <field name="to_kwh">19999</field>
+            <field name="to_kwh">20000</field>
             <field name="price_per_kwh">200</field>
         </record>
         <record id="demo_tmpl_pub_monthly_block4" model="utility.contract.template.block">
@@ -272,7 +272,7 @@
             <field name="sequence">40</field>
             <field name="name">الشريحة الرابعة (20,000-29,999)</field>
             <field name="from_kwh">20000</field>
-            <field name="to_kwh">29999</field>
+            <field name="to_kwh">30000</field>
             <field name="price_per_kwh">190</field>
         </record>
         <record id="demo_tmpl_pub_monthly_block5" model="utility.contract.template.block">
@@ -280,7 +280,7 @@
             <field name="sequence">50</field>
             <field name="name">الشريحة الخامسة (30,000-99,999)</field>
             <field name="from_kwh">30000</field>
-            <field name="to_kwh">99999</field>
+            <field name="to_kwh">100000</field>
             <field name="price_per_kwh">185</field>
         </record>
         <record id="demo_tmpl_pub_monthly_block6" model="utility.contract.template.block">
@@ -288,7 +288,7 @@
             <field name="sequence">60</field>
             <field name="name">الشريحة السادسة (100,000-199,999)</field>
             <field name="from_kwh">100000</field>
-            <field name="to_kwh">199999</field>
+            <field name="to_kwh">200000</field>
             <field name="price_per_kwh">180</field>
         </record>
         <record id="demo_tmpl_pub_monthly_block7" model="utility.contract.template.block">
@@ -296,7 +296,7 @@
             <field name="sequence">70</field>
             <field name="name">الشريحة السابعة (200,000-299,999)</field>
             <field name="from_kwh">200000</field>
-            <field name="to_kwh">299999</field>
+            <field name="to_kwh">300000</field>
             <field name="price_per_kwh">175</field>
         </record>
         <record id="demo_tmpl_pub_monthly_block8" model="utility.contract.template.block">
@@ -335,9 +335,9 @@
         <record id="demo_tmpl_pub_bimonthly_block1" model="utility.contract.template.block">
             <field name="template_id" ref="demo_tmpl_pub_bimonthly"/>
             <field name="sequence">10</field>
-            <field name="name">الشريحة الأولى (1-2,999)</field>
-            <field name="from_kwh">1</field>
-            <field name="to_kwh">2999</field>
+            <field name="name">الشريحة الأولى (0-2,999)</field>
+            <field name="from_kwh">0</field>
+            <field name="to_kwh">3000</field>
             <field name="price_per_kwh">230</field>
         </record>
         <record id="demo_tmpl_pub_bimonthly_block2" model="utility.contract.template.block">
@@ -345,7 +345,7 @@
             <field name="sequence">20</field>
             <field name="name">الشريحة الثانية (3,000-9,999)</field>
             <field name="from_kwh">3000</field>
-            <field name="to_kwh">9999</field>
+            <field name="to_kwh">10000</field>
             <field name="price_per_kwh">220</field>
         </record>
         <record id="demo_tmpl_pub_bimonthly_block3" model="utility.contract.template.block">
@@ -353,7 +353,7 @@
             <field name="sequence">30</field>
             <field name="name">الشريحة الثالثة (10,000-19,999)</field>
             <field name="from_kwh">10000</field>
-            <field name="to_kwh">19999</field>
+            <field name="to_kwh">20000</field>
             <field name="price_per_kwh">200</field>
         </record>
         <record id="demo_tmpl_pub_bimonthly_block4" model="utility.contract.template.block">
@@ -361,7 +361,7 @@
             <field name="sequence">40</field>
             <field name="name">الشريحة الرابعة (20,000-29,999)</field>
             <field name="from_kwh">20000</field>
-            <field name="to_kwh">29999</field>
+            <field name="to_kwh">30000</field>
             <field name="price_per_kwh">190</field>
         </record>
         <record id="demo_tmpl_pub_bimonthly_block5" model="utility.contract.template.block">
@@ -369,7 +369,7 @@
             <field name="sequence">50</field>
             <field name="name">الشريحة الخامسة (30,000-99,999)</field>
             <field name="from_kwh">30000</field>
-            <field name="to_kwh">99999</field>
+            <field name="to_kwh">100000</field>
             <field name="price_per_kwh">185</field>
         </record>
         <record id="demo_tmpl_pub_bimonthly_block6" model="utility.contract.template.block">
@@ -377,7 +377,7 @@
             <field name="sequence">60</field>
             <field name="name">الشريحة السادسة (100,000-199,999)</field>
             <field name="from_kwh">100000</field>
-            <field name="to_kwh">199999</field>
+            <field name="to_kwh">200000</field>
             <field name="price_per_kwh">180</field>
         </record>
         <record id="demo_tmpl_pub_bimonthly_block7" model="utility.contract.template.block">
@@ -385,7 +385,7 @@
             <field name="sequence">70</field>
             <field name="name">الشريحة السابعة (200,000-299,999)</field>
             <field name="from_kwh">200000</field>
-            <field name="to_kwh">299999</field>
+            <field name="to_kwh">300000</field>
             <field name="price_per_kwh">175</field>
         </record>
         <record id="demo_tmpl_pub_bimonthly_block8" model="utility.contract.template.block">
@@ -626,9 +626,9 @@
         <record id="demo_tmpl_general_biweekly_block1" model="utility.contract.template.block">
             <field name="template_id" ref="demo_tmpl_general_biweekly"/>
             <field name="sequence">10</field>
-            <field name="name">الشريحة الأولى (1-2,999)</field>
-            <field name="from_kwh">1</field>
-            <field name="to_kwh">2999</field>
+            <field name="name">الشريحة الأولى (0-2,999)</field>
+            <field name="from_kwh">0</field>
+            <field name="to_kwh">3000</field>
             <field name="price_per_kwh">230</field>
         </record>
         <record id="demo_tmpl_general_biweekly_block2" model="utility.contract.template.block">
@@ -636,7 +636,7 @@
             <field name="sequence">20</field>
             <field name="name">الشريحة الثانية (3,000-9,999)</field>
             <field name="from_kwh">3000</field>
-            <field name="to_kwh">9999</field>
+            <field name="to_kwh">10000</field>
             <field name="price_per_kwh">220</field>
         </record>
         <record id="demo_tmpl_general_biweekly_block3" model="utility.contract.template.block">
@@ -644,7 +644,7 @@
             <field name="sequence">30</field>
             <field name="name">الشريحة الثالثة (10,000-19,999)</field>
             <field name="from_kwh">10000</field>
-            <field name="to_kwh">19999</field>
+            <field name="to_kwh">20000</field>
             <field name="price_per_kwh">200</field>
         </record>
         <record id="demo_tmpl_general_biweekly_block4" model="utility.contract.template.block">
@@ -652,7 +652,7 @@
             <field name="sequence">40</field>
             <field name="name">الشريحة الرابعة (20,000-29,999)</field>
             <field name="from_kwh">20000</field>
-            <field name="to_kwh">29999</field>
+            <field name="to_kwh">30000</field>
             <field name="price_per_kwh">190</field>
         </record>
         <record id="demo_tmpl_general_biweekly_block5" model="utility.contract.template.block">
@@ -660,7 +660,7 @@
             <field name="sequence">50</field>
             <field name="name">الشريحة الخامسة (30,000-99,999)</field>
             <field name="from_kwh">30000</field>
-            <field name="to_kwh">99999</field>
+            <field name="to_kwh">100000</field>
             <field name="price_per_kwh">185</field>
         </record>
         <record id="demo_tmpl_general_biweekly_block6" model="utility.contract.template.block">
@@ -668,7 +668,7 @@
             <field name="sequence">60</field>
             <field name="name">الشريحة السادسة (100,000-199,999)</field>
             <field name="from_kwh">100000</field>
-            <field name="to_kwh">199999</field>
+            <field name="to_kwh">200000</field>
             <field name="price_per_kwh">180</field>
         </record>
         <record id="demo_tmpl_general_biweekly_block7" model="utility.contract.template.block">
@@ -676,7 +676,7 @@
             <field name="sequence">70</field>
             <field name="name">الشريحة السابعة (200,000-299,999)</field>
             <field name="from_kwh">200000</field>
-            <field name="to_kwh">299999</field>
+            <field name="to_kwh">300000</field>
             <field name="price_per_kwh">175</field>
         </record>
         <record id="demo_tmpl_general_biweekly_block8" model="utility.contract.template.block">
@@ -713,9 +713,9 @@
         <record id="demo_tmpl_general_monthly_block1" model="utility.contract.template.block">
             <field name="template_id" ref="demo_tmpl_general_monthly"/>
             <field name="sequence">10</field>
-            <field name="name">الشريحة الأولى (1-2,999)</field>
-            <field name="from_kwh">1</field>
-            <field name="to_kwh">2999</field>
+            <field name="name">الشريحة الأولى (0-2,999)</field>
+            <field name="from_kwh">0</field>
+            <field name="to_kwh">3000</field>
             <field name="price_per_kwh">230</field>
         </record>
         <record id="demo_tmpl_general_monthly_block2" model="utility.contract.template.block">
@@ -723,7 +723,7 @@
             <field name="sequence">20</field>
             <field name="name">الشريحة الثانية (3,000-9,999)</field>
             <field name="from_kwh">3000</field>
-            <field name="to_kwh">9999</field>
+            <field name="to_kwh">10000</field>
             <field name="price_per_kwh">220</field>
         </record>
         <record id="demo_tmpl_general_monthly_block3" model="utility.contract.template.block">
@@ -731,7 +731,7 @@
             <field name="sequence">30</field>
             <field name="name">الشريحة الثالثة (10,000-19,999)</field>
             <field name="from_kwh">10000</field>
-            <field name="to_kwh">19999</field>
+            <field name="to_kwh">20000</field>
             <field name="price_per_kwh">200</field>
         </record>
         <record id="demo_tmpl_general_monthly_block4" model="utility.contract.template.block">
@@ -739,7 +739,7 @@
             <field name="sequence">40</field>
             <field name="name">الشريحة الرابعة (20,000-29,999)</field>
             <field name="from_kwh">20000</field>
-            <field name="to_kwh">29999</field>
+            <field name="to_kwh">30000</field>
             <field name="price_per_kwh">190</field>
         </record>
         <record id="demo_tmpl_general_monthly_block5" model="utility.contract.template.block">
@@ -747,7 +747,7 @@
             <field name="sequence">50</field>
             <field name="name">الشريحة الخامسة (30,000-99,999)</field>
             <field name="from_kwh">30000</field>
-            <field name="to_kwh">99999</field>
+            <field name="to_kwh">100000</field>
             <field name="price_per_kwh">185</field>
         </record>
         <record id="demo_tmpl_general_monthly_block6" model="utility.contract.template.block">
@@ -755,7 +755,7 @@
             <field name="sequence">60</field>
             <field name="name">الشريحة السادسة (100,000-199,999)</field>
             <field name="from_kwh">100000</field>
-            <field name="to_kwh">199999</field>
+            <field name="to_kwh">200000</field>
             <field name="price_per_kwh">180</field>
         </record>
         <record id="demo_tmpl_general_monthly_block7" model="utility.contract.template.block">
@@ -763,7 +763,7 @@
             <field name="sequence">70</field>
             <field name="name">الشريحة السابعة (200,000-299,999)</field>
             <field name="from_kwh">200000</field>
-            <field name="to_kwh">299999</field>
+            <field name="to_kwh">300000</field>
             <field name="price_per_kwh">175</field>
         </record>
         <record id="demo_tmpl_general_monthly_block8" model="utility.contract.template.block">

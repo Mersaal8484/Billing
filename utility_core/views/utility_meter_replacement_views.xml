@@ -61,6 +61,10 @@
                         </group>
                     </group>
 
+                    <group string="صورة العداد (اختياري)">
+                        <field name="replacement_image" widget="image" nolabel="1" class="oe_avatar" attrs="{'readonly': [('state', '=', 'done')]}"/>
+                    </group>
+
                     <group string="بيانات العداد الجديد">
                         <group>
                             <field name="new_meter_id" options="{'no_create': True}" attrs="{'readonly': [('state', '=', 'done')]}"/>

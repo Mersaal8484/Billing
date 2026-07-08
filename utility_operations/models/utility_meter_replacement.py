@@ -8,9 +8,9 @@ class UtilityMeterReplacement(models.Model):
     _order = 'replacement_date desc'
 
     order_number = fields.Char('رقم العملية', default=lambda self: _('New'), readonly=True)
-    replacement_date = fields.Date('تاريخ الاستبدال', default=fields.Date.today, required=True)
-    old_meter_final_reading = fields.Float('القراءة النهائية للقديم', required=True)
-    new_meter_initial_reading = fields.Float('القراءة الابتدائية للجديد', default=0.0, required=True)
+    replacement_date = fields.Date('تاريخ الاستبدال', default=fields.Date.today)
+    old_meter_final_reading = fields.Float('القراءة النهائية للقديم')
+    new_meter_initial_reading = fields.Float('القراءة الابتدائية للجديد', default=0.0)
     unbilled_consumption = fields.Float('الاستهلاك غير المفوتر للقديم', compute='_compute_unbilled_consumption', store=True)
     replacement_notes = fields.Text('ملاحظات الاستبدال')
 

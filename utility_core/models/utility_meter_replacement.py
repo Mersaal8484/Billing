@@ -31,9 +31,11 @@ class UtilityMeterReplacement(models.Model):
         ('single', 'طور واحد'),
         ('three', 'ثلاثة أطوار'),
     ], string="طور العداد القديم", readonly=True)
-    old_closing_reading = fields.Float(string="القراءة الختامية", digits=(12, 3), required=True, tracking=True)
+    old_closing_reading = fields.Float(string="آخر قراءة للعداد عند الاستبدال", digits=(12, 3), required=True, tracking=True)
     old_last_invo_reading = fields.Float(string="آخر قراءة مفوترة", digits=(12, 3), readonly=True)
     old_uninvoiced_consumption = fields.Float(string="الاستهلاك غير المفوتر", digits=(12, 3), compute="_compute_old_uninvoiced", store=True)
+
+    replacement_image = fields.Binary(string="صورة العداد (اختياري)", attachment=True)
 
     # New meter
     new_meter_id = fields.Many2one('utility.meter', string="العداد الجديد (موجود بالنظام)", domain="[('customer_id', '=', False)]", tracking=True)
@@ -147,4 +149,29 @@ class UtilityMeterReplacement(models.Model):
                     'reading_multiplier': rec.new_meter_val,
                     'opening_reading': rec.new_opening_reading,
                 })
+                
+            # Create Readings for Billing Continuity
+            Reading = self.env['utility.reading']
+            if rec.old_meter_id:
+                Reading.create({
+                    'meter_id': rec.old_meter_id.id,
+                    'reading_date': fields.Datetime.now(),
+                    'reading_value': rec.old_closing_reading,
+                    'reading_type': 'manual',
+                    'reading_category': 'customer',
+                    'state': 'approved',
+                    'remarks': f'قراءة إغلاق نهائية بسبب استبدال العداد بالعملية {rec.name}',
+                })
+            
+            Reading.create({
+                'meter_id': new_meter.id,
+                'reading_date': fields.Datetime.now(),
+                'reading_value': rec.new_opening_reading,
+                'reading_type': 'manual',
+                'reading_category': 'customer',
+                'state': 'billed',
+                'is_initial_reading': True,
+                'remarks': f'قراءة افتتاحية ابتدائية بسبب تركيب/استبدال العداد بالعملية {rec.name}',
+            })
+                
             rec.state = 'done'
