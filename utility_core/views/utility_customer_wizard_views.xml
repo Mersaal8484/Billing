@@ -1,38 +1,41 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- utility.customer.wizard form view -->
     <record id="view_utility_customer_wizard_form" model="ir.ui.view">
         <field name="name">utility.customer.wizard.form</field>
         <field name="model">utility.customer.wizard</field>
         <field name="arch" type="xml">
-            <form string="تسجيل مشترك وعداد جديد (معالج موحد)">
+            <form string="تسجيل مشترك وعداد جديد">
                 <sheet>
                     <div class="oe_title">
                         <label for="name" class="oe_edit_only" string="اسم المشترك / الجهة"/>
                         <h1>
-                            <field name="name" placeholder="مثال: محمد اليماني..."/>
+                            <field name="name" placeholder="مثال: محمد اليماني"/>
                         </h1>
                     </div>
-                    <group>
-                        <group string="بيانات الاتصال والهوية">
-                            <field name="national_id" placeholder="الرقم الوطني أو السجل التجاري"/>
-                            <field name="mobile" placeholder="777xxxxxx"/>
-                            <field name="phone"/>
-                            <field name="street" placeholder="اسم الشارع / الحي"/>
-                            <field name="city"/>
-                            <field name="country_id" options="{'no_create': True}"/>
-                        </group>
-                        <group string="التصنيف والفوترة الكهربائية">
-                            <field name="category_id" options="{'no_create': True}"/>
-                            <field name="subscriber_id" options="{'no_create': True}"/>
-                            <field name="sector_id" options="{'no_create': True}"/>
-                            <field name="contract_template_id" options="{'no_create': True}"/>
-                            <field name="route_id" options="{'no_create': True}"/>
-                        </group>
-                    </group>
+
                     <notebook>
-                        <page string="بيانات الشبكة والعداد">
-                            <group string="الهيكل الجغرافي للشبكة (NUTS)">
+                        <page name="subscriber_contract" string="المشترك والعقد">
+                            <group>
+                                <group string="بيانات الهوية والاتصال">
+                                    <field name="national_id" placeholder="الرقم الوطني أو السجل التجاري"/>
+                                    <field name="mobile" placeholder="777xxxxxx"/>
+                                    <field name="phone" placeholder="01xxxxxx"/>
+                                    <field name="street" placeholder="اسم الشارع / الحي"/>
+                                    <field name="city"/>
+                                    <field name="country_id" options="{'no_create': True}"/>
+                                </group>
+                                <group string="التصنيف وقالب العقد">
+                                    <field name="category_id" options="{'no_create': True}"/>
+                                    <field name="subscriber_id" options="{'no_create': True}"/>
+                                    <field name="sector_id" options="{'no_create': True}"/>
+                                    <field name="contract_template_id" options="{'no_create': True}"/>
+                                    <field name="route_id" options="{'no_create': True}"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page name="network_meter" string="الموقع والعداد">
+                            <group string="الموقع التشغيلي">
                                 <group>
                                     <field name="utility_region_id" options="{'no_create': True}"/>
                                     <field name="utility_area_id" options="{'no_create': True}"/>
@@ -41,13 +44,16 @@
                                     <field name="transformer_zone_id" options="{'no_create': True}"/>
                                 </group>
                             </group>
-                            <group string="إعدادات العداد الكهربائي">
+
+                            <group string="بيانات العداد">
                                 <group>
                                     <field name="create_meter"/>
-                                    <field name="payment_type" attrs="{'invisible': [('create_meter', '=', False)], 'required': [('create_meter', '=', True)]}"/>
+                                    <field name="available_meter_product_ids" invisible="1"/>
+                                    <field name="meter_product_id" options="{'no_create': True, 'no_open': True}" attrs="{'invisible': [('create_meter', '=', False)], 'required': [('create_meter', '=', True)]}"/>
+                                    <field name="meter_model_id" options="{'no_create': True, 'no_open': True}" attrs="{'invisible': [('create_meter', '=', False)]}"/>
                                     <field name="meter_type_id" options="{'no_create': True, 'no_open': True}" attrs="{'invisible': [('create_meter', '=', False)]}"/>
-                                    <field name="meter_number" attrs="{'invisible': [('create_meter', '=', False)], 'required': [('create_meter', '=', True)]}" placeholder="MET/YE/2024/..."/>
-                                    <field name="serial_number" attrs="{'invisible': [('create_meter', '=', False)]}"/>
+                                    <field name="serial_number" attrs="{'invisible': [('create_meter', '=', False)], 'required': [('create_meter', '=', True)]}"/>
+                                    <field name="meter_number" readonly="1" attrs="{'invisible': [('create_meter', '=', False)]}"/>
                                 </group>
                                 <group attrs="{'invisible': [('create_meter', '=', False)]}">
                                     <field name="phase"/>
@@ -57,13 +63,15 @@
                                 </group>
                             </group>
                         </page>
-                        <page string="إعدادات المحول الخاص">
-                            <group>
+
+                        <page name="private_transformer" string="المحول الخاص">
+                            <group string="اختيار المحول">
                                 <group>
                                     <field name="use_private_transformer"/>
-                                    <field name="private_transformer_existing_id" attrs="{'invisible': [('use_private_transformer', '=', False)]}"/>
+                                    <field name="private_transformer_existing_id" options="{'no_create': True}" attrs="{'invisible': [('use_private_transformer', '=', False)]}"/>
                                 </group>
                             </group>
+
                             <group string="بيانات المحول الجديد" attrs="{'invisible': ['|', ('use_private_transformer', '=', False), ('private_transformer_existing_id', '!=', False)]}">
                                 <group>
                                     <field name="transformer_name" attrs="{'required': [('use_private_transformer', '=', True), ('private_transformer_existing_id', '=', False)]}"/>
@@ -80,8 +88,10 @@
                                     <field name="transformer_feeder_id" options="{'no_create': True}"/>
                                 </group>
                             </group>
-                            <div class="alert alert-info text-center" role="alert" attrs="{'invisible': [('use_private_transformer', '=', False)]}">
-                                <strong>ملاحظة:</strong> سيتم اعتماد عداد المشترك الحالي ليكون هو عداد الربط (الرئيسي) لهذا المحول بشكل تلقائي لمنع التكرار.
+
+                            <div class="alert alert-info" role="alert" attrs="{'invisible': [('use_private_transformer', '=', False)]}">
+                                <strong>ملاحظة:</strong>
+                                سيتم اعتماد عداد المشترك الحالي كعداد الربط الرئيسي لهذا المحول تلقائياً لمنع التكرار.
                             </div>
                         </page>
                     </notebook>
@@ -94,9 +104,8 @@
         </field>
     </record>
 
-    <!-- utility.customer.wizard action -->
     <record id="action_utility_customer_wizard" model="ir.actions.act_window">
-        <field name="name">تسجيل مشترك وعداد جديد (موحد)</field>
+        <field name="name">تسجيل مشترك وعداد جديد</field>
         <field name="res_model">utility.customer.wizard</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>

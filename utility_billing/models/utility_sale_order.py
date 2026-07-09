@@ -693,9 +693,8 @@ class UtilitySaleOrder(models.Model):
         lines = []
         priced_qty = 0.0
         amount_energy = 0.0
-        current_kwh = 0.0
         for block in template.block_ids.sorted(lambda b: (b.from_kwh, b.sequence, b.id)):
-            block_from = current_kwh
+            block_from = block.from_kwh or 0.0
             block_to = block.to_kwh if block.to_kwh > 0 else consumption
             qty_in_block = max(0.0, min(consumption, block_to) - block_from)
             if qty_in_block <= 0:
@@ -713,7 +712,6 @@ class UtilitySaleOrder(models.Model):
                 'tax_id': [(5, 0, 0)],
             }))
             priced_qty += qty_in_block
-            current_kwh += qty_in_block
             amount_energy += amount
 
         if consumption - priced_qty > 0.000001:
@@ -727,9 +725,9 @@ class UtilitySaleOrder(models.Model):
         """إعداد بنود الخصم بالتفصيل لكل شريحة لتظهر على الفاتورة بشكل واضح"""
         lines = []
         amount_discount = 0.0
-        current_kwh = 0.0
+        priced_units = 0.0
         for block in template.discount_block_ids.sorted(lambda b: (b.from_kwh, b.sequence, b.id)):
-            block_from = current_kwh
+            block_from = block.from_kwh or 0.0
             block_to = block.to_kwh if block.to_kwh > 0 else discount_units
             qty_in_block = max(0.0, min(discount_units, block_to) - block_from)
             if qty_in_block <= 0:
@@ -748,7 +746,13 @@ class UtilitySaleOrder(models.Model):
                 'tax_id': [(5, 0, 0)],
             }))
             amount_discount += amount
-            current_kwh += qty_in_block
+            priced_units += qty_in_block
+
+        if discount_units - priced_units > 0.000001:
+            raise ValidationError(
+                _('قالب العقد "%s" لا يغطي كامل وحدات الخصم بالشرائح. وحدات الخصم: %.2f، المسعر: %.2f.')
+                % (template.name, discount_units, priced_units)
+            )
         return lines, amount_discount
 
     def _prepare_tier_consumption_lines(self, template, consumption, kwh_product):

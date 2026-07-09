@@ -65,12 +65,17 @@ class UtilityContractTemplate(models.Model):
 
     # ── تسعير (دمج utility.tariff) ──────────────────────────────────────
     pricing_mode = fields.Selection([
-        ('flat', 'سعر موحّد'),
-        ('block', 'شرائح تدريجية'),
-        ('tier', 'مستوى واحد'),
+        ('flat', 'سعر موحّد بدون شرائح'),
+        ('tier', 'Flat Tier / سعر شريحة واحدة'),
+        ('block', 'Progressive Tier / شرائح تصاعدية'),
         ('seasonal', 'موسمي'),
         ('tou', 'حسب وقت الاستخدام'),
-    ], string='نمط التسعير', default='flat')
+    ], string='نمط التسعير', default='flat',
+        help=(
+            'سعر موحّد: سعر ثابت لكل الاستهلاك بدون شرائح. '
+            'Flat Tier: اختيار شريحة واحدة حسب إجمالي الاستهلاك وتطبيق سعرها على كامل الاستهلاك. '
+            'Progressive Tier: تقسيم الاستهلاك على الشرائح وتطبيق سعر كل شريحة على الجزء الواقع داخلها.'
+        ))
     price_per_kwh = fields.Monetary('سعر الكيلوواط/ساعة', default=0.0, currency_field='currency_id')
     service_charge = fields.Monetary('رسم الخدمة الثابت', default=0.0, currency_field='currency_id',
         help='مبلغ شهري ثابت لا يتأثر بالاستهلاك (رسوم الاشتراك والصيانة)')
@@ -101,9 +106,9 @@ class UtilityContractTemplate(models.Model):
     discount_block_ids = fields.One2many('utility.contract.template.block', 'template_id',
         domain=[('is_discount', '=', True)], string='شرائح الخصم التدريجية', copy=True)
 
-    # الشرائح التدريجية — تظهر فقط حين pricing_mode in (block,tier,seasonal,tou)
+    # شرائح التسعير: tier = شريحة واحدة لكامل الاستهلاك، block = توزيع تصاعدي على الشرائح.
     block_ids = fields.One2many('utility.contract.template.block', 'template_id',
-        domain=[('is_discount', '=', False)], string='الشرائح التدريجية', copy=True)
+        domain=[('is_discount', '=', False)], string='شرائح التسعير', copy=True)
     history_ids = fields.One2many('utility.contract.template.history', 'template_id',
         string='سجل التغييرات', readonly=True)
 
@@ -154,6 +159,47 @@ class UtilityContractTemplate(models.Model):
                 raise ValidationError('سعر الكيلووات/ساعة لا يمكن أن يكون سالباً.')
             if r.service_charge < 0:
                 raise ValidationError('رسم الخدمة الثابت لا يمكن أن يكون سالباً.')
+
+    def _get_pricing_blocks(self):
+        self.ensure_one()
+        return self.env['utility.contract.template.block'].search([
+            ('template_id', '=', self.id),
+            ('is_discount', '=', False),
+        ], order='from_kwh asc, sequence asc, id asc')
+
+    def _get_discount_blocks(self):
+        self.ensure_one()
+        return self.env['utility.contract.template.block'].search([
+            ('template_id', '=', self.id),
+            ('is_discount', '=', True),
+        ], order='from_kwh asc, sequence asc, id asc')
+
+    def _validate_contract_template_tiers(self):
+        """Validate complete pricing and discount tier configuration."""
+        for rec in self:
+            pricing_blocks = rec._get_pricing_blocks()
+            discount_blocks = rec._get_discount_blocks()
+            pricing_label = dict(rec._fields['pricing_mode'].selection).get(rec.pricing_mode)
+
+            if rec.pricing_mode in ('tier', 'block'):
+                if not pricing_blocks:
+                    raise ValidationError(
+                        _("نمط التسعير '%s' يتطلب تعريف شرائح تسعير مرتبة على قالب العقد '%s'.")
+                        % (pricing_label, rec.name)
+                    )
+
+            has_discount_line = rec.line_ids.filtered(lambda line: line.meter_line_type == 'discount')
+            if rec.discount_formula_id and has_discount_line:
+                if not discount_blocks:
+                    raise ValidationError(
+                        _("قالب العقد '%s' يحتوي خصم دعم بمعادلة، لذلك يجب تعريف شرائح الخصم التصاعدية.")
+                        % rec.name
+                    )
+
+
+    @api.constrains('pricing_mode', 'discount_formula_id', 'block_ids', 'discount_block_ids', 'line_ids')
+    def _check_contract_template_tiers(self):
+        self._validate_contract_template_tiers()
 
     @api.constrains('subscriber_category_ids', 'subscriber_ids')
     def _check_categories_and_types_compatibility(self):

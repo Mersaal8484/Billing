@@ -1,4 +1,4 @@
-from odoo import api, fields, models
+from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
 
 
@@ -26,6 +26,24 @@ class UtilityContractTemplateBlock(models.Model):
     to_kwh = fields.Float('إلى (kWh)', default=0.0,
         help='0 = شريحة مفتوحة (لا حد أعلى)')
     price_per_kwh = fields.Monetary('سعر الكيلوواط/ساعة', required=True, currency_field='currency_id')
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        records.mapped('template_id')._validate_contract_template_tiers()
+        return records
+
+    def write(self, vals):
+        templates = self.mapped('template_id')
+        res = super().write(vals)
+        (templates | self.mapped('template_id'))._validate_contract_template_tiers()
+        return res
+
+    def unlink(self):
+        templates = self.mapped('template_id')
+        res = super().unlink()
+        templates._validate_contract_template_tiers()
+        return res
 
     from_month = fields.Selection([
         ('1', 'يناير'), ('2', 'فبراير'), ('3', 'مارس'),
@@ -60,6 +78,57 @@ class UtilityContractTemplateBlock(models.Model):
                     % (rec.name or rec.sequence, rec.to_kwh, rec.from_kwh)
                 )
 
+    def _get_template_kind_blocks(self):
+        self.ensure_one()
+        return self.search([
+            ('template_id', '=', self.template_id.id),
+            ('is_discount', '=', self.is_discount),
+        ], order='from_kwh asc, sequence asc, id asc')
+
+    def _get_kind_label(self):
+        self.ensure_one()
+        return _('شرائح الخصم') if self.is_discount else _('شرائح التسعير')
+
+    @api.constrains('template_id', 'is_discount', 'from_kwh', 'to_kwh', 'sequence')
+    def _check_strict_block_order(self):
+        """Enforce contiguous tier ranges and sequence order per template/kind."""
+        precision = 0.000001
+        checked = set()
+        for rec in self:
+            if not rec.template_id:
+                continue
+            key = (rec.template_id.id, rec.is_discount)
+            if key in checked:
+                continue
+            checked.add(key)
+            blocks = rec._get_template_kind_blocks()
+            expected_from = 0.0
+            open_block_seen = False
+            previous_sequence = False
+            for block in blocks:
+                label = block._get_kind_label()
+                if previous_sequence is not False and block.sequence <= previous_sequence:
+                    raise ValidationError(
+                        _('%s في قالب العقد "%s" يجب أن تكون مرتبة بتسلسل تصاعدي صارم بدون تكرار.')
+                        % (label, block.template_id.name)
+                    )
+                previous_sequence = block.sequence
+
+                if abs((block.from_kwh or 0.0) - expected_from) > precision:
+                    raise ValidationError(
+                        _('%s في قالب العقد "%s" غير متصلة. يجب أن تبدأ الشريحة "%s" من %.2f kWh وليس %.2f kWh.')
+                        % (label, block.template_id.name, block.name or block.sequence, expected_from, block.from_kwh)
+                    )
+                if open_block_seen:
+                    raise ValidationError(
+                        _('%s في قالب العقد "%s" تحتوي شريحة بعد الشريحة المفتوحة. الشريحة المفتوحة يجب أن تكون الأخيرة.')
+                        % (label, block.template_id.name)
+                    )
+                if block.to_kwh == 0:
+                    open_block_seen = True
+                else:
+                    expected_from = block.to_kwh
+
     @api.constrains('price_per_kwh')
     def _check_positive_price(self):
         for rec in self:
@@ -76,7 +145,10 @@ class UtilityContractTemplateBlock(models.Model):
             if not rec.template_id:
                 continue
 
-            blocks = rec.template_id.block_ids.filtered(lambda b: b.is_discount == rec.is_discount)
+            blocks = self.search([
+                ('template_id', '=', rec.template_id.id),
+                ('is_discount', '=', rec.is_discount),
+            ])
             
             if rec.to_kwh == 0:
                 open_blocks = blocks.filtered(lambda b: b.to_kwh == 0 and b.id != rec.id)

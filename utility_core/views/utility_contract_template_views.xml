@@ -95,9 +95,9 @@
                                 <field name="discount_formula_id"/>
                             </group>
                         </page>
-                        <page string="الشرائح التدريجية"
+                        <page string="شرائح التسعير"
                                attrs="{'invisible': [('pricing_mode', 'not in', ['block', 'tier', 'seasonal', 'tou'])]}">
-                            <field name="block_ids">
+                            <field name="block_ids" context="{'default_is_discount': False}">
                                 <tree editable="bottom">
                                     <field name="sequence" widget="handle"/>
                                     <field name="name"/>

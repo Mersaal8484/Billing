@@ -47,11 +47,11 @@ class UtilityCustomer(models.Model):
     contract_template_id = fields.Many2one('utility.contract.template',
         string='نموذج العقد',
         domain="["
-               "('subscriber_category_ids', '=', category_id), "
-               "('subscriber_ids', '=', subscriber_id), "
+               "('subscriber_category_ids', 'in', [category_id]), "
+               "('subscriber_ids', 'in', [subscriber_id]), "
                "'|', ('scope', '=', 'global'), "
-               "'|', ('region_ids', '=', region_id), "
-               "('area_ids', '=', area_id)"
+               "'|', ('region_ids', 'in', [region_id]), "
+               "('area_ids', 'in', [area_id])"
                "]")
     contract_start_date = fields.Date('تاريخ بداية العقد')
     contract_end_date = fields.Date('تاريخ نهاية العقد')
@@ -193,17 +193,38 @@ class UtilityCustomer(models.Model):
                         "يرجى اختيار عداد مرتبط بهذا المحول."
                     )
 
-
-
-    @api.onchange('subscriber_id')
-    def _onchange_subscriber_id(self):
+    def _get_contract_template_domain(self):
+        self.ensure_one()
+        domain = []
+        if self.category_id:
+            domain.append(('subscriber_category_ids', 'in', [self.category_id.id]))
         if self.subscriber_id:
-            # التنسيق مع قالب العقد
-            if not self.contract_template_id or (self.contract_template_id.subscriber_ids and self.subscriber_id not in self.contract_template_id.subscriber_ids):
-                matching_template = self.env['utility.contract.template'].search([('subscriber_ids', 'in', self.subscriber_id.id)], limit=1)
-                if not matching_template:
-                    matching_template = self.subscriber_id.default_contract_template_id
-                self.contract_template_id = matching_template
+            domain.append(('subscriber_ids', 'in', [self.subscriber_id.id]))
+        location_domain = [('scope', '=', 'global')]
+        if self.region_id:
+            location_domain = ['|'] + location_domain + [('region_ids', 'in', [self.region_id.id])]
+        if self.area_id:
+            location_domain = ['|'] + location_domain + [('area_ids', 'in', [self.area_id.id])]
+        return domain + location_domain
+
+    def _find_matching_contract_template(self):
+        self.ensure_one()
+        ContractTemplate = self.env['utility.contract.template']
+        if self.subscriber_id and self.subscriber_id.default_contract_template_id:
+            default_template = self.subscriber_id.default_contract_template_id
+            if ContractTemplate.search_count([('id', '=', default_template.id)] + self._get_contract_template_domain()):
+                return default_template
+        return ContractTemplate.search(self._get_contract_template_domain(), limit=1)
+
+    @api.onchange('category_id', 'subscriber_id', 'region_id', 'area_id')
+    def _onchange_contract_template_domain(self):
+        for rec in self:
+            domain = rec._get_contract_template_domain()
+            if rec.contract_template_id and not self.env['utility.contract.template'].search_count([('id', '=', rec.contract_template_id.id)] + domain):
+                rec.contract_template_id = False
+            if not rec.contract_template_id and rec.subscriber_id:
+                rec.contract_template_id = rec._find_matching_contract_template()
+            return {'domain': {'contract_template_id': domain}}
 
     @api.constrains('category_id', 'subscriber_id')
     def _check_subscriber_category_compatibility(self):

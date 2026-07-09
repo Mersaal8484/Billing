@@ -25,11 +25,11 @@ class UtilityCustomerWizard(models.TransientModel):
     contract_template_id = fields.Many2one('utility.contract.template',
         string='قالب العقد الافتراضي', required=True,
         domain="["
-               "('subscriber_category_ids', '=', category_id), "
-               "('subscriber_ids', '=', subscriber_id), "
+               "('subscriber_category_ids', 'in', [category_id]), "
+               "('subscriber_ids', 'in', [subscriber_id]), "
                "'|', ('scope', '=', 'global'), "
-               "'|', ('region_ids', '=', utility_region_id), "
-               "('area_ids', '=', utility_area_id)"
+               "'|', ('region_ids', 'in', [utility_region_id]), "
+               "('area_ids', 'in', [utility_area_id])"
                "]")
     route_id = fields.Many2one('utility.route', string='مسار القراءة الميداني')
 
@@ -64,7 +64,14 @@ class UtilityCustomerWizard(models.TransientModel):
 
     # Optional Meter Creation
     create_meter = fields.Boolean(string='إنشاء وربط عداد جديد فوراً', default=True)
-    meter_number = fields.Char(string='رقم العداد')
+    available_meter_product_ids = fields.Many2many(
+        'product.product', compute='_compute_available_meter_product_ids',
+        string='منتجات العدادات المتاحة')
+    meter_product_id = fields.Many2one(
+        'product.product', string='منتج العداد',
+        domain="[('id', 'in', available_meter_product_ids)]")
+    meter_model_id = fields.Many2one('utility.meter.model', string='موديل العداد', readonly=True)
+    meter_number = fields.Char(string='رقم العداد', readonly=True, default=lambda self: _('جديد'))
     serial_number = fields.Char(string='الرقم التسلسلي')
     manufacturer = fields.Char(string='الشركة المصنعة', default='Landis+Gyr')
     meter_type_id = fields.Many2one('utility.meter.type', string='نوع العداد')
@@ -86,17 +93,76 @@ class UtilityCustomerWizard(models.TransientModel):
         ('gsm', 'شبكة الجوال'),
     ], string='نوع الاتصال', default='none')
 
+    @api.depends('create_meter')
+    def _compute_available_meter_product_ids(self):
+        products = self.env['utility.meter.model'].search([
+            ('product_id', '!=', False),
+        ]).mapped('product_id')
+        for wizard in self:
+            wizard.available_meter_product_ids = products
+
+    @api.onchange('meter_product_id')
+    def _onchange_meter_product_id(self):
+        for wizard in self:
+            meter_model = False
+            if wizard.meter_product_id:
+                meter_model = self.env['utility.meter.model'].search([
+                    ('product_id', '=', wizard.meter_product_id.id),
+                ], limit=1)
+                if not meter_model:
+                    return {
+                        'warning': {
+                            'title': _('منتج عداد غير مضبوط'),
+                            'message': _('المنتج المختار غير مربوط بموديل عداد. يرجى ضبطه من إعدادات موديلات العدادات.'),
+                        }
+                    }
+            wizard.meter_model_id = meter_model
+            wizard.meter_type_id = meter_model.meter_type_id if meter_model else False
+            wizard.manufacturer = meter_model.manufacturer if meter_model and meter_model.manufacturer else wizard.manufacturer
+            wizard.phase = meter_model.phase if meter_model and meter_model.phase else wizard.phase
+
+    def _get_contract_template_domain(self):
+        self.ensure_one()
+        domain = []
+        if self.category_id:
+            domain.append(('subscriber_category_ids', 'in', [self.category_id.id]))
+        if self.subscriber_id:
+            domain.append(('subscriber_ids', 'in', [self.subscriber_id.id]))
+        location_domain = [('scope', '=', 'global')]
+        if self.utility_region_id:
+            location_domain = ['|'] + location_domain + [('region_ids', 'in', [self.utility_region_id.id])]
+        if self.utility_area_id:
+            location_domain = ['|'] + location_domain + [('area_ids', 'in', [self.utility_area_id.id])]
+        return domain + location_domain
+
+    def _find_matching_contract_template(self):
+        self.ensure_one()
+        ContractTemplate = self.env['utility.contract.template']
+        if self.subscriber_id and self.subscriber_id.default_contract_template_id:
+            default_template = self.subscriber_id.default_contract_template_id
+            if ContractTemplate.search_count([('id', '=', default_template.id)] + self._get_contract_template_domain()):
+                return default_template
+        return ContractTemplate.search(self._get_contract_template_domain(), limit=1)
+
     @api.onchange('category_id')
     def _onchange_category_id(self):
         if self.category_id:
-            # يمكن اختيار أول نوع مشترك ضمن الفئة تلقائياً
             subscriber = self.env['utility.subscriber'].search([('category_id', '=', self.category_id.id)], limit=1)
-            contract_template = False
-            if subscriber:
-                self.subscriber_id = subscriber.id
-                contract_template = self.env['utility.contract.template'].search([('subscriber_ids', 'in', self.subscriber_id.id)], limit=1)
-            if contract_template:
-                self.contract_template_id = contract_template.id
+            self.subscriber_id = subscriber.id if subscriber else False
+        else:
+            self.subscriber_id = False
+        self.contract_template_id = False
+        return self._onchange_contract_template_domain()
+
+    @api.onchange('subscriber_id', 'utility_region_id', 'utility_area_id')
+    def _onchange_contract_template_domain(self):
+        for rec in self:
+            domain = rec._get_contract_template_domain()
+            if rec.contract_template_id and not self.env['utility.contract.template'].search_count([('id', '=', rec.contract_template_id.id)] + domain):
+                rec.contract_template_id = False
+            if not rec.contract_template_id and rec.subscriber_id:
+                rec.contract_template_id = rec._find_matching_contract_template()
+            return {'domain': {'contract_template_id': domain}}
 
     @api.onchange('use_private_transformer', 'name', 'national_id')
     def _onchange_use_private_transformer(self):
@@ -124,10 +190,20 @@ class UtilityCustomerWizard(models.TransientModel):
                     'رقم الهاتف يجب أن يتكون من 9 أرقام فقط، بدون مفتاح دولة (+967/00) أو شرطات.'
                 )
 
-    @api.constrains('contract_template_id', 'utility_region_id', 'utility_area_id')
-    def _check_wizard_contract_region_compatibility(self):
+    @api.constrains('contract_template_id', 'category_id', 'subscriber_id', 'utility_region_id', 'utility_area_id')
+    def _check_wizard_contract_template_compatibility(self):
         for rec in self:
             template = rec.contract_template_id
+            if template and rec.category_id and rec.category_id not in template.subscriber_category_ids:
+                raise ValidationError(
+                    _("قالب العقد '%s' لا يدعم فئة المشترك الرئيسية '%s'.")
+                    % (template.name, rec.category_id.name)
+                )
+            if template and rec.subscriber_id and rec.subscriber_id not in template.subscriber_ids:
+                raise ValidationError(
+                    _("قالب العقد '%s' لا يدعم نوع المشترك '%s'.")
+                    % (template.name, rec.subscriber_id.name)
+                )
             if template and template.scope == 'restricted':
                 allowed_region_ids = template.region_ids.ids
                 allowed_area_ids = template.area_ids.ids
@@ -174,8 +250,16 @@ class UtilityCustomerWizard(models.TransientModel):
 
     def action_create_customer(self):
         self.ensure_one()
-        if not self.create_meter or not self.meter_number:
-            raise ValidationError(_('يجب إنشاء عداد وإدخال رقم العداد قبل حفظ المشترك.'))
+        if not self.create_meter:
+            raise ValidationError(_('يجب تفعيل إنشاء العداد قبل حفظ المشترك.'))
+        if not self.meter_product_id:
+            raise ValidationError(_('يجب اختيار منتج العداد قبل حفظ المشترك.'))
+        if not self.serial_number:
+            raise ValidationError(_('يجب إدخال الرقم التسلسلي للعداد قبل حفظ المشترك.'))
+        if self.meter_product_id and not self.meter_model_id:
+            raise ValidationError(_('منتج العداد المختار غير مربوط بموديل عداد. يرجى ضبط موديلات العدادات أولاً.'))
+        if self.env['utility.meter'].search([('serial_number', '=', self.serial_number)], limit=1):
+            raise ValidationError(_('الرقم التسلسلي للعداد مستخدم مسبقاً. يرجى إدخال رقم تسلسلي مختلف.'))
 
         if self.subscriber_id and self.category_id and self.subscriber_id.category_id != self.category_id:
             raise ValidationError(
@@ -235,9 +319,9 @@ class UtilityCustomerWizard(models.TransientModel):
         # 3. Create utility.meter before customer because meter_id is required
         status_active = self.env['utility.meter.status'].search([('code', '=', 'ACTIVE')], limit=1)
         meter_vals = {
-            'meter_number': self.meter_number,
-            'serial_number': self.serial_number or self.meter_number,
+            'serial_number': self.serial_number,
             'manufacturer': self.manufacturer,
+            'model_id': self.meter_model_id.id if self.meter_model_id else False,
             'meter_type_id': self.meter_type_id.id if self.meter_type_id else False,
             'status_id': status_active.id if status_active else False,
             'phase': self.phase,
@@ -247,6 +331,8 @@ class UtilityCustomerWizard(models.TransientModel):
             'sts_key_revision': self.sts_key_revision if self.payment_type == 'prepaid' else False,
             'communication_type': self.communication_type if self.payment_type == 'postpaid' else False,
         }
+        if 'product_id' in self.env['utility.meter']._fields:
+            meter_vals['product_id'] = self.meter_product_id.id
         meter = self.env['utility.meter'].create(meter_vals)
 
         # 4. Create utility.customer
