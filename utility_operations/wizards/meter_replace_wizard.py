@@ -10,11 +10,19 @@ class UtilityMeterReplaceWizard(models.TransientModel):
     account_id = fields.Many2one('utility.customer', 'حساب الكهرباء', required=True)
     old_meter_id = fields.Many2one('utility.meter', 'العداد القديم', related='account_id.meter_id', readonly=True)
     available_new_meter_ids = fields.Many2many('utility.meter', compute='_compute_available_new_meter_ids')
-    new_meter_id = fields.Many2one('utility.meter', 'العداد الجديد', required=True, domain="[('id', 'in', available_new_meter_ids)]")
+    new_meter_id = fields.Many2one('utility.meter', 'العداد الجديد', required=True)
     
     old_meter_final_reading = fields.Float('القراءة النهائية للقديم', required=True)
     new_meter_initial_reading = fields.Float('القراءة الابتدائية للجديد', default=0.0, required=True)
     reason = fields.Text('سبب الاستبدال')
+
+    @api.onchange('account_id')
+    def _onchange_account_id_new_meter_domain(self):
+        domain = self._get_available_new_meter_domain()
+        available_meters = self.env['utility.meter'].search(domain)
+        if self.new_meter_id and self.new_meter_id not in available_meters:
+            self.new_meter_id = False
+        return {'domain': {'new_meter_id': domain}}
 
     @api.depends('account_id')
     def _compute_available_new_meter_ids(self):

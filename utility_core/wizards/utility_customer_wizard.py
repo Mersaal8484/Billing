@@ -22,23 +22,25 @@ class UtilityCustomerWizard(models.TransientModel):
 
     category_id = fields.Many2one('utility.subscriber.category', string='فئة المشترك الرئيسية', required=True)
     available_subscriber_ids = fields.Many2many('utility.subscriber', compute='_compute_available_subscriber_ids')
-    subscriber_id = fields.Many2one('utility.subscriber', string='نوع المشترك', required=True, domain="[('id', 'in', available_subscriber_ids)]")
+    subscriber_id = fields.Many2one('utility.subscriber', string='نوع المشترك', required=True)
     sector_id = fields.Many2one('res.partner.sector', string='القطاع')
     
     available_contract_template_ids = fields.Many2many('utility.contract.template', compute='_compute_available_contract_template_ids')
-    contract_template_id = fields.Many2one('utility.contract.template',
-        string='قالب العقد الافتراضي', required=True,
-        domain="[('id', 'in', available_contract_template_ids)]")
+    contract_template_id = fields.Many2one(
+        'utility.contract.template',
+        string='قالب العقد الافتراضي',
+        required=True,
+    )
     
     available_route_ids = fields.Many2many('utility.route', compute='_compute_available_route_ids')
-    route_id = fields.Many2one('utility.route', string='مسار القراءة الميداني', domain="[('id', 'in', available_route_ids)]")
+    route_id = fields.Many2one('utility.route', string='مسار القراءة الميداني')
 
     utility_region_id = fields.Many2one('utility.region', string="المنطقة التشغيلية", domain="[('type', '=', 'region')]")
     available_area_ids = fields.Many2many('utility.region', compute='_compute_available_area_ids')
-    utility_area_id = fields.Many2one('utility.region', string="الفرع التشغيلي", domain="[('id', 'in', available_area_ids)]")
+    utility_area_id = fields.Many2one('utility.region', string="الفرع التشغيلي")
     
     available_zone_ids = fields.Many2many('utility.region', compute='_compute_available_zone_ids')
-    transformer_zone_id = fields.Many2one('utility.region', string="نطاق المحول", domain="[('id', 'in', available_zone_ids)]")
+    transformer_zone_id = fields.Many2one('utility.region', string="نطاق المحول")
 
     # Private Transformer Fields
     use_private_transformer = fields.Boolean(
@@ -70,9 +72,7 @@ class UtilityCustomerWizard(models.TransientModel):
     available_meter_product_ids = fields.Many2many(
         'product.product', compute='_compute_available_meter_product_ids',
         string='منتجات العدادات المتاحة')
-    meter_product_id = fields.Many2one(
-        'product.product', string='منتج العداد',
-        domain="[('id', 'in', available_meter_product_ids)]")
+    meter_product_id = fields.Many2one('product.product', string='منتج العداد')
     meter_model_id = fields.Many2one('utility.meter.model', string='موديل العداد', readonly=True)
     meter_number = fields.Char(string='رقم العداد', readonly=True, default=lambda self: _('جديد'))
     serial_number = fields.Char(string='الرقم التسلسلي')
@@ -95,6 +95,44 @@ class UtilityCustomerWizard(models.TransientModel):
         ('plc', 'ناقل خط الطاقة'),
         ('gsm', 'شبكة الجوال'),
     ], string='نوع الاتصال', default='none')
+
+    def _get_dynamic_domains(self):
+        """Return UI domains without relying on helper field names in JS eval."""
+        self.ensure_one()
+        meter_products = self.env['utility.meter.model'].search([
+            ('product_id', '!=', False),
+        ]).mapped('product_id')
+        area_domain = [('type', '=', 'area')]
+        if self.utility_region_id:
+            area_domain.append(('parent_id', '=', self.utility_region_id.id))
+        zone_domain = [('type', '=', 'zone')]
+        if self.utility_area_id:
+            zone_domain.append(('parent_id', '=', self.utility_area_id.id))
+        return {
+            'subscriber_id': self._get_subscriber_domain(self.category_id.id if self.category_id else False),
+            'contract_template_id': self._get_contract_template_domain(
+                category_id=self.category_id.id if self.category_id else False,
+                subscriber_id=self.subscriber_id.id if self.subscriber_id else False,
+                region_id=self.utility_region_id.id if self.utility_region_id else False,
+                area_id=self.utility_area_id.id if self.utility_area_id else False,
+            ),
+            'route_id': self._get_route_domain(
+                region_id=self.utility_region_id.id if self.utility_region_id else False,
+                area_id=self.utility_area_id.id if self.utility_area_id else False,
+                zone_id=self.transformer_zone_id.id if self.transformer_zone_id else False,
+            ),
+            'utility_area_id': area_domain,
+            'transformer_zone_id': zone_domain,
+            'meter_product_id': [('id', 'in', meter_products.ids)],
+        }
+
+    @api.onchange(
+        'category_id', 'subscriber_id', 'utility_region_id', 'utility_area_id',
+        'transformer_zone_id', 'create_meter'
+    )
+    def _onchange_dynamic_domains(self):
+        for wizard in self:
+            return {'domain': wizard._get_dynamic_domains()}
 
     @api.depends('create_meter')
     def _compute_available_meter_product_ids(self):

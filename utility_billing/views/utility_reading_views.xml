@@ -109,7 +109,6 @@
                             <field name="account_id" attrs="{'invisible': ['&amp;', ('reading_category', '!=', 'customer'), '|', ('reading_category', '!=', 'transformer'), ('is_private_transformer', '=', False)]}"/>
                             <field name="customer_id" attrs="{'invisible': ['&amp;', ('reading_category', '!=', 'customer'), '|', ('reading_category', '!=', 'transformer'), ('is_private_transformer', '=', False)]}"/>
                             <field name="reading_date" attrs="{'readonly': [('state', 'not in', ('draft', 'error'))]}"/>
-                            <field name="available_open_reading_period_ids" invisible="1"/>
                             <field name="date_range_id" options="{'no_create': True}" attrs="{'readonly': [('state', 'not in', ('draft', 'error'))]}"/>
                             <field name="reading_type" attrs="{'readonly': [('state', '!=', 'draft')]}"/>
                         </group>

@@ -75,7 +75,7 @@ class UtilityReading(models.Model):
         ('error', 'خطأ'),
     ], string='الحالة', default='draft', tracking=True, index=True)
     available_open_reading_period_ids = fields.Many2many('date.range', compute='_compute_available_open_reading_period_ids')
-    date_range_id = fields.Many2one('date.range', string="الفترة", index=True, domain="[('id', 'in', available_open_reading_period_ids)]")
+    date_range_id = fields.Many2one('date.range', string="الفترة", index=True)
     remarks = fields.Text('ملاحظات')
     billing_error = fields.Text('خطأ الفوترة', readonly=True)
     reading_source = fields.Char('مصدر القراءة')
@@ -158,10 +158,12 @@ class UtilityReading(models.Model):
             domain = self._get_open_period_domain(work_type='readings', billing_period=billing_period)
             rec.available_open_reading_period_ids = self.env['date.range'].search(domain)
 
-    @api.onchange('account_id')
+    @api.onchange('account_id', 'meter_id')
     def _onchange_account_id_date_range(self):
-        if self.date_range_id and self.date_range_id not in self.available_open_reading_period_ids:
+        available_periods = self.available_open_reading_period_ids
+        if self.date_range_id and self.date_range_id not in available_periods:
             self.date_range_id = False
+        return {'domain': {'date_range_id': [('id', 'in', available_periods.ids)]}}
 
     @api.depends('reading_value', 'previous_reading', 'is_initial_reading')
     def _compute_consumption(self):

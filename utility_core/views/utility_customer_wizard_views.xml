@@ -12,12 +12,6 @@
                             <field name="name" placeholder="مثال: محمد اليماني"/>
                         </h1>
                     </div>
-                    <field name="available_subscriber_ids" invisible="1"/>
-                    <field name="available_contract_template_ids" invisible="1"/>
-                    <field name="available_route_ids" invisible="1"/>
-                    <field name="available_area_ids" invisible="1"/>
-                    <field name="available_zone_ids" invisible="1"/>
-
                     <notebook>
                         <page name="subscriber_contract" string="المشترك والعقد">
                             <group>
@@ -29,12 +23,10 @@
                                     <field name="city"/>
                                     <field name="country_id" options="{'no_create': True}"/>
                                 </group>
-                                <group string="التصنيف وقالب العقد">
+                                <group string="تصنيف المشترك">
                                     <field name="category_id" options="{'no_create': True}"/>
                                     <field name="subscriber_id" options="{'no_create': True}"/>
                                     <field name="sector_id" options="{'no_create': True}"/>
-                                    <field name="contract_template_id" options="{'no_create': True}"/>
-                                    <field name="route_id" options="{'no_create': True}"/>
                                 </group>
                             </group>
                         </page>
@@ -44,6 +36,8 @@
                                 <group>
                                     <field name="utility_region_id" options="{'no_create': True}"/>
                                     <field name="utility_area_id" options="{'no_create': True}"/>
+                                    <field name="contract_template_id" options="{'no_create': True}"/>
+                                    <field name="route_id" options="{'no_create': True}"/>
                                 </group>
                                 <group>
                                     <field name="transformer_zone_id" options="{'no_create': True}"/>
@@ -53,7 +47,7 @@
                             <group string="بيانات العداد">
                                 <group>
                                     <field name="create_meter"/>
-                                    <field name="available_meter_product_ids" invisible="1"/>
+                                    <field name="payment_type" attrs="{'invisible': [('create_meter', '=', False)]}"/>
                                     <field name="meter_product_id" options="{'no_create': True, 'no_open': True}" attrs="{'invisible': [('create_meter', '=', False)], 'required': [('create_meter', '=', True)]}"/>
                                     <field name="meter_model_id" options="{'no_create': True, 'no_open': True}" attrs="{'invisible': [('create_meter', '=', False)]}"/>
                                     <field name="meter_type_id" options="{'no_create': True, 'no_open': True}" attrs="{'invisible': [('create_meter', '=', False)]}"/>

@@ -1,4 +1,5 @@
 from . import utility_date_range
+from . import utility_dropdown_mixin
 from . import utility_region
 from . import utility_office
 from . import utility_feeder
@@ -6,7 +7,6 @@ from . import utility_substation
 from . import utility_transformer
 from . import utility_route
 from . import utility_customer
-from . import utility_dropdown_mixin
 
 from . import utility_connection
 from . import utility_meter

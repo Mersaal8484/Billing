@@ -45,9 +45,7 @@ class UtilityCustomer(models.Model):
     ], string='حالة الاشتراك', default='active', tracking=True,
         help='حالة الاشتراك الحالية للمشترك')
     available_contract_template_ids = fields.Many2many('utility.contract.template', compute='_compute_available_contract_template_ids')
-    contract_template_id = fields.Many2one('utility.contract.template',
-        string='نموذج العقد',
-        domain="[('id', 'in', available_contract_template_ids)]")
+    contract_template_id = fields.Many2one('utility.contract.template', string='نموذج العقد')
     contract_start_date = fields.Date('تاريخ بداية العقد')
     contract_end_date = fields.Date('تاريخ نهاية العقد')
     date_contract = fields.Date(string='تاريخ العقد')
@@ -211,10 +209,12 @@ class UtilityCustomer(models.Model):
 
     @api.onchange('category_id', 'subscriber_id', 'region_id', 'area_id')
     def _onchange_contract_template_domain(self):
-        if self.contract_template_id and self.contract_template_id not in self.available_contract_template_ids:
+        available_templates = self.available_contract_template_ids
+        if self.contract_template_id and self.contract_template_id not in available_templates:
             self.contract_template_id = False
         if not self.contract_template_id and self.subscriber_id:
             self.contract_template_id = self._find_matching_contract_template()
+        return {'domain': {'contract_template_id': [('id', 'in', available_templates.ids)]}}
 
     @api.constrains('category_id', 'subscriber_id')
     def _check_subscriber_category_compatibility(self):

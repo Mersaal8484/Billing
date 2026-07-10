@@ -21,8 +21,7 @@ class UtilityReadingBatch(models.Model):
     upload_date = fields.Datetime('تاريخ الرفع', default=fields.Datetime.now,
                                   readonly=True)
     available_open_reading_period_ids = fields.Many2many('date.range', compute='_compute_available_open_reading_period_ids')
-    date_range_id = fields.Many2one('date.range', string='الفترة (الشهر)',
-                                    required=True, domain="[('id', 'in', available_open_reading_period_ids)]")
+    date_range_id = fields.Many2one('date.range', string='الفترة (الشهر)', required=True)
     region_id = fields.Many2one('utility.region', string='المنطقة', domain="[('type', '=', 'region')]")
     company_id = fields.Many2one('res.company', default=lambda self: self.env.company)
 
@@ -61,8 +60,10 @@ class UtilityReadingBatch(models.Model):
 
     @api.onchange('region_id')
     def _onchange_region_id_date_range(self):
-        if self.date_range_id and self.date_range_id not in self.available_open_reading_period_ids:
+        available_periods = self.available_open_reading_period_ids
+        if self.date_range_id and self.date_range_id not in available_periods:
             self.date_range_id = False
+        return {'domain': {'date_range_id': [('id', 'in', available_periods.ids)]}}
 
     @api.model_create_multi
     def create(self, vals_list):
