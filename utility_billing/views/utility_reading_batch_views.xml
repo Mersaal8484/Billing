@@ -11,6 +11,7 @@
                 <field name="name" string="رقم الدفعة"/>
                 <field name="user_id" string="القارئ / الجابي"/>
                 <field name="upload_date" string="تاريخ الرفع"/>
+                <field name="available_open_reading_period_ids" invisible="1"/>
                 <field name="date_range_id" string="الفترة"/>
                 <field name="region_id" string="المنطقة"/>
                 <field name="total_readings" string="الإجمالي"/>
@@ -51,6 +52,7 @@
                         <group string="معلومات الدفعة">
                             <field name="user_id"/>
                             <field name="upload_date"/>
+                            <field name="available_open_reading_period_ids" invisible="1"/>
                             <field name="date_range_id"/>
                             <field name="region_id"/>
                         </group>

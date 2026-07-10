@@ -5,13 +5,15 @@ from odoo.exceptions import ValidationError
 
 
 class UtilitySaleOrder(models.Model):
-    _inherit = 'sale.order'
+    _name = 'sale.order'
+    _inherit = ['sale.order', 'utility.dropdown.mixin']
     _description = 'فاتورة كهرباء (أمر بيع)'
 
     customer_id = fields.Many2one('utility.customer', 'الحساب', index=True)
     meter_id = fields.Many2one('utility.meter', 'العداد', index=True)
     reading_id = fields.Many2one('utility.reading', 'قراءة العداد', index=True, ondelete='restrict')
-    date_range_id = fields.Many2one('date.range', 'فترة الفوترة', index=True, required=True)
+    available_billing_period_ids = fields.Many2many('date.range', compute='_compute_available_billing_period_ids')
+    date_range_id = fields.Many2one('date.range', 'فترة الفوترة', index=True, required=True, domain="[('id', 'in', available_billing_period_ids)]")
 
     meter_image = fields.Binary(related='reading_id.meter_image', string='صورة العداد', readonly=False)
     reading_reviewer = fields.Many2one(related='reading_id.reviewer_id', string='مراجع القراءة')
@@ -62,6 +64,26 @@ class UtilitySaleOrder(models.Model):
         ('overdue', 'متأخرة'),
         ('cancelled', 'ملغاة'),
     ], string='حالة الفاتورة', default='draft', tracking=True, compute='_compute_bill_state', store=True, index=True)
+
+    @api.depends('customer_id.contract_template_id.recurring_rule_type', 'customer_id.area_id.recurring_rule_type', 'customer_id.region_id.recurring_rule_type')
+    def _compute_available_billing_period_ids(self):
+        for rec in self:
+            account = rec.customer_id
+            billing_period = False
+            if account:
+                if account.contract_template_id and account.contract_template_id.recurring_rule_type:
+                    billing_period = account.contract_template_id.recurring_rule_type
+                elif account.area_id and account.area_id.recurring_rule_type:
+                    billing_period = account.area_id.recurring_rule_type
+                elif account.region_id and account.region_id.recurring_rule_type:
+                    billing_period = account.region_id.recurring_rule_type
+            domain = self._get_open_period_domain(work_type='payment', billing_period=billing_period)
+            rec.available_billing_period_ids = self.env['date.range'].search(domain)
+
+    @api.onchange('customer_id')
+    def _onchange_customer_id_date_range(self):
+        if self.date_range_id and self.date_range_id not in self.available_billing_period_ids:
+            self.date_range_id = False
 
     @api.depends('name', 'customer_id.customer_number', 'partner_id.name', 'meter_id.meter_number', 'date_range_id.name', 'amount_total', 'total_due_amount', 'bill_state')
     def _compute_qr_code(self):

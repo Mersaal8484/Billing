@@ -115,7 +115,6 @@ class DateRange(models.Model):
                 ('work_type',         '=', record.work_type),
                 ('id',                '!=', record.id),
             ]
-
             if self.search_count(domain) > 0:
                 raise ValidationError(
                     _("لا يمكن أن يكون هناك أكثر من فترة نشطة واحدة لنفس "

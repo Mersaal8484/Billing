@@ -38,6 +38,7 @@
             <field name="partner_id" position="after">
                 <field name="customer_id" options="{'no_create': True}" attrs="{'readonly': [('bill_state', '!=', 'draft')]}"/>
                 <field name="meter_id" options="{'no_create': True}" attrs="{'readonly': [('bill_state', '!=', 'draft')]}"/>
+                <field name="available_billing_period_ids" invisible="1"/>
                 <field name="date_range_id" attrs="{'readonly': [('bill_state', '!=', 'draft')]}"/>
             </field>
             <xpath expr="//notebook" position="inside">

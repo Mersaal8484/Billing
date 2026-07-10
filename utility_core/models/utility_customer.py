@@ -8,7 +8,7 @@ _logger = logging.getLogger(__name__)
 class UtilityCustomer(models.Model):
     _name = 'utility.customer'
     _description = 'مشترك كهرباء / حساب كهرباء'
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _inherit = ['mail.thread', 'mail.activity.mixin', 'utility.dropdown.mixin']
     _rec_name = 'customer_number'
     _order = 'customer_number asc'
 
@@ -44,15 +44,10 @@ class UtilityCustomer(models.Model):
         ('closed', 'مغلق'),
     ], string='حالة الاشتراك', default='active', tracking=True,
         help='حالة الاشتراك الحالية للمشترك')
+    available_contract_template_ids = fields.Many2many('utility.contract.template', compute='_compute_available_contract_template_ids')
     contract_template_id = fields.Many2one('utility.contract.template',
         string='نموذج العقد',
-        domain="["
-               "('subscriber_category_ids', 'in', [category_id]), "
-               "('subscriber_ids', 'in', [subscriber_id]), "
-               "'|', ('scope', '=', 'global'), "
-               "'|', ('region_ids', 'in', [region_id]), "
-               "('area_ids', 'in', [area_id])"
-               "]")
+        domain="[('id', 'in', available_contract_template_ids)]")
     contract_start_date = fields.Date('تاريخ بداية العقد')
     contract_end_date = fields.Date('تاريخ نهاية العقد')
     date_contract = fields.Date(string='تاريخ العقد')
@@ -193,38 +188,33 @@ class UtilityCustomer(models.Model):
                         "يرجى اختيار عداد مرتبط بهذا المحول."
                     )
 
-    def _get_contract_template_domain(self):
-        self.ensure_one()
-        domain = []
-        if self.category_id:
-            domain.append(('subscriber_category_ids', 'in', [self.category_id.id]))
-        if self.subscriber_id:
-            domain.append(('subscriber_ids', 'in', [self.subscriber_id.id]))
-        location_domain = [('scope', '=', 'global')]
-        if self.region_id:
-            location_domain = ['|'] + location_domain + [('region_ids', 'in', [self.region_id.id])]
-        if self.area_id:
-            location_domain = ['|'] + location_domain + [('area_ids', 'in', [self.area_id.id])]
-        return domain + location_domain
+    @api.depends('category_id', 'subscriber_id', 'region_id', 'area_id')
+    def _compute_available_contract_template_ids(self):
+        for rec in self:
+            domain = self._get_contract_template_domain(
+                category_id=rec.category_id.id if rec.category_id else False,
+                subscriber_id=rec.subscriber_id.id if rec.subscriber_id else False,
+                region_id=rec.region_id.id if rec.region_id else False,
+                area_id=rec.area_id.id if rec.area_id else False,
+            )
+            rec.available_contract_template_ids = self.env['utility.contract.template'].search(domain)
 
     def _find_matching_contract_template(self):
         self.ensure_one()
-        ContractTemplate = self.env['utility.contract.template']
         if self.subscriber_id and self.subscriber_id.default_contract_template_id:
             default_template = self.subscriber_id.default_contract_template_id
-            if ContractTemplate.search_count([('id', '=', default_template.id)] + self._get_contract_template_domain()):
+            if default_template in self.available_contract_template_ids:
                 return default_template
-        return ContractTemplate.search(self._get_contract_template_domain(), limit=1)
+        if self.available_contract_template_ids:
+            return self.available_contract_template_ids[0]
+        return self.env['utility.contract.template']
 
     @api.onchange('category_id', 'subscriber_id', 'region_id', 'area_id')
     def _onchange_contract_template_domain(self):
-        for rec in self:
-            domain = rec._get_contract_template_domain()
-            if rec.contract_template_id and not self.env['utility.contract.template'].search_count([('id', '=', rec.contract_template_id.id)] + domain):
-                rec.contract_template_id = False
-            if not rec.contract_template_id and rec.subscriber_id:
-                rec.contract_template_id = rec._find_matching_contract_template()
-            return {'domain': {'contract_template_id': domain}}
+        if self.contract_template_id and self.contract_template_id not in self.available_contract_template_ids:
+            self.contract_template_id = False
+        if not self.contract_template_id and self.subscriber_id:
+            self.contract_template_id = self._find_matching_contract_template()
 
     @api.constrains('category_id', 'subscriber_id')
     def _check_subscriber_category_compatibility(self):

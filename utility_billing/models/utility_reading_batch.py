@@ -12,7 +12,7 @@ _logger = logging.getLogger(__name__)
 class UtilityReadingBatch(models.Model):
     _name = 'utility.reading.batch'
     _description = 'دفعة رفع قراءات'
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _inherit = ['mail.thread', 'mail.activity.mixin', 'utility.dropdown.mixin']
     _order = 'upload_date desc'
 
     name = fields.Char('رقم الدفعة', readonly=True, default=lambda self: _('New'))
@@ -20,9 +20,10 @@ class UtilityReadingBatch(models.Model):
                               default=lambda self: self.env.user, tracking=True)
     upload_date = fields.Datetime('تاريخ الرفع', default=fields.Datetime.now,
                                   readonly=True)
+    available_open_reading_period_ids = fields.Many2many('date.range', compute='_compute_available_open_reading_period_ids')
     date_range_id = fields.Many2one('date.range', string='الفترة (الشهر)',
-                                    required=True)
-    region_id = fields.Many2one('utility.region', string='المنطقة')
+                                    required=True, domain="[('id', 'in', available_open_reading_period_ids)]")
+    region_id = fields.Many2one('utility.region', string='المنطقة', domain="[('type', '=', 'region')]")
     company_id = fields.Many2one('res.company', default=lambda self: self.env.company)
 
     # بيانات القراءات (JSON خفيف بدون صور)
@@ -50,6 +51,18 @@ class UtilityReadingBatch(models.Model):
     error_log = fields.Text('سجل الأخطاء', readonly=True)
     reading_ids = fields.One2many('utility.reading', 'batch_id',
                                   string='القراءات المُنشأة')
+
+    @api.depends('region_id.recurring_rule_type')
+    def _compute_available_open_reading_period_ids(self):
+        for rec in self:
+            billing_period = rec.region_id.recurring_rule_type if rec.region_id else False
+            domain = self._get_open_period_domain(work_type='readings', billing_period=billing_period)
+            rec.available_open_reading_period_ids = self.env['date.range'].search(domain)
+
+    @api.onchange('region_id')
+    def _onchange_region_id_date_range(self):
+        if self.date_range_id and self.date_range_id not in self.available_open_reading_period_ids:
+            self.date_range_id = False
 
     @api.model_create_multi
     def create(self, vals_list):

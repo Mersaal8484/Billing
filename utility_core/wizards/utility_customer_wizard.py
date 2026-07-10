@@ -8,6 +8,7 @@ PHONE_9_RE = re.compile(r'^\d{9}$')
 
 class UtilityCustomerWizard(models.TransientModel):
     _name = 'utility.customer.wizard'
+    _inherit = ['utility.dropdown.mixin']
     _description = 'معالج تسجيل مشترك وعداد موحد'
 
     name = fields.Char(string='اسم المشترك / الجهة', required=True)
@@ -20,22 +21,24 @@ class UtilityCustomerWizard(models.TransientModel):
     country_id = fields.Many2one('res.country', string='الدولة', default=lambda self: self.env.ref('base.ye', raise_if_not_found=False))
 
     category_id = fields.Many2one('utility.subscriber.category', string='فئة المشترك الرئيسية', required=True)
-    subscriber_id = fields.Many2one('utility.subscriber', string='نوع المشترك', required=True, domain="[('category_id', '=', category_id)]")
+    available_subscriber_ids = fields.Many2many('utility.subscriber', compute='_compute_available_subscriber_ids')
+    subscriber_id = fields.Many2one('utility.subscriber', string='نوع المشترك', required=True, domain="[('id', 'in', available_subscriber_ids)]")
     sector_id = fields.Many2one('res.partner.sector', string='القطاع')
+    
+    available_contract_template_ids = fields.Many2many('utility.contract.template', compute='_compute_available_contract_template_ids')
     contract_template_id = fields.Many2one('utility.contract.template',
         string='قالب العقد الافتراضي', required=True,
-        domain="["
-               "('subscriber_category_ids', 'in', [category_id]), "
-               "('subscriber_ids', 'in', [subscriber_id]), "
-               "'|', ('scope', '=', 'global'), "
-               "'|', ('region_ids', 'in', [utility_region_id]), "
-               "('area_ids', 'in', [utility_area_id])"
-               "]")
-    route_id = fields.Many2one('utility.route', string='مسار القراءة الميداني')
+        domain="[('id', 'in', available_contract_template_ids)]")
+    
+    available_route_ids = fields.Many2many('utility.route', compute='_compute_available_route_ids')
+    route_id = fields.Many2one('utility.route', string='مسار القراءة الميداني', domain="[('id', 'in', available_route_ids)]")
 
     utility_region_id = fields.Many2one('utility.region', string="المنطقة التشغيلية", domain="[('type', '=', 'region')]")
-    utility_area_id = fields.Many2one('utility.region', string="الفرع التشغيلي", domain="[('type', '=', 'area')]")
-    transformer_zone_id = fields.Many2one('utility.region', string="نطاق المحول", domain="[('type', '=', 'zone')]")
+    available_area_ids = fields.Many2many('utility.region', compute='_compute_available_area_ids')
+    utility_area_id = fields.Many2one('utility.region', string="الفرع التشغيلي", domain="[('id', 'in', available_area_ids)]")
+    
+    available_zone_ids = fields.Many2many('utility.region', compute='_compute_available_zone_ids')
+    transformer_zone_id = fields.Many2one('utility.region', string="نطاق المحول", domain="[('id', 'in', available_zone_ids)]")
 
     # Private Transformer Fields
     use_private_transformer = fields.Boolean(
@@ -121,48 +124,89 @@ class UtilityCustomerWizard(models.TransientModel):
             wizard.manufacturer = meter_model.manufacturer if meter_model and meter_model.manufacturer else wizard.manufacturer
             wizard.phase = meter_model.phase if meter_model and meter_model.phase else wizard.phase
 
-    def _get_contract_template_domain(self):
-        self.ensure_one()
-        domain = []
-        if self.category_id:
-            domain.append(('subscriber_category_ids', 'in', [self.category_id.id]))
-        if self.subscriber_id:
-            domain.append(('subscriber_ids', 'in', [self.subscriber_id.id]))
-        location_domain = [('scope', '=', 'global')]
-        if self.utility_region_id:
-            location_domain = ['|'] + location_domain + [('region_ids', 'in', [self.utility_region_id.id])]
-        if self.utility_area_id:
-            location_domain = ['|'] + location_domain + [('area_ids', 'in', [self.utility_area_id.id])]
-        return domain + location_domain
+    @api.depends('category_id')
+    def _compute_available_subscriber_ids(self):
+        for rec in self:
+            domain = self._get_subscriber_domain(rec.category_id.id if rec.category_id else False)
+            rec.available_subscriber_ids = self.env['utility.subscriber'].search(domain)
+
+    @api.depends('category_id', 'subscriber_id', 'utility_region_id', 'utility_area_id')
+    def _compute_available_contract_template_ids(self):
+        for rec in self:
+            domain = self._get_contract_template_domain(
+                category_id=rec.category_id.id if rec.category_id else False,
+                subscriber_id=rec.subscriber_id.id if rec.subscriber_id else False,
+                region_id=rec.utility_region_id.id if rec.utility_region_id else False,
+                area_id=rec.utility_area_id.id if rec.utility_area_id else False,
+            )
+            rec.available_contract_template_ids = self.env['utility.contract.template'].search(domain)
+
+    @api.depends('utility_region_id', 'utility_area_id', 'transformer_zone_id')
+    def _compute_available_route_ids(self):
+        for rec in self:
+            domain = self._get_route_domain(
+                region_id=rec.utility_region_id.id if rec.utility_region_id else False,
+                area_id=rec.utility_area_id.id if rec.utility_area_id else False,
+                zone_id=rec.transformer_zone_id.id if rec.transformer_zone_id else False,
+            )
+            rec.available_route_ids = self.env['utility.route'].search(domain)
+
+    @api.depends('utility_region_id')
+    def _compute_available_area_ids(self):
+        for rec in self:
+            domain = [('type', '=', 'area')]
+            if rec.utility_region_id:
+                domain.append(('parent_id', '=', rec.utility_region_id.id))
+            rec.available_area_ids = self.env['utility.region'].search(domain)
+
+    @api.depends('utility_area_id')
+    def _compute_available_zone_ids(self):
+        for rec in self:
+            domain = [('type', '=', 'zone')]
+            if rec.utility_area_id:
+                domain.append(('parent_id', '=', rec.utility_area_id.id))
+            rec.available_zone_ids = self.env['utility.region'].search(domain)
 
     def _find_matching_contract_template(self):
         self.ensure_one()
-        ContractTemplate = self.env['utility.contract.template']
         if self.subscriber_id and self.subscriber_id.default_contract_template_id:
             default_template = self.subscriber_id.default_contract_template_id
-            if ContractTemplate.search_count([('id', '=', default_template.id)] + self._get_contract_template_domain()):
+            if default_template in self.available_contract_template_ids:
                 return default_template
-        return ContractTemplate.search(self._get_contract_template_domain(), limit=1)
+        if self.available_contract_template_ids:
+            return self.available_contract_template_ids[0]
+        return self.env['utility.contract.template']
 
     @api.onchange('category_id')
     def _onchange_category_id(self):
-        if self.category_id:
-            subscriber = self.env['utility.subscriber'].search([('category_id', '=', self.category_id.id)], limit=1)
-            self.subscriber_id = subscriber.id if subscriber else False
-        else:
+        if self.subscriber_id and self.subscriber_id not in self.available_subscriber_ids:
             self.subscriber_id = False
-        self.contract_template_id = False
-        return self._onchange_contract_template_domain()
+        if not self.subscriber_id and len(self.available_subscriber_ids) == 1:
+            self.subscriber_id = self.available_subscriber_ids[0]
 
-    @api.onchange('subscriber_id', 'utility_region_id', 'utility_area_id')
-    def _onchange_contract_template_domain(self):
-        for rec in self:
-            domain = rec._get_contract_template_domain()
-            if rec.contract_template_id and not self.env['utility.contract.template'].search_count([('id', '=', rec.contract_template_id.id)] + domain):
-                rec.contract_template_id = False
-            if not rec.contract_template_id and rec.subscriber_id:
-                rec.contract_template_id = rec._find_matching_contract_template()
-            return {'domain': {'contract_template_id': domain}}
+    @api.onchange('category_id', 'subscriber_id', 'utility_region_id', 'utility_area_id')
+    def _onchange_contract_template_cascade(self):
+        if self.contract_template_id and self.contract_template_id not in self.available_contract_template_ids:
+            self.contract_template_id = False
+        if not self.contract_template_id and self.subscriber_id:
+            self.contract_template_id = self._find_matching_contract_template()
+
+    @api.onchange('utility_region_id')
+    def _onchange_utility_region_id(self):
+        if self.utility_area_id and self.utility_area_id not in self.available_area_ids:
+            self.utility_area_id = False
+
+    @api.onchange('utility_area_id')
+    def _onchange_utility_area_id(self):
+        if self.transformer_zone_id and self.transformer_zone_id not in self.available_zone_ids:
+            self.transformer_zone_id = False
+        if self.route_id and self.route_id not in self.available_route_ids:
+            self.route_id = False
+
+    @api.onchange('transformer_zone_id')
+    def _onchange_transformer_zone_id(self):
+        if self.route_id and self.route_id not in self.available_route_ids:
+            self.route_id = False
 
     @api.onchange('use_private_transformer', 'name', 'national_id')
     def _onchange_use_private_transformer(self):

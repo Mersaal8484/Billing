@@ -13,8 +13,9 @@ class UtilityInventoryItem(models.Model):
     code = fields.Char('كود الصنف', required=True)
     product_id = fields.Many2one('product.product', 'المنتج', required=True, ondelete='restrict')
     meter_id = fields.Many2one('utility.meter', 'العداد', ondelete='set null')
+    available_lot_ids = fields.Many2many('stock.lot', compute='_compute_available_lot_ids')
     lot_id = fields.Many2one('stock.lot', 'الرقم التسلسلي (Serial/Lot)', ondelete='restrict',
-                             domain="[('product_id', '=', product_id)]",
+                             domain="[('id', 'in', available_lot_ids)]",
                              help='الرقم التسلسلي للمنتجات المقتفاة بالأرقام التسلسلية')
     location_id = fields.Many2one('utility.inventory.location', 'موقع التخزين', required=True, ondelete='restrict')
     quantity = fields.Float('الكمية الحالية', required=True, default=0.0)
@@ -34,3 +35,16 @@ class UtilityInventoryItem(models.Model):
     def _compute_total_value(self):
         for item in self:
             item.total_value = item.quantity * item.unit_price
+
+    @api.depends('product_id')
+    def _compute_available_lot_ids(self):
+        for rec in self:
+            if rec.product_id:
+                rec.available_lot_ids = self.env['stock.lot'].search([('product_id', '=', rec.product_id.id)])
+            else:
+                rec.available_lot_ids = False
+
+    @api.onchange('product_id')
+    def _onchange_product_id_lot(self):
+        if self.lot_id and self.lot_id not in self.available_lot_ids:
+            self.lot_id = False

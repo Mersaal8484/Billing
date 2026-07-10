@@ -107,6 +107,7 @@
                         <page name="recurring_contract" string="الاشتراك المتكرر" attrs="{'invisible': [('payment_type', '=', 'prepaid')]}">
                             <group>
                                 <group string="قالب العقد والتواريخ">
+                                    <field name="available_contract_template_ids" invisible="1"/>
                                     <field name="contract_template_id" options="{'no_create': True}"/>
                                     <field name="date_contract"/>
                                     <field name="date_sub_start"/>

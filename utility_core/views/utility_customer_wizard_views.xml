@@ -12,6 +12,11 @@
                             <field name="name" placeholder="مثال: محمد اليماني"/>
                         </h1>
                     </div>
+                    <field name="available_subscriber_ids" invisible="1"/>
+                    <field name="available_contract_template_ids" invisible="1"/>
+                    <field name="available_route_ids" invisible="1"/>
+                    <field name="available_area_ids" invisible="1"/>
+                    <field name="available_zone_ids" invisible="1"/>
 
                     <notebook>
                         <page name="subscriber_contract" string="المشترك والعقد">

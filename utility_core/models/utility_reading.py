@@ -7,7 +7,7 @@ class UtilityReading(models.Model):
     _name = 'utility.reading'
     _description = 'قراءة عداد'
     _rec_name = 'reading_id'
-    _inherit = ['mail.thread', 'mail.activity.mixin']
+    _inherit = ['mail.thread', 'mail.activity.mixin', 'utility.dropdown.mixin']
     _order = 'reading_date desc'
 
     active = fields.Boolean('نشط', default=True)
@@ -74,7 +74,8 @@ class UtilityReading(models.Model):
         ('billed', 'مفوترة'),
         ('error', 'خطأ'),
     ], string='الحالة', default='draft', tracking=True, index=True)
-    date_range_id = fields.Many2one('date.range', string="الفترة", index=True)
+    available_open_reading_period_ids = fields.Many2many('date.range', compute='_compute_available_open_reading_period_ids')
+    date_range_id = fields.Many2one('date.range', string="الفترة", index=True, domain="[('id', 'in', available_open_reading_period_ids)]")
     remarks = fields.Text('ملاحظات')
     billing_error = fields.Text('خطأ الفوترة', readonly=True)
     reading_source = fields.Char('مصدر القراءة')
@@ -141,6 +142,26 @@ class UtilityReading(models.Model):
                     'لا يُسمح بأكثر من قراءة واحدة قابلة للفوترة لنفس العداد والفترة.'
                     % (r.meter_id.meter_number, r.date_range_id.name)
                 )
+
+    @api.depends('account_id.contract_template_id.recurring_rule_type', 'account_id.area_id.recurring_rule_type', 'account_id.region_id.recurring_rule_type')
+    def _compute_available_open_reading_period_ids(self):
+        for rec in self:
+            account = rec.account_id
+            billing_period = False
+            if account:
+                if account.contract_template_id and account.contract_template_id.recurring_rule_type:
+                    billing_period = account.contract_template_id.recurring_rule_type
+                elif account.area_id and account.area_id.recurring_rule_type:
+                    billing_period = account.area_id.recurring_rule_type
+                elif account.region_id and account.region_id.recurring_rule_type:
+                    billing_period = account.region_id.recurring_rule_type
+            domain = self._get_open_period_domain(work_type='readings', billing_period=billing_period)
+            rec.available_open_reading_period_ids = self.env['date.range'].search(domain)
+
+    @api.onchange('account_id')
+    def _onchange_account_id_date_range(self):
+        if self.date_range_id and self.date_range_id not in self.available_open_reading_period_ids:
+            self.date_range_id = False
 
     @api.depends('reading_value', 'previous_reading', 'is_initial_reading')
     def _compute_consumption(self):
