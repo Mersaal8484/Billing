@@ -77,7 +77,7 @@ class UtilityCustomer(models.Model):
     route_id = fields.Many2one('utility.route', string='خط السير', index=True)
 
     # العداد
-    meter_id = fields.Many2one('utility.meter', 'العداد', tracking=True, required=True)
+    meter_id = fields.Many2one('utility.meter', 'العداد', tracking=True)
     payment_type = fields.Selection(related='meter_id.payment_type', store=True, string='نظام الدفع (آجل/مسبق)', readonly=True)
 
     # الرصيد والمشتريات

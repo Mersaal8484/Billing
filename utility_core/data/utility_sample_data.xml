@@ -1,10 +1,88 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data noupdate="0">
+        <!-- System Provisioning Parameters -->
+        <record id="config_meter_review_required" model="ir.config_parameter">
+            <field name="key">utility.meter_review_required</field>
+            <field name="value">True</field>
+        </record>
+        <record id="config_meter_image_mandatory" model="ir.config_parameter">
+            <field name="key">utility.meter_image_mandatory</field>
+            <field name="value">False</field>
+        </record>
+        <record id="config_meter_reading_validation" model="ir.config_parameter">
+            <field name="key">utility.meter_reading_validation</field>
+            <field name="value">both</field>
+        </record>
+        <record id="config_max_transformer_loss_tolerance" model="ir.config_parameter">
+            <field name="key">utility.max_transformer_loss_tolerance</field>
+            <field name="value">10.0</field>
+        </record>
+
+        <record id="config_consumption_variation_alert_percentage" model="ir.config_parameter">
+            <field name="key">utility.consumption_variation_alert_percentage</field>
+            <field name="value">50.0</field>
+        </record>
+        <record id="config_emergency_credit_amount" model="ir.config_parameter">
+            <field name="key">utility.emergency_credit_amount</field>
+            <field name="value">50.0</field>
+        </record>
+        <record id="config_emergency_credit_grace_days" model="ir.config_parameter">
+            <field name="key">utility.emergency_credit_grace_days</field>
+            <field name="value">7</field>
+        </record>
+        <record id="config_low_credit_threshold" model="ir.config_parameter">
+            <field name="key">utility.low_credit_threshold</field>
+            <field name="value">100.0</field>
+        </record>
+        <record id="config_max_auto_pay_retries" model="ir.config_parameter">
+            <field name="key">utility.max_auto_pay_retries</field>
+            <field name="value">3</field>
+        </record>
+
         <!-- Yemen Company Configuration -->
         <record id="base.YER" model="res.currency">
             <field name="active" eval="True"/>
         </record>
+        
+        <!-- تعطيل جميع العملات الأخرى عدا الريال اليمني -->
+        <record id="deactivate_other_currencies" model="ir.actions.server">
+            <field name="name">Deactivate all currencies except YER</field>
+            <field name="model_id" ref="base.model_res_currency"/>
+            <field name="state">code</field>
+            <field name="code">
+                env['res.currency'].with_context(active_test=False).search([('name', '!=', 'YER')]).write({'active': False})
+            </field>
+        </record>
+        <function model="ir.actions.server" name="run">
+            <value eval="[ref('deactivate_other_currencies')]"/>
+        </function>
+
+        <!-- تعطيل الضرائب بالكامل من النظام -->
+        <record id="deactivate_all_taxes" model="ir.actions.server">
+            <field name="name">Deactivate all taxes globally</field>
+            <field name="model_id" ref="base.model_res_company"/>
+            <field name="state">code</field>
+            <field name="code">
+                # 1. إزالة الضرائب الافتراضية للشركة
+                env['res.company'].search([]).write({
+                    'account_sale_tax_id': False,
+                    'account_purchase_tax_id': False,
+                })
+                # 2. تعطيل جميع سجلات الضرائب
+                taxes = env['account.tax'].with_context(active_test=False).search([])
+                if taxes:
+                    taxes.write({'active': False})
+                # 3. إزالة الضرائب من جميع المنتجات
+                products = env['product.template'].with_context(active_test=False).search([])
+                if products:
+                    products.write({'taxes_id': [(5, 0, 0)], 'supplier_taxes_id': [(5, 0, 0)]})
+            </field>
+        </record>
+        <function model="ir.actions.server" name="run">
+            <value eval="[ref('deactivate_all_taxes')]"/>
+        </function>
+
         <record id="base.main_company" model="res.company">
             <field name="name">المؤسسة العامة للكهرباء - الجمهورية اليمنية (PEC)</field>
             <field name="currency_id" ref="base.YER"/>
@@ -95,10 +173,129 @@
             <field name="list_price">0.00</field>
         </record>
         <record id="utility_product_penalty" model="product.product">
-            <field name="name">غرامة تأخير</field>
+            <field name="name">غرامة</field>
             <field name="type">service</field>
             <field name="list_price">0.00</field>
         </record>
+
+        <!-- ====== منتجات وموديلات العدادات ====== -->
+        <record id="utility_product_meter_single" model="product.product">
+            <field name="name">عداد ذكي طور واحد (Single Phase Smart Meter)</field>
+            <field name="type">product</field>
+            <field name="list_price">15000.00</field>
+            <field name="default_code">MTR-1PH-SMART</field>
+        </record>
+        <record id="utility_product_meter_three" model="product.product">
+            <field name="name">عداد ذكي ثلاثة أطوار (Three Phase Smart Meter)</field>
+            <field name="type">product</field>
+            <field name="list_price">45000.00</field>
+            <field name="default_code">MTR-3PH-SMART</field>
+        </record>
+
+        <record id="demo_meter_type_smart_single" model="utility.meter.type">
+            <field name="name">عداد ذكي طور واحد</field>
+            <field name="code">SMART-1PH</field>
+            <field name="phase">single</field>
+        </record>
+        <record id="demo_meter_type_smart_three" model="utility.meter.type">
+            <field name="name">عداد ذكي ثلاثة أطوار</field>
+            <field name="code">SMART-3PH</field>
+            <field name="phase">three</field>
+        </record>
+
+        <record id="demo_meter_model_single" model="utility.meter.model">
+            <field name="name">HEXING Single Phase Smart</field>
+            <field name="code">HX-1PH-01</field>
+            <field name="manufacturer">Hexing Electrical</field>
+            <field name="meter_type_id" ref="demo_meter_type_smart_single"/>
+            <field name="phase">single</field>
+            <field name="voltage_range">220V-240V</field>
+            <field name="current_range">5(60)A</field>
+            <field name="sts_supported" eval="True"/>
+            <field name="communication_types">PLC, GPRS</field>
+            <field name="product_id" ref="utility_product_meter_single"/>
+        </record>
+        <record id="demo_meter_model_three" model="utility.meter.model">
+            <field name="name">HEXING Three Phase Smart</field>
+            <field name="code">HX-3PH-01</field>
+            <field name="manufacturer">Hexing Electrical</field>
+            <field name="meter_type_id" ref="demo_meter_type_smart_three"/>
+            <field name="phase">three</field>
+            <field name="voltage_range">3x220V/380V</field>
+            <field name="current_range">10(100)A</field>
+            <field name="sts_supported" eval="True"/>
+            <field name="communication_types">PLC, 4G</field>
+            <field name="product_id" ref="utility_product_meter_three"/>
+        </record>
+
+        <!-- المزيد من منتجات العدادات -->
+        <record id="utility_product_meter_mech_single" model="product.product">
+            <field name="name">عداد ميكانيكي طور واحد (Single Phase Mechanical)</field>
+            <field name="type">product</field>
+            <field name="list_price">5000.00</field>
+            <field name="default_code">MTR-1PH-MECH</field>
+        </record>
+        <record id="utility_product_meter_mech_three" model="product.product">
+            <field name="name">عداد ميكانيكي ثلاثة أطوار (Three Phase Mechanical)</field>
+            <field name="type">product</field>
+            <field name="list_price">12000.00</field>
+            <field name="default_code">MTR-3PH-MECH</field>
+        </record>
+        <record id="utility_product_meter_ct_three" model="product.product">
+            <field name="name">عداد ذكي محولات تيار ثلاثة أطوار (CT Operated Smart Meter)</field>
+            <field name="type">product</field>
+            <field name="list_price">85000.00</field>
+            <field name="default_code">MTR-3PH-CT</field>
+        </record>
+
+        <!-- المزيد من أنواع العدادات -->
+        <record id="demo_meter_type_mech_single" model="utility.meter.type">
+            <field name="name">عداد ميكانيكي طور واحد</field>
+            <field name="code">MECH-1PH</field>
+            <field name="phase">single</field>
+        </record>
+        <record id="demo_meter_type_mech_three" model="utility.meter.type">
+            <field name="name">عداد ميكانيكي ثلاثة أطوار</field>
+            <field name="code">MECH-3PH</field>
+            <field name="phase">three</field>
+        </record>
+
+        <!-- المزيد من موديلات العدادات -->
+        <record id="demo_meter_model_mech_single" model="utility.meter.model">
+            <field name="name">L&amp;T Single Phase Mechanical</field>
+            <field name="code">LT-1PH-M</field>
+            <field name="manufacturer">L&amp;T</field>
+            <field name="meter_type_id" ref="demo_meter_type_mech_single"/>
+            <field name="phase">single</field>
+            <field name="voltage_range">220V-240V</field>
+            <field name="current_range">5(40)A</field>
+            <field name="sts_supported" eval="False"/>
+            <field name="product_id" ref="utility_product_meter_mech_single"/>
+        </record>
+        <record id="demo_meter_model_mech_three" model="utility.meter.model">
+            <field name="name">L&amp;T Three Phase Mechanical</field>
+            <field name="code">LT-3PH-M</field>
+            <field name="manufacturer">L&amp;T</field>
+            <field name="meter_type_id" ref="demo_meter_type_mech_three"/>
+            <field name="phase">three</field>
+            <field name="voltage_range">3x220V/380V</field>
+            <field name="current_range">10(60)A</field>
+            <field name="sts_supported" eval="False"/>
+            <field name="product_id" ref="utility_product_meter_mech_three"/>
+        </record>
+        <record id="demo_meter_model_smart_ct" model="utility.meter.model">
+            <field name="name">HEXING Three Phase CT Smart</field>
+            <field name="code">HX-3PH-CT</field>
+            <field name="manufacturer">Hexing Electrical</field>
+            <field name="meter_type_id" ref="demo_meter_type_smart_three"/>
+            <field name="phase">three</field>
+            <field name="voltage_range">3x220V/380V</field>
+            <field name="current_range">1.5(6)A (CT)</field>
+            <field name="sts_supported" eval="True"/>
+            <field name="communication_types">PLC, 4G, RS485</field>
+            <field name="product_id" ref="utility_product_meter_ct_three"/>
+        </record>
+
 
         <!-- Assigning to Company -->
         <function model="res.company" name="write">

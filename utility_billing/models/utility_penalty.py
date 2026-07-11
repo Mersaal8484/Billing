@@ -136,7 +136,7 @@ class UtilityPenalty(models.Model):
         penalty_type = self.env['utility.penalty.type'].search([('code', '=', 'late_payment')], limit=1)
         if not penalty_type:
             penalty_type = self.env['utility.penalty.type'].create({
-                'name': 'غرامة تأخير السداد',
+                'name': 'غرامة السداد',
                 'code': 'late_payment',
             })
 
@@ -181,6 +181,6 @@ class UtilityPenalty(models.Model):
                     'penalty_type_id': penalty_type.id,
                     'amount': amount,
                     'calculated_date': fields.Date.today(),
-                    'reason': f'غرامة تأخير سداد الفاتورة رقم {order.name}',
+                    'reason': f'غرامة سداد الفاتورة رقم {order.name}',
                     'state': 'calculated',
                 })

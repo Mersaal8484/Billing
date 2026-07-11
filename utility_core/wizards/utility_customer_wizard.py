@@ -332,16 +332,23 @@ class UtilityCustomerWizard(models.TransientModel):
 
     def action_create_customer(self):
         self.ensure_one()
-        if not self.create_meter:
-            raise ValidationError(_('يجب تفعيل إنشاء العداد قبل حفظ المشترك.'))
-        if not self.meter_product_id:
-            raise ValidationError(_('يجب اختيار منتج العداد قبل حفظ المشترك.'))
-        if not self.serial_number:
-            raise ValidationError(_('يجب إدخال الرقم التسلسلي للعداد قبل حفظ المشترك.'))
-        if self.meter_product_id and not self.meter_model_id:
-            raise ValidationError(_('منتج العداد المختار غير مربوط بموديل عداد. يرجى ضبط موديلات العدادات أولاً.'))
-        if self.env['utility.meter'].search([('serial_number', '=', self.serial_number)], limit=1):
-            raise ValidationError(_('الرقم التسلسلي للعداد مستخدم مسبقاً. يرجى إدخال رقم تسلسلي مختلف.'))
+        
+        meter_model = False
+        if self.create_meter:
+            if not self.meter_product_id:
+                raise ValidationError(_('يجب اختيار منتج العداد قبل حفظ المشترك.'))
+            if not self.serial_number:
+                raise ValidationError(_('يجب إدخال الرقم التسلسلي للعداد قبل حفظ المشترك.'))
+
+            meter_model = self.meter_model_id
+            if self.meter_product_id and not meter_model:
+                meter_model = self.env['utility.meter.model'].search([('product_id', '=', self.meter_product_id.id)], limit=1)
+            
+            if not meter_model:
+                raise ValidationError(_('منتج العداد المختار غير مربوط بموديل عداد. يرجى ضبط موديلات العدادات أولاً.'))
+
+            if self.env['utility.meter'].search([('serial_number', '=', self.serial_number)], limit=1):
+                raise ValidationError(_('الرقم التسلسلي للعداد مستخدم مسبقاً. يرجى إدخال رقم تسلسلي مختلف.'))
 
         if self.subscriber_id and self.category_id and self.subscriber_id.category_id != self.category_id:
             raise ValidationError(
@@ -398,24 +405,26 @@ class UtilityCustomerWizard(models.TransientModel):
         if self.use_private_transformer:
             transformer = self._get_or_create_private_transformer(partner)
 
-        # 3. Create utility.meter before customer because meter_id is required
-        status_active = self.env['utility.meter.status'].search([('code', '=', 'ACTIVE')], limit=1)
-        meter_vals = {
-            'serial_number': self.serial_number,
-            'manufacturer': self.manufacturer,
-            'model_id': self.meter_model_id.id if self.meter_model_id else False,
-            'meter_type_id': self.meter_type_id.id if self.meter_type_id else False,
-            'status_id': status_active.id if status_active else False,
-            'phase': self.phase,
-            'transformer_id': transformer.id if transformer else False,
-            'feeder_id': transformer.feeder_id.id if transformer and transformer.feeder_id else False,
-            'payment_type': self.payment_type,
-            'sts_key_revision': self.sts_key_revision if self.payment_type == 'prepaid' else False,
-            'communication_type': self.communication_type if self.payment_type == 'postpaid' else False,
-        }
-        if 'product_id' in self.env['utility.meter']._fields:
-            meter_vals['product_id'] = self.meter_product_id.id
-        meter = self.env['utility.meter'].create(meter_vals)
+        # 3. Create utility.meter before customer if create_meter is True
+        meter = False
+        if self.create_meter:
+            status_active = self.env['utility.meter.status'].search([('code', '=', 'ACTIVE')], limit=1)
+            meter_vals = {
+                'serial_number': self.serial_number,
+                'manufacturer': self.manufacturer,
+                'model_id': meter_model.id,
+                'meter_type_id': self.meter_type_id.id if self.meter_type_id else False,
+                'status_id': status_active.id if status_active else False,
+                'phase': self.phase,
+                'transformer_id': transformer.id if transformer else False,
+                'feeder_id': transformer.feeder_id.id if transformer and transformer.feeder_id else False,
+                'payment_type': self.payment_type,
+                'sts_key_revision': self.sts_key_revision if self.payment_type == 'prepaid' else False,
+                'communication_type': self.communication_type if self.payment_type == 'postpaid' else False,
+            }
+            if 'product_id' in self.env['utility.meter']._fields:
+                meter_vals['product_id'] = self.meter_product_id.id
+            meter = self.env['utility.meter'].create(meter_vals)
 
         # 4. Create utility.customer
         customer_vals = {
@@ -427,12 +436,14 @@ class UtilityCustomerWizard(models.TransientModel):
             'route_id': self.route_id.id if self.route_id else False,
             'state': 'active',
             'contract_state': 'active',
-            'meter_id': meter.id,
+            'meter_id': meter.id if meter else False,
             'transformer_id': transformer.id if transformer else False,
             'cell_id': transformer.feeder_id.id if transformer and transformer.feeder_id else False,
         }
         customer = self.env['utility.customer'].create(customer_vals)
-        meter.write({'customer_id': customer.id})
+        
+        if meter:
+            meter.write({'customer_id': customer.id})
 
         # 5. Link meter as coupling meter for the private transformer
         if transformer and meter:

@@ -199,6 +199,8 @@ class UtilityContractTemplate(models.Model):
 
     @api.constrains('pricing_mode', 'discount_formula_id', 'block_ids', 'discount_block_ids', 'line_ids')
     def _check_contract_template_tiers(self):
+        if self.env.context.get('install_mode') or self.env.context.get('install_module'):
+            return
         self._validate_contract_template_tiers()
 
     @api.constrains('subscriber_category_ids', 'subscriber_ids')
