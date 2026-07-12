@@ -66,6 +66,7 @@ User Role.
         'views/utility_res_company_views.xml',
         'wizards/transformer_balance_wizard_views.xml',
         'wizards/formula_test_wizard_views.xml',
+        'wizards/utility_meter_wizard_views.xml',
         'report/transformer_balance_report_template.xml',
         'report/transformer_balance_report.xml',
         'report/utility_receipt_report.xml',

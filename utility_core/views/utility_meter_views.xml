@@ -7,6 +7,9 @@
             <tree>
                 <field name="meter_number"/>
                 <field name="serial_number"/>
+                <field name="connection_type" widget="badge" decoration-info="connection_type == 'subscriber'"
+                        decoration-success="connection_type == 'feeder'"
+                        decoration-warning="connection_type in ('private_transformer', 'transformer')"/>
                 <field name="meter_type_id"/>
                 <field name="is_coupling_meter"/>
                 <field name="status_id"/>
@@ -41,6 +44,38 @@
                                 <span class="o_stat_text">سجل القراءات</span>
                             </div>
                         </button>
+                        <button name="action_add_subscriber" type="object"
+                                class="oe_stat_button" icon="fa-user-plus"
+                                attrs="{'invisible': [('connection_type', '!=', 'subscriber')]}"
+                                help="إضافة مشترك جديد لهذا العداد">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">إضافة مشترك</span>
+                            </div>
+                        </button>
+                        <button name="action_add_private_transformer" type="object"
+                                class="oe_stat_button" icon="fa-bolt"
+                                attrs="{'invisible': [('connection_type', '!=', 'private_transformer')]}"
+                                help="إضافة محول خاص جديد لهذا العداد">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">إضافة محول خاص</span>
+                            </div>
+                        </button>
+                        <button name="action_add_transformer" type="object"
+                                class="oe_stat_button" icon="fa-bolt"
+                                attrs="{'invisible': [('connection_type', '!=', 'transformer')]}"
+                                help="إضافة محول جديد لهذا العداد">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">إضافة محول</span>
+                            </div>
+                        </button>
+                        <button name="action_add_feeder" type="object"
+                                class="oe_stat_button" icon="fa-sitemap"
+                                attrs="{'invisible': [('connection_type', '!=', 'feeder')]}"
+                                help="إضافة فيدر / خلية جديد لهذا العداد">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">إضافة فيدر</span>
+                            </div>
+                        </button>
                     </div>
                     <div class="oe_title">
                         <h1><field name="meter_number"/></h1>
@@ -48,6 +83,7 @@
                     <group>
                         <group string="معلومات أساسية">
                             <field name="payment_type"/>
+                            <field name="connection_type" widget="radio"/>
                             <field name="meter_type_id" options="{'no_create': True, 'no_open': True}"/>
                             <field name="serial_number"/>
                             <field name="manufacturer"/>
@@ -114,19 +150,29 @@
                         </page>
                         <page name="assignment" string="التعيين والموقع">
                             <group>
-                                <group>
-                                    <field name="account_id"/>
-                                    <field name="customer_id"/>
-                                    <field name="route_id"/>
+                                <group string="بيانات الربط">
+                                    <field name="customer_id"
+                                           attrs="{'required': [('connection_type', '=', 'subscriber')],
+                                                   'invisible': [('connection_type', '!=', 'subscriber')]}"/>
+                                    <field name="linked_transformer_id"
+                                           attrs="{'required': [('connection_type', '=', 'transformer')],
+                                                   'invisible': [('connection_type', '!=', 'transformer')]}"/>
+                                    <field name="linked_private_transformer_id"
+                                           attrs="{'required': [('connection_type', '=', 'private_transformer')],
+                                                   'invisible': [('connection_type', '!=', 'private_transformer')]}"/>
+                                    <field name="linked_feeder_id"
+                                           attrs="{'required': [('connection_type', '=', 'feeder')],
+                                                   'invisible': [('connection_type', '!=', 'feeder')]}"/>
+                                    <field name="is_coupling_meter"/>
                                 </group>
-                                <group>
+                                <group string="الموقع الجغرافي">
                                     <field name="region_id"/>
                                     <field name="area_id"/>
                                     <field name="zone_id"/>
                                     <field name="substation_id"/>
                                     <field name="feeder_id"/>
                                     <field name="transformer_id"/>
-                                    <field name="is_coupling_meter"/>
+                                    <field name="route_id"/>
                                 </group>
                             </group>
                         </page>
@@ -161,15 +207,23 @@
                 <field name="region_id"/>
                 <field name="area_id"/>
                 <field name="route_id"/>
+                <field name="connection_type"/>
                 <filter name="active" string="نشط" domain="[('active','=',True)]"/>
                 <filter name="single_phase" string="أحادي الطور" domain="[('phase','=','single')]"/>
                 <filter name="three_phase" string="ثلاثي الطور" domain="[('phase','=','three')]"/>
+                <separator/>
+                <filter name="conn_not_connected" string="غير مربوط" domain="[('connection_type','=','not_connected')]"/>
+                <filter name="conn_subscriber" string="مربوط بمشترك" domain="[('connection_type','=','subscriber')]"/>
+                <filter name="conn_private_transformer" string="محول خاص" domain="[('connection_type','=','private_transformer')]"/>
+                <filter name="conn_transformer" string="محول" domain="[('connection_type','=','transformer')]"/>
+                <filter name="conn_feeder" string="فيدر" domain="[('connection_type','=','feeder')]"/>
                 <group expand="0" string="تصنيف حسب">
                     <filter name="group_status" string="الحالة" context="{'group_by':'status_id'}"/>
                     <filter name="group_type" string="نوع العداد" context="{'group_by':'meter_type_id'}"/>
                     <filter name="group_phase" string="الطور" context="{'group_by':'phase'}"/>
                     <filter name="group_region" string="المنطقة" context="{'group_by':'region_id'}"/>
                     <filter name="group_route" string="المسار" context="{'group_by':'route_id'}"/>
+                    <filter name="group_connection_type" string="نوع الربط" context="{'group_by':'connection_type'}"/>
                 </group>
             </search>
         </field>

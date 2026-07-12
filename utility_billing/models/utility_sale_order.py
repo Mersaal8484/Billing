@@ -103,7 +103,7 @@ class UtilitySaleOrder(models.Model):
                 'state=%s' % (order.bill_state or ''),
             ])
             order.qr_code_value = payload
-            order.qr_code_url = '/report/barcode/?type=QR&value=%s' % quote(payload)
+            order.qr_code_url = '/report/barcode/?barcode_type=QR&value=%s' % quote(payload)
     @api.model
     def _get_default_type(self):
         return self.env['sale.order.type'].search([], limit=1)

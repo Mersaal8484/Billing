@@ -43,7 +43,7 @@ class AccountPayment(models.Model):
                 'state=%s' % (payment.state or ''),
             ])
             payment.qr_code_value = payload
-            payment.qr_code_url = '/report/barcode/?type=QR&value=%s' % quote(payload)
+            payment.qr_code_url = '/report/barcode/?barcode_type=QR&value=%s' % quote(payload)
 
     def _get_payment_period_for_order(self, order):
         if not order or not order.date_range_id:

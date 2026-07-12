@@ -30,12 +30,15 @@
     <template id="report_utility_meter_qr_label">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="o">
-                <div class="page" dir="rtl" style="font-family: Arial, sans-serif; text-align:center; color:#000; font-size:8px;">
+                <div class="page" dir="rtl"
+                     style="font-family: Tahoma, Arial, sans-serif; text-align:center; color:#000; font-size:8px; padding:2px; margin:0;">
                     <div style="font-weight:bold; font-size:10px; margin-bottom:2px;">عداد كهرباء</div>
-                    <img t-if="o.qr_code_url" t-att-src="o.qr_code_url" style="width:30mm; height:30mm;" alt="Meter QR"/>
-                    <div style="font-weight:bold; margin-top:2px;" t-esc="o.meter_number or ''"/>
-                    <div t-if="o.customer_id" t-esc="o.customer_id.customer_number or ''"/>
-                    <div t-if="o.serial_number">S/N: <span t-esc="o.serial_number"/></div>
+                    <img t-if="o.qr_code_url"
+                         t-att-src="o.qr_code_url"
+                         style="width:26mm; height:26mm; display:block; margin:2px auto;" alt="Meter QR"/>
+                    <div style="font-weight:bold; margin-top:1px; font-size:9px;" t-esc="o.meter_number or ''"/>
+                    <div t-if="o.customer_id" style="font-size:7px;" t-esc="o.customer_id.customer_number or ''"/>
+                    <div t-if="o.serial_number" style="font-size:7px;">S/N: <span t-esc="o.serial_number"/></div>
                 </div>
             </t>
         </t>
