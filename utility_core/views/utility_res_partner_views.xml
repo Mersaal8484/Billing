@@ -6,6 +6,13 @@
         <field name="model">res.partner</field>
         <field name="inherit_id" ref="base.view_partner_form"/>
         <field name="arch" type="xml">
+            <xpath expr="//sheet" position="before">
+                <header>
+                    <button name="%(utility_core.action_utility_customer_wizard)d" type="action" 
+                            string="تفعيل كمشترك كهرباء" class="oe_highlight" 
+                            attrs="{'invisible': [('is_subscriber', '=', True)]}"/>
+                </header>
+            </xpath>
             <xpath expr="//field[@name='vat']" position="after">
                 <field name="nickname" placeholder="الاسم المختصر..."/>
                 <field name="char_code" placeholder="الرمز التعريفي"/>

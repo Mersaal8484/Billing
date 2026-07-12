@@ -1,0 +1,7 @@
+# Requirements for Utility ERP modules
+# Install via: pip install -r requirements.txt
+
+xlsxwriter>=3.0.0
+requests
+odoo-test-helper
+openpyxl>=3.0.0

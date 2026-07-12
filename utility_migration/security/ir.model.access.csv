@@ -1,3 +1,4 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_utility_migration_customer,utility.migration.customer,model_utility_migration_customer,utility_core.group_utility_admin,1,1,1,1
 access_utility_migration_mapping,utility.migration.mapping,model_utility_migration_mapping,utility_core.group_utility_admin,1,1,1,1
+access_utility_migration_import_wizard,access_utility_migration_import_wizard,model_utility_migration_import_wizard,,1,1,1,1

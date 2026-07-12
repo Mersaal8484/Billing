@@ -29,6 +29,14 @@ class UtilityMigrationCustomer(models.Model):
     contract_template_id = fields.Many2one('utility.contract.template', string='قالب العقد (Odoo)')
     
     is_active = fields.Boolean('هل فعال؟', default=True)
+
+    @api.model
+    def action_download_template(self):
+        return {
+            'type': 'ir.actions.act_url',
+            'url': '/utility_migration/static/src/Migration_Template.xlsx',
+            'target': 'new',
+        }
     
     def action_map_codes(self):
         mapping_obj = self.env['utility.migration.mapping']
@@ -68,6 +76,7 @@ class UtilityMigrationCustomer(models.Model):
     created_partner_id = fields.Many2one('res.partner', 'جهة الاتصال المنشأة', readonly=True)
     created_customer_id = fields.Many2one('utility.customer', 'حساب العميل المنشأ', readonly=True)
     created_meter_id = fields.Many2one('utility.meter', 'العداد المنشأ', readonly=True)
+    opening_move_id = fields.Many2one('account.move', 'قيد الرصيد الافتتاحي', readonly=True)
 
     def action_import_data(self):
         for rec in self:
@@ -136,44 +145,52 @@ class UtilityMigrationCustomer(models.Model):
                                 'state': 'billed',
                             })
 
-                # 5. Create Opening Balance (Journal Entry)
-                if rec.current_balance > 0:
-                    journal = self.env['account.journal'].search([('type', '=', 'general')], limit=1)
-                    account_receivable = partner.property_account_receivable_id
-                    account_suspense = self.env.company.account_journal_suspense_account_id
-                    
-                    if not account_suspense:
-                        account_suspense = self.env['account.account'].search([('account_type', '=', 'equity')], limit=1)
-
-                    if not account_receivable or not account_suspense:
-                        raise UserError(_('يجب إعداد حسابات العملاء والحساب المعلق/حقوق الملكية في النظام.'))
-
-                    move = self.env['account.move'].create({
-                        'move_type': 'entry',
-                        'journal_id': journal.id,
-                        'date': fields.Date.today(),
-                        'ref': 'رصيد افتتاحي - %s' % rec.customer_number,
-                        'line_ids': [
-                            (0, 0, {
-                                'name': 'رصيد افتتاحي',
-                                'partner_id': partner.id,
-                                'account_id': account_receivable.id,
-                                'debit': rec.current_balance,
-                                'credit': 0.0,
-                            }),
-                            (0, 0, {
-                                'name': 'رصيد افتتاحي',
-                                'account_id': account_suspense.id,
-                                'debit': 0.0,
-                                'credit': rec.current_balance,
-                            })
-                        ]
-                    })
-                    move.action_post()
-
                 rec.state = 'imported'
                 rec.error_message = False
 
             except Exception as e:
                 rec.state = 'error'
                 rec.error_message = str(e)
+
+    def action_create_opening_balances(self):
+        for rec in self:
+            if rec.state != 'imported' or not rec.created_partner_id:
+                raise UserError(_('يجب اعتماد ورفع بيانات العميل أولاً قبل إنشاء الرصيد الافتتاحي.'))
+            if rec.opening_move_id:
+                continue
+            if rec.current_balance > 0:
+                journal = self.env['account.journal'].search([('type', '=', 'general')], limit=1)
+                partner = rec.created_partner_id
+                account_receivable = partner.property_account_receivable_id
+                account_suspense = self.env.company.account_journal_suspense_account_id
+                
+                if not account_suspense:
+                    account_suspense = self.env['account.account'].search([('account_type', '=', 'equity')], limit=1)
+
+                if not account_receivable or not account_suspense:
+                    raise UserError(_('يجب إعداد حسابات العملاء والحساب المعلق/حقوق الملكية في النظام.'))
+
+                move = self.env['account.move'].create({
+                    'move_type': 'entry',
+                    'journal_id': journal.id,
+                    'date': fields.Date.today(),
+                    'ref': 'رصيد افتتاحي - %s' % rec.customer_number,
+                    'line_ids': [
+                        (0, 0, {
+                            'name': 'رصيد افتتاحي',
+                            'partner_id': partner.id,
+                            'account_id': account_receivable.id,
+                            'debit': rec.current_balance,
+                            'credit': 0.0,
+                        }),
+                        (0, 0, {
+                            'name': 'رصيد افتتاحي',
+                            'account_id': account_suspense.id,
+                            'debit': 0.0,
+                            'credit': rec.current_balance,
+                        })
+                    ]
+                })
+                move.action_post()
+                rec.opening_move_id = move.id
+

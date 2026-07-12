@@ -2,7 +2,7 @@
 
 ## Project
 
-Odoo 16.0 ERP for electricity distribution companies. 6 addon modules under `utility_erp/`.
+Odoo 16.0 ERP for electricity distribution companies. 7 addon modules under `utility_erp/`.
 
 ## Module dependency order
 
@@ -12,6 +12,7 @@ Odoo 16.0 ERP for electricity distribution companies. 6 addon modules under `uti
 4. `utility_operations` — field ops: service orders, inspections, tamper cases, meter replacement, reading/financial settlements
 5. `utility_billing` — postpaid billing: meter readings, billing cycles, sale orders, penalties, recurring invoices
 6. `utility_portal` — customer portal + REST API (depends on everything above)
+7. `utility_migration` — staging and importing legacy system data, data mapping, and generating exact Odoo models
 
 Install in that order. `utility_core` must always be first.
 
@@ -55,22 +56,30 @@ No test infrastructure exists yet. All `tests/` directories are empty. Do not ru
 - `utility_billing/data/utility_cron_extras.xml` — cron jobs including `cron_update_overdue_orders`, `cron_send_due_reminders`
 - `utility_billing/views/utility_sale_order_views.xml` — sale.order tree/form/search views with utility fields
 
-## Known gaps (from GAP_ANALYSIS_PLAN.md)
+## Resolved & Pending Gaps (from GAP_ANALYSIS_PLAN.md)
 
-| Gap | Priority |
-|-----|----------|
-| Rule engine (7 models) | 🔴 Critical |
-| Recurring contracts automation | 🔴 Critical |
-| Settings & configuration | 🟡 Medium |
-| Analytic account integration | 🟡 Medium |
-| Meter replacement module | 🟡 Medium |
-| Reading/financial settlements | 🟢 Nice-to-have |
-| Advanced reports (transformer balance, customer statement) | 🟢 Nice-to-have |
-| Barcode OCR service | 🟢 Nice-to-have |
+| Gap | Priority | Status |
+|-----|----------|--------|
+| Recurring contracts automation | 🔴 Critical | ✅ Completed (`utility.recurring.invoice`) |
+| Settings & configuration | 🟡 Medium | ✅ Completed (`res.config.settings` inherits) |
+| Analytic account integration | 🟡 Medium | ✅ Completed (Integrated in billing) |
+| Meter replacement module | 🟡 Medium | ✅ Completed (`utility.meter.replacement`) |
+| Reading/financial settlements | 🟢 Nice-to-have | ✅ Completed (`utility.reading.settlement`) |
+| Advanced reports (transformer balance, customer statement) | 🟢 Nice-to-have | ✅ Completed (Custom Wizards) |
+| Barcode OCR service | 🟢 Nice-to-have | 🟡 Pending |
 
 ## Development commands
 
 Standard Odoo 16.0 addon path. No custom Makefile, pre-commit, linter, or typecheck configuration exists. No CI workflows detected.
+
+## Dependencies & Requirements
+
+All third-party Python packages required by any module must be tracked in the global `requirements.txt` located at `c:\odoo\odoo\odoo\utility_erp\requirements.txt`. Current dependencies include:
+- `xlsxwriter` (for Excel generation)
+- `openpyxl` (for reading uploaded Excel templates in migration)
+- `requests` (for external API integration)
+- `odoo-test-helper` (for unit tests, primarily in date_range module)
+
 
 ## date_range model
 
@@ -112,7 +121,7 @@ Both cells and transformers share the same model `utility.transformer` with `_pa
 ## Project Status & Recent Improvements (وضع المشروع الحالي وتحديثات منطق الأعمال)
 
 As of July 2026, the following major updates and architectural improvements have been implemented:
-1. **Module Count**: The project has 6 addon modules (adding `utility_inventory` for storage locations, stock items, serialization, and physical count management).
+1. **Module Count**: The project has 7 addon modules (adding `utility_inventory` for storage and tracking, and `utility_migration` for staging and mapping legacy data).
 2. **Unified Readings**: `utility.reading` was moved to `utility_core` as the base model, and `utility_billing` extends it. The old `utility.transformer.reading` was deleted, and all reading types (subscriber, cell, feeder, transformer) are now unified under `utility.reading`.
 3. **Security & Sandbox**:
    - `safe_eval` on dynamic formulas is isolated to pass only primitive values (`id`, `name`), preventing ORM context leakage to the formula execution sandbox.

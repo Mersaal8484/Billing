@@ -12,6 +12,7 @@ Allows importing legacy customers, meters, readings, and opening balances.
     'depends': ['utility_core', 'utility_billing', 'account'],
     'data': [
         'security/ir.model.access.csv',
+        'wizards/utility_migration_import_wizard_views.xml',
         'views/utility_migration_customer_views.xml',
         'views/utility_migration_mapping_views.xml',
     ],

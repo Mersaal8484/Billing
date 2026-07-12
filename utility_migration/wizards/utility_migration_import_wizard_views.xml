@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_migration_import_wizard_form" model="ir.ui.view">
+        <field name="name">utility.migration.import.wizard.form</field>
+        <field name="model">utility.migration.import.wizard</field>
+        <field name="arch" type="xml">
+            <form string="رفع البيانات">
+                <group>
+                    <div class="alert alert-info" role="alert">
+                        قم بتحديد ملف الإكسل (بصيغة .xlsx) الذي قمت بتحميله سابقاً وتعبئته بالبيانات.
+                        سيقوم النظام برفع البيانات ومطابقة الأكواد تلقائياً!
+                    </div>
+                </group>
+                <group>
+                    <field name="file_name" invisible="1"/>
+                    <field name="import_file" filename="file_name" widget="binary"/>
+                </group>
+                <footer>
+                    <button string="استيراد" name="action_import_file" type="object" class="oe_highlight"/>
+                    <button string="إلغاء" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_utility_migration_import_wizard" model="ir.actions.act_window">
+        <field name="name">رفع البيانات من الإكسل</field>
+        <field name="res_model">utility.migration.import.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+    
+    <menuitem id="menu_utility_migration_import_wizard" name="رفع الإكسل (Wizard)" parent="menu_utility_migration_root" action="action_utility_migration_import_wizard" sequence="20"/>
+
+</odoo>

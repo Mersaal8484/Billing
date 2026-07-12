@@ -5,6 +5,10 @@
         <field name="model">utility.migration.customer</field>
         <field name="arch" type="xml">
             <tree string="بيانات التهيئة" decoration-info="state=='draft'" decoration-success="state=='imported'" decoration-danger="state=='error'">
+                <header>
+                    <button name="action_download_template" string="تحميل قالب الرفع (Excel)" type="object" class="btn-primary"/>
+                    <button name="action_create_opening_balances" string="إنشاء الأرصدة الافتتاحية" type="object" class="btn-warning"/>
+                </header>
                 <field name="customer_number"/>
                 <field name="name"/>
                 <field name="mobile"/>
@@ -21,8 +25,9 @@
         <field name="arch" type="xml">
             <form string="تهيئة العميل">
                 <header>
-                    <button name="action_map_codes" string="مطابقة الترميز" type="object" class="btn-secondary" states="draft,error"/>
-                    <button name="action_import_data" string="رفع البيانات" type="object" class="oe_highlight" states="draft,error"/>
+                    <button name="action_map_codes" string="مطابقة الترميز" type="object" class="btn-secondary" attrs="{'invisible': [('state', '=', 'imported')]}"/>
+                    <button name="action_import_data" string="رفع البيانات" type="object" class="oe_highlight" attrs="{'invisible': [('state', '=', 'imported')]}"/>
+                    <button name="action_create_opening_balances" string="إنشاء الرصيد الافتتاحي" type="object" class="btn-warning" attrs="{'invisible': [('state', '!=', 'imported')]}"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,imported,error"/>
                 </header>
                 <sheet>
@@ -66,6 +71,7 @@
                                 <field name="created_partner_id"/>
                                 <field name="created_customer_id"/>
                                 <field name="created_meter_id"/>
+                                <field name="opening_move_id"/>
                             </group>
                         </page>
                     </notebook>
@@ -100,8 +106,15 @@
         <field name="view_mode">tree,form</field>
     </record>
 
+    <record id="action_download_migration_template" model="ir.actions.act_url">
+        <field name="name">تحميل قالب الرفع</field>
+        <field name="url">/utility_migration/static/src/Migration_Template.xlsx</field>
+        <field name="target">new</field>
+    </record>
+
     <!-- Create a top level menu for Migration in Utility -->
     <menuitem id="menu_utility_migration_root" name="التهيئة والرفع" parent="utility_core.menu_utility_root" sequence="100"/>
     <menuitem id="menu_utility_migration_customer" name="عملاء النظام القديم" parent="menu_utility_migration_root" action="action_utility_migration_customer" sequence="10"/>
+    <menuitem id="menu_utility_migration_template" name="تحميل قالب الإكسل" parent="menu_utility_migration_root" action="action_download_migration_template" sequence="30"/>
 
 </odoo>

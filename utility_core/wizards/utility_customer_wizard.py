@@ -11,6 +11,27 @@ class UtilityCustomerWizard(models.TransientModel):
     _inherit = ['utility.dropdown.mixin']
     _description = 'معالج تسجيل مشترك وعداد موحد'
 
+    @api.model
+    def default_get(self, fields_list):
+        res = super().default_get(fields_list)
+        if self.env.context.get('active_model') == 'res.partner' and self.env.context.get('active_id'):
+            partner = self.env['res.partner'].browse(self.env.context.get('active_id'))
+            res.update({
+                'name': partner.name,
+                'mobile': partner.mobile,
+                'phone': partner.phone,
+                'street': partner.street,
+                'city': partner.city,
+                'country_id': partner.country_id.id if partner.country_id else False,
+                'utility_region_id': partner.region_id.id if partner.region_id else False,
+                'utility_area_id': partner.area_id.id if partner.area_id else False,
+                'transformer_zone_id': partner.zone_id.id if partner.zone_id else False,
+                'sector_id': partner.sector_id.id if partner.sector_id else False,
+                'subscriber_id': partner.subscriber_id.id if partner.subscriber_id else False,
+                'category_id': partner.subscriber_id.category_id.id if partner.subscriber_id and partner.subscriber_id.category_id else False,
+            })
+        return res
+
     name = fields.Char(string='اسم المشترك / الجهة', required=True)
     mobile = fields.Char(string='رقم الجوال', required=True)
     phone = fields.Char(string='رقم الهاتف الثابت')
@@ -383,7 +404,7 @@ class UtilityCustomerWizard(models.TransientModel):
                         % self.contract_template_id.name
                     )
 
-        # 1. Create res.partner
+        # 1. Get or Create res.partner
         partner_vals = {
             'name': self.name,
             'mobile': self.mobile,
@@ -398,7 +419,13 @@ class UtilityCustomerWizard(models.TransientModel):
             'area_id': self.utility_area_id.id if self.utility_area_id else False,
             'zone_id': self.transformer_zone_id.id if self.transformer_zone_id else False,
         }
-        partner = self.env['res.partner'].create(partner_vals)
+        
+        partner = False
+        if self.env.context.get('active_model') == 'res.partner' and self.env.context.get('active_id'):
+            partner = self.env['res.partner'].browse(self.env.context.get('active_id'))
+            partner.write(partner_vals)
+        else:
+            partner = self.env['res.partner'].create(partner_vals)
 
         # 2. Handle Private Transformer before customer creation
         transformer = False
