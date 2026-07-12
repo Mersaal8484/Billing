@@ -22,11 +22,13 @@ debt management, and collections.
         'data/utility_cron_extras.xml',
         'data/utility_cron_batch.xml',
         'data/utility_billing_sample_data.xml',
+        'views/utility_service_charge_views.xml',
         'views/utility_billing_menu.xml',
         'views/utility_reading_views.xml',
         'views/utility_reading_batch_views.xml',
         'views/utility_sale_order_views.xml',
         'views/utility_sale_order_report.xml',
+        'views/utility_service_order_billing_views.xml',
         'views/utility_cashier_shift_views.xml',
         'views/utility_collector_shift_views.xml',
         'views/account_move_views.xml',
@@ -47,3 +49,5 @@ debt management, and collections.
     'auto_install': False,
     'sequence': 40,
 }
+
+

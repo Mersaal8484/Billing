@@ -42,6 +42,10 @@
               parent="menu_utility_accounting" sequence="30"
               action="action_utility_penalty"/>
 
+
+    <menuitem id="menu_utility_service_charges" name="رسوم الخدمات"
+              parent="menu_utility_accounting" sequence="35"
+              action="action_utility_service_charge"/>
     <record id="action_utility_penalty_type" model="ir.actions.act_window">
         <field name="name">أنواع الغرامات</field>
         <field name="res_model">utility.penalty.type</field>
@@ -52,3 +56,4 @@
               parent="utility_core.menu_utility_config" sequence="45"
               action="action_utility_penalty_type"/>
 </odoo>
+

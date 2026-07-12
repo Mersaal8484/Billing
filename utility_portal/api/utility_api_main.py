@@ -51,8 +51,7 @@ class UtilityAPI(http.Controller):
         debt = sum(orders.mapped('balance_due'))
         return {
             'account_number': account.account_number,
-            'balance': account.prepaid_balance,
-            'emergency_credit': account.emergency_credit,
+            'accounting_balance': account.accounting_balance,
             'debt': debt,
             'last_purchase_date': account.last_purchase_date.isoformat() if account.last_purchase_date else None,
         }

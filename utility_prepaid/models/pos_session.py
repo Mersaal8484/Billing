@@ -6,7 +6,6 @@ class PosSession(models.Model):
     def _loader_params_res_partner(self):
         result = super()._loader_params_res_partner()
         result['search_params']['fields'].extend([
-            'utility_prepaid_balance',
             'utility_postpaid_balance'
         ])
         return result
@@ -20,7 +19,7 @@ class PosSession(models.Model):
         return {
             'search_params': {
                 'domain': [('state', '=', 'active')],
-                'fields': ['customer_number', 'partner_id', 'meter_id', 'payment_type', 'prepaid_balance', 'accounting_balance'],
+                'fields': ['customer_number', 'partner_id', 'meter_id', 'payment_type', 'accounting_balance'],
             }
         }
 

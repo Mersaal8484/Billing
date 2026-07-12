@@ -8,42 +8,39 @@ _logger = logging.getLogger(__name__)
 class UtilityReadingSettlement(models.Model):
     _name = 'utility.reading.settlement'
     _inherit = ['mail.thread', 'mail.activity.mixin']
-    _description = 'سجل تسويات القراءات'
+    _description = '??? ?????? ????????'
     _order = 'adjustment_date desc'
 
-    name = fields.Char('رقم التسوية', default=lambda self: _('New'), readonly=True)
-    reading_id = fields.Many2one('utility.reading', 'القراءة المستهدفة', required=True)
+    name = fields.Char('??? ???????', default=lambda self: _('New'), readonly=True)
+    reading_id = fields.Many2one('utility.reading', '??????? ?????????', required=True)
     meter_id = fields.Many2one('utility.meter', related='reading_id.meter_id', store=True)
     account_id = fields.Many2one('utility.customer', related='reading_id.account_id', store=True)
-    sale_order_id = fields.Many2one('sale.order', 'فاتورة الكهرباء المرتبطة',
-                                     compute='_compute_sale_order_id', store=True)
+    sale_order_id = fields.Many2one('sale.order', '?????? ???????? ????????', compute='_compute_sale_order_id', store=True)
 
-    old_value = fields.Float('القراءة القديمة', readonly=True)
-    new_value = fields.Float('القراءة الجديدة المعدلة', required=True)
-    old_consumption = fields.Float('الاستهلاك القديم', readonly=True)
-    new_consumption = fields.Float('الاستهلاك الجديد', compute='_compute_new_consumption')
+    old_value = fields.Float('??????? ???????', readonly=True)
+    new_value = fields.Float('??????? ??????? ???????', required=True)
+    old_consumption = fields.Float('????????? ??????', readonly=True)
+    new_consumption = fields.Float('????????? ??????', compute='_compute_new_consumption')
 
-    adjusted_by = fields.Many2one('res.users', 'تمت التسوية بواسطة',
-                                   default=lambda self: self.env.user, readonly=True)
-    adjustment_date = fields.Date('تاريخ التسوية', default=fields.Date.today, readonly=True)
-    reason = fields.Text('سبب التعديل والتسوية', required=True)
+    adjusted_by = fields.Many2one('res.users', '??? ??????? ??????', default=lambda self: self.env.user, readonly=True)
+    adjustment_date = fields.Date('????? ???????', default=fields.Date.today, readonly=True)
+    reason = fields.Text('??? ??????? ????????', required=True)
 
     state = fields.Selection([
-        ('draft', 'مسودة'),
-        ('done', 'تمت التسوية'),
-    ], string='الحالة', default='draft', readonly=True)
+        ('draft', '?????'),
+        ('done', '??? ???????'),
+    ], string='??????', default='draft', readonly=True)
 
-    # FIX-8: ربط المستند التصحيحي الناتج
     correction_move_id = fields.Many2one(
-        'account.move', 'مستند التصحيح', readonly=True,
-        help='إشعار الدائن أو فاتورة فرق الناتجة عن التسوية'
+        'account.move', '????? ???????', readonly=True,
+        help='????? ?????? ?? ?????? ??? ??????? ?? ???????'
     )
 
     def action_open_sale_order(self):
         self.ensure_one()
         return {
             'type': 'ir.actions.act_window',
-            'name': _('فاتورة الكهرباء'),
+            'name': _('?????? ????????'),
             'res_model': 'sale.order',
             'res_id': self.sale_order_id.id,
             'view_mode': 'form',
@@ -52,21 +49,21 @@ class UtilityReadingSettlement(models.Model):
 
     @api.depends('reading_id')
     def _compute_sale_order_id(self):
-        for r in self:
-            if r.reading_id:
+        for record in self:
+            if record.reading_id:
                 order = self.env['sale.order'].search([
-                    ('reading_id', '=', r.reading_id.id),
+                    ('reading_id', '=', record.reading_id.id),
                     ('state', '!=', 'cancel'),
                 ], limit=1)
-                r.sale_order_id = order.id if order else False
+                record.sale_order_id = order.id if order else False
 
     @api.depends('new_value', 'reading_id.previous_reading')
     def _compute_new_consumption(self):
-        for r in self:
-            if r.reading_id:
-                r.new_consumption = r.new_value - (r.reading_id.previous_reading or 0.0)
+        for record in self:
+            if record.reading_id:
+                record.new_consumption = record.new_value - (record.reading_id.previous_reading or 0.0)
             else:
-                r.new_consumption = 0.0
+                record.new_consumption = 0.0
 
     @api.onchange('reading_id')
     def _onchange_reading_id(self):
@@ -84,23 +81,19 @@ class UtilityReadingSettlement(models.Model):
     def action_apply_settlement(self):
         self.ensure_one()
         if self.state == 'done':
-            raise ValidationError('هذه التسوية مكتملة بالفعل!')
+            raise ValidationError(_('??? ??????? ?????? ??????!'))
         if self.reading_id.state != 'billed':
-            raise ValidationError(
-                'يمكن تعديل القراءات المفوترة فقط عبر التسوية! الحالة الحالية: %s'
-                % self.reading_id.state)
+            raise ValidationError(_('???? ????? ???????? ???????? ??? ??? ???????! ?????? ???????: %s') % self.reading_id.state)
 
         old_value = self.reading_id.reading_value
         old_consumption = self.reading_id.consumption
         self.old_value = old_value
         self.old_consumption = old_consumption
 
-        # تحديث قيمة القراءة عبر السياق الآمن
         self.reading_id.with_context(_bypass_reading_protection=True).write({
             'reading_value': self.new_value,
         })
 
-        # تحديث آخر قراءة في حساب المشترك
         if self.account_id:
             self.account_id.write({
                 'last_reading_value': self.new_value,
@@ -109,30 +102,13 @@ class UtilityReadingSettlement(models.Model):
 
         new_consumption = self.new_value - (self.reading_id.previous_reading or 0.0)
         delta_consumption = new_consumption - old_consumption
-
-        # إنشاء حركة رصيد للمشترك
         if self.account_id and delta_consumption != 0:
-            unit_price = 0.0
-            if self.sale_order_id:
-                order = self.sale_order_id
-                posted_invoices = order.invoice_ids.filtered(lambda i: i.state == 'posted')
-                if posted_invoices:
-                    energy_line = posted_invoices[0].invoice_line_ids.filtered(
-                        lambda l: l.product_id and l.price_unit > 0 and l.quantity > 0
-                    )
-                    if energy_line:
-                        unit_price = energy_line[0].price_unit
-            amount = delta_consumption * unit_price
-            notes = _('تسوية قراءة: من %.2f إلى %.2f (الفرق: %+.2f kWh) / سبب: %s') % (
-                old_consumption, new_consumption, delta_consumption, self.reason)
-            self.account_id._create_balance_transaction(
-                'adjustment', amount, source_ref=self, notes=notes)
+            _logger.info(
+                'Reading settlement %s changed consumption by %s kWh for account %s; accounting correction is handled by billing/accounting documents.',
+                self.name, delta_consumption, self.account_id.customer_number)
 
-        # تسجيل الحدث في السجل
         msg = _(
-            'تسوية قراءة: %.2f ← %.2f (الفرق: %+.2f)\n'
-            'الاستهلاك: %.2f ← %.2f kWh\n'
-            'السبب: %s'
+            'Reading settlement: %.2f -> %.2f (delta: %+.2f). Consumption: %.2f -> %.2f kWh. Reason: %s'
         ) % (
             old_value, self.new_value, self.new_value - old_value,
             old_consumption, new_consumption,
@@ -140,23 +116,20 @@ class UtilityReadingSettlement(models.Model):
         )
         self.reading_id.message_post(body=msg)
 
-        # تسجيل الحدث في سجل تاريخ العداد
         if self.meter_id:
             self.env['utility.meter.log']._create_log(
                 self.meter_id, 'settlement',
-                _('تسوية قراءة: من %.2f إلى %.2f (الفرق: %+.2f) / سبب: %s') % (
+                _('Reading settlement: %.2f -> %.2f (delta: %+.2f). Reason: %s') % (
                     old_consumption, new_consumption, delta_consumption, self.reason),
                 ref_record=self)
 
-        self.write({
-            'state': 'done',
-        })
+        self.write({'state': 'done'})
         return {
             'type': 'ir.actions.client',
             'tag': 'display_notification',
             'params': {
-                'title': 'تسوية القراءة',
-                'message': 'تم تطبيق تسوية القراءة بنجاح.',
+                'title': _('????? ???????'),
+                'message': _('?? ????? ????? ??????? ?????.'),
                 'type': 'success',
                 'sticky': False,
             }

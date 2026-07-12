@@ -51,13 +51,11 @@
                     <div class="row mt16 o_settings_container" id="utility_alerts">
                         <div class="col-12 col-lg-6 o_setting_box">
                             <div class="o_setting_right_pane">
-                                <label for="low_credit_threshold"/>
                                 <div class="text-muted">
                                     الحد الأدنى للرصيد الذي يطلق إنذار
                                 </div>
                                 <div class="content-group">
                                     <div class="mt16">
-                                        <field name="low_credit_threshold" class="o_light_label"/>
                                     </div>
                                 </div>
                             </div>
@@ -108,26 +106,22 @@
                         </div>
                         <div class="col-12 col-lg-6 o_setting_box">
                             <div class="o_setting_right_pane">
-                                <label for="emergency_credit_amount"/>
                                 <div class="text-muted">
                                     قيمة رصيد الطوارئ الافتراضية
                                 </div>
                                 <div class="content-group">
                                     <div class="mt16">
-                                        <field name="emergency_credit_amount" class="o_light_label"/>
                                     </div>
                                 </div>
                             </div>
                         </div>
                         <div class="col-12 col-lg-6 o_setting_box">
                             <div class="o_setting_right_pane">
-                                <label for="emergency_credit_grace_days"/>
                                 <div class="text-muted">
                                     فترة السماح قبل استرداد رصيد الطوارئ
                                 </div>
                                 <div class="content-group">
                                     <div class="mt16">
-                                        <field name="emergency_credit_grace_days" class="o_light_label"/>
                                     </div>
                                 </div>
                             </div>
@@ -171,10 +165,8 @@
                         </div>
                         <div class="col-12 col-lg-6 o_setting_box">
                             <div class="o_setting_left_pane">
-                                <field name="send_sms_on_low_credit"/>
                             </div>
                             <div class="o_setting_right_pane">
-                                <label for="send_sms_on_low_credit"/>
                                 <div class="text-muted">
                                     إرسال رسالة نصية عند انخفاض الرصيد
                                 </div>

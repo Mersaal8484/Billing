@@ -11,8 +11,6 @@
         <field name="customer_id"/>
         <field name="account_id"/>
         <field name="amount" widget="monetary"/>
-        <field name="balance_before" widget="monetary"/>
-        <field name="balance_after" widget="monetary"/>
         <field name="operator_id"/>
         <field name="notes"/>
       </tree>

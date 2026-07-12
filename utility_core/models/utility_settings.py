@@ -45,20 +45,6 @@ class ResConfigSettings(models.TransientModel):
         config_parameter='utility.consumption_variation_alert_percentage',
         default=50.0)
 
-    # --- Prepaid / Emergency ---
-    emergency_credit_amount = fields.Float(
-        string='قيمة رصيد الطوارئ الافتراضي',
-        config_parameter='utility.emergency_credit_amount',
-        default=50.0)
-    emergency_credit_grace_days = fields.Integer(
-        string='فترة سماح رصيد الطوارئ (أيام)',
-        config_parameter='utility.emergency_credit_grace_days',
-        default=7)
-    low_credit_threshold = fields.Float(
-        string='حد الرصيد المنخفض',
-        config_parameter='utility.low_credit_threshold',
-        default=100.0)
-
     # --- Auto Pay ---
     max_auto_pay_retries = fields.Integer(
         string='الحد الأقصى لإعادة محاولة الدفع',
@@ -86,10 +72,6 @@ class ResConfigSettings(models.TransientModel):
         string='إرسال SMS عند تأخر الفاتورة',
         config_parameter='utility.send_sms_on_overdue',
         default=False)
-    send_sms_on_low_credit = fields.Boolean(
-        string='إرسال SMS عند انخفاض الرصيد',
-        config_parameter='utility.send_sms_on_low_credit',
-        default=True)
 
     # --- Accounting ---
     fine_account_id = fields.Many2one(

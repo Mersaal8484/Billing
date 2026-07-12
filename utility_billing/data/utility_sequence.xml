@@ -49,5 +49,14 @@
             <field name="padding">5</field>
             <field name="company_id" eval="False"/>
         </record>
+
+        <record id="seq_utility_service_charge" model="ir.sequence">
+            <field name="name">تسلسل رسوم الخدمات</field>
+            <field name="code">utility.service.charge</field>
+            <field name="prefix">SC/%(year)s/</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
     </data>
 </odoo>
+

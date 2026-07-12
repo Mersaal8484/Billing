@@ -199,15 +199,10 @@
 | `connection_type_id` | Many2one → `utility.connection.type` | No | Connection type |
 | `state` | Selection | Yes | `draft`, `active`, `suspended`, `closed` |
 | `contract_state` | Selection | Yes | `draft`, `active`, `expired`, `terminated` |
-| `prepaid_balance` | Monetary | No | Current prepaid balance |
-| `emergency_credit` | Monetary | No | Emergency credit available |
 | `credit_limit` | Monetary | No | Maximum allowed debt |
-| `balance` | Monetary | No | Computed current balance |
+| `accounting_balance` | Monetary | No | Computed receivable balance from accounting documents |
 | `currency_id` | Many2one → `res.currency` | Yes | Company currency |
 | `company_id` | Many2one → `res.company` | Yes | Multi-company |
-
-**Computed Fields:**
-- `balance` — Sum of all `utility.customer.balance.transaction` records
 
 **Constraints:**
 - `partner_id` unique across all customers
@@ -216,25 +211,7 @@
 
 ---
 
-#### 2.1.10 `utility.customer.balance.transaction` — Wallet Ledger (New Model)
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `name` | Char | Yes | Transaction reference |
-| `account_id` | Many2one → `utility.customer` | Yes | Customer |
-| `type` | Selection | Yes | `recharge`, `consumption`, `adjustment`, `emergency_credit`, `reversal` |
-| `amount` | Monetary | Yes | Transaction amount |
-| `balance_before` | Monetary | No | Balance before transaction |
-| `balance_after` | Monetary | No | Balance after transaction |
-| `reference` | Char | No | Related document reference |
-| `description` | Text | No | Description |
-| `date` | Datetime | Yes | Transaction timestamp |
-| `company_id` | Many2one → `res.company` | Yes | Multi-company |
-| `currency_id` | Many2one → `res.currency` | Yes | Currency |
-
----
-
-#### 2.1.11 `utility.meter` — Meter Device (New Model)
+#### 2.1.10 `utility.meter` — Meter Device (New Model)
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -259,7 +236,7 @@
 
 ---
 
-#### 2.1.12 `utility.meter.log` — Meter Event Log (New Model)
+#### 2.1.11 `utility.meter.log` — Meter Event Log (New Model)
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -274,7 +251,7 @@
 
 ---
 
-#### 2.1.13 `utility.reading` — Unified Reading Model (New Model)
+#### 2.1.12 `utility.reading` — Unified Reading Model (New Model)
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -305,7 +282,7 @@
 
 ---
 
-#### 2.1.14 `utility.formula` — Dynamic Calculation Formula (New Model)
+#### 2.1.13 `utility.formula` — Dynamic Calculation Formula (New Model)
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -320,7 +297,7 @@
 
 ---
 
-#### 2.1.15 `utility.contract.template` — Contract Template (New Model)
+#### 2.1.14 `utility.contract.template` — Contract Template (New Model)
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -346,7 +323,7 @@
 
 ---
 
-#### 2.1.16 `utility.contract.template.line` — Contract Template Line (New Model)
+#### 2.1.15 `utility.contract.template.line` — Contract Template Line (New Model)
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -360,7 +337,7 @@
 
 ---
 
-#### 2.1.17 `utility.contract.template.block` — Block Pricing Tier (New Model)
+#### 2.1.16 `utility.contract.template.block` — Block Pricing Tier (New Model)
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -371,7 +348,7 @@
 
 ---
 
-#### 2.1.18 `utility.connection` / `utility.connection.type` — Connection (New Models)
+#### 2.1.17 `utility.connection` / `utility.connection.type` — Connection (New Models)
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -383,7 +360,7 @@
 
 ---
 
-#### 2.1.19 `utility.integration.provider` — External Provider (New Model)
+#### 2.1.18 `utility.integration.provider` — External Provider (New Model)
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -399,7 +376,7 @@
 
 ---
 
-#### 2.1.20 `utility.notification.log` — Notification Log (New Model)
+#### 2.1.19 `utility.notification.log` — Notification Log (New Model)
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -417,7 +394,7 @@
 
 ---
 
-#### 2.1.21 `utility.customer.wizard` — Customer Creation Wizard (Transient)
+#### 2.1.20 `utility.customer.wizard` — Customer Creation Wizard (Transient)
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -432,7 +409,7 @@
 
 ---
 
-#### 2.1.22 Inherited Models
+#### 2.1.21 Inherited Models
 
 **`res.partner` (Inherited)**
 
@@ -495,8 +472,7 @@ Adds fields linking to standard stock:
 
 **Key Methods:**
 - `_generate_token()` — Creates STS token after payment (idempotent)
-- `_apply_balance()` — Deducts amount from customer prepaid balance
-- `action_pos_order_paid()` — Override: triggers token generation + balance application
+- `action_pos_order_paid()` — Override: triggers token generation after payment confirmation
 
 ---
 
@@ -519,17 +495,15 @@ Adds fields linking to standard stock:
 
 ---
 
-#### 2.3.3 `utility.transaction` — Transaction Ledger (New Model)
+#### 2.3.3 `utility.transaction` — Prepaid Token Audit Ledger (New Model)
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `name` | Char | Yes | Transaction reference |
 | `pos_order_id` | Many2one → `pos.order` | No | Source POS order |
 | `account_id` | Many2one → `utility.customer` | Yes | Customer |
-| `type` | Selection | Yes | `token_purchase`, `recharge`, `consumption`, `reversal`, `adjustment` |
+| `type` | Selection | Yes | `token_purchase`, `reversal`, `adjustment` |
 | `amount` | Monetary | Yes | Transaction amount |
-| `balance_before` | Monetary | No | Balance before |
-| `balance_after` | Monetary | No | Balance after |
 | `date` | Datetime | Yes | Transaction date |
 | `state` | Selection | Yes | `draft`, `posted`, `cancelled` |
 | `company_id` | Many2one → `res.company` | Yes | Multi-company |
@@ -553,7 +527,7 @@ Adds fields linking to standard stock:
 
 ---
 
-#### 2.3.5 `utility.adjustment` — Balance Adjustment (New Model)
+#### 2.3.5 `utility.adjustment` — Prepaid Correction (New Model)
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -722,7 +696,7 @@ Adds fields linking to standard stock:
 | `reason` | Text | Yes | Correction reason |
 | `state` | Selection | Yes | `draft`, `approved`, `posted` |
 | `approved_by` | Many2one → `res.users` | No | Approver |
-| `balance_transaction_id` | Many2one → `utility.customer.balance.transaction` | No | Created wallet transaction |
+| `invoice_id` | Many2one → `account.move` | No | Created invoice or credit note for financial impact |
 | `company_id` | Many2one → `res.company` | Yes | Multi-company |
 
 **Mechanism:** Uses `_bypass_reading_protection` context flag to modify billed readings.
@@ -791,6 +765,8 @@ Adds fields linking to standard stock:
 | Added Field | Type | Description |
 |-------------|------|-------------|
 | `utility_sale_order_id` | Many2one → `sale.order` | Linked bill |
+| `service_order_id` | Many2one → `utility.service.order` | Linked service order |
+| `service_charge_id` | Many2one → `utility.service.charge` | Linked service charge |
 | `meter_number` | Char | Meter number reference |
 | `consumption_units` | Float | Consumption for this invoice |
 
@@ -801,6 +777,8 @@ Adds fields linking to standard stock:
 | Added Field | Type | Description |
 |-------------|------|-------------|
 | `utility_sale_order_id` | Many2one → `sale.order` | Linked bill |
+| `service_order_id` | Many2one → `utility.service.order` | Linked service order |
+| `service_charge_id` | Many2one → `utility.service.charge` | Linked service charge |
 | `utility_payment_method` | Selection | `cash`, `bank`, `online`, `pos`, `mobile` |
 | `cashier_shift_id` | Many2one → `utility.cashier.shift` | POS cashier shift |
 | `collector_shift_id` | Many2one → `utility.collector.shift` | Field collector shift |
@@ -859,7 +837,31 @@ Adds fields linking to standard stock:
 
 ---
 
-#### 2.5.8 `utility.penalty` — Late Payment Penalty (New Model)
+
+#### 2.5.8 `utility.service.charge` — Service Order Charge (New Model)
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | Char | Yes | Charge reference |
+| `service_order_id` | Many2one → `utility.service.order` | Yes | Source service order |
+| `account_id` | Many2one → `utility.customer` | Yes | Customer account |
+| `partner_id` | Many2one → `res.partner` | Yes | Accounting partner |
+| `product_id` | Many2one → `product.product` | Yes | Service fee product |
+| `billing_method` | Selection | Yes | `none`, `invoice`, `direct_payment`, `next_bill` |
+| `state` | Selection | Yes | `draft`, `confirmed`, `invoiced`, `payment_requested`, `paid`, `deferred`, `cancelled` |
+| `invoice_id` | Many2one → `account.move` | No | Generated invoice |
+| `payment_id` | Many2one → `account.payment` | No | Direct payment |
+| `billing_charge_id` | Many2one ? `sale.order.line` | No | Next-bill sale order line |
+| `amount_untaxed` | Monetary | No | Untaxed amount |
+| `amount_tax` | Monetary | No | Tax amount |
+| `amount_total` | Monetary | Yes | Total charge amount |
+| `company_id` | Many2one → `res.company` | Yes | Multi-company |
+
+**Rules:** Chargeable service orders must be financially cleared through an invoice, a direct payment, or deliberate next-bill deferral before completion. No customer credit ledger is created.
+
+---
+
+#### 2.5.9 `utility.penalty` — Late Payment Penalty (New Model)
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -880,7 +882,7 @@ Adds fields linking to standard stock:
 
 ---
 
-#### 2.5.9 `utility.penalty.type` — Penalty Type Catalog (New Model)
+#### 2.5.10 `utility.penalty.type` — Penalty Type Catalog (New Model)
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -892,7 +894,7 @@ Adds fields linking to standard stock:
 
 ---
 
-#### 2.5.10 `utility.writeoff` — Debt Write-off (New Model)
+#### 2.5.11 `utility.writeoff` — Debt Write-off (New Model)
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -910,7 +912,7 @@ Adds fields linking to standard stock:
 
 ---
 
-#### 2.5.11 `utility.deposit` — Customer Deposit (New Model)
+#### 2.5.12 `utility.deposit` — Customer Deposit (New Model)
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -927,7 +929,7 @@ Adds fields linking to standard stock:
 
 ---
 
-#### 2.5.12 `utility.financial.settlement` — Financial Settlement (New Model)
+#### 2.5.13 `utility.financial.settlement` — Financial Settlement (New Model)
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -945,7 +947,7 @@ Adds fields linking to standard stock:
 
 ---
 
-#### 2.5.13 `utility.installment.plan` / `utility.installment.plan.line` (New Models)
+#### 2.5.14 `utility.installment.plan` / `utility.installment.plan.line` (New Models)
 
 **Plan Fields:** `name`, `sale_order_id`, `account_id`, `total_amount`, `num_installments`, `state` (computed from lines), `company_id`.
 
@@ -953,7 +955,7 @@ Adds fields linking to standard stock:
 
 ---
 
-#### 2.5.14 `utility.collector.shift` — Collector Shift (New Model)
+#### 2.5.15 `utility.collector.shift` — Collector Shift (New Model)
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -969,7 +971,7 @@ Adds fields linking to standard stock:
 
 ---
 
-#### 2.5.15 `utility.cashier.shift` (Extended by utility_billing)
+#### 2.5.16 `utility.cashier.shift` (Extended by utility_billing)
 
 | Added Field | Type | Description |
 |-------------|------|-------------|
@@ -979,7 +981,7 @@ Adds fields linking to standard stock:
 
 ---
 
-#### 2.5.16 `sale.workflow.process` / `automatic.workflow.job` (New Models)
+#### 2.5.17 `sale.workflow.process` / `automatic.workflow.job` (New Models)
 
 **Workflow Process:** `name`, `validate_order` (bool), `create_invoice` (bool), `validate_picking` (bool), `company_id`.
 
@@ -1097,7 +1099,6 @@ Error response:
   "data": {
     "customer_number": "CU-00001",
     "customer_name": "أحمد محمد",
-    "prepaid_balance": 1500.00,
     "outstanding_amount": 3200.50,
     "total_due_amount": 4700.50,
     "bills_count": 3,
@@ -1427,7 +1428,6 @@ safe_eval(expr, _FORMULA_SAFE_GLOBALS, mode="exec")
 |---|-----------|--------|-------|--------|----------|-----------|
 | 1 | Daily Bill Generation | billing | `date.range` | `cron_generate_bills_daily()` | Daily | — |
 | 2 | Recurring Invoices | billing | `utility.contract.template` | `cron_generate_recurring_invoices()` | Hourly | — |
-| 3 | Low Credit Monitoring | billing | `utility.customer` | `cron_check_low_credit()` | 30 min | — |
 | 4 | Overdue Order Update | billing | `sale.order` | `cron_update_overdue_orders()` | Daily | — |
 | 5 | Auto-pay Retry | billing | `utility.customer` | `cron_retry_auto_pay()` | 30 min | — |
 | 6 | Batch Reading Invoicing | billing | `utility.reading` | `cron_queue_approved_readings()` | Daily | — |
@@ -1580,7 +1580,7 @@ integration.provider.call_json() → SMS Provider API
 | Category | Test Cases |
 |----------|-----------|
 | **Billing** | Formula execution, block pricing, minimum/maximum charge, penalty calculation, write-off, installment plan |
-| **Prepaid** | Token generation (idempotent), balance deduction, emergency credit, reversal workflow |
+| **Prepaid** | Token generation (idempotent), POS payment confirmation, reversal workflow |
 | **Readings** | State transitions, consumption calculation, batch upload, settlement correction |
 | **Security** | Multi-company isolation, API authentication, ownership validation, role-based access |
 | **Crons** | Overdue detection, penalty calculation, batch processing, SMS dispatch |

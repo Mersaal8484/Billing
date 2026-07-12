@@ -214,10 +214,10 @@
 | Category | Count | Examples |
 |----------|-------|---------|
 | Geographic | 6 | `utility_region`, `utility_office`, `utility_substation`, `utility_feeder`, `utility_transformer`, `utility_route` |
-| Customer | 5 | `utility_customer`, `utility_customer_balance_transaction`, `utility_subscriber_category`, `utility_subscriber`, `utility_connection` |
+| Customer | 4 | `utility_customer`, `utility_subscriber_category`, `utility_subscriber`, `utility_connection` |
 | Metering | 7 | `utility_meter`, `utility_meter_type`, `utility_meter_model`, `utility_meter_status`, `utility_meter_log`, `utility_reading`, `utility_reading_batch` |
 | Contracts | 4 | `utility_contract_template`, `utility_contract_template_line`, `utility_contract_template_block`, `utility_formula` |
-| Billing | 12 | `utility_penalty`, `utility_penalty_type`, `utility_writeoff`, `utility_deposit`, `utility_financial_settlement`, `utility_installment_plan`, `utility_installment_plan_line`, `utility_collector_shift`, `sale_workflow_process`, `automatic_workflow_job`, `utility_reading_settlement`, `utility_recurring_invoice` |
+| Billing | 13 | `utility_service_charge`, `utility_penalty`, `utility_penalty_type`, `utility_writeoff`, `utility_deposit`, `utility_financial_settlement`, `utility_installment_plan`, `utility_installment_plan_line`, `utility_collector_shift`, `sale_workflow_process`, `automatic_workflow_job`, `utility_reading_settlement`, `utility_recurring_invoice` |
 | Prepaid | 5 | `utility_token`, `utility_transaction`, `utility_reversal`, `utility_adjustment`, `utility_cashier_shift` |
 | Operations | 7 | `utility_service_order`, `utility_installation`, `utility_inspection`, `utility_tamper_case`, `utility_alarm`, `utility_work_order`, `utility_reading_settlement` |
 | Inventory | 4 | `utility_inventory_location`, `utility_inventory_item`, `utility_inventory_movement`, `utility_inventory_count` (+ `_count_line`) |
@@ -234,8 +234,8 @@
 | `res_users` | utility_core | `collection_journal_id`, `prevent_installment` |
 | `sale_order` | utility_billing | ~40 fields (account, meter, reading, amounts, bill_state, etc.) |
 | `sale_order_line` | utility_billing | `meter_line_type`, `sponsor_id`, `contract_id` |
-| `account_move` | utility_billing | `utility_sale_order_id`, `meter_number`, `consumption_units` |
-| `account_payment` | utility_billing | `utility_sale_order_id`, payment method, shift IDs, QR |
+| `account_move` | utility_billing | `utility_sale_order_id`, `service_order_id`, `service_charge_id`, `meter_number`, `consumption_units` |
+| `account_payment` | utility_billing | `utility_sale_order_id`, `service_order_id`, `service_charge_id`, payment method, shift IDs, QR |
 | `pos_order` | utility_prepaid | `account_id`, `meter_id`, `token_id`, `cashier_shift_id` |
 | `pos_order_line` | utility_prepaid | (empty extension) |
 | `date_range` | utility_billing | `sale_order_ids`, totals |
@@ -268,7 +268,7 @@
 │                 │     │                 │     │                 │
 │  - name         │     │  - customer_no  │     │  - meter_number │
 │  - email        │     │  - state        │     │  - meter_type   │
-│  - phone        │     │  - prepaid_bal  │     │  - meter_model  │
+│  - phone        │     │  - acct_balance  │     │  - meter_model  │
 │  - region_id    │     │  - category_id  │     │  - status_id    │
 │  - area_id      │     │  - subscriber_id│     │  - qr_code      │
 └─────────────────┘     │  - contract_tmpl│     └────────┬────────┘
@@ -325,7 +325,7 @@
 | Field | Model | Depends | Storage | Notes |
 |-------|-------|---------|---------|-------|
 | `consumption` | `utility.reading` | `reading_value`, `previous_reading` | Stored | Simple subtraction |
-| `balance` | `utility.customer` | `balance_transaction_ids.amount` | Stored | Sum of transactions |
+| `accounting_balance` | `utility.customer` | `account.move.line` receivables | Computed | Customer receivable balance from Odoo accounting |
 | `bill_state` | `sale.order` | `state`, `is_overdue`, `balance_due`, `invoice_payment_state` | Stored, indexed | Complex multi-source |
 | `balance_due` | `sale.order` | `amount_total`, `amount_paid`, `previous_balance` | Stored, indexed | Financial calculation |
 | `is_overdue` | `sale.order` | `date_order`, `invoice_payment_state`, `bill_state` | Stored, indexed | Overdue detection |
@@ -909,7 +909,6 @@ def _compute_bill_state(self):
 |-----------|----------|---------|-------------|
 | `reading_upload_batch_size` | `res.config.settings` | 100 | Readings per batch processing cycle |
 | `penalty_max_percentage` | `res.config.settings` | 30 | Max penalty as % of bill |
-| `emergency_credit_limit` | `res.config.settings` | 500 | Max emergency credit per customer |
 | `sms_provider_id` | `res.config.settings` | — | Active SMS provider |
 | `ami_provider_id` | `res.config.settings` | — | Active AMI provider |
 | `payment_gateway_id` | `res.config.settings` | — | Active payment gateway |
@@ -965,36 +964,61 @@ def _compute_bill_state(self):
 ```
 ┌──────────┐    ┌──────────┐    ┌──────────┐
 │ Customer │──>│  POS     │──>│ Cashier  │
-│ Requests │   │ Terminal │   │ Processes│
+│ Requests │   │ Terminal │   │ Confirms │
 │ Token    │   │          │   │ Payment  │
 └──────────┘    └──────────┘    └──────────┘
                                      │
-                    ┌────────────────┤
-                    │                │
-                    ▼                ▼
-              ┌──────────┐    ┌──────────┐
-              │ Balance  │    │ Token    │
-              │ Deducted │    │ Generated│
-              │ (_apply_ │    │ (_gen_   │
-              │ balance) │    │ token)   │
-              └──────────┘    └──────────┘
-                    │                │
-                    ▼                ▼
-              ┌──────────┐    ┌──────────┐
-              │ Balance  │    │ STS API  │
-              │ Transaction│  │ Call     │
-              │ Logged   │    │ (outbound)│
-              └──────────┘    └──────────┘
+                                     ▼
+                               ┌──────────┐
+                               │ POS Order│
+                               │ Paid     │
+                               └──────────┘
+                                     │
+                                     ▼
+                               ┌──────────┐
+                               │ Token    │
+                               │Generated │
+                               └──────────┘
+                                     │
+                                     ▼
+                               ┌──────────┐
+                               │ STS API  │
+                               │ Call     │
+                               └──────────┘
                                      │
                                      ▼
                                ┌──────────┐
                                │  Token   │
-                               │  SMS to  │
-                               │ Customer │
+                               │ SMS/Local│
+                               │ Delivery │
                                └──────────┘
 ```
 
-### 10.3 Payment Reconciliation Flow
+
+### 10.3 Service Order Charge Flow
+
+```
+????????????    ????????????    ????????????
+? Service  ???>? Service  ???>? Billing  ?
+? Order    ?   ? Charge   ?   ? Method   ?
+????????????    ????????????    ????????????
+                                      ?
+                  ?????????????????????????????????????????
+                  ?                   ?                   ?
+            ????????????        ????????????        ????????????
+            ? Customer ?        ? Direct   ?        ? Next Bill?
+            ? Invoice  ?        ? Payment  ?        ? Deferral ?
+            ????????????        ????????????        ????????????
+                  ?                   ?                   ?
+                  ?????????????????????????????????????????
+                                      ?
+                                ????????????
+                                ?Financial ?
+                                ?Clearance ?
+                                ????????????
+```
+
+### 10.4 Payment Reconciliation Flow
 
 ```
 ┌──────────┐    ┌──────────┐    ┌──────────┐

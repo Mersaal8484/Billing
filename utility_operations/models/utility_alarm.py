@@ -12,8 +12,6 @@ class UtilityAlarm(models.Model):
     alarm_code = fields.Char('رمز الإنذار', required=True, index=True, default=lambda self: _('جديد'))
     alarm_date = fields.Datetime('تاريخ الإنذار', default=fields.Datetime.now)
     alarm_type = fields.Selection([
-        ('low_credit', 'رصيد منخفض'),
-        ('zero_credit', 'رصيد صفر'),
         ('tamper', 'تلاعب'),
         ('power_failure', 'انقطاع التيار'),
         ('comm_failure', 'فشل الاتصال'),
@@ -96,28 +94,6 @@ class UtilityAlarm(models.Model):
             'view_mode': 'form',
             'target': 'current',
         }
-
-    @api.model
-    def cron_check_low_credit(self):
-        accounts = self.env['utility.customer'].search([('balance', '<', 50.0)])
-        for account in accounts:
-            existing = self.search([
-                ('account_id', '=', account.id),
-                ('alarm_type', '=', 'low_credit'),
-                ('state', 'not in', ('resolved', 'closed')),
-            ], limit=1)
-            if existing:
-                continue
-            self.create({
-                'alarm_type': 'low_credit',
-                'severity': 'critical' if account.prepaid_balance == 0 else 'warning',
-                'description': _('الحساب %s لديه رصيد منخفض: %s') % (account.customer_number, account.prepaid_balance),
-                'customer_id': account.id,
-                'account_id': account.id,
-                'meter_id': account.meter_id.id,
-                'region_id': account.region_id.id,
-                'area_id': account.area_id.id,
-            })
 
     @api.model_create_multi
     def create(self, vals_list):

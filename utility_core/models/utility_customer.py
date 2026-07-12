@@ -78,13 +78,7 @@ class UtilityCustomer(models.Model):
         currency_field='company_currency_id',
         help='الرصيد المستحق بناءً على القيود المحاسبية (الذمم المدينة)')
 
-    # رصيد مسبق الدفع (محفظة المشترك)
-    prepaid_balance = fields.Monetary(
-        'الرصيد المسبق', compute='_compute_prepaid_balance',
-        currency_field='company_currency_id',
-        help='رصيد المشترك النقدي المسبق الدفع')
 
-    emergency_credit = fields.Monetary('رصيد الطوارئ', default=0.0, currency_field='company_currency_id')
     previous_hotline_balance = fields.Char(related='partner_id.previous_hotline_balance', string='الرصيد السابق (الخط الساخن)', readonly=True)
     credit_limit = fields.Monetary('حد الائتمان', default=0.0, currency_field='company_currency_id')
     total_purchases = fields.Monetary(string='إجمالي المشتريات', currency_field='company_currency_id')
@@ -96,35 +90,6 @@ class UtilityCustomer(models.Model):
     last_invoice_date = fields.Datetime('آخر تاريخ فاتورة')
     last_invoice_reading = fields.Float('قراءة آخر فاتورة')
 
-    # معاملات المحفظة (للرصيد المسبق)
-    balance_transaction_ids = fields.One2many(
-        'utility.customer.balance.transaction', 'customer_id',
-        string='حركات رصيد المحفظة')
-    balance_transaction_count = fields.Integer(
-        'عدد حركات الرصيد', compute='_compute_balance_transaction_count')
-
-    @api.depends('balance_transaction_ids')
-    def _compute_balance_transaction_count(self):
-        for rec in self:
-            rec.balance_transaction_count = len(rec.balance_transaction_ids)
-
-    # قراءات الربط
-    coupling_reading_ids = fields.One2many('utility.reading', 'account_id',
-        string='قراءات الربط', domain=[('reading_category', 'in', ['transformer', 'feeder'])])
-    cell_reading_ids = fields.One2many('utility.reading', 'account_id',
-        string='قراءات الخلية', domain=[('reading_category', '=', 'transformer')])
-    uploaded_reading_ids = fields.One2many('utility.reading', 'account_id',
-        domain=[('state', 'in', ['draft', 'under_review', 'approved'])], string='القراءات المرفوعة')
-    billed_reading_ids = fields.One2many('utility.reading', 'account_id',
-        domain=[('state', '=', 'billed')], string='القراءات المفوتورة')
-
-    # الأزرار الذكية
-    invoice_count = fields.Integer('عدد الفواتير', compute='_compute_smart_buttons')
-    accounting_invoice_count = fields.Integer('عدد الفواتير المحاسبية', compute='_compute_smart_buttons')
-    reading_count = fields.Integer('عدد القراءات', compute='_compute_smart_buttons')
-    payment_count = fields.Integer('عدد الدفعات', compute='_compute_smart_buttons')
-    replacement_count = fields.Integer('استبدالات العداد', compute='_compute_smart_buttons')
-    tamper_count = fields.Integer('حالات التلاعب', compute='_compute_smart_buttons')
 
     _sql_constraints = [
         ('unique_customer_number_company', 'unique(customer_number, company_id)',
@@ -168,28 +133,6 @@ class UtilityCustomer(models.Model):
                         'is_subscriber': True,
                     })
         return res
-
-    def _create_balance_transaction(self, ttype, amount, source_ref=None, notes=''):
-        """إنشاء حركة رصيد جديدة في محفظة المشترك (يُستبدل _update_balance القديم)."""
-        for customer in self:
-            balance_before = customer.prepaid_balance
-            balance_after = balance_before + amount
-            source_model = source_ref._name if source_ref else False
-            source_id = source_ref.id if source_ref else False
-            txn = self.env['utility.customer.balance.transaction'].create({
-                'customer_id': customer.id,
-                'transaction_type': ttype,
-                'amount': amount,
-                'balance_before': balance_before,
-                'balance_after': balance_after,
-                'source_model': source_model,
-                'source_id': source_id,
-                'notes': notes,
-                'state': 'posted',
-            })
-            if amount > 0:
-                customer.total_purchases = (customer.total_purchases or 0.0) + amount
-                customer.last_purchase_date = fields.Date.context_today(customer)
 
     @api.constrains('cell_id', 'meter_id')
     def _check_cell_meter_consistency(self):
@@ -280,15 +223,6 @@ class UtilityCustomer(models.Model):
         return res
 
     @api.model
-    def cron_check_low_credit(self):
-        accounts = self.search([('active', '=', True)])
-        low_credit_accounts = accounts.filtered(
-            lambda a: a.prepaid_balance <= a.credit_limit)
-        for account in low_credit_accounts:
-            _logger.info("Customer/Account %s has low prepaid balance: %s",
-                         account.customer_number, account.prepaid_balance)
-
-    @api.model
     def cron_retry_auto_pay(self):
         _logger.info("Retrying auto pay for active accounts...")
 
@@ -322,12 +256,6 @@ class UtilityCustomer(models.Model):
                 [],
             )
             rec.accounting_balance = lines[0]['amount_residual'] if lines else 0.0
-
-    @api.depends('balance_transaction_ids', 'balance_transaction_ids.state')
-    def _compute_prepaid_balance(self):
-        for rec in self:
-            posted = rec.balance_transaction_ids.filtered(lambda t: t.state == 'posted')
-            rec.prepaid_balance = sum(posted.mapped('amount'))
 
     def _compute_smart_buttons(self):
         So = self.env.get('sale.order')
@@ -367,16 +295,6 @@ class UtilityCustomer(models.Model):
             rec.payment_count = payment_count
             rec.replacement_count = replacement_count
             rec.tamper_count = tamper_count
-
-    def action_view_balance_transactions(self):
-        self.ensure_one()
-        return {
-            'type': 'ir.actions.act_window',
-            'name': _('حركات الرصيد'),
-            'res_model': 'utility.customer.balance.transaction',
-            'domain': [('customer_id', '=', self.id)],
-            'views': [(False, 'tree'), (False, 'form')],
-        }
 
     def action_view_replacements(self):
         self.ensure_one()

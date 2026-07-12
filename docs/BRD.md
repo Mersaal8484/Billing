@@ -56,7 +56,7 @@ The legacy system suffers from:
 
 1. **Unified Customer Management** — Single source of truth for all customer data, contracts, and account histories
 2. **Automated Billing** — Formula-driven bill generation with configurable tariffs, block pricing, and fee structures
-3. **Prepaid Vending** — STS-compliant token generation and POS-based sales with wallet management
+3. **Prepaid Vending** — STS-compliant token generation through paid POS sales; no internal customer credit ledger is maintained
 4. **Field Operations** — Digital service orders, inspections, and tamper case management with GPS tracking
 5. **Revenue Protection** — Automated penalty calculation, consumption monitoring, and tamper detection
 6. **Customer Self-Service** — Portal for bill viewing, payment, and service requests
@@ -158,9 +158,9 @@ The legacy system suffers from:
 
 **BR-PT-003:** Idempotent token generation — system checks for existing successful tokens before re-generating.
 
-**BR-PT-004:** Token amounts are deducted from customer's prepaid balance via `utility.customer.balance.transaction`.
+**BR-PT-004:** Token amounts are funded by the paid POS order/payment. The system does not maintain or deduct from a separate internal funding ledger.
 
-**BR-PT-005:** Emergency credit is available when main balance is depleted (configurable limit per customer).
+**BR-PT-005:** Any emergency supply feature is treated as a meter/STS policy outside the internal customer ledger.
 
 **BR-PT-006:** Transaction reversals require approval workflow: `draft → approved → completed`.
 
@@ -303,8 +303,6 @@ The legacy system suffers from:
 - Meter disconnect
 - Other
 
-**BR-AM-002:** `cron_check_low_credit()` runs every 30 minutes to check prepaid customer balances.
-
 **BR-AM-003:** Alarms can auto-create service orders via `action_create_service_order()`.
 
 ### 3.8 Inventory Management Workflow (Standard Odoo Stock)
@@ -339,10 +337,10 @@ The legacy system suffers from:
 | CM-001 | Register new customers with full profile | Must Have | Done |
 | CM-002 | Assign contract template based on category/type/location | Must Have | Done |
 | CM-003 | Auto-generate customer numbers via sequence | Must Have | Done |
-| CM-004 | Manage customer wallet (prepaid balance) | Must Have | Done |
-| CM-005 | Emergency credit allocation | Should Have | Done |
-| CM-006 | Customer balance transaction ledger | Must Have | Done |
-| CM-007 | Low credit alerts via SMS | Should Have | Done |
+| CM-004 | Show accounting receivable balance and payment history | Must Have | Done |
+| CM-005 | Customer credit/debt control through accounting documents | Should Have | Done |
+| CM-006 | Customer statement from invoices and payments | Must Have | Done |
+| CM-007 | Due/overdue alerts via SMS | Should Have | Done |
 | CM-008 | Customer creation wizard for guided setup | Could Have | Done |
 | CM-009 | Link customer to geographic hierarchy (region, area) | Must Have | Done |
 | CM-010 | Link customer to distribution cell/transformer | Must Have | Done |
@@ -386,13 +384,13 @@ The legacy system suffers from:
 | PV-001 | STS token generation (20-digit) | Must Have | Done |
 | PV-002 | POS-based token sales | Must Have | Done |
 | PV-003 | Cashier shift management | Must Have | Done |
-| PV-004 | Transaction ledger (wallet) | Must Have | Done |
-| PV-005 | Balance adjustments (credit/debit/emergency) | Must Have | Done |
+| PV-004 | POS/payment audit trail for token sales | Must Have | Done |
+| PV-005 | Approved payment correction/reversal support | Must Have | Done |
 | PV-006 | Transaction reversals with approval | Must Have | Done |
 | PV-007 | Token status tracking | Must Have | Done |
 | PV-008 | Single-open-shift constraint | Should Have | Done |
 | PV-009 | Idempotent token generation | Should Have | Done |
-| PV-010 | Emergency credit with limits | Should Have | Done |
+| PV-010 | Meter/STS-side emergency policy reference where supported | Should Have | Done |
 
 ### 4.5 Postpaid Billing
 
@@ -680,7 +678,7 @@ All UI labels, menu names, field strings, model descriptions, and view content a
 
 - All financial amounts reconcile (bills = sum of lines, payments = sum of allocations)
 - Meter readings are monotonically increasing per meter
-- Customer wallet transactions balance (recharges - consumption = balance)
+- Customer receivable balances reconcile with invoices, credit notes, and payments
 - All journal entries have balanced debits/credits
 - No orphaned records (customer without partner, bill without customer, etc.)
 

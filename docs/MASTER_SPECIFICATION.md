@@ -32,7 +32,7 @@
 
 - **Customer Management** — subscriber registration, contracts, categories, and account lifecycle
 - **Metering** — meter installation, tracking, readings (manual, batch upload, AMI), and replacement
-- **Prepaid Vending** — STS token generation, POS-based sales, cashier shifts, and wallet management
+- **Prepaid Vending** — STS token generation, POS-based paid sales, cashier shifts, and token delivery
 - **Postpaid Billing** — dynamic formula-based billing, cycles, invoices, penalties, and collections
 - **Field Operations** — service orders, inspections, tamper detection, installation, and work orders
 - **Inventory & Warehouse** — standard Odoo stock integration, seamless field operations picking generation, meter serialization tracking
@@ -51,10 +51,10 @@ The system serves **10 security roles** from field technicians to revenue manage
 
 | Domain | Capabilities |
 |--------|-------------|
-| **Customer Management** | Customer registration, contracts, subscriber categories/types, balance management, credit control |
+| **Customer Management** | Customer registration, contracts, subscriber categories/types, accounting balance visibility, credit control |
 | **Metering** | Meter catalog (type/model/status), installation tracking, meter logs, QR codes, AMI integration, meter replacement workflow |
 | **Hierarchies** | Dual pathways converging at Route: Commercial (`Region→Area→Zone→Route`) and Distribution (`Substation→Feeder→Transformer→Route`) |
-| **Prepaid Vending** | STS token generation, POS sales, cashier shifts, wallet ledger (recharge/consumption/adjustment), emergency credit, reversals |
+| **Prepaid Vending** | STS token generation, paid POS sales, cashier shifts, token audit trail, payment corrections, reversals |
 | **Postpaid Billing** | Dynamic billing formulas, consumption block/tier pricing, billing cycles, automated bill generation, penalties, write-offs, deposits, installment plans |
 | **Collections** | Payment collection via POS, field collectors, bank transfer; automatic reconciliation |
 | **Field Operations** | Service orders (11 types), meter inspection, tamper cases, alarm monitoring, installation orders, work orders with GPS tracking |
@@ -204,8 +204,8 @@ Electricity distribution companies operate in a highly regulated environment req
 | **Feeder** | خط تغذية | High-voltage line from substation to transformers |
 | **Substation** | محطة فرعية | Transformer station stepping down voltage |
 | **Route** | خط مسرب | Physical meter reading route/area |
-| **Wallet** | المحفظة | Customer prepaid balance ledger |
-| **Emergency Credit** | رصيد طارئ | Emergency balance available when main balance is depleted |
+| **Payment Confirmation** | ????? ????? | Posted POS/payment evidence required before issuing prepaid tokens or clearing service charges |
+| **Meter Emergency Policy** | ????? ????? ?????? | Optional meter/STS-side capability, outside the internal customer accounting ledger |
 | **Tamper** | تلاعب | Unauthorized meter interference or bypass |
 | **Write-off** | شطب | Cancellation of uncollectible debt |
 | **Settlement** | تسوية | Financial adjustment to correct billing errors |
@@ -258,7 +258,7 @@ utility.subscriber.category  — Subscriber category (residential, commercial...
 utility.subscriber           — Subscriber type (belongs to category)
 utility.customer             — Customer account (linked to res.partner)
 utility.customer.wizard      — Customer creation wizard
-utility.customer.balance.transaction — Wallet ledger
+utility.customer.statement/account.move.line — Accounting balance and receivable history
 utility.connection           — Connection record
 utility.connection.type      — Connection type catalog
 ```
@@ -312,10 +312,11 @@ utility.work.order         — GPS-tracked work orders with parts/labor
 ```
 pos.order (inherited)      — POS sale with utility fields and token generation
 utility.token              — STS token (20-digit, status tracking)
-utility.transaction        — Wallet transaction ledger
+utility.transaction        — Prepaid token/payment audit record
 utility.reversal           — Transaction reversal workflow
-utility.adjustment         — Balance adjustment (credit/debit/emergency)
+utility.adjustment         — Approved prepaid correction/reversal support
 utility.cashier.shift      — POS cashier shift management
+utility.service.charge     — Service order fee ledger linked to invoices, direct payments, or next-bill deferral
 ```
 
 #### Integration Domain (utility_core + utility_portal)
@@ -509,7 +510,7 @@ pos.order ──N:1──> utility.cashier.shift
 | Financial audit trail | `account.move` journal entries for all financial transactions |
 | Meter accuracy | Meter log tracking, tamper case management |
 | Tariff regulation | Configurable contract templates with approval workflow |
-| Revenue protection | Tamper detection, consumption anomaly alerts, emergency credit limits |
+| Revenue protection | Tamper detection, consumption anomaly alerts, overdue and exception monitoring |
 | Reporting | Daily/monthly summaries, outstanding balance reports, transformer balance reports |
 
 ---

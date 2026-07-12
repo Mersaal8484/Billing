@@ -100,13 +100,11 @@ class ResPartner(models.Model):
     area_id = fields.Many2one('utility.region', string='المنطقة الفرعية', domain="[('type', '=', 'area')]")
     zone_id = fields.Many2one('utility.region', string='المنطقة التفصيلية', domain="[('type', '=', 'zone')]")
 
-    utility_prepaid_balance = fields.Monetary(string="رصيد مقدم (توكن)", compute='_compute_utility_balances')
     utility_postpaid_balance = fields.Monetary(string="مديونية آجل (فواتير)", compute='_compute_utility_balances')
 
     def _compute_utility_balances(self):
         for partner in self:
             customers = self.env['utility.customer'].search([('partner_id', '=', partner.id)])
-            partner.utility_prepaid_balance = sum(customers.mapped('prepaid_balance'))
             partner.utility_postpaid_balance = sum(customers.mapped('accounting_balance'))
 
     nickname = fields.Char(string="الاسم المختصر")

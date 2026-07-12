@@ -10,13 +10,6 @@
             <field name="state">draft</field>
         </record>
 
-        <record id="utility_alarm_demo_1" model="utility.alarm">
-            <field name="alarm_code">ALM000001</field>
-            <field name="alarm_type">low_credit</field>
-            <field name="severity">warning</field>
-            <field name="description">Account ACCT-0001 has low balance: 25.00 SAR. Customer notification required.</field>
-            <field name="state">new</field>
-        </record>
 
         <record id="utility_tamper_case_demo_1" model="utility.tamper.case">
             <field name="case_number">TC000001</field>

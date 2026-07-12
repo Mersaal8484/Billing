@@ -21,7 +21,6 @@ class UtilityNotificationLog(models.Model):
         ('invoice_created', 'إصدار فاتورة'),
         ('payment_received', 'استلام دفعة'),
         ('bill_overdue', 'فاتورة متأخرة'),
-        ('low_credit', 'رصيد منخفض'),
         ('service_order', 'أمر خدمة'),
     ], string='نوع الحدث', required=True)
     customer_id = fields.Many2one('utility.customer', string='الحساب', index=True)

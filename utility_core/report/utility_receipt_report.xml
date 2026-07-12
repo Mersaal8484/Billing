@@ -17,7 +17,7 @@
                     <h2>Payment Receipt</h2>
                     <p><strong>Account:</strong> <t t-esc="doc.account_number"/></p>
                     <p><strong>Customer:</strong> <t t-esc="doc.partner_id.name"/></p>
-                    <p><strong>Balance:</strong> <t t-esc="doc.prepaid_balance"/></p>
+                    <p><strong>Accounting Balance:</strong> <t t-esc="doc.accounting_balance"/></p>
                     <p><strong>Date:</strong> <t t-esc="doc.last_purchase_date"/></p>
                 </div>
             </t>

@@ -16,8 +16,6 @@ class PosOrder(models.Model):
     service_charge = fields.Monetary(string='رسم الخدمة')
     tax_amount = fields.Monetary(string='الضريبة')
 
-    balance_before = fields.Monetary(string='الرصيد قبل')
-    balance_after = fields.Monetary(string='الرصيد بعد')
 
     cashier_shift_id = fields.Many2one('utility.cashier.shift', string='الوردية', index=True)
     token_id = fields.Many2one('utility.token', string='الشفرة', readonly=True)
@@ -89,19 +87,17 @@ class PosOrder(models.Model):
             self.token_status = 'failed'
         return token
 
-    def _apply_balance(self):
+    def _record_token_sale(self):
         self.ensure_one()
         if not self.account_id:
             return
-        amount = self.amount_paid or 0.0
-        self.balance_before = self.account_id.prepaid_balance or 0.0
-        self.account_id._create_balance_transaction(
-            'recharge', amount, source_ref=self,
-            notes=_('بيع مسبق الدفع: %s') % self.name,
-        )
+        self.env['utility.transaction'].create_transaction(
+            'sale', self.account_id, self.amount_paid or 0.0,
+            pos_order=self, notes=_('Paid prepaid token sale through POS: %s') % self.name)
         if self.kwh_purchased:
             self.account_id.total_kwh_purchased = (self.account_id.total_kwh_purchased or 0.0) + self.kwh_purchased
-        self.balance_after = self.account_id.prepaid_balance
+        self.account_id.total_purchases = (self.account_id.total_purchases or 0.0) + (self.amount_paid or 0.0)
+        self.account_id.last_purchase_date = fields.Date.context_today(self.account_id)
 
     def _get_token_html_link(self):
         if self.token_id:
@@ -110,25 +106,20 @@ class PosOrder(models.Model):
         return ''
 
     def action_pos_order_paid(self):
-        """
-        FIX-9: Odoo يستدعي هذه الدالة تلقائياً عند إغلاق طلب POS بعد الدفع.
-        نستخدمها لتوليد التوكن وتطبيق الرصيد تلقائياً بدون تدخل يدوي.
-        العملية آمنة (idempotent): إذا كان التوكن مولّداً مسبقاً لا يعيد التوليد.
-        """
+        """Generate the STS token and record a paid prepaid sale when POS closes the order."""
         res = super().action_pos_order_paid()
         for order in self:
             if not order.account_id or not order.meter_id:
                 continue
-            # idempotency: لا تُطبّق مرة ثانية إذا تمّت العملية
             if order.token_status == 'generated':
                 continue
             try:
                 order._generate_token()
-                order._apply_balance()
+                order._record_token_sale()
             except Exception:
                 import logging
                 logging.getLogger(__name__).exception(
-                    'POS auto-token/balance failed for order %s', order.name
+                    'POS auto-token sale recording failed for order %s', order.name
                 )
         return res
 

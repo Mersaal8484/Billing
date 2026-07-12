@@ -14,14 +14,6 @@
       <field name="subscriber_id" ref="utility_core.sub_category_public"/>
     </record>
 
-    <record id="demo_balance_txn_1" model="utility.customer.balance.transaction">
-      <field name="customer_id" ref="demo_account_1"/>
-      <field name="transaction_type">recharge</field>
-      <field name="amount">500.00</field>
-      <field name="state">posted</field>
-      <field name="date">2024-06-27 08:00:00</field>
-      <field name="notes">رصيد افتتاحي تجريبي</field>
-    </record>
 
     <record id="demo_meter_1" model="utility.meter">
       <field name="meter_number">MTR-R-2024-001</field>

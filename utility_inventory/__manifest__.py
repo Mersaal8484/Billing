@@ -17,6 +17,6 @@ Adds lot/serial tracking and product association for physical meters.
     ],
     'demo': [],
     'installable': True,
-    'application': False,
+    'application': True,
     'auto_install': False,
 }

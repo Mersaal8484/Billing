@@ -18,9 +18,6 @@
                         </div>
                     </div>
                     
-                    <div t-if="selectedAccount" class="mb-3 text-start">
-                        <small class="text-muted">الرصيد المسبق الحالي: <t t-esc="env.pos.format_currency(selectedAccount.prepaid_balance)"/></small>
-                    </div>
 
                     <div class="form-group row align-items-center">
                         <label class="col-sm-4 col-form-label text-start">المبلغ (شحن)</label>

@@ -8,6 +8,8 @@ class AccountPayment(models.Model):
     _inherit = 'account.payment'
 
     utility_sale_order_id = fields.Many2one('sale.order', string='فاتورة الكهرباء', index=True)
+    service_order_id = fields.Many2one('utility.service.order', string='أمر الخدمة', index=True, copy=False, check_company=True)
+    service_charge_id = fields.Many2one('utility.service.charge', string='رسم الخدمة', index=True, copy=False, check_company=True)
     utility_payment_method = fields.Selection([
         ('cash', 'نقدي'),
         ('bank', 'بنكي'),
@@ -87,7 +89,11 @@ class AccountPayment(models.Model):
                 payment_period = self._get_payment_period_for_order(order)
                 if payment_period:
                     vals['date_range_id'] = payment_period.id
-        return super().create(vals_list)
+        payments = super().create(vals_list)
+        for payment, vals in zip(payments, vals_list):
+            if vals.get('service_charge_id'):
+                payment.service_charge_id.payment_id = payment.id
+        return payments
 
     def write(self, vals):
         if vals.get('utility_sale_order_id'):
@@ -95,7 +101,11 @@ class AccountPayment(models.Model):
             payment_period = self._get_payment_period_for_order(order)
             if payment_period:
                 vals['date_range_id'] = payment_period.id
-        return super().write(vals)
+        res = super().write(vals)
+        if vals.get('service_charge_id'):
+            for payment in self:
+                payment.service_charge_id.payment_id = payment.id
+        return res
 
     @api.model
     def _default_cashier_shift(self):
@@ -160,6 +170,7 @@ class AccountPayment(models.Model):
                     'الفاتورة [%s] مدفوعة بالكامل بالفعل. لا حاجة لتسجيل دفعة إضافية.' % order.name
                 )
         res = super().action_post()
+        self.filtered('service_charge_id').mapped('service_charge_id').action_mark_paid_from_payment()
         utility_payments = self.filtered('utility_sale_order_id')
         for payment in utility_payments:
             payment._reconcile_utility_sale_order()
@@ -183,3 +194,4 @@ class AccountPayment(models.Model):
         lines = payment_lines | invoice_lines
         if lines:
             lines.reconcile()
+
