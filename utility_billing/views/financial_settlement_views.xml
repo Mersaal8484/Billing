@@ -5,14 +5,14 @@
         <field name="name">utility.financial.settlement.tree</field>
         <field name="model">utility.financial.settlement</field>
         <field name="arch" type="xml">
-            <tree decoration-success="state == 'applied'">
+            <tree decoration-success="state == 'applied'" decoration-muted="state == 'draft'" default_order="date desc">
                 <field name="name"/>
                 <field name="account_id"/>
-                <field name="customer_id"/>
-                <field name="settlement_type"/>
-                <field name="amount"/>
+                <field name="settlement_type" widget="badge"/>
+                <field name="amount" widget="monetary" options="{'currency_field': 'currency_id'}"/>
                 <field name="date"/>
-                <field name="state"/>
+                <field name="state" widget="badge" decoration-success="state == 'applied'" decoration-muted="state == 'draft'"/>
+                <field name="company_id" groups="base.group_multi_company"/>
             </tree>
         </field>
     </record>
@@ -27,37 +27,81 @@
                     <button name="action_apply_settlement" type="object"
                             string="تطبيق التسوية المالية" class="oe_highlight"
                             attrs="{'invisible': [('state', '=', 'applied')]}"/>
-                    <field name="state" widget="statusbar" statusbar_visible="draft,applied"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,applied"
+                           options="{'clickable': '1'}"/>
                 </header>
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_move" type="object"
+                                class="oe_stat_button" icon="fa-file-text-o"
+                                attrs="{'invisible': [('move_id', '=', False)]}">
+                            <div class="o_form_label">القيد المحاسبي</div>
+                            <div class="o_stat_info o_form_field">
+                                <field name="move_id" class="o_stat_text"/>
+                            </div>
+                        </button>
+                    </div>
                     <div class="oe_title">
                         <label for="name" string="رقم التسوية المالية"/>
-                        <h1><field name="name"/></h1>
+                        <h1><field name="name" readonly="1"/></h1>
                     </div>
                     <group>
                         <group string="معلومات الحساب">
-                            <field name="account_id"/>
-                            <field name="customer_id"/>
+                            <field name="account_id" options="{'no_create': True}"/>
+                            <field name="partner_id" readonly="1"/>
+                            <field name="region_id" readonly="1"/>
+                            <field name="area_id" readonly="1"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
                         </group>
-                        <group string="تفاصيل الحركة المالية">
+                        <group string="تفاصيل التسوية">
                             <field name="settlement_type"/>
-                            <field name="amount"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="amount" widget="monetary" options="{'currency_field': 'currency_id'}"/>
                             <field name="date"/>
-                            <field name="move_id" attrs="{'invisible': [('move_id', '=', False)]}"/>
                         </group>
                     </group>
-                    <group string="التفاصيل والسبب">
-                        <field name="reason"/>
+                    <group string="السبب">
+                        <field name="reason" placeholder="اذكر سبب التسوية المالية بالتفصيل..."/>
                     </group>
                 </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" widget="mail_followers"/>
+                    <field name="activity_ids" widget="mail_activity"/>
+                    <field name="message_ids" widget="mail_thread"/>
+                </div>
             </form>
         </field>
     </record>
 
+    <!-- SEARCH VIEW -->
+    <record id="view_utility_financial_settlement_search" model="ir.ui.view">
+        <field name="name">utility.financial.settlement.search</field>
+        <field name="model">utility.financial.settlement</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="account_id"/>
+                <field name="partner_id"/>
+                <field name="settlement_type"/>
+                <filter name="draft" string="مسودة" domain="[('state','=','draft')]"/>
+                <filter name="applied" string="تم التطبيق" domain="[('state','=','applied')]"/>
+                <separator/>
+                <group expand="0" string="تصنيف حسب">
+                    <filter name="group_state" string="الحالة" context="{'group_by':'state'}"/>
+                    <filter name="group_type" string="النوع" context="{'group_by':'settlement_type'}"/>
+                    <filter name="group_date" string="التاريخ" context="{'group_by':'date'}"/>
+                    <filter name="group_region" string="المنطقة" context="{'group_by':'region_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ACTIONS -->
     <record id="action_utility_financial_settlement" model="ir.actions.act_window">
-        <field name="name">التسويات المالية للمشتركين</field>
+        <field name="name">التسويات المالية</field>
         <field name="res_model">utility.financial.settlement</field>
         <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_utility_financial_settlement_search"/>
     </record>
 
     <menuitem id="menu_utility_financial_settlement" name="التسويات المالية"

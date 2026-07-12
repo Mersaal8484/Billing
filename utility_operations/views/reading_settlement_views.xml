@@ -10,11 +10,15 @@
                 <field name="reading_id"/>
                 <field name="meter_id"/>
                 <field name="account_id"/>
-                <field name="old_value"/>
-                <field name="new_value"/>
+                <field name="old_value" string="القراءة القديمة"/>
+                <field name="new_value" string="القراءة الجديدة"/>
+                <field name="old_consumption" string="الاستهلاك القديم"/>
+                <field name="new_consumption" string="الاستهلاك الجديد"/>
+                <field name="reason"/>
                 <field name="adjusted_by"/>
                 <field name="adjustment_date"/>
-                <field name="state"/>
+                <field name="sale_order_id"/>
+                <field name="state" widget="badge" decoration-success="state == 'done'"/>
             </tree>
         </field>
     </record>
@@ -32,6 +36,17 @@
                     <field name="state" widget="statusbar" statusbar_visible="draft,done"/>
                 </header>
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_sale_order" type="object"
+                                class="oe_stat_button" icon="fa-file-text-o"
+                                attrs="{'invisible': [('sale_order_id', '=', False)]}">
+                            <div class="o_stat_info">
+                                <field name="sale_order_id"/>
+                                <span class="o_stat_text">الفاتورة المرتبطة</span>
+                            </div>
+                        </button>
+
+                    </div>
                     <div class="oe_title">
                         <label for="name" string="رقم التسوية"/>
                         <h1><field name="name"/></h1>
@@ -42,18 +57,44 @@
                             <field name="meter_id"/>
                             <field name="account_id"/>
                         </group>
-                        <group string="التسوية والتعديل">
-                            <field name="old_value"/>
+                        <group string="بيانات التسوية">
+                            <field name="old_value" readonly="1"/>
                             <field name="new_value"/>
+                            <field name="old_consumption" readonly="1"/>
+                            <field name="new_consumption" readonly="1"/>
                             <field name="adjusted_by"/>
                             <field name="adjustment_date"/>
                         </group>
                     </group>
-                    <group string="تفاصيل إضافية">
-                        <field name="reason"/>
+                    <group string="سبب التعديل">
+                        <field name="reason" nolabel="1"/>
                     </group>
                 </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
             </form>
+        </field>
+    </record>
+
+    <!-- SEARCH VIEW -->
+    <record id="view_utility_reading_settlement_search" model="ir.ui.view">
+        <field name="name">utility.reading.settlement.search</field>
+        <field name="model">utility.reading.settlement</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="reading_id"/>
+                <field name="meter_id"/>
+                <field name="account_id"/>
+                <filter name="draft" string="مسودة" domain="[('state','=','draft')]"/>
+                <filter name="done" string="تمت التسوية" domain="[('state','=','done')]"/>
+                <separator/>
+                <filter name="group_state" string="الحالة" context="{'group_by':'state'}"/>
+                <filter name="group_adjustment_date" string="تاريخ التسوية" context="{'group_by':'adjustment_date'}"/>
+            </search>
         </field>
     </record>
 
@@ -61,5 +102,6 @@
         <field name="name">تسوية قراءات العدادات</field>
         <field name="res_model">utility.reading.settlement</field>
         <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_utility_reading_settlement_search"/>
     </record>
 </odoo>

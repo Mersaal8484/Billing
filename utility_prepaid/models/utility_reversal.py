@@ -43,16 +43,14 @@ class UtilityReversal(models.Model):
         self.ensure_one()
         if self.state != 'approved':
             raise models.ValidationError(_('يجب اعتماد الإلغاء قبل إكماله.'))
-        self.account_id._update_balance(-self.amount)
+        self.account_id._create_balance_transaction(
+            'reversal', -self.amount, source_ref=self,
+            notes=_('إلغاء %s: %s') % (self.reference, self.reason),
+        )
         if self.pos_order_id:
             self.pos_order_id.write({
                 'reversal_id': self.id,
             })
-        self.env['utility.transaction'].create_transaction(
-            'reversal', self.account_id, self.amount, reversal=self,
-            pos_order=self.pos_order_id,
-            notes=_('إلغاء %s: %s') % (self.reference, self.reason),
-        )
         self.state = 'completed'
 
     def action_reject(self):

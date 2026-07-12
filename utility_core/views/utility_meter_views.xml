@@ -13,6 +13,10 @@
                 <field name="phase"/>
                 <field name="account_id"/>
                 <field name="customer_id"/>
+                <field name="reading_count"/>
+                <field name="last_reading_value"/>
+                <field name="last_read_date"/>
+                <field name="multiplier"/>
                 <field name="installation_date"/>
                 <field name="active"/>
             </tree>
@@ -28,6 +32,16 @@
                             attrs="{'invisible': [('payment_type', '!=', 'postpaid')]}"/>
                 </header>
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_readings" type="object"
+                                class="oe_stat_button" icon="fa-history"
+                                help="سجل قراءات العداد">
+                            <div class="o_stat_info">
+                                <field name="reading_count" widget="statinfo"/>
+                                <span class="o_stat_text">سجل القراءات</span>
+                            </div>
+                        </button>
+                    </div>
                     <div class="oe_title">
                         <h1><field name="meter_number"/></h1>
                     </div>
@@ -43,6 +57,11 @@
                             <field name="active" invisible="1"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
+                        <group string="آخر قراءة">
+                            <field name="last_reading_value"/>
+                            <field name="last_read_date"/>
+                            <field name="multiplier"/>
+                        </group>
                         <group string="المواصفات الفنية">
                             <field name="voltage"/>
                             <field name="current_rating"/>
@@ -50,6 +69,29 @@
                         </group>
                     </group>
                     <notebook>
+                        <page name="reading_history" string="سجل القراءات">
+                            <field name="reading_ids" readonly="1">
+                                <tree>
+                                    <field name="reading_id"/>
+                                    <field name="reading_date"/>
+                                    <field name="reading_value"/>
+                                    <field name="consumption"/>
+                                    <field name="reading_type"/>
+                                    <field name="state" widget="badge"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page name="meter_history" string="تاريخ العداد">
+                            <field name="log_ids" readonly="1">
+                                <tree default_order="date desc">
+                                    <field name="date"/>
+                                    <field name="log_type" widget="badge"/>
+                                    <field name="description"/>
+                                    <field name="ref_name"/>
+                                    <field name="user_id"/>
+                                </tree>
+                            </field>
+                        </page>
                         <page name="specific_data" string="بيانات العداد المخصصة">
                             <group>
                                 <!-- Prepaid Data -->
@@ -60,12 +102,10 @@
                                 <group string="بيانات العداد الذكي (عن بُعد)" attrs="{'invisible': [('payment_type', '!=', 'postpaid')]}">
                                     <field name="communication_type" attrs="{'required': [('payment_type', '=', 'postpaid')]}"/>
                                     <field name="sim_number" attrs="{'invisible': [('communication_type', 'not in', ('gsm', 'nbiot'))]}"/>
-                                    <field name="last_read_date"/>
                             <field name="qr_code_url" readonly="1"/>
                                 </group>
                                 <!-- Manual Data -->
                                 <group string="بيانات العداد اليدوي" attrs="{'invisible': [('payment_type', '!=', 'manual')]}">
-                                    <field name="last_read_date" string="تاريخ آخر قراءة"/>
                                     <div class="text-muted" colspan="2">
                                         يتم إدخال قراءات هذا العداد يدوياً عبر شاشة القراءات الدورية.
                                     </div>

@@ -97,17 +97,27 @@
                                 <field name="image_state" widget="badge"/>
                             </div>
                         </button>
+                        <!-- سجل القراءات -->
+                        <button name="action_view_reading_history" type="object"
+                                class="oe_stat_button" icon="fa-history"
+                                help="سجل قراءات هذا العداد">
+                            <div class="o_stat_info">
+                                <field name="reading_history_count" widget="statinfo"/>
+                                <span class="o_stat_text">سجل القراءات</span>
+                            </div>
+                        </button>
                     </div>
                     <group>
                         <group string="معلومات القراءة">
                             <field name="reading_category" attrs="{'readonly': [('state', '!=', 'draft')]}"/>
                             <field name="reading_id" readonly="1"/>
                             <field name="meter_id" options="{'no_create': True}" attrs="{'readonly': [('state', '!=', 'draft')]}"/>
+                            <field name="reading_history_count" string="سجل القراءات" widget="statinfo"/>
                             <field name="transformer_id" attrs="{'invisible': [('reading_category', '!=', 'transformer')]}"/>
                             <field name="is_private_transformer" invisible="1"/>
                             <field name="feeder_id" attrs="{'invisible': [('reading_category', '!=', 'feeder')]}"/>
-                            <field name="account_id" attrs="{'invisible': ['&amp;', ('reading_category', '!=', 'customer'), '|', ('reading_category', '!=', 'transformer'), ('is_private_transformer', '=', False)]}"/>
-                            <field name="customer_id" attrs="{'invisible': ['&amp;', ('reading_category', '!=', 'customer'), '|', ('reading_category', '!=', 'transformer'), ('is_private_transformer', '=', False)]}"/>
+                            <field name="account_id" attrs="{'invisible': ['|', ('reading_category', 'not in', ('customer', 'transformer')), '&amp;', ('reading_category', '=', 'transformer'), ('is_private_transformer', '=', False)]}"/>
+                            <field name="customer_id" attrs="{'invisible': ['|', ('reading_category', 'not in', ('customer', 'transformer')), '&amp;', ('reading_category', '=', 'transformer'), ('is_private_transformer', '=', False)]}"/>
                             <field name="reading_date" attrs="{'readonly': [('state', 'not in', ('draft', 'error'))]}"/>
                             <field name="date_range_id" options="{'no_create': True}" attrs="{'readonly': [('state', 'not in', ('draft', 'error'))]}"/>
                             <field name="reading_type" attrs="{'readonly': [('state', '!=', 'draft')]}"/>

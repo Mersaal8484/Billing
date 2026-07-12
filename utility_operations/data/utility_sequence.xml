@@ -50,5 +50,13 @@
             <field name="company_id" eval="False"/>
         </record>
 
+        <record id="seq_utility_reading_settlement" model="ir.sequence">
+            <field name="name">تسلسل تسويات القراءات</field>
+            <field name="code">utility.reading.settlement</field>
+            <field name="prefix">SET</field>
+            <field name="padding">6</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
     </data>
 </odoo>

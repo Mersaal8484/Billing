@@ -44,6 +44,12 @@ class UtilityTransformer(models.Model):
 
     # ===== الربط بالمشتركين والعدادات =====
     meter_ids = fields.One2many('utility.meter', 'transformer_id', string='العدادات')
+    coupling_meter_id = fields.Many2one(
+        'utility.meter', 'عداد الربط (المقارنة والرصد)',
+        domain="[('transformer_id', '=', id)]",
+        help='العداد الذي يقيس إجمالي الطاقة الداخلة إلى المحول أو الفيدر',
+        tracking=True,
+    )
     customer_ids = fields.One2many(
         'utility.customer', 'transformer_id',
         string='عقود المشتركين',
@@ -77,6 +83,22 @@ class UtilityTransformer(models.Model):
             'res_model': 'utility.customer',
             'domain': [('transformer_id', '=', self.id)],
             'views': [(False, 'tree'), (False, 'form')],
+        }
+
+    def action_create_coupling_meter(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'إضافة عداد ربط',
+            'res_model': 'utility.meter',
+            'view_mode': 'form',
+            'target': 'current',
+            'context': {
+                'default_transformer_id': self.id,
+                'default_feeder_id': self.feeder_id.id if self.feeder_id else False,
+                'default_is_coupling_meter': True,
+                'default_payment_type': 'manual',
+            },
         }
 
     def action_open_transformer_balance(self):

@@ -36,7 +36,6 @@ class UtilityCustomer(models.Model):
         ('closed', 'مغلق'),
     ], string='الحالة', default='draft', tracking=True)
 
-    # العقود
     contract_state = fields.Selection([
         ('active', 'نشط'),
         ('suspended', 'موقوف'),
@@ -56,45 +55,57 @@ class UtilityCustomer(models.Model):
     analytic_account_id = fields.Many2one('account.analytic.account', string='الحساب التحليلي')
     company_currency_id = fields.Many2one(related='company_id.currency_id', string='العملة')
 
-    # الفيدر / الخلية
     cell_id = fields.Many2one('utility.feeder', string='الفيدر / الخلية',
         domain="[('active', '=', True)]")
-
-    # المحول
     transformer_id = fields.Many2one('utility.transformer', string='المحول',
         domain="[('active', '=', True)]")
     is_private_transformer = fields.Boolean(related='transformer_id.is_private', readonly=True, string='هل المحول خاص؟')
-
-    # عداد الفيدر
     cell_coupling_meter_id = fields.Many2one('utility.meter', 'عداد الفيدر/الخلية',
         domain="[('feeder_id', '=', cell_id)]")
 
-    # المكان
     region_id = fields.Many2one(related='partner_id.region_id', store=True, string='المنطقة')
     area_id = fields.Many2one(related='partner_id.area_id', store=True, string='المنطقة الفرعية')
     zone_id = fields.Many2one(related='partner_id.zone_id', store=True, string='المنطقة التفصيلية')
 
     route_id = fields.Many2one('utility.route', string='خط السير', index=True)
 
-    # العداد
     meter_id = fields.Many2one('utility.meter', 'العداد', tracking=True)
     payment_type = fields.Selection(related='meter_id.payment_type', store=True, string='نظام الدفع (آجل/مسبق)', readonly=True)
 
-    # الرصيد والمشتريات
-    balance = fields.Monetary('الرصيد', compute='_compute_balance', currency_field='company_currency_id', help='الرصيد الحالي للمشترك')
+    # الرصيد المحاسبي (آجل) — من move lines محاسبية
+    accounting_balance = fields.Monetary(
+        'الرصيد المحاسبي', compute='_compute_accounting_balance',
+        currency_field='company_currency_id',
+        help='الرصيد المستحق بناءً على القيود المحاسبية (الذمم المدينة)')
+
+    # رصيد مسبق الدفع (محفظة المشترك)
+    prepaid_balance = fields.Monetary(
+        'الرصيد المسبق', compute='_compute_prepaid_balance',
+        currency_field='company_currency_id',
+        help='رصيد المشترك النقدي المسبق الدفع')
+
     emergency_credit = fields.Monetary('رصيد الطوارئ', default=0.0, currency_field='company_currency_id')
     credit_limit = fields.Monetary('حد الائتمان', default=0.0, currency_field='company_currency_id')
     total_purchases = fields.Monetary(string='إجمالي المشتريات', currency_field='company_currency_id')
     total_kwh_purchased = fields.Float(string='إجمالي الكيلووات المشترى')
     last_purchase_date = fields.Date(string='تاريخ آخر شراء')
 
-    # آخر قراءة
     last_reading_date = fields.Datetime('آخر تاريخ قراءة')
     last_reading_value = fields.Float('آخر قراءة')
     last_invoice_date = fields.Datetime('آخر تاريخ فاتورة')
     last_invoice_reading = fields.Float('قراءة آخر فاتورة')
 
+    # معاملات المحفظة (للرصيد المسبق)
+    balance_transaction_ids = fields.One2many(
+        'utility.customer.balance.transaction', 'customer_id',
+        string='حركات رصيد المحفظة')
+    balance_transaction_count = fields.Integer(
+        'عدد حركات الرصيد', compute='_compute_balance_transaction_count')
 
+    @api.depends('balance_transaction_ids')
+    def _compute_balance_transaction_count(self):
+        for rec in self:
+            rec.balance_transaction_count = len(rec.balance_transaction_ids)
 
     # قراءات الربط
     coupling_reading_ids = fields.One2many('utility.reading', 'account_id',
@@ -117,25 +128,18 @@ class UtilityCustomer(models.Model):
          'رقم العميل يجب أن يكون فريداً لكل شركة!'),
     ]
 
-
-
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
             if vals.get('customer_number', _('جديد')) == _('جديد'):
                 vals['customer_number'] = self.env['ir.sequence'].next_by_code('utility.customer') or _('جديد')
-
         customers = super().create(vals_list)
-
         for customer in customers:
-            # تعيين المشترك كعميل في قائمة العملاء (res.partner)
             if customer.partner_id:
                 customer.partner_id.sudo().write({
                     'customer_rank': max(customer.partner_id.customer_rank, 1),
                     'is_subscriber': True,
                 })
-
-            # Create analytic accounts automatically for each customer
             if not customer.analytic_account_id:
                 partner_name = customer.partner_id.name or customer.customer_number
                 plan = self.env.ref('analytic.analytic_plan_projects', raise_if_not_found=False)
@@ -143,19 +147,16 @@ class UtilityCustomer(models.Model):
                     plan = self.env['account.analytic.plan'].search([], limit=1)
                 if not plan:
                     plan = self.env['account.analytic.plan'].create({'name': 'Default Plan'})
-
                 analytic_account = self.env['account.analytic.account'].create({
                     'name': f"{partner_name} - {customer.customer_number}",
                     'partner_id': customer.partner_id.id,
                     'plan_id': plan.id
                 })
                 customer.write({'analytic_account_id': analytic_account.id})
-
         return customers
 
     def write(self, vals):
         res = super().write(vals)
-        # إذا تغيّر الـ partner_id، تعيينه كعميل تلقائياً
         if 'partner_id' in vals:
             for customer in self:
                 if customer.partner_id:
@@ -165,13 +166,26 @@ class UtilityCustomer(models.Model):
                     })
         return res
 
-    def _update_balance(self, amount):
-        """Apply a prepaid balance delta and keep basic purchase totals aligned."""
+    def _create_balance_transaction(self, ttype, amount, source_ref=None, notes=''):
+        """إنشاء حركة رصيد جديدة في محفظة المشترك (يُستبدل _update_balance القديم)."""
         for customer in self:
-            delta = amount or 0.0
-            customer.balance = (customer.balance or 0.0) + delta
-            if delta > 0:
-                customer.total_purchases = (customer.total_purchases or 0.0) + delta
+            balance_before = customer.prepaid_balance
+            balance_after = balance_before + amount
+            source_model = source_ref._name if source_ref else False
+            source_id = source_ref.id if source_ref else False
+            txn = self.env['utility.customer.balance.transaction'].create({
+                'customer_id': customer.id,
+                'transaction_type': ttype,
+                'amount': amount,
+                'balance_before': balance_before,
+                'balance_after': balance_after,
+                'source_model': source_model,
+                'source_id': source_id,
+                'notes': notes,
+                'state': 'posted',
+            })
+            if amount > 0:
+                customer.total_purchases = (customer.total_purchases or 0.0) + amount
                 customer.last_purchase_date = fields.Date.context_today(customer)
 
     @api.constrains('cell_id', 'meter_id')
@@ -246,13 +260,10 @@ class UtilityCustomer(models.Model):
                 if template.scope == 'restricted':
                     allowed_region_ids = template.region_ids.ids
                     allowed_area_ids = template.area_ids.ids
-
-                    customer_region_id = rec.region_id.id
-                    customer_area_id = rec.area_id.id
-
+                    customer_region_id = rec.region_id.id if rec.region_id else False
+                    customer_area_id = rec.area_id.id if rec.area_id else False
                     is_region_allowed = customer_region_id in allowed_region_ids if customer_region_id else False
                     is_area_allowed = customer_area_id in allowed_area_ids if customer_area_id else False
-
                     if not (is_region_allowed or is_area_allowed):
                         raise ValidationError(
                             _("قالب العقد المختار '%s' مخصص لمناطق محددة ولا يدعم المنطقة أو المنطقة الفرعية لهذا المشترك.")
@@ -267,44 +278,91 @@ class UtilityCustomer(models.Model):
 
     @api.model
     def cron_check_low_credit(self):
-        accounts = self.search([
-            ('active', '=', True),
-        ])
-        low_credit_accounts = accounts.filtered(lambda a: a.balance <= a.credit_limit)
+        accounts = self.search([('active', '=', True)])
+        low_credit_accounts = accounts.filtered(
+            lambda a: a.prepaid_balance <= a.credit_limit)
         for account in low_credit_accounts:
-            _logger.info("Customer/Account %s has low credit balance: %s", account.customer_number, account.balance)
+            _logger.info("Customer/Account %s has low prepaid balance: %s",
+                         account.customer_number, account.prepaid_balance)
 
     @api.model
     def cron_retry_auto_pay(self):
         _logger.info("Retrying auto pay for active accounts...")
 
-    def _compute_balance(self):
-        Move = self.env.get('account.move')
+    @api.depends('partner_id')
+    def _compute_accounting_balance(self):
+        MoveLine = self.env.get('account.move.line')
+        if not MoveLine:
+            for rec in self:
+                rec.accounting_balance = 0.0
+            return
         for rec in self:
-            if Move:
-                posted_moves = Move.search([
-                    ('partner_id', '=', rec.partner_id.id),
-                    ('state', '=', 'posted'),
-                    ('move_type', 'in', ('out_invoice', 'out_refund')),
-                ])
-                rec.balance = sum(posted_moves.mapped('amount_residual_signed'))
-            else:
-                rec.balance = 0.0
+            if not rec.partner_id:
+                rec.accounting_balance = 0.0
+                continue
+            receivable_accounts = self.env['account.account'].search([
+                ('account_type', '=', 'asset_receivable'),
+                ('company_id', '=', rec.company_id.id),
+            ])
+            if not receivable_accounts:
+                rec.accounting_balance = 0.0
+                continue
+            domain = [
+                ('partner_id', '=', rec.partner_id.id),
+                ('account_id', 'in', receivable_accounts.ids),
+                ('parent_state', '=', 'posted'),
+                ('reconciled', '=', False),
+            ]
+            lines = MoveLine.read_group(
+                domain,
+                ['amount_residual:sum'],
+                [],
+            )
+            rec.accounting_balance = lines[0]['amount_residual'] if lines else 0.0
+
+    @api.depends('balance_transaction_ids', 'balance_transaction_ids.state')
+    def _compute_prepaid_balance(self):
+        for rec in self:
+            posted = rec.balance_transaction_ids.filtered(lambda t: t.state == 'posted')
+            rec.prepaid_balance = sum(posted.mapped('amount'))
 
     def _compute_smart_buttons(self):
-        SaleOrder = self.env.get('sale.order')
+        So = self.env.get('sale.order')
         Reading = self.env.get('utility.reading')
         Payment = self.env.get('account.payment')
         Move = self.env.get('account.move')
         for rec in self:
-            rec.invoice_count = SaleOrder.search_count([('customer_id', '=', rec.id)]) if SaleOrder else 0
-            rec.accounting_invoice_count = Move.search_count([
-                ('partner_id', '=', rec.partner_id.id),
-                ('state', '=', 'posted'),
-                ('move_type', 'in', ('out_invoice', 'out_refund')),
-            ]) if Move else 0
-            rec.reading_count = Reading.search_count([('customer_id', '=', rec.id)]) if Reading else 0
-            rec.payment_count = Payment.search_count([('utility_sale_order_id.customer_id', '=', rec.id)]) if Payment else 0
+            invoice_count = 0
+            accounting_invoice_count = 0
+            reading_count = 0
+            payment_count = 0
+            if So and 'customer_id' in So._fields:
+                invoice_count = So.sudo().search_count([('customer_id', '=', rec.id)])
+            if Reading and 'customer_id' in Reading._fields:
+                reading_count = Reading.sudo().search_count([('customer_id', '=', rec.id)])
+            if Payment:
+                payment_count = Payment.sudo().search_count(
+                    [('utility_sale_order_id.customer_id', '=', rec.id)])
+            if Move:
+                accounting_invoice_count = Move.sudo().search_count([
+                    ('partner_id', '=', rec.partner_id.id),
+                    ('state', '=', 'posted'),
+                    ('move_type', 'in', ('out_invoice', 'out_refund')),
+                ])
+            rec.invoice_count = invoice_count
+            rec.accounting_invoice_count = accounting_invoice_count
+            rec.reading_count = reading_count
+            rec.payment_count = payment_count
+
+    def action_view_balance_transactions(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('حركات الرصيد'),
+            'res_model': 'utility.customer.balance.transaction',
+            'domain': [('customer_id', '=', self.id)],
+            'views': [(False, 'tree'), (False, 'form')],
+        }
 
     def action_view_bills(self):
         self.ensure_one()
@@ -358,7 +416,6 @@ class UtilityCustomer(models.Model):
                     plan = self.env['account.analytic.plan'].search([], limit=1)
                 if not plan:
                     plan = self.env['account.analytic.plan'].create({'name': 'Default Plan'})
-
                 analytic = self.env['account.analytic.account'].create({
                     'name': f'[{rec.customer_number}] {rec.partner_id.name}',
                     'partner_id': rec.partner_id.id,

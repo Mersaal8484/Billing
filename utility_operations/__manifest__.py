@@ -17,7 +17,7 @@ Maintenance, Alarm, Work Order.
     'author': 'Utility ERP Platform',
     'website': 'https://www.utility-erp.com',
     'license': 'LGPL-3',
-    'depends': ['utility_core', 'maintenance', 'stock'],
+    'depends': ['utility_core', 'maintenance', 'stock', 'mail'],
     'data': [
         'security/ir.model.access.csv',
         'data/utility_sequence.xml',

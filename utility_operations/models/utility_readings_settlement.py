@@ -7,6 +7,7 @@ _logger = logging.getLogger(__name__)
 
 class UtilityReadingSettlement(models.Model):
     _name = 'utility.reading.settlement'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _description = 'سجل تسويات القراءات'
     _order = 'adjustment_date desc'
 
@@ -38,6 +39,17 @@ class UtilityReadingSettlement(models.Model):
         help='إشعار الدائن أو فاتورة فرق الناتجة عن التسوية'
     )
 
+    def action_open_sale_order(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('فاتورة الكهرباء'),
+            'res_model': 'sale.order',
+            'res_id': self.sale_order_id.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
+
     @api.depends('reading_id')
     def _compute_sale_order_id(self):
         for r in self:
@@ -53,6 +65,8 @@ class UtilityReadingSettlement(models.Model):
         for r in self:
             if r.reading_id:
                 r.new_consumption = r.new_value - (r.reading_id.previous_reading or 0.0)
+            else:
+                r.new_consumption = 0.0
 
     @api.onchange('reading_id')
     def _onchange_reading_id(self):
@@ -86,94 +100,63 @@ class UtilityReadingSettlement(models.Model):
             'reading_value': self.new_value,
         })
 
+        # تحديث آخر قراءة في حساب المشترك
+        if self.account_id:
+            self.account_id.write({
+                'last_reading_value': self.new_value,
+                'last_reading_date': fields.Datetime.now(),
+            })
+
         new_consumption = self.new_value - (self.reading_id.previous_reading or 0.0)
         delta_consumption = new_consumption - old_consumption
 
-        # ── FIX-8: إنشاء مستند تصحيحي بدلاً من تعديل فاتورة مرحّلة ─────────
-        correction_move = None
-        if self.sale_order_id:
-            order = self.sale_order_id
-            posted_invoices = order.invoice_ids.filtered(lambda i: i.state == 'posted')
-
-            if posted_invoices and delta_consumption != 0:
-                # احسب تأثير الفرق بناءً على سعر الوحدة من آخر فاتورة مرحّلة
-                last_invoice = posted_invoices[0]
-                # ابحث عن بند الاستهلاك في الفاتورة
-                energy_line = last_invoice.invoice_line_ids.filtered(
-                    lambda l: l.product_id and l.price_unit > 0 and l.quantity > 0
-                )
-                unit_price = energy_line[0].price_unit if energy_line else 0.0
-
-                if unit_price > 0:
-                    diff_amount = abs(delta_consumption * unit_price)
-                    partner = order.partner_id
-
-                    if delta_consumption < 0:
-                        # الاستهلاك الجديد أقل → أنشئ إشعار دائن (credit note) لصالح العميل
-                        move_type = 'out_refund'
-                        ref_label = _('إشعار دائن - تسوية قراءة: %s') % self.name
-                    else:
-                        # الاستهلاك الجديد أكبر → فاتورة إضافية على العميل
-                        move_type = 'out_invoice'
-                        ref_label = _('فاتورة فرق - تسوية قراءة: %s') % self.name
-
-                    correction_move = self.env['account.move'].create({
-                        'move_type': move_type,
-                        'partner_id': partner.id,
-                        'invoice_date': fields.Date.today(),
-                        'ref': ref_label,
-                        'utility_sale_order_id': order.id,
-                        'invoice_line_ids': [(0, 0, {
-                            'name': _(
-                                'تسوية استهلاك: من %.2f إلى %.2f كيلووات / سبب: %s'
-                            ) % (old_consumption, new_consumption, self.reason),
-                            'price_unit': diff_amount,
-                            'quantity': 1.0,
-                            'product_id': energy_line[0].product_id.id if energy_line else False,
-                            'account_id': energy_line[0].account_id.id if energy_line else False,
-                        })]
-                    })
-                    correction_move.action_post()
-                    _logger.info(
-                        'Settlement %s: created %s %s for order %s (delta=%.2f)',
-                        self.name, move_type, correction_move.name, order.name, delta_consumption
+        # إنشاء حركة رصيد للمشترك
+        if self.account_id and delta_consumption != 0:
+            unit_price = 0.0
+            if self.sale_order_id:
+                order = self.sale_order_id
+                posted_invoices = order.invoice_ids.filtered(lambda i: i.state == 'posted')
+                if posted_invoices:
+                    energy_line = posted_invoices[0].invoice_line_ids.filtered(
+                        lambda l: l.product_id and l.price_unit > 0 and l.quantity > 0
                     )
-            elif not posted_invoices and order.state in ('draft', 'sent'):
-                # الفاتورة لم تُرحَّل بعد — يمكن إعادة الحساب مباشرة
-                try:
-                    order._calculate_amounts()
-                except Exception as e:
-                    _logger.warning('Settlement %s: could not recalculate order %s: %s', self.name, order.name, e)
+                    if energy_line:
+                        unit_price = energy_line[0].price_unit
+            amount = delta_consumption * unit_price
+            notes = _('تسوية قراءة: من %.2f إلى %.2f (الفرق: %+.2f kWh) / سبب: %s') % (
+                old_consumption, new_consumption, delta_consumption, self.reason)
+            self.account_id._create_balance_transaction(
+                'adjustment', amount, source_ref=self, notes=notes)
 
         # تسجيل الحدث في السجل
         msg = _(
             'تسوية قراءة: %.2f ← %.2f (الفرق: %+.2f)\n'
             'الاستهلاك: %.2f ← %.2f kWh\n'
-            'السبب: %s\n'
-            'الفاتورة المرتبطة: %s\n'
-            'المستند التصحيحي: %s'
+            'السبب: %s'
         ) % (
             old_value, self.new_value, self.new_value - old_value,
             old_consumption, new_consumption,
             self.reason,
-            self.sale_order_id.name if self.sale_order_id else '—',
-            correction_move.name if correction_move else 'لا يوجد (فرق = 0 أو فاتورة غير مرحّلة)',
         )
         self.reading_id.message_post(body=msg)
 
+        # تسجيل الحدث في سجل تاريخ العداد
+        if self.meter_id:
+            self.env['utility.meter.log']._create_log(
+                self.meter_id, 'settlement',
+                _('تسوية قراءة: من %.2f إلى %.2f (الفرق: %+.2f) / سبب: %s') % (
+                    old_consumption, new_consumption, delta_consumption, self.reason),
+                ref_record=self)
+
         self.write({
             'state': 'done',
-            'correction_move_id': correction_move.id if correction_move else False,
         })
         return {
             'type': 'ir.actions.client',
             'tag': 'display_notification',
             'params': {
                 'title': 'تسوية القراءة',
-                'message': 'تم تطبيق تسوية القراءة بنجاح.%s' % (
-                    _(' تم إنشاء مستند تصحيحي: %s') % correction_move.name
-                    if correction_move else ''
-                ),
+                'message': 'تم تطبيق تسوية القراءة بنجاح.',
                 'type': 'success',
                 'sticky': False,
             }

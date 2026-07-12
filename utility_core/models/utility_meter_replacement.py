@@ -174,4 +174,21 @@ class UtilityMeterReplacement(models.Model):
                 'remarks': f'قراءة افتتاحية ابتدائية بسبب تركيب/استبدال العداد بالعملية {rec.name}',
             })
                 
+            # تسجيل الحدث في سجل تاريخ العداد
+            if rec.old_meter_id:
+                self.env['utility.meter.log']._create_log(
+                    rec.old_meter_id, 'removal',
+                    _('رفع العداد القديم %s واستبداله بـ %s / السبب: %s') % (
+                        rec.old_meter_id.meter_number, new_meter.meter_number,
+                        dict(rec._fields['reason'].selection).get(rec.reason, rec.reason)),
+                    ref_record=rec)
+            self.env['utility.meter.log']._create_log(
+                new_meter, 'replacement',
+                _('تركيب العداد %s بدلاً من %s / المشترك: %s / السبب: %s') % (
+                    new_meter.meter_number,
+                    rec.old_meter_id.meter_number if rec.old_meter_id else '—',
+                    acc.display_name,
+                    dict(rec._fields['reason'].selection).get(rec.reason, rec.reason)),
+                ref_record=rec)
+
             rec.state = 'done'

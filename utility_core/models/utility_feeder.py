@@ -30,9 +30,9 @@ class UtilityFeeder(models.Model):
 
     # ===== العدادات =====
     coupling_meter_id = fields.Many2one(
-        'utility.meter', 'عداد الربط الرئيسي',
+        'utility.meter', 'عداد الربط (المقارنة والرصد)',
         domain="[('feeder_id', '=', id)]",
-        help='العداد الذي يقيس إجمالي الطاقة الداخلة للفيدر/الخلية (يُستخدم للمقارنة وكشف الفاقد)',
+        help='العداد الذي يقيس إجمالي الطاقة الداخلة إلى المحول أو الفيدر',
         tracking=True,
     )
     transformer_ids = fields.One2many('utility.transformer', 'feeder_id', string='المحولات')

@@ -35,7 +35,7 @@ class UtilityTransaction(models.Model):
     @api.model
     def create_transaction(self, ttype, account, amount, pos_order=None,
                            reversal=None, adjustment=None, notes=''):
-        balance_before = account.balance
+        balance_before = account.prepaid_balance
         sign = 1.0
         if ttype in ('reversal', 'refund'):
             sign = -1.0

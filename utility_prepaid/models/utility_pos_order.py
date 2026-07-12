@@ -81,15 +81,14 @@ class PosOrder(models.Model):
         if not self.account_id:
             return
         amount = self.amount_paid or 0.0
-        self.balance_before = self.account_id.balance or 0.0
-        self.account_id._update_balance(amount)
+        self.balance_before = self.account_id.prepaid_balance or 0.0
+        self.account_id._create_balance_transaction(
+            'recharge', amount, source_ref=self,
+            notes=_('بيع مسبق الدفع: %s') % self.name,
+        )
         if self.kwh_purchased:
             self.account_id.total_kwh_purchased = (self.account_id.total_kwh_purchased or 0.0) + self.kwh_purchased
-        self.balance_after = self.account_id.balance
-        self.env['utility.transaction'].create_transaction(
-            'sale', self.account_id, amount, pos_order=self,
-            notes=_('Prepaid POS sale: %s') % self.name,
-        )
+        self.balance_after = self.account_id.prepaid_balance
 
     def _get_token_html_link(self):
         if self.token_id:

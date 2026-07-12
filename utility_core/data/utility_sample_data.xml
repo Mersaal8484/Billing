@@ -63,20 +63,19 @@
             <field name="name">Deactivate all taxes globally</field>
             <field name="model_id" ref="base.model_res_company"/>
             <field name="state">code</field>
-            <field name="code">
-                # 1. إزالة الضرائب الافتراضية للشركة
-                env['res.company'].search([]).write({
-                    'account_sale_tax_id': False,
-                    'account_purchase_tax_id': False,
-                })
-                # 2. تعطيل جميع سجلات الضرائب
-                taxes = env['account.tax'].with_context(active_test=False).search([])
-                if taxes:
-                    taxes.write({'active': False})
-                # 3. إزالة الضرائب من جميع المنتجات
-                products = env['product.template'].with_context(active_test=False).search([])
-                if products:
-                    products.write({'taxes_id': [(5, 0, 0)], 'supplier_taxes_id': [(5, 0, 0)]})
+            <field name="code"># 1. إزالة الضرائب الافتراضية للشركة
+env['res.company'].search([]).write({
+    'account_sale_tax_id': False,
+    'account_purchase_tax_id': False,
+})
+# 2. تعطيل جميع سجلات الضرائب
+taxes = env['account.tax'].with_context(active_test=False).search([])
+if taxes:
+    taxes.write({'active': False})
+# 3. إزالة الضرائب من جميع المنتجات
+products = env['product.template'].with_context(active_test=False).search([])
+if products:
+    products.write({'taxes_id': [(5, 0, 0)], 'supplier_taxes_id': [(5, 0, 0)]})
             </field>
         </record>
         <function model="ir.actions.server" name="run">

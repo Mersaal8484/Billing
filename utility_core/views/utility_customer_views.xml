@@ -17,7 +17,8 @@
                 <field name="region_id"/>
                 <field name="area_id"/>
                 <field name="route_id"/>
-                <field name="balance"/>
+                <field name="company_currency_id" invisible="1"/>
+                <field name="prepaid_balance" widget="monetary" options="{'currency_field': 'company_currency_id'}"/>
                 <field name="meter_id"/>
                 <field name="active" widget="boolean_toggle"/>
             </tree>
@@ -57,6 +58,11 @@
                                 class="oe_stat_button" icon="fa-money">
                             <field name="payment_count" string="التحصيلات" widget="statinfo"/>
                         </button>
+                        <button name="action_view_balance_transactions" type="object"
+                                class="oe_stat_button" icon="fa-credit-card"
+                                attrs="{'invisible': [('payment_type', '!=', 'prepaid')]}">
+                            <field name="balance_transaction_count" string="حركات الرصيد" widget="statinfo"/>
+                        </button>
                     </div>
                     <div class="oe_title">
                         <label for="customer_number" string="رقم المشترك / الحساب"/>
@@ -94,7 +100,8 @@
                                 </group>
                                 <group string="الأرصدة والمبيعات">
                                     <field name="company_currency_id" invisible="1"/>
-                                    <field name="balance" widget="monetary" options="{'currency_field': 'company_currency_id'}"/>
+                                    <field name="accounting_balance" widget="monetary" options="{'currency_field': 'company_currency_id'}" attrs="{'invisible': [('payment_type', '!=', 'postpaid')]}"/>
+                                    <field name="prepaid_balance" widget="monetary" options="{'currency_field': 'company_currency_id'}" attrs="{'invisible': [('payment_type', '!=', 'prepaid')]}"/>
                                     <field name="emergency_credit" widget="monetary" options="{'currency_field': 'company_currency_id'}" attrs="{'invisible': [('payment_type', '!=', 'prepaid')]}"/>
                                     <field name="total_purchases" widget="monetary" options="{'currency_field': 'company_currency_id'}" readonly="1" attrs="{'invisible': [('payment_type', '!=', 'prepaid')]}"/>
                                     <field name="total_kwh_purchased" readonly="1" attrs="{'invisible': [('payment_type', '!=', 'prepaid')]}"/>
@@ -137,8 +144,8 @@
 
                         <page name="readings" string="القراءات" attrs="{'invisible': [('payment_type', '=', 'prepaid')]}">
                             <separator string="القراءات المرفوعة"/>
-                            <field name="uploaded_reading_ids" nolabel="1">
-                                <tree editable="bottom" limit="20">
+                            <field name="uploaded_reading_ids" nolabel="1" readonly="1">
+                                <tree limit="20" readonly="1">
                                     <field name="reading_id"/>
                                     <field name="reading_date"/>
                                     <field name="reading_value"/>
@@ -148,8 +155,8 @@
                                 </tree>
                             </field>
                             <separator string="القراءات المفوتـرة"/>
-                            <field name="billed_reading_ids" nolabel="1">
-                                <tree limit="20">
+                            <field name="billed_reading_ids" nolabel="1" readonly="1">
+                                <tree limit="20" readonly="1">
                                     <field name="reading_id"/>
                                     <field name="reading_date"/>
                                     <field name="reading_value"/>

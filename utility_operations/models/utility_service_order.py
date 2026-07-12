@@ -101,10 +101,33 @@ class UtilityServiceOrder(models.Model):
                 self.old_meter_id.write({
                     'customer_id': False,
                 })
+                self.env['utility.meter.log']._create_log(
+                    self.old_meter_id, 'removal',
+                    _('رفع العداد عبر أمر خدمة %s: %s') % (self.order_number, self.description),
+                    ref_record=self)
+            self.env['utility.meter.log']._create_log(
+                self.new_meter_id, 'replacement',
+                _('تركيب عداد عبر أمر خدمة %s: %s') % (self.order_number, self.description),
+                ref_record=self)
         elif self.service_type == 'disconnection' and self.customer_id:
             self.customer_id.write({'state': 'disconnected'})
+            if self.meter_id:
+                self.env['utility.meter.log']._create_log(
+                    self.meter_id, 'disconnection',
+                    _('فصل العداد عبر أمر خدمة %s: %s') % (self.order_number, self.description),
+                    ref_record=self)
         elif self.service_type == 'reconnection' and self.customer_id:
             self.customer_id.write({'state': 'active'})
+            if self.meter_id:
+                self.env['utility.meter.log']._create_log(
+                    self.meter_id, 'reconnection',
+                    _('إعادة خدمة العداد عبر أمر خدمة %s: %s') % (self.order_number, self.description),
+                    ref_record=self)
+        if self.meter_id and self.service_type not in ('meter_replacement', 'disconnection', 'reconnection'):
+            self.env['utility.meter.log']._create_log(
+                self.meter_id, 'service_order',
+                _('أمر خدمة %s: %s') % (self.order_number, self.description),
+                ref_record=self)
         self.state = 'completed'
         self.date_completed = fields.Datetime.now()
 

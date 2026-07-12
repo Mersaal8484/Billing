@@ -31,8 +31,10 @@
         <field name="arch" type="xml">
             <form>
                 <header>
-                    <button name="action_open_transformer_balance" type="object"
-                            string="توازن المحول" class="oe_highlight"/>
+                        <button name="action_create_coupling_meter" type="object"
+                                string="إضافة عداد ربط" class="btn-secondary"/>
+                        <button name="action_open_transformer_balance" type="object"
+                                string="توازن المحول" class="oe_highlight"/>
                     <field name="status" widget="statusbar" options="{'clickable': '1'}"/>
                 </header>
                 <sheet>
@@ -87,6 +89,13 @@
                     <notebook>
                         <!-- العدادات -->
                         <page name="meters" string="العدادات">
+                            <group>
+                                <group string="عداد الربط">
+                                    <field name="coupling_meter_id" options="{'no_create': True, 'no_open': True}"/>
+                                    <button name="action_create_coupling_meter" type="object"
+                                            string="إضافة عداد ربط" class="btn-secondary"/>
+                                </group>
+                            </group>
                             <field name="meter_ids">
                                 <tree>
                                     <field name="meter_number"/>

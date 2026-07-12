@@ -26,5 +26,13 @@
             <field name="company_id" eval="False"/>
         </record>
 
+        <record id="seq_utility_customer_balance_transaction" model="ir.sequence">
+            <field name="name">تسلسل حركات رصيد المشتركين</field>
+            <field name="code">utility.customer.balance.transaction</field>
+            <field name="prefix">BAL/%(year)s/</field>
+            <field name="padding">6</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
     </data>
 </odoo>

@@ -80,6 +80,40 @@ class UtilityReading(models.Model):
     billing_error = fields.Text('خطأ الفوترة', readonly=True)
     reading_source = fields.Char('مصدر القراءة')
 
+    @api.onchange('reading_category')
+    def _onchange_reading_category(self):
+        if self.reading_category == 'customer':
+            self.transformer_id = False
+            self.feeder_id = False
+        elif self.reading_category == 'transformer':
+            self.feeder_id = False
+        elif self.reading_category == 'feeder':
+            self.transformer_id = False
+
+    reading_history_count = fields.Integer('عدد القراءات السابقة', compute='_compute_reading_history_count')
+
+    @api.depends('meter_id')
+    def _compute_reading_history_count(self):
+        for r in self:
+            if r.meter_id:
+                domain = [('meter_id', '=', r.meter_id.id)]
+                if r.id and isinstance(r.id, int):
+                    domain.append(('id', '!=', r.id))
+                r.reading_history_count = self.search_count(domain)
+            else:
+                r.reading_history_count = 0
+
+    def action_view_reading_history(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('سجل القراءات - %s') % self.meter_id.meter_number,
+            'res_model': 'utility.reading',
+            'view_mode': 'tree,form',
+            'domain': [('meter_id', '=', self.meter_id.id), ('id', '!=', self.id)],
+            'context': {'create': False},
+        }
+
     _sql_constraints = [
         ('unique_meter_reading_date',
          'unique(meter_id, reading_date)',
@@ -287,6 +321,9 @@ class UtilityReading(models.Model):
                         'last_reading_date': r.reading_date,
                         'last_reading_value': r.reading_value,
                     })
+            # تحديث آخر قراءة في العداد
+            if r.meter_id:
+                r.meter_id._update_last_reading()
 
     def action_reject(self):
         for r in self:
@@ -308,9 +345,20 @@ class UtilityReading(models.Model):
         readings = self.filtered(lambda r: r.state == 'under_review')
         readings.action_approve()
 
+    def write(self, vals):
+        meters = self.mapped('meter_id')
+        res = super().write(vals)
+        if meters:
+            meters._update_last_reading()
+        return res
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
             if vals.get('reading_id', _('جديد')) == _('جديد'):
                 vals['reading_id'] = self.env['ir.sequence'].next_by_code('utility.reading') or _('جديد')
-        return super().create(vals_list)
+        records = super().create(vals_list)
+        for r in records:
+            if r.meter_id:
+                r.meter_id._update_last_reading()
+        return records

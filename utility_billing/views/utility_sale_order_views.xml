@@ -68,10 +68,10 @@
                                 
                                 <field name="amount_untaxed" widget="monetary" attrs="{'readonly': [('bill_state', '!=', 'draft')]}"/>
                                 <field name="amount_total" class="oe_subtotal_footer_separator" widget="monetary" decoration-bf="1" attrs="{'readonly': [('bill_state', '!=', 'draft')]}"/>
-                                <field name="previous_balance" widget="monetary" decoration-danger="previous_balance &gt; 0"/>
-                                <field name="total_due_amount" class="oe_subtotal_footer_separator" widget="monetary" decoration-bf="1"/>
-                                <field name="amount_paid" widget="monetary" decoration-success="amount_paid &gt; 0"/>
-                                <field name="balance_due" class="oe_subtotal_footer_separator" widget="monetary" decoration-danger="balance_due &gt; 0"/>
+                                <field name="previous_balance" widget="monetary" decoration-danger="previous_balance &gt; 0" attrs="{'readonly': [('bill_state', '!=', 'draft')]}"/>
+                                <field name="total_due_amount" class="oe_subtotal_footer_separator" widget="monetary" decoration-bf="1" attrs="{'readonly': [('bill_state', '!=', 'draft')]}"/>
+                                <field name="amount_paid" widget="monetary" decoration-success="amount_paid &gt; 0" attrs="{'readonly': [('bill_state', '!=', 'draft')]}"/>
+                                <field name="balance_due" class="oe_subtotal_footer_separator" widget="monetary" decoration-danger="balance_due &gt; 0" attrs="{'readonly': [('bill_state', '!=', 'draft')]}"/>
                                 <field name="is_overdue" widget="boolean_toggle" readonly="1"/>
                                 <field name="disconnection_order_id" readonly="1" attrs="{'invisible': [('disconnection_order_id', '=', False)]}"/>
                                 <field name="reconnection_order_id" readonly="1" attrs="{'invisible': [('reconnection_order_id', '=', False)]}"/>
@@ -87,7 +87,7 @@
                         </group>
                         <group>
                             <field name="transformer_reading_id" readonly="1"/>
-                            <field name="reading_reviewer"/>
+                            <field name="reading_reviewer" attrs="{'readonly': [('bill_state', '!=', 'draft')]}"/>
                         </group>
                     </group>
                 </page>

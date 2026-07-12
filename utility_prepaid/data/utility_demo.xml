@@ -10,9 +10,17 @@
     <record id="demo_account_1" model="utility.customer">
       <field name="customer_number">ACC-2024-0001</field>
       <field name="partner_id" ref="demo_customer_1"/>
-      <field name="balance">500.00</field>
       <field name="category_id" ref="utility_core.cat_public"/>
       <field name="subscriber_id" ref="utility_core.sub_category_public"/>
+    </record>
+
+    <record id="demo_balance_txn_1" model="utility.customer.balance.transaction">
+      <field name="customer_id" ref="demo_account_1"/>
+      <field name="transaction_type">recharge</field>
+      <field name="amount">500.00</field>
+      <field name="state">posted</field>
+      <field name="date">2024-06-27 08:00:00</field>
+      <field name="notes">رصيد افتتاحي تجريبي</field>
     </record>
 
     <record id="demo_meter_1" model="utility.meter">

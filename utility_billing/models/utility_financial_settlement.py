@@ -5,8 +5,10 @@ from odoo.exceptions import ValidationError
 class UtilityFinancialSettlement(models.Model):
     _name = 'utility.financial.settlement'
     _description = 'تسوية مالية'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'date desc'
 
+    active = fields.Boolean('نشط', default=True)
     name = fields.Char('رقم التسوية المالية', default=lambda self: _('جديد'), readonly=True)
     company_id = fields.Many2one('res.company', 'الشركة', default=lambda self: self.env.company)
     currency_id = fields.Many2one(
@@ -17,8 +19,7 @@ class UtilityFinancialSettlement(models.Model):
         readonly=True,
     )
     account_id = fields.Many2one('utility.customer', 'حساب الكهرباء', required=True)
-    customer_id = fields.Many2one('utility.customer', related='account_id', store=True)
-    partner_id = fields.Many2one('res.partner', related='customer_id.partner_id', store=True)
+    partner_id = fields.Many2one('res.partner', related='account_id.partner_id', store=True, string='العميل')
     region_id = fields.Many2one(related='partner_id.region_id', store=True, string='المنطقة')
     area_id = fields.Many2one(related='partner_id.area_id', store=True, string='المنطقة الفرعية')
     settlement_type = fields.Selection([
@@ -27,13 +28,19 @@ class UtilityFinancialSettlement(models.Model):
     ], string='نوع التسوية المالية', required=True)
     amount = fields.Monetary('مبلغ التسوية', required=True, currency_field='currency_id')
     reason = fields.Text('سبب التسوية المالية', required=True)
-    date = fields.Date('تاريخ التسوية', default=fields.Date.today, readonly=True)
+    date = fields.Date('تاريخ التسوية', default=fields.Date.today)
     state = fields.Selection([
         ('draft', 'مسودة'),
         ('applied', 'تم التطبيق'),
-    ], string='الحالة', default='draft', readonly=True)
+    ], string='الحالة', default='draft')
 
     move_id = fields.Many2one('account.move', string='القيد المحاسبي', readonly=True)
+
+    def name_get(self):
+        res = []
+        for rec in self:
+            res.append((rec.id, f'[{rec.name}] {rec.account_id.partner_id.name or ""}'))
+        return res
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -60,53 +67,61 @@ class UtilityFinancialSettlement(models.Model):
         if not settlement_journal_id or not settlement_account_id:
             raise ValidationError('يرجى تحديد يومية التسويات وحساب التسويات في إعدادات النظام أولاً.')
 
+        journal = self.env['account.journal'].browse(settlement_journal_id)
+        if journal.type != 'sale':
+            sale_journal = self.env['account.journal'].search([
+                ('type', '=', 'sale'),
+                ('company_id', '=', self.company_id.id),
+            ], limit=1)
+            if sale_journal:
+                journal = sale_journal
+            else:
+                raise ValidationError(
+                    'اليومية المحددة للتسويات ليست يومية مبيعات. '
+                    'يرجى تحديد يومية مبيعات في إعدادات النظام أو إنشاء واحدة.')
+
         partner = self.account_id.partner_id
         if not partner:
             raise ValidationError('حساب الكهرباء غير مربوط بعميل (Partner).')
 
-        partner_account_id = partner.property_account_receivable_id.id
-        if not partner_account_id:
-            raise ValidationError('العميل ليس لديه حساب مستحقات معرف.')
+        move_type = 'out_refund' if self.settlement_type == 'credit' else 'out_invoice'
 
         move_vals = {
-            'journal_id': settlement_journal_id,
+            'journal_id': journal.id,
             'date': self.date or fields.Date.today(),
             'ref': f"تسوية مالية: {self.name} - {self.reason}",
-            'line_ids': []
+            'move_type': move_type,
+            'partner_id': partner.id,
+            'invoice_line_ids': [(0, 0, {
+                'name': self.reason,
+                'quantity': 1.0,
+                'price_unit': self.amount,
+                'account_id': settlement_account_id,
+                'tax_ids': False,
+            })]
         }
-
-        if self.settlement_type == 'credit':
-            move_vals['line_ids'].append((0, 0, {
-                'account_id': settlement_account_id,
-                'name': self.reason,
-                'debit': self.amount,
-                'credit': 0.0,
-            }))
-            move_vals['line_ids'].append((0, 0, {
-                'account_id': partner_account_id,
-                'partner_id': partner.id,
-                'name': self.reason,
-                'debit': 0.0,
-                'credit': self.amount,
-            }))
-        else:
-            move_vals['line_ids'].append((0, 0, {
-                'account_id': partner_account_id,
-                'partner_id': partner.id,
-                'name': self.reason,
-                'debit': self.amount,
-                'credit': 0.0,
-            }))
-            move_vals['line_ids'].append((0, 0, {
-                'account_id': settlement_account_id,
-                'name': self.reason,
-                'debit': 0.0,
-                'credit': self.amount,
-            }))
 
         move = self.env['account.move'].create(move_vals)
         move.action_post()
 
         self.move_id = move.id
         self.state = 'applied'
-        return True
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('القيد المحاسبي'),
+            'res_model': 'account.move',
+            'res_id': move.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
+
+    def action_view_move(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('القيد المحاسبي'),
+            'res_model': 'account.move',
+            'res_id': self.move_id.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }

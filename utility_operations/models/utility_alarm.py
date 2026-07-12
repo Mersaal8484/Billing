@@ -99,8 +99,8 @@ class UtilityAlarm(models.Model):
                 continue
             self.create({
                 'alarm_type': 'low_credit',
-                'severity': 'critical' if account.balance == 0 else 'warning',
-                'description': _('الحساب %s لديه رصيد منخفض: %s') % (account.customer_number, account.balance),
+                'severity': 'critical' if account.prepaid_balance == 0 else 'warning',
+                'description': _('الحساب %s لديه رصيد منخفض: %s') % (account.customer_number, account.prepaid_balance),
                 'customer_id': account.id,
                 'account_id': account.id,
                 'meter_id': account.meter_id.id,

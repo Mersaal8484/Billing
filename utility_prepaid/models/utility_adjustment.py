@@ -38,7 +38,7 @@ class UtilityAdjustment(models.Model):
     @api.depends('account_id', 'amount', 'adjustment_type')
     def _compute_balances(self):
         for rec in self:
-            current_balance = rec.account_id.balance if rec.account_id else 0.0
+            current_balance = rec.account_id.prepaid_balance if rec.account_id else 0.0
             rec.balance_before = current_balance
             if rec.adjustment_type in ('credit', 'emergency_credit', 'compensation'):
                 rec.balance_after = current_balance + (rec.amount or 0.0)
@@ -59,14 +59,13 @@ class UtilityAdjustment(models.Model):
         if self.state != 'approved':
             raise models.ValidationError(_('يجب اعتماد التسوية قبل تطبيقها.'))
         if self.adjustment_type in ('credit', 'emergency_credit', 'compensation'):
-            self.account_id._update_balance(self.amount)
+            self.account_id._create_balance_transaction(
+                'adjustment', self.amount, source_ref=self,
+                notes=_('تسوية %s: %s') % (self.reference, self.reason))
         elif self.adjustment_type in ('debit', 'correction'):
-            self.account_id._update_balance(-self.amount)
-        self.env['utility.transaction'].create_transaction(
-            'adjustment' if self.adjustment_type != 'emergency_credit' else 'emergency_credit',
-            self.account_id, self.amount, adjustment=self,
-            notes=_('تسوية %s: %s') % (self.reference, self.reason),
-        )
+            self.account_id._create_balance_transaction(
+                'adjustment', -self.amount, source_ref=self,
+                notes=_('تسوية %s: %s') % (self.reference, self.reason))
         self.state = 'applied'
 
     def action_cancel(self):

@@ -30,6 +30,7 @@ User Role.
         'views/utility_transformer_views.xml',
         'views/utility_route_views.xml',
         'views/utility_customer_views.xml',
+        'views/utility_balance_transaction_views.xml',
 
         'views/utility_connection_views.xml',
         'views/utility_connection_type_views.xml',
