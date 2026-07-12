@@ -71,6 +71,7 @@ User Role.
         'report/transformer_balance_report.xml',
         'report/utility_receipt_report.xml',
         'report/utility_meter_qr_report.xml',
+        'report/utility_meter_qr_bulk_report.xml',
     ],
     'demo': [],
     'installable': True,

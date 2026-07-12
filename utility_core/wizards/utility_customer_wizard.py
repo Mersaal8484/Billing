@@ -14,7 +14,7 @@ class UtilityCustomerWizard(models.TransientModel):
     name = fields.Char(string='اسم المشترك / الجهة', required=True)
     mobile = fields.Char(string='رقم الجوال', required=True)
     phone = fields.Char(string='رقم الهاتف الثابت')
-    national_id = fields.Char(string='الرقم الوطني / الهوية', required=True)
+    national_id = fields.Char(string='الرقم الوطني / الهوية')
     
     street = fields.Char(string='العنوان (الشارع)')
     city = fields.Char(string='المدينة', default='صنعاء')

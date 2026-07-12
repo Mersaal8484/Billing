@@ -81,6 +81,7 @@
                         <group string="معلومات الاتصال والمنطقة">
                             <field name="mobile"/>
                             <field name="phone"/>
+                            <field name="national_id"/>
                             <field name="region_id"/>
                             <field name="area_id"/>
                             <field name="zone_id"/>
@@ -100,6 +101,7 @@
                                 </group>
                                 <group string="الأرصدة والمبيعات">
                                     <field name="company_currency_id" invisible="1"/>
+                                    <field name="previous_hotline_balance"/>
                                     <field name="accounting_balance" widget="monetary" options="{'currency_field': 'company_currency_id'}" attrs="{'invisible': [('payment_type', '!=', 'postpaid')]}"/>
                                     <field name="prepaid_balance" widget="monetary" options="{'currency_field': 'company_currency_id'}" attrs="{'invisible': [('payment_type', '!=', 'prepaid')]}"/>
                                     <field name="emergency_credit" widget="monetary" options="{'currency_field': 'company_currency_id'}" attrs="{'invisible': [('payment_type', '!=', 'prepaid')]}"/>

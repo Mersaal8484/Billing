@@ -85,6 +85,7 @@ class UtilityCustomer(models.Model):
         help='رصيد المشترك النقدي المسبق الدفع')
 
     emergency_credit = fields.Monetary('رصيد الطوارئ', default=0.0, currency_field='company_currency_id')
+    previous_hotline_balance = fields.Char(related='partner_id.previous_hotline_balance', string='الرصيد السابق (الخط الساخن)', readonly=True)
     credit_limit = fields.Monetary('حد الائتمان', default=0.0, currency_field='company_currency_id')
     total_purchases = fields.Monetary(string='إجمالي المشتريات', currency_field='company_currency_id')
     total_kwh_purchased = fields.Float(string='إجمالي الكيلووات المشترى')

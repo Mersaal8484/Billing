@@ -3,6 +3,7 @@ from urllib.parse import quote
 import re
 
 from odoo import api, fields, models, _
+import base64
 from odoo.exceptions import UserError, ValidationError
 
 
@@ -68,6 +69,7 @@ class UtilityMeter(models.Model):
         ('manual', 'يدوي'),
     ], string='نوع الاتصال')
     sim_number = fields.Char('رقم شريحة SIM')
+    sim_number = fields.Char('رقم شريحة SIM')
     reading_ids = fields.One2many('utility.reading', 'meter_id', string='سجل القراءات')
     log_ids = fields.One2many('utility.meter.log', 'meter_id', string='سجل تاريخ العداد')
     reading_count = fields.Integer('عدد القراءات', compute='_compute_reading_count', store=True)
@@ -76,11 +78,7 @@ class UtilityMeter(models.Model):
     multiplier = fields.Float('معامل الضرب', default=1.0)
     qr_code_value = fields.Char('بيانات QR', compute='_compute_qr_code', store=True, readonly=True)
     qr_code_url = fields.Char('رابط QR', compute='_compute_qr_code', store=True, readonly=True)
-
-
-    # خصائص الربط
-    is_coupling_meter = fields.Boolean('عداد ربط رئيسي', default=False, help='يُشير إذا كان هذا العداد هو عداد ربط يقرأ إجمالي طاقة الفيدر أو المحطة')
-
+    qr_code_image = fields.Binary('صورة QR', compute='_compute_qr_code', store=True, attachment=False)
     # نوع الربط
     connection_type = fields.Selection([
         ('not_connected', 'غير مربوط'),
@@ -335,6 +333,11 @@ class UtilityMeter(models.Model):
                 'web.base.url', 'http://localhost:8069')
             meter.qr_code_url = '%s/report/barcode?barcode_type=QR&value=%s&width=%s&height=%s' % (
                 base_url.rstrip('/'), encoded, 200, 200)
+            try:
+                barcode = self.env['ir.actions.report'].barcode('QR', payload, width=200, height=200)
+                meter.qr_code_image = base64.b64encode(barcode)
+            except Exception:
+                meter.qr_code_image = False
     _sql_constraints = [
         ('unique_meter_number_company', 'unique(meter_number, company_id)',
          'رقم العداد يجب أن يكون فريداً لكل شركة!'),

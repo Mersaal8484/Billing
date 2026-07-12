@@ -133,6 +133,7 @@ class ResPartner(models.Model):
     sale_type = fields.Many2one('sale.order.type', string='نوع أمر البيع', company_dependent=True)
     subscriber_id = fields.Many2one('utility.subscriber', string="نوع المشترك", tracking=True)
     sector_id = fields.Many2one('res.partner.sector', string="القطاع", tracking=True)
+    previous_hotline_balance = fields.Char('الرصيد السابق (الخط الساخن)', help='رصيد قديم كمرجع من النظام السابق')
 
     utility_region_id = fields.Many2one('utility.region', string="المنطقة التشغيلية", domain="[('type', '=', 'region')]")
     utility_area_id = fields.Many2one('utility.region', string="الفرع التشغيلي", domain="[('type', '=', 'area')]")

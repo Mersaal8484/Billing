@@ -60,6 +60,7 @@
                             <field name="old_credit"/>
                             <field name="old_credit_before"/>
                             <field name="credit_last"/>
+                            <field name="previous_hotline_balance"/>
                             <field name="balance_customer"/>
                             <field name="payment_token_ids" invisible="1"/>
                             <field name="payment_token_id" options="{'no_create': True}"/>
