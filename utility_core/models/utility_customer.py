@@ -123,6 +123,8 @@ class UtilityCustomer(models.Model):
     accounting_invoice_count = fields.Integer('عدد الفواتير المحاسبية', compute='_compute_smart_buttons')
     reading_count = fields.Integer('عدد القراءات', compute='_compute_smart_buttons')
     payment_count = fields.Integer('عدد الدفعات', compute='_compute_smart_buttons')
+    replacement_count = fields.Integer('استبدالات العداد', compute='_compute_smart_buttons')
+    tamper_count = fields.Integer('حالات التلاعب', compute='_compute_smart_buttons')
 
     _sql_constraints = [
         ('unique_customer_number_company', 'unique(customer_number, company_id)',
@@ -332,11 +334,15 @@ class UtilityCustomer(models.Model):
         Reading = self.env.get('utility.reading')
         Payment = self.env.get('account.payment')
         Move = self.env.get('account.move')
+        Replacement = self.env.get('utility.meter.replacement')
+        Tamper = self.env.get('utility.tamper.case')
         for rec in self:
             invoice_count = 0
             accounting_invoice_count = 0
             reading_count = 0
             payment_count = 0
+            replacement_count = 0
+            tamper_count = 0
             if So and 'customer_id' in So._fields:
                 invoice_count = So.sudo().search_count([('customer_id', '=', rec.id)])
             if Reading and 'customer_id' in Reading._fields:
@@ -350,10 +356,17 @@ class UtilityCustomer(models.Model):
                     ('state', '=', 'posted'),
                     ('move_type', 'in', ('out_invoice', 'out_refund')),
                 ])
+            if Replacement:
+                replacement_count = Replacement.sudo().search_count([('utility_account_id', '=', rec.id)])
+            if Tamper:
+                tamper_count = Tamper.sudo().search_count([('customer_id', '=', rec.id)])
+
             rec.invoice_count = invoice_count
             rec.accounting_invoice_count = accounting_invoice_count
             rec.reading_count = reading_count
             rec.payment_count = payment_count
+            rec.replacement_count = replacement_count
+            rec.tamper_count = tamper_count
 
     def action_view_balance_transactions(self):
         self.ensure_one()
@@ -362,6 +375,28 @@ class UtilityCustomer(models.Model):
             'name': _('حركات الرصيد'),
             'res_model': 'utility.customer.balance.transaction',
             'domain': [('customer_id', '=', self.id)],
+            'views': [(False, 'tree'), (False, 'form')],
+        }
+
+    def action_view_replacements(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('استبدالات العداد'),
+            'res_model': 'utility.meter.replacement',
+            'domain': [('utility_account_id', '=', self.id)],
+            'context': {'default_utility_account_id': self.id},
+            'views': [(False, 'tree'), (False, 'form')],
+        }
+
+    def action_view_tampers(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('حالات التلاعب'),
+            'res_model': 'utility.tamper.case',
+            'domain': [('customer_id', '=', self.id)],
+            'context': {'default_customer_id': self.id},
             'views': [(False, 'tree'), (False, 'form')],
         }
 

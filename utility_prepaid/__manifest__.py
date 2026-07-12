@@ -25,6 +25,15 @@ POS integration, and cashier balancing.
         'report/utility_reports.xml',
     ],
     'demo': ['data/utility_demo.xml'],
+    'assets': {
+        'point_of_sale.assets': [
+            'utility_prepaid/static/src/js/StsTokenButton.js',
+            'utility_prepaid/static/src/js/StsTokenPopup.js',
+            'utility_prepaid/static/src/xml/StsTokenButton.xml',
+            'utility_prepaid/static/src/xml/StsTokenPopup.xml',
+            'utility_prepaid/static/src/xml/PartnerLine.xml',
+        ],
+    },
     'installable': True,
     'application': True,
     'auto_install': False,

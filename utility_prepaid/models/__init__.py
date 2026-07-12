@@ -4,3 +4,4 @@ from . import utility_transaction
 from . import utility_adjustment
 from . import utility_reversal
 from . import utility_cashier_shift
+from . import pos_session

@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="utility_dashboard.UtilityDashboard" owl="1">
+        <div class="utility_dashboard_container">
+            <div class="dashboard-header">
+                <h2>لوحة القيادة الإدارية</h2>
+                <p>ملخص الأداء المالي والتشغيلي لشركة الكهرباء</p>
+            </div>
+            
+            <div class="kpi-cards-row">
+                <!-- Prepaid Total -->
+                <div class="kpi-card kpi-success">
+                    <div class="kpi-icon"><i class="fa fa-bolt"></i></div>
+                    <div class="kpi-info">
+                        <h3><t t-esc="state.kpi.today_prepaid" /> ريال</h3>
+                        <p>مبيعات الدفع المسبق (اليوم)</p>
+                    </div>
+                </div>
+
+                <!-- Postpaid Total -->
+                <div class="kpi-card kpi-info-color">
+                    <div class="kpi-icon"><i class="fa fa-money"></i></div>
+                    <div class="kpi-info">
+                        <h3><t t-esc="state.kpi.today_postpaid" /> ريال</h3>
+                        <p>تحصيلات الفواتير الآجلة (اليوم)</p>
+                    </div>
+                </div>
+
+                <!-- Total Debt -->
+                <div class="kpi-card kpi-danger" t-on-click="openUnpaidInvoices">
+                    <div class="kpi-icon"><i class="fa fa-exclamation-triangle"></i></div>
+                    <div class="kpi-info">
+                        <h3><t t-esc="state.kpi.total_debt" /> ريال</h3>
+                        <p>إجمالي المديونية المفتوحة</p>
+                    </div>
+                </div>
+
+                <!-- Active Customers -->
+                <div class="kpi-card kpi-primary" t-on-click="openCustomers">
+                    <div class="kpi-icon"><i class="fa fa-users"></i></div>
+                    <div class="kpi-info">
+                        <h3><t t-esc="state.kpi.active_customers" /></h3>
+                        <p>إجمالي المشتركين النشطين</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Row -->
+            <div class="dashboard-charts-row">
+                <div class="chart-container">
+                    <h3>الإصدارات مقابل التحصيلات (آخر 7 أيام)</h3>
+                    <div class="canvas-wrapper">
+                        <canvas t-ref="chartCanvas"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+</templates>

@@ -29,14 +29,18 @@ class UtilityMeterLog(models.Model):
     ref_model = fields.Char('النموذج المصدر')
     ref_id = fields.Integer('معرف السجل المصدر')
     ref_name = fields.Char('المرجع')
+    customer_id = fields.Many2one('utility.customer', 'الحساب/العميل وقت الحدث')
 
-    def _create_log(self, meter_id, log_type, description, ref_record=None, date=None):
+    def _create_log(self, meter_id, log_type, description, ref_record=None, date=None, customer_id=None):
         vals = {
             'meter_id': meter_id.id if hasattr(meter_id, 'id') else meter_id,
             'log_type': log_type,
             'description': description,
             'date': date or fields.Datetime.now(),
         }
+        if customer_id:
+            vals['customer_id'] = customer_id.id if hasattr(customer_id, 'id') else customer_id
+
         if ref_record:
             vals.update({
                 'ref_model': ref_record._name,
@@ -44,3 +48,15 @@ class UtilityMeterLog(models.Model):
                 'ref_name': ref_record.display_name if hasattr(ref_record, 'display_name') else str(ref_record),
             })
         return self.create(vals)
+
+    def write(self, vals):
+        if not self.env.context.get('allow_log_update'):
+            from odoo.exceptions import UserError
+            raise UserError('أمان النظام: لا يُسمح بتعديل سجلات العدادات التاريخية لضمان موثوقية التدقيق.')
+        return super().write(vals)
+
+    def unlink(self):
+        if not self.env.context.get('allow_log_update'):
+            from odoo.exceptions import UserError
+            raise UserError('أمان النظام: لا يُسمح بحذف سجلات العدادات التاريخية لضمان موثوقية التدقيق.')
+        return super().unlink()

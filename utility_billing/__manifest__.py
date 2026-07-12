@@ -16,6 +16,7 @@ debt management, and collections.
     'depends': ['utility_core', 'utility_prepaid', 'utility_operations', 'account', 'sale'],
     'data': [
         'security/ir.model.access.csv',
+        'security/utility_billing_security.xml',
         'data/utility_sequence.xml',
         'data/utility_cron.xml',
         'data/utility_cron_extras.xml',

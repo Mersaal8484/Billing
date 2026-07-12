@@ -30,6 +30,19 @@ class PosOrder(models.Model):
     sms_sent = fields.Boolean(string='تم إرسال SMS')
     reversal_id = fields.Many2one('utility.reversal', string='الإلغاء')
 
+    @api.model
+    def _order_fields(self, ui_order):
+        fields = super()._order_fields(ui_order)
+        if 'utility_account_id' in ui_order:
+            fields['account_id'] = ui_order.get('utility_account_id')
+        if 'utility_meter_id' in ui_order:
+            fields['meter_id'] = ui_order.get('utility_meter_id')
+        if 'utility_kwh' in ui_order:
+            fields['kwh_purchased'] = ui_order.get('utility_kwh')
+        if 'utility_amount' in ui_order:
+            fields['amount_paid'] = ui_order.get('utility_amount')
+        return fields
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:

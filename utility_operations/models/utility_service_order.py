@@ -65,6 +65,14 @@ class UtilityServiceOrder(models.Model):
     actual_cost = fields.Monetary('التكلفة الفعلية', currency_field='company_currency_id')
     notes = fields.Text('ملاحظات')
     company_currency_id = fields.Many2one('res.currency', related='company_id.currency_id', string='العملة')
+    picking_ids = fields.One2many('stock.picking', compute='_compute_picking_ids', string='حركات المخزون')
+    picking_count = fields.Integer(compute='_compute_picking_ids', string='عدد حركات المخزون')
+
+    def _compute_picking_ids(self):
+        for rec in self:
+            pickings = self.env['stock.picking'].search([('origin', '=', rec.order_number)])
+            rec.picking_ids = pickings
+            rec.picking_count = len(pickings)
 
     _sql_constraints = [
         ('unique_order_number_company', 'unique(order_number, company_id)',
@@ -91,43 +99,125 @@ class UtilityServiceOrder(models.Model):
         self._check_state_transition(['scheduled'])
         self.state = 'in_progress'
 
+    def _create_stock_picking(self, meter, location_dest_usage):
+        if not meter.product_id:
+            return False
+            
+        stock_location = self.env.ref('stock.stock_location_stock', raise_if_not_found=False)
+        customer_location = self.env.ref('stock.stock_location_customers', raise_if_not_found=False)
+        scrap_location = self.env.ref('stock.stock_location_scrapped', raise_if_not_found=False)
+        
+        if not stock_location or not customer_location:
+            return False
+            
+        loc_id = stock_location.id if location_dest_usage == 'customer' else customer_location.id
+        dest_id = customer_location.id if location_dest_usage == 'customer' else (scrap_location.id if scrap_location else stock_location.id)
+        
+        picking_type = self.env['stock.picking.type'].search([('code', '=', 'outgoing' if location_dest_usage == 'customer' else 'incoming'), ('company_id', '=', self.company_id.id)], limit=1)
+        if not picking_type:
+            return False
+            
+        picking = self.env['stock.picking'].create({
+            'picking_type_id': picking_type.id,
+            'location_id': loc_id,
+            'location_dest_id': dest_id,
+            'origin': self.order_number,
+            'company_id': self.company_id.id,
+        })
+        
+        move = self.env['stock.move'].create({
+            'name': meter.meter_number,
+            'product_id': meter.product_id.id,
+            'product_uom_qty': 1,
+            'product_uom': meter.product_id.uom_id.id,
+            'picking_id': picking.id,
+            'location_id': loc_id,
+            'location_dest_id': dest_id,
+            'company_id': self.company_id.id,
+        })
+        
+        if meter.lot_id:
+            self.env['stock.move.line'].create({
+                'move_id': move.id,
+                'product_id': meter.product_id.id,
+                'product_uom_id': meter.product_id.uom_id.id,
+                'qty_done': 1,
+                'lot_id': meter.lot_id.id,
+                'picking_id': picking.id,
+                'location_id': loc_id,
+                'location_dest_id': dest_id,
+                'company_id': self.company_id.id,
+            })
+        
+        picking.action_confirm()
+        picking.button_validate()
+        return picking
+
     def action_complete(self):
         self._check_state_transition(['in_progress'])
+        ctx = dict(self.env.context, skip_implicit_log=True, allow_log_update=True)
+        
         if self.service_type == 'meter_replacement' and self.new_meter_id:
-            self.new_meter_id.write({
+            self.new_meter_id.with_context(ctx).write({
                 'customer_id': self.customer_id.id,
             })
+            self._create_stock_picking(self.new_meter_id, 'customer')
+            
             if self.old_meter_id:
-                self.old_meter_id.write({
+                self.old_meter_id.with_context(ctx).write({
                     'customer_id': False,
                 })
-                self.env['utility.meter.log']._create_log(
+                self._create_stock_picking(self.old_meter_id, 'scrap')
+                self.env['utility.meter.log'].with_context(ctx)._create_log(
                     self.old_meter_id, 'removal',
                     _('رفع العداد عبر أمر خدمة %s: %s') % (self.order_number, self.description),
                     ref_record=self)
-            self.env['utility.meter.log']._create_log(
+            self.env['utility.meter.log'].with_context(ctx)._create_log(
                 self.new_meter_id, 'replacement',
                 _('تركيب عداد عبر أمر خدمة %s: %s') % (self.order_number, self.description),
                 ref_record=self)
+                
+        elif self.service_type == 'new_connection' and self.meter_id:
+            self.meter_id.with_context(ctx).write({
+                'customer_id': self.customer_id.id,
+            })
+            self._create_stock_picking(self.meter_id, 'customer')
+            self.env['utility.meter.log'].with_context(ctx)._create_log(
+                self.meter_id, 'install',
+                _('تركيب عداد جديد عبر أمر خدمة %s: %s') % (self.order_number, self.description),
+                ref_record=self)
+                
+        elif self.service_type == 'meter_removal' and self.meter_id:
+            self.meter_id.with_context(ctx).write({
+                'customer_id': False,
+            })
+            self._create_stock_picking(self.meter_id, 'scrap')
+            self.env['utility.meter.log'].with_context(ctx)._create_log(
+                self.meter_id, 'removal',
+                _('رفع العداد عبر أمر خدمة %s: %s') % (self.order_number, self.description),
+                ref_record=self)
+
         elif self.service_type == 'disconnection' and self.customer_id:
             self.customer_id.write({'state': 'disconnected'})
             if self.meter_id:
-                self.env['utility.meter.log']._create_log(
+                self.env['utility.meter.log'].with_context(ctx)._create_log(
                     self.meter_id, 'disconnection',
                     _('فصل العداد عبر أمر خدمة %s: %s') % (self.order_number, self.description),
                     ref_record=self)
         elif self.service_type == 'reconnection' and self.customer_id:
             self.customer_id.write({'state': 'active'})
             if self.meter_id:
-                self.env['utility.meter.log']._create_log(
+                self.env['utility.meter.log'].with_context(ctx)._create_log(
                     self.meter_id, 'reconnection',
                     _('إعادة خدمة العداد عبر أمر خدمة %s: %s') % (self.order_number, self.description),
                     ref_record=self)
-        if self.meter_id and self.service_type not in ('meter_replacement', 'disconnection', 'reconnection'):
-            self.env['utility.meter.log']._create_log(
+                    
+        if self.meter_id and self.service_type not in ('meter_replacement', 'disconnection', 'reconnection', 'new_connection', 'meter_removal'):
+            self.env['utility.meter.log'].with_context(ctx)._create_log(
                 self.meter_id, 'service_order',
                 _('أمر خدمة %s: %s') % (self.order_number, self.description),
                 ref_record=self)
+                
         self.state = 'completed'
         self.date_completed = fields.Datetime.now()
 

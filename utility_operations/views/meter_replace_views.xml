@@ -31,6 +31,13 @@
                     <field name="state" widget="statusbar" statusbar_visible="draft,done"/>
                 </header>
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button" type="action" name="%(stock.action_picking_tree_all)d"
+                                icon="fa-truck"
+                                context="{'search_default_origin': name}">
+                            <field string="حركات المخزون" name="picking_count" widget="statinfo"/>
+                        </button>
+                    </div>
                     <div class="oe_title">
                         <label for="name" string="رقم العملية"/>
                         <h1><field name="name"/></h1>

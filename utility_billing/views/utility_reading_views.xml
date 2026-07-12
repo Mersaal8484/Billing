@@ -111,6 +111,7 @@
                         <group string="معلومات القراءة">
                             <field name="reading_category" attrs="{'readonly': [('state', '!=', 'draft')]}"/>
                             <field name="reading_id" readonly="1"/>
+                            <field name="meter_serial_scan" widget="barcode_camera" attrs="{'invisible': [('state', '!=', 'draft')]}"/>
                             <field name="meter_id" options="{'no_create': True}" attrs="{'readonly': [('state', '!=', 'draft')]}"/>
                             <field name="reading_history_count" string="سجل القراءات" widget="statinfo"/>
                             <field name="transformer_id" attrs="{'invisible': [('reading_category', '!=', 'transformer')]}"/>

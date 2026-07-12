@@ -14,10 +14,23 @@ class UtilitySaleOrder(models.Model):
     reading_id = fields.Many2one('utility.reading', 'قراءة العداد', index=True, ondelete='restrict')
     available_billing_period_ids = fields.Many2many('date.range', compute='_compute_available_billing_period_ids')
     date_range_id = fields.Many2one('date.range', 'فترة الفوترة', index=True, required=True)
+    route_id = fields.Many2one('utility.route', related='customer_id.route_id', store=True, string='خط السير', index=True)
 
     meter_image = fields.Binary(related='reading_id.meter_image', string='صورة العداد', readonly=False)
     reading_reviewer = fields.Many2one(related='reading_id.reviewer_id', string='مراجع القراءة')
     attachment_id = fields.Many2one('ir.attachment', string='ملف صورة القراءة الرسمي')
+
+    def write(self, vals):
+        # Allow system/sudo writes, or specific status/payment updates
+        if not self.env.is_superuser() and not self.env.context.get('allow_status_update'):
+            for order in self:
+                # Prevent modification of financial/core fields if beyond draft
+                if order.bill_state != 'draft' and not self.env.user.has_group('utility_core.group_utility_admin'):
+                    # Allow writing to specific fields like payment info, otherwise block
+                    restricted_fields = ['customer_id', 'meter_id', 'reading_id', 'period_start', 'period_end', 'previous_reading', 'current_reading', 'consumption', 'amount_energy', 'amount_service']
+                    if any(f in vals for f in restricted_fields):
+                        raise ValidationError(_('لا يمكن تعديل بيانات فاتورة معتمدة. يرجى إلغاء الفاتورة أو إنشاء تسوية بدلاً من ذلك.'))
+        return super().write(vals)
 
     transformer_reading_id = fields.Many2one('utility.reading', string='قراءة المحول/الخلية المرتبطة', compute='_compute_transformer_reading', store=True)
 

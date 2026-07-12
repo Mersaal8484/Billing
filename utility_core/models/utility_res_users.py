@@ -28,3 +28,9 @@ class ResUsers(models.Model):
         domain="[('type', '=', 'region')]",
         help="المناطق الجغرافية والتشغيلية المصرح للمستخدم بإدارتها أو العمل فيها"
     )
+    assigned_route_ids = fields.Many2many(
+        'utility.route', 'res_users_route_rel',
+        'user_id', 'route_id',
+        string="خطوط السير المخصصة (Assigned Routes)",
+        help="خطوط السير الجغرافية المصرح للمستخدم (متحصل أو قارئ) بالعمل فيها"
+    )

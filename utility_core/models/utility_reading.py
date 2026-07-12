@@ -13,6 +13,7 @@ class UtilityReading(models.Model):
     active = fields.Boolean('نشط', default=True)
     company_id = fields.Many2one('res.company', 'الشركة', default=lambda self: self.env.company)
     reading_id = fields.Char('رقم القراءة', default=lambda self: _('جديد'), readonly=True)
+    meter_serial_scan = fields.Char('مسح العداد (باركود)', store=False, help="استخدم الكاميرا لمسح رقم العداد وجلبه تلقائياً")
     meter_id = fields.Many2one('utility.meter', 'العداد', required=True, index=True)
     customer_id = fields.Many2one('utility.customer', 'العميل/العقد', related='meter_id.customer_id', store=True, index=True)
     account_id = fields.Many2one('utility.customer', 'الحساب', related='customer_id', store=True)
@@ -79,6 +80,37 @@ class UtilityReading(models.Model):
     remarks = fields.Text('ملاحظات')
     billing_error = fields.Text('خطأ الفوترة', readonly=True)
     reading_source = fields.Char('مصدر القراءة')
+
+    @api.onchange('meter_serial_scan')
+    def _onchange_meter_serial_scan(self):
+        if self.meter_serial_scan:
+            meter = self.env['utility.meter'].search([
+                ('meter_number', '=', self.meter_serial_scan)
+            ], limit=1)
+            
+            if not meter:
+                meter = self.env['utility.meter'].search([
+                    ('serial_number', '=', self.meter_serial_scan)
+                ], limit=1)
+
+            if meter:
+                self.meter_id = meter.id
+                self.meter_serial_scan = False
+                return {
+                    'warning': {
+                        'title': _('نجاح'),
+                        'message': _('تم العثور على العداد (%s) بنجاح.') % meter.display_name,
+                        'type': 'notification',
+                    }
+                }
+            else:
+                return {
+                    'warning': {
+                        'title': _('غير موجود'),
+                        'message': _('لم يتم العثور على عداد يحمل الرقم: %s') % self.meter_serial_scan,
+                    }
+                }
+
 
     @api.onchange('reading_category')
     def _onchange_reading_category(self):

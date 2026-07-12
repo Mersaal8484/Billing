@@ -48,6 +48,17 @@
                             <page string="الوصف">
                                 <field name="description" nolabel="1"/>
                             </page>
+                            <page string="القرار">
+                                <group>
+                                    <group>
+                                        <field name="inspector_id"/>
+                                        <field name="resolution_date"/>
+                                    </group>
+                                    <group>
+                                        <field name="resolution_notes"/>
+                                    </group>
+                                </group>
+                            </page>
                             <page string="الإثباتات">
                                 <field name="evidence_notes" nolabel="1"/>
                             </page>

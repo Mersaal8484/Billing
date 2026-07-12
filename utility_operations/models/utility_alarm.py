@@ -43,29 +43,30 @@ class UtilityAlarm(models.Model):
     current = fields.Float('شدة التيار (أمبير)')
     power = fields.Float('القدرة (كيلوواط)')
     state = fields.Selection([
-        ('new', 'جديد'),
+        ('open', 'مفتوح'),
         ('acknowledged', 'مُسلّم به'),
-        ('in_progress', 'قيد التنفيذ'),
+        ('investigating', 'قيد التحقيق'),
         ('resolved', 'مُحلّى'),
-        ('closed', 'مغلق'),
-    ], string='الحالة', default='new')
+        ('dismissed', 'مرفوض'),
+    ], string='الحالة', default='open')
     assigned_to = fields.Many2one('res.users', 'مُعيّن لـ')
     resolution = fields.Text('الحل')
-    resolved_date = fields.Datetime('تاريخ الحل')
+    resolution_date = fields.Datetime('تاريخ الحل')
     service_order_id = fields.Many2one('utility.service.order', 'أمر الخدمة')
+    tamper_case_id = fields.Many2one('utility.tamper.case', 'قضية تلاعب')
 
     def action_acknowledge(self):
         self.state = 'acknowledged'
 
     def action_start(self):
-        self.state = 'in_progress'
+        self.state = 'investigating'
 
     def action_resolve(self):
         self.state = 'resolved'
-        self.resolved_date = fields.Datetime.now()
+        self.resolution_date = fields.Datetime.now()
 
     def action_close(self):
-        self.state = 'closed'
+        self.state = 'dismissed'
 
     def action_create_service_order(self):
         self.ensure_one()
@@ -78,6 +79,16 @@ class UtilityAlarm(models.Model):
             'priority': 'urgent' if self.severity in ('critical', 'emergency') else 'high',
         })
         self.service_order_id = order.id
+
+        if self.alarm_type == 'tamper' and not self.tamper_case_id:
+            case = self.env['utility.tamper.case'].create({
+                'customer_id': self.customer_id.id,
+                'meter_id': self.meter_id.id,
+                'tamper_type': 'other',
+                'description': _('تم فتح القضية تلقائياً بناءً على إنذار رقم %s: %s') % (self.alarm_code, self.description),
+                'severity': self.severity,
+            })
+            self.tamper_case_id = case.id
         return {
             'type': 'ir.actions.act_window',
             'res_model': 'utility.service.order',

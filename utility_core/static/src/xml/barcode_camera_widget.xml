@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="utility_core.BarcodeCameraWidget" owl="1">
+        <div class="o_field_barcode_camera">
+            <t t-if="!state.isScanning">
+                <div class="d-flex align-items-center">
+                    <!-- Standard Char Field input -->
+                    <input class="o_input" 
+                           t-att-type="props.type" 
+                           t-att-value="formattedValue"
+                           t-on-change="(ev) => props.update(ev.target.value)"
+                           t-att-disabled="props.readonly"
+                           t-att-id="props.id"/>
+                    <!-- Camera Button -->
+                    <t t-if="!props.readonly">
+                        <button type="button" class="btn btn-secondary ms-2" t-on-click="startScanning" title="مسح باركود بالكاميرا">
+                            <i class="fa fa-camera"/> مسح
+                        </button>
+                    </t>
+                </div>
+                <div t-if="state.errorMessage" class="text-danger mt-1">
+                    <small><t t-esc="state.errorMessage"/></small>
+                </div>
+            </t>
+            <t t-else="">
+                <div class="barcode-scanner-container text-center w-100">
+                    <div t-att-id="readerId" style="width: 100%; max-width: 400px; margin: 0 auto;"></div>
+                    <button type="button" class="btn btn-danger mt-2" t-on-click="stopScanning">
+                        إلغاء المسح <i class="fa fa-times"/>
+                    </button>
+                </div>
+            </t>
+        </div>
+    </t>
+</templates>

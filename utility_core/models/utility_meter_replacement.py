@@ -35,9 +35,12 @@ class UtilityMeterReplacement(models.Model):
     old_last_invo_reading = fields.Float(string="آخر قراءة مفوترة", digits=(12, 3), readonly=True)
     old_uninvoiced_consumption = fields.Float(string="الاستهلاك غير المفوتر", digits=(12, 3), compute="_compute_old_uninvoiced", store=True)
 
+    old_meter_serial_scan = fields.Char(string="مسح العداد القديم (باركود)", store=False, help="استخدم الكاميرا لمسح العداد واستدعاء حساب المشترك")
+
     replacement_image = fields.Binary(string="صورة العداد (اختياري)", attachment=True)
 
     # New meter
+    new_meter_serial_scan = fields.Char(string="مسح العداد الجديد (باركود)", store=False, help="استخدم الكاميرا للبحث عن العداد الجديد")
     new_meter_id = fields.Many2one('utility.meter', string="العداد الجديد (موجود بالنظام)", domain="[('customer_id', '=', False)]", tracking=True)
     new_meter_number = fields.Char(string="رقم العداد الجديد (لإنشاء جديد)", tracking=True)
     new_meter_type_id = fields.Many2one('utility.meter.type', string="نوع العداد الجديد")
@@ -107,6 +110,34 @@ class UtilityMeterReplacement(models.Model):
                 ], order='reading_date desc', limit=1)
                 self.old_last_invo_reading = last_reading.reading_value if last_reading else 0.0
                 self.old_closing_reading = self.old_last_invo_reading
+
+    @api.onchange('old_meter_serial_scan')
+    def _onchange_old_meter_serial_scan(self):
+        if self.old_meter_serial_scan:
+            meter = self.env['utility.meter'].search(['|', ('meter_number', '=', self.old_meter_serial_scan), ('serial_number', '=', self.old_meter_serial_scan)], limit=1)
+            if meter:
+                if meter.customer_id:
+                    self.utility_account_id = meter.customer_id.id
+                    self.old_meter_serial_scan = False
+                    return {'warning': {'title': _('نجاح'), 'message': _('تم تحديد حساب المشترك (%s) بناءً على العداد الممسوح.') % meter.customer_id.display_name, 'type': 'notification'}}
+                else:
+                    return {'warning': {'title': _('تنبيه'), 'message': _('العداد الممسوح غير مرتبط بأي حساب مشترك حالياً.')}}
+            else:
+                return {'warning': {'title': _('غير موجود'), 'message': _('لم يتم العثور على عداد يحمل الرقم: %s') % self.old_meter_serial_scan}}
+
+    @api.onchange('new_meter_serial_scan')
+    def _onchange_new_meter_serial_scan(self):
+        if self.new_meter_serial_scan:
+            meter = self.env['utility.meter'].search(['|', ('meter_number', '=', self.new_meter_serial_scan), ('serial_number', '=', self.new_meter_serial_scan)], limit=1)
+            if meter:
+                if not meter.customer_id:
+                    self.new_meter_id = meter.id
+                    self.new_meter_serial_scan = False
+                    return {'warning': {'title': _('نجاح'), 'message': _('تم اختيار العداد الجديد (%s).') % meter.display_name, 'type': 'notification'}}
+                else:
+                    return {'warning': {'title': _('مرفوض'), 'message': _('هذا العداد مرتبط بالفعل بمشترك آخر (%s)!') % meter.customer_id.display_name}}
+            else:
+                return {'warning': {'title': _('غير موجود'), 'message': _('العداد %s غير مسجل في المخازن/النظام.') % self.new_meter_serial_scan}}
 
     def action_confirm_replacement(self):
         for rec in self:

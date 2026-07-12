@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="cron_check_idle_meters" model="ir.cron">
+            <field name="name">العدادات: فحص العدادات الخاملة والمعطلة</field>
+            <field name="model_id" ref="model_utility_meter"/>
+            <field name="state">code</field>
+            <field name="code">
+# فحص العدادات التي لم يتغير استهلاكها لمدة 3 أشهر متتالية أو أكثر
+env.cr.execute("""
+    UPDATE utility_meter
+    SET idle_months = (
+        SELECT COUNT(id)
+        FROM utility_reading
+        WHERE meter_id = utility_meter.id
+        AND reading_date >= current_date - interval '3 months'
+        AND consumption = 0
+    )
+    WHERE active = true;
+""")
+# يمكنك إضافة إرسال إشعار للمشرفين هنا إذا كان idle_months >= 3
+            </field>
+            <field name="interval_number">1</field>
+            <field name="interval_type">months</field>
+            <field name="numbercall">-1</field>
+            <field name="doall" eval="False"/>
+        </record>
+    </data>
+</odoo>

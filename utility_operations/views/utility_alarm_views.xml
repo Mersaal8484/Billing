@@ -25,13 +25,13 @@
                     <header>
                         <field name="state" widget="statusbar"/>
                         <button name="action_acknowledge" string="تأكيد الاستلام" type="object"
-                                states="new" class="btn-primary"/>
+                                states="open" class="btn-primary"/>
                         <button name="action_resolve" string="حل" type="object"
-                                states="acknowledged,in_progress" class="btn-primary"/>
+                                states="acknowledged,investigating" class="btn-primary"/>
                         <button name="action_close" string="إغلاق" type="object"
                                 states="resolved" class="btn-primary"/>
-                        <button name="action_create_service_order" string="إنشاء أمر خدمة" type="object"
-                                states="new,acknowledged,in_progress" class="btn-secondary"/>
+                        <button name="action_create_service_order" string="إنشاء أمر خدمة / قضية تلاعب" type="object"
+                                states="open,acknowledged,investigating" class="btn-secondary"/>
                     </header>
                     <sheet>
                         <h1>
@@ -71,8 +71,9 @@
                             <page string="الحل">
                                 <group>
                                     <field name="resolution"/>
-                                    <field name="resolved_date"/>
+                                    <field name="resolution_date"/>
                                     <field name="service_order_id"/>
+                                    <field name="tamper_case_id" attrs="{'invisible': [('alarm_type', '!=', 'tamper')]}"/>
                                 </group>
                             </page>
                         </notebook>

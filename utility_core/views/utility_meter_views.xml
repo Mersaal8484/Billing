@@ -44,6 +44,13 @@
                                 <span class="o_stat_text">سجل القراءات</span>
                             </div>
                         </button>
+                        <button name="%(utility_core.action_utility_meter_log)d" type="action"
+                                class="oe_stat_button" icon="fa-list-alt"
+                                help="سجل تاريخ وحركات العداد">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">سجل الحركات</span>
+                            </div>
+                        </button>
                         <button name="action_add_subscriber" type="object"
                                 class="oe_stat_button" icon="fa-user-plus"
                                 attrs="{'invisible': [('connection_type', '!=', 'subscriber')]}"
@@ -103,6 +110,11 @@
                             <field name="voltage"/>
                             <field name="current_rating"/>
                             <field name="power_rating"/>
+                        </group>
+                        <group string="الصيانة والتدقيق">
+                            <field name="idle_months" decoration-danger="idle_months >= 3"/>
+                            <field name="last_calibration_date"/>
+                            <field name="next_calibration_date" decoration-warning="next_calibration_date &lt; current_date" decoration-danger="next_calibration_date &lt; current_date"/>
                         </group>
                     </group>
                     <notebook>

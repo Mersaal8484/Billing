@@ -40,6 +40,11 @@
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
+                        <button name="action_view_accounting_invoices" type="object"
+                                class="oe_stat_button" icon="fa-usd"
+                                attrs="{'invisible': [('payment_type', '=', 'prepaid')]}">
+                            <field name="accounting_balance" string="المديونية" widget="statinfo"/>
+                        </button>
                         <button name="action_view_bills" type="object"
                                 class="oe_stat_button" icon="fa-pencil-square-o"
                                 attrs="{'invisible': [('payment_type', '=', 'prepaid')]}">
@@ -57,6 +62,14 @@
                         <button name="action_view_payments" type="object"
                                 class="oe_stat_button" icon="fa-money">
                             <field name="payment_count" string="التحصيلات" widget="statinfo"/>
+                        </button>
+                        <button name="action_view_replacements" type="object"
+                                class="oe_stat_button" icon="fa-retweet">
+                            <field name="replacement_count" string="الاستبدالات" widget="statinfo"/>
+                        </button>
+                        <button name="action_view_tampers" type="object"
+                                class="oe_stat_button" icon="fa-exclamation-triangle">
+                            <field name="tamper_count" string="التلاعب" widget="statinfo"/>
                         </button>
                         <button name="action_view_balance_transactions" type="object"
                                 class="oe_stat_button" icon="fa-credit-card"
