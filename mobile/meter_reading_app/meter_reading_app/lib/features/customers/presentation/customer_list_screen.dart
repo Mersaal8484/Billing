@@ -1,0 +1,184 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../app/providers.dart';
+import '../../../shared/widgets/state_widgets.dart';
+import '../domain/entities.dart';
+
+class CustomerListScreen extends ConsumerStatefulWidget {
+  const CustomerListScreen({super.key});
+
+  @override
+  ConsumerState<CustomerListScreen> createState() => _CustomerListScreenState();
+}
+
+class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
+  String _query = '';
+  AssignmentStatus? _filter;
+
+  @override
+  Widget build(BuildContext context) {
+    final query = AssignmentQuery(text: _query, status: _filter);
+    final assignments = ref.watch(assignmentsProvider(query));
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('مهام الكاشف')),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: TextField(
+              onChanged: (value) => setState(() => _query = value),
+              decoration: const InputDecoration(
+                hintText: 'ابحث باسم المشترك أو رقم الحساب أو رقم العداد',
+                prefixIcon: Icon(Icons.search),
+              ),
+            ),
+          ),
+          SizedBox(
+            height: 44,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              children: [
+                _FilterChip(
+                    label: 'الكل',
+                    selected: _filter == null,
+                    onTap: () => setState(() => _filter = null)),
+                const SizedBox(width: 8),
+                _FilterChip(
+                  label: 'متبقي',
+                  selected: _filter == AssignmentStatus.pending,
+                  onTap: () =>
+                      setState(() => _filter = AssignmentStatus.pending),
+                ),
+                const SizedBox(width: 8),
+                _FilterChip(
+                  label: 'بانتظار قرار',
+                  selected: _filter == AssignmentStatus.pendingDecision,
+                  onTap: () => setState(
+                      () => _filter = AssignmentStatus.pendingDecision),
+                ),
+                const SizedBox(width: 8),
+                _FilterChip(
+                  label: 'مكتمل',
+                  selected: _filter == AssignmentStatus.read,
+                  onTap: () => setState(() => _filter = AssignmentStatus.read),
+                ),
+                const SizedBox(width: 8),
+                _FilterChip(
+                  label: 'مرفوض',
+                  selected: _filter == AssignmentStatus.rejected,
+                  onTap: () =>
+                      setState(() => _filter = AssignmentStatus.rejected),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: assignments.when(
+              loading: () => const LoadingState(),
+              error: (e, _) => ErrorState(message: 'تعذر تحميل القائمة: $e'),
+              data: (list) {
+                if (list.isEmpty) {
+                  return const EmptyState(
+                    icon: Icons.search_off_rounded,
+                    title: 'لا توجد نتائج',
+                    subtitle: 'جرّب تعديل كلمات البحث أو الفلتر.',
+                  );
+                }
+                return ListView.separated(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  itemCount: list.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 4),
+                  itemBuilder: (context, i) =>
+                      _AssignmentTile(assignment: list[i]),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _FilterChip(
+      {required this.label, required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return ChoiceChip(
+        label: Text(label), selected: selected, onSelected: (_) => onTap());
+  }
+}
+
+class _AssignmentTile extends StatelessWidget {
+  final ReadingAssignment assignment;
+
+  const _AssignmentTile({required this.assignment});
+
+  @override
+  Widget build(BuildContext context) {
+    final status = _statusInfo(context, assignment.status);
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: ListTile(
+        onTap: () => context.push('/customers/${assignment.id}'),
+        leading: CircleAvatar(
+          backgroundColor: status.color.withValues(alpha: 0.14),
+          child: Icon(status.icon, color: status.color),
+        ),
+        title: Text(assignment.customer.name,
+            style: const TextStyle(fontWeight: FontWeight.w700)),
+        subtitle: Text(
+            '${assignment.customer.accountNumber} · عداد ${assignment.meter.meterNumber}'),
+        trailing: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(status.label,
+                style: TextStyle(
+                    color: status.color,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12)),
+            Text(assignment.customer.areaName ?? '',
+                style: Theme.of(context).textTheme.bodySmall),
+          ],
+        ),
+      ),
+    );
+  }
+
+  _StatusInfo _statusInfo(BuildContext context, AssignmentStatus status) =>
+      switch (status) {
+        AssignmentStatus.pending =>
+          const _StatusInfo('متبقي', Icons.speed_rounded, Colors.orange),
+        AssignmentStatus.pendingDecision =>
+          const _StatusInfo('قرار', Icons.rule_rounded, Colors.blue),
+        AssignmentStatus.read => _StatusInfo('مكتمل', Icons.check_rounded,
+            Theme.of(context).colorScheme.primary),
+        AssignmentStatus.rejected => _StatusInfo(
+            'مرفوض', Icons.close_rounded, Theme.of(context).colorScheme.error),
+        AssignmentStatus.escalated =>
+          const _StatusInfo('مصعد', Icons.build_outlined, Colors.deepPurple),
+        AssignmentStatus.skipped =>
+          const _StatusInfo('متجاوز', Icons.skip_next_rounded, Colors.grey),
+      };
+}
+
+class _StatusInfo {
+  final String label;
+  final IconData icon;
+  final Color color;
+
+  const _StatusInfo(this.label, this.icon, this.color);
+}
