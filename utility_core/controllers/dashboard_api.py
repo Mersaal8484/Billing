@@ -1,15 +1,13 @@
-import json
 from odoo import http, fields
 from odoo.http import request
 from datetime import datetime, timedelta
-import pytz
 
 class UtilityDashboardAPI(http.Controller):
 
     @http.route('/utility/dashboard/kpi', type='json', auth='user')
     def get_kpis(self):
         # 1. Today's Collections (Prepaid POS + Postpaid Payments)
-        today = fields_date.context_today(request.env.user) if hasattr(request.env['res.users'], 'context_today') else datetime.now().date()
+        today = fields.Date.context_today(request.env.user)
         today_start = datetime.combine(today, datetime.min.time())
         today_end = datetime.combine(today, datetime.max.time())
         
@@ -84,6 +82,71 @@ class UtilityDashboardAPI(http.Controller):
                 day_pays_total = sum(day_pays.mapped('amount'))
             collections_data.append(day_pays_total)
 
+        # 5. Region-level dashboard rows
+        region_rows = []
+        Customer = request.env['utility.customer'].sudo()
+        region_groups = Customer.read_group(
+            domain=[('state', '=', 'active')],
+            fields=['region_id'],
+            groupby=['region_id'],
+            lazy=False,
+        )
+        unassigned_count = Customer.search_count([('state', '=', 'active'), ('region_id', '=', False)])
+        for group in region_groups:
+            region_value = group.get('region_id')
+            region_id = region_value[0] if region_value else False
+            region_name = region_value[1] if region_value else 'بدون منطقة'
+            customer_domain = [('state', '=', 'active')]
+            if region_id:
+                customer_domain.append(('region_id', '=', region_id))
+            else:
+                customer_domain.append(('region_id', '=', False))
+            region_customers = Customer.search(customer_domain)
+            partner_ids = region_customers.mapped('partner_id').ids
+            customer_ids = region_customers.ids
+
+            region_prepaid = 0.0
+            if pos_orders is not None and customer_ids:
+                region_pos_orders = pos_orders.sudo().search([
+                    ('date_order', '>=', today_start),
+                    ('date_order', '<=', today_end),
+                    ('state', 'in', ['paid', 'done', 'invoiced']),
+                    ('account_id', 'in', customer_ids),
+                ])
+                region_prepaid = sum(region_pos_orders.mapped('amount_paid'))
+
+            region_postpaid = 0.0
+            if account_payment is not None and partner_ids:
+                region_payments = account_payment.sudo().search([
+                    ('date', '=', today),
+                    ('state', '=', 'posted'),
+                    ('payment_type', '=', 'inbound'),
+                    ('partner_id', 'in', partner_ids),
+                ])
+                region_postpaid = sum(region_payments.mapped('amount'))
+
+            region_debt = 0.0
+            if account_move is not None and partner_ids:
+                region_invoices = account_move.sudo().search([
+                    ('move_type', '=', 'out_invoice'),
+                    ('state', '=', 'posted'),
+                    ('payment_state', 'in', ['not_paid', 'partial']),
+                    ('partner_id', 'in', partner_ids),
+                ])
+                region_debt = sum(region_invoices.mapped('amount_residual'))
+
+            region_rows.append({
+                'region_id': region_id,
+                'region_name': region_name,
+                'active_customers': len(region_customers),
+                'today_prepaid': region_prepaid,
+                'today_postpaid': region_postpaid,
+                'total_debt': region_debt,
+                'partner_ids': partner_ids,
+            })
+
+        region_rows.sort(key=lambda row: row['active_customers'], reverse=True)
+
         return {
             'today_prepaid': prepaid_total,
             'today_postpaid': postpaid_total,
@@ -92,4 +155,9 @@ class UtilityDashboardAPI(http.Controller):
             'chart_labels': labels,
             'chart_invoices': invoices_data,
             'chart_collections': collections_data,
+            'region_rows': region_rows,
+            'region_chart_labels': [row['region_name'] for row in region_rows],
+            'region_chart_customers': [row['active_customers'] for row in region_rows],
+            'region_chart_debt': [row['total_debt'] for row in region_rows],
+            'unassigned_customers': unassigned_count,
         }

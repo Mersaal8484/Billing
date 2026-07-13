@@ -1,10 +1,9 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <odoo>
-    <!-- Customer Management Menu -->
-    <menuitem id="menu_utility_customer_management" name="العملاء" sequence="10" parent="menu_utility_root"/>
-
-    <menuitem id="menu_utility_customer" name="عقود المشتركين" parent="menu_utility_customer_management" action="action_utility_customer" sequence="10"/>
-    <menuitem id="menu_utility_connection" name="التوصيلات" parent="menu_utility_customer_management" action="action_utility_connection" sequence="30"/>
-    <menuitem id="menu_utility_customer_wizard" name="تسجيل مشترك وعداد (موحد)" parent="menu_utility_customer_management" action="action_utility_customer_wizard" sequence="50"/>
-    <menuitem id="menu_utility_subscriber_partners" name="عملاء المشتركين" parent="menu_utility_customer_management" action="action_utility_subscriber_partners" sequence="20"/>
+    <menuitem id="menu_utility_customer_management" name="العملاء" sequence="10" parent="menu_utility_root" />
+    <menuitem id="menu_utility_customer" name="عقود المشتركين" parent="menu_utility_customer_management" action="action_utility_customer" sequence="10" />
+    <menuitem id="menu_utility_connection" name="التوصيلات" parent="menu_utility_customer_management" action="action_utility_connection" sequence="30" />
+    <menuitem id="menu_utility_bulk_customer_wizard" name="Bulk Account Creation" parent="menu_utility_customer_management" action="action_utility_bulk_customer_wizard" sequence="25" />
+    <menuitem id="menu_utility_customer_wizard" name="تسجيل مشترك وعداد (موحد)" parent="menu_utility_customer_management" action="action_utility_customer_wizard" sequence="50" />
+    <menuitem id="menu_utility_subscriber_partners" name="عملاء المشتركين" parent="menu_utility_customer_management" action="action_utility_subscriber_partners" sequence="20" />
 </odoo>

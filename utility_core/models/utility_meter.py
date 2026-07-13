@@ -99,7 +99,7 @@ class UtilityMeter(models.Model):
         'utility.transformer', 'المحول الخاص', index=True,
         domain="[('is_private', '=', True)]")
     linked_feeder_id = fields.Many2one(
-        'utility.feeder', 'الفيدر', index=True)
+        'utility.feeder', 'Linked Feeder', index=True)
 
     @api.depends('reading_ids')
     def _compute_reading_count(self):
@@ -224,7 +224,7 @@ class UtilityMeter(models.Model):
         'utility.transformer', 'المحول الخاص', index=True,
         domain="[('is_private', '=', True)]")
     linked_feeder_id = fields.Many2one(
-        'utility.feeder', 'الفيدر', index=True)
+        'utility.feeder', 'Linked Feeder', index=True)
 
     @api.depends('reading_ids')
     def _compute_reading_count(self):
@@ -462,8 +462,8 @@ class UtilityMeter(models.Model):
                             meter.id, 'status_change', desc, customer_id=meter.customer_id
                         )
                 if 'customer_id' in vals and vals.get('customer_id') != meter.customer_id.id:
-                    old_cust = meter.customer_id.name if meter.customer_id else 'غير محدد'
-                    new_cust = self.env['utility.customer'].browse(vals['customer_id']).name if vals.get('customer_id') else 'غير محدد'
+                    old_cust = meter.customer_id.display_name if meter.customer_id else 'Undefined'
+                    new_cust = self.env['utility.customer'].browse(vals['customer_id']).display_name if vals.get('customer_id') else 'Undefined'
                     desc = f"تم نقل العداد من العميل {old_cust} إلى العميل {new_cust}"
                     if 'utility.meter.log' in self.env:
                         self.env['utility.meter.log'].with_context(allow_log_update=True)._create_log(
@@ -492,8 +492,11 @@ class UtilityMeterModel(models.Model):
     _order = 'name'
 
     name = fields.Char('الاسم', required=True)
+    code = fields.Char('Code')
     manufacturer = fields.Char('الشركة المصنّعة')
     meter_type_id = fields.Many2one('utility.meter.type', 'النوع')
+    voltage_range = fields.Char('Voltage Range')
+    current_range = fields.Char('Current Range')
     sts_supported = fields.Boolean('يدعم STS')
     communication_types = fields.Char('أنواع الاتصال')
     description = fields.Text('الوصف')

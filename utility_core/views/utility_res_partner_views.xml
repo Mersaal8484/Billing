@@ -79,6 +79,55 @@
         </field>
     </record>
 
+
+    <record id="action_server_open_utility_customer_registration" model="ir.actions.server">
+        <field name="name">إنشاء/فتح حساب كهرباء</field>
+        <field name="model_id" ref="base.model_res_partner"/>
+        <field name="binding_model_id" ref="base.model_res_partner"/>
+        <field name="binding_type">action</field>
+        <field name="state">code</field>
+        <field name="code"><![CDATA[
+if len(records) != 1:
+    action = {
+        'type': 'ir.actions.client',
+        'tag': 'display_notification',
+        'params': {
+            'title': 'Warning',
+            'message': 'Please select one partner only.',
+            'type': 'warning',
+            'sticky': False,
+        },
+    }
+else:
+    partner = records[0]
+    customer = env['utility.customer'].search([('partner_id', '=', partner.id)], limit=1)
+    if customer:
+        action = {
+            'name': 'Utility Customer',
+            'type': 'ir.actions.act_window',
+            'res_model': 'utility.customer',
+            'views': [(False, 'form')],
+            'view_mode': 'form',
+            'res_id': customer.id,
+            'target': 'current',
+        }
+    else:
+        action = {
+            'name': 'Register Utility Customer',
+            'type': 'ir.actions.act_window',
+            'res_model': 'utility.customer.wizard',
+            'views': [(False, 'form')],
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'active_model': 'res.partner',
+                'active_id': partner.id,
+                'active_ids': [partner.id],
+            },
+        }
+        ]]></field>
+    </record>
+
     <!-- Inherit ir.attachment form view to add custom storage path and URL -->
     <record id="view_attachment_form_inherit_utility" model="ir.ui.view">
         <field name="name">ir.attachment.form.inherit.utility</field>

@@ -1,5 +1,5 @@
 from odoo import api, fields, models, _
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 
 import re
 
@@ -141,6 +141,36 @@ class ResPartner(models.Model):
     subscriber_id = fields.Many2one('utility.subscriber', string="نوع المشترك", tracking=True)
     sector_id = fields.Many2one('res.partner.sector', string="القطاع", tracking=True)
     previous_hotline_balance = fields.Char('الرصيد السابق (الخط الساخن)', help='رصيد قديم كمرجع من النظام السابق')
+
+    def action_open_utility_customer_registration(self):
+        """Open the linked utility account or the registration wizard for this partner."""
+        if len(self) != 1:
+            raise UserError(_('Please select one partner only to create or open the utility account.'))
+        self.ensure_one()
+        customer = self.env['utility.customer'].search([('partner_id', '=', self.id)], limit=1)
+        if customer:
+            return {
+                'name': _('Utility Customer'),
+                'type': 'ir.actions.act_window',
+                'res_model': 'utility.customer',
+                'views': [(False, 'form')],
+                'view_mode': 'form',
+                'res_id': customer.id,
+                'target': 'current',
+            }
+        return {
+            'name': _('Register Utility Customer'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'utility.customer.wizard',
+            'views': [(False, 'form')],
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'active_model': 'res.partner',
+                'active_id': self.id,
+                'active_ids': [self.id],
+            },
+        }
 
     utility_region_id = fields.Many2one('utility.region', string="المنطقة التشغيلية", domain="[('type', '=', 'region')]")
     utility_area_id = fields.Many2one('utility.region', string="الفرع التشغيلي", domain="[('type', '=', 'area')]")

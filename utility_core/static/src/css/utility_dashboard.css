@@ -104,3 +104,53 @@
     height: 400px;
     width: 100%;
 }
+
+
+.region-section {
+    background: #ffffff;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 30px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.section-title h3 {
+    margin-top: 0;
+    margin-bottom: 16px;
+    color: #495057;
+    font-size: 1.2em;
+    font-weight: 600;
+}
+
+.region-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+}
+
+.region-table th,
+.region-table td {
+    padding: 12px 10px;
+    border-bottom: 1px solid #e9ecef;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.region-table th {
+    color: #495057;
+    background: #f8f9fa;
+    font-weight: 700;
+}
+
+.region-table tbody tr {
+    cursor: pointer;
+}
+
+.region-table tbody tr:hover {
+    background: #f4f6f9;
+}
+
+.debt-cell {
+    color: #dc3545;
+    font-weight: 700;
+}

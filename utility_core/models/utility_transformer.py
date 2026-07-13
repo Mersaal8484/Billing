@@ -48,7 +48,6 @@ class UtilityTransformer(models.Model):
         'utility.meter', 'عداد الربط (المقارنة والرصد)',
         domain="[('transformer_id', '=', id)]",
         help='العداد الذي يقيس إجمالي الطاقة الداخلة إلى المحول أو الفيدر',
-        tracking=True,
     )
     customer_ids = fields.One2many(
         'utility.customer', 'transformer_id',

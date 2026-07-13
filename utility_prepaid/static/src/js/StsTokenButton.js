@@ -4,6 +4,35 @@ import PosComponent from 'point_of_sale.PosComponent';
 import ProductScreen from 'point_of_sale.ProductScreen';
 import { useListener } from "@web/core/utils/hooks";
 import Registries from 'point_of_sale.Registries';
+import { PosGlobalState, Order } from 'point_of_sale.models';
+
+const UtilityPrepaidPosGlobalState = (PosGlobalState) => class UtilityPrepaidPosGlobalState extends PosGlobalState {
+    async _processData(loadedData) {
+        await super._processData(...arguments);
+        this.utility_customer = loadedData['utility.customer'] || [];
+    }
+};
+Registries.Model.extend(PosGlobalState, UtilityPrepaidPosGlobalState);
+
+const UtilityPrepaidOrder = (Order) => class UtilityPrepaidOrder extends Order {
+    export_as_JSON() {
+        const json = super.export_as_JSON(...arguments);
+        json.utility_account_id = this.utility_account_id || false;
+        json.utility_meter_id = this.utility_meter_id || false;
+        json.utility_amount = this.utility_amount || 0;
+        json.utility_kwh = this.utility_kwh || 0;
+        return json;
+    }
+
+    init_from_JSON(json) {
+        super.init_from_JSON(...arguments);
+        this.utility_account_id = json.utility_account_id || false;
+        this.utility_meter_id = json.utility_meter_id || false;
+        this.utility_amount = json.utility_amount || 0;
+        this.utility_kwh = json.utility_kwh || 0;
+    }
+};
+Registries.Model.extend(Order, UtilityPrepaidOrder);
 
 export class StsTokenButton extends PosComponent {
     setup() {
@@ -24,9 +53,17 @@ export class StsTokenButton extends PosComponent {
         }
 
         const partner = order.get_partner();
-        // Get customer accounts loaded into pos
-        const accounts = this.env.pos.utility_customer.filter(
-            (c) => c.partner_id[0] === partner.id && c.payment_type === 'prepaid'
+        const loadedAccounts = this.env.pos.utility_customer || [];
+        if (!loadedAccounts.length) {
+            this.showPopup('ErrorPopup', {
+                title: 'بيانات الحسابات غير محملة',
+                body: 'أغلق شاشة نقطة البيع وافتحها مرة أخرى بعد تحديث الموديول لتحميل حسابات الدفع المسبق.',
+            });
+            return;
+        }
+
+        const accounts = loadedAccounts.filter(
+            (c) => c.partner_id && c.partner_id[0] === partner.id && c.payment_type === 'prepaid'
         );
 
         if (accounts.length === 0) {
@@ -43,8 +80,17 @@ export class StsTokenButton extends PosComponent {
 
         if (confirmed) {
             const amount = payload.amount;
+            const kwh = payload.kwh;
             const accountId = payload.accountId;
             const meterId = payload.meterId;
+
+            if (!amount || amount <= 0 || !kwh || kwh <= 0) {
+                this.showPopup('ErrorPopup', {
+                    title: 'بيانات غير مكتملة',
+                    body: 'يرجى إدخال مبلغ الشحن وكمية الكيلوواط قبل إضافة التوكن.',
+                });
+                return;
+            }
 
             // Find a dummy STS product or the first available product to hold the charge
             let product = this.env.pos.db.search_product_in_category(0, 'STS');
@@ -73,11 +119,12 @@ export class StsTokenButton extends PosComponent {
             order.utility_account_id = accountId;
             order.utility_meter_id = meterId;
             order.utility_amount = amount;
+            order.utility_kwh = kwh;
             
             // Optionally add a note to the line
             const currentLine = order.get_selected_orderline();
             if (currentLine) {
-                currentLine.set_customer_note(`شحن حساب رقم: ${accounts.find(a => a.id === accountId).customer_number}`);
+                currentLine.set_customer_note(`شحن حساب رقم: ${accounts.find(a => a.id === accountId).customer_number} - ${kwh} kWh`);
             }
         }
     }

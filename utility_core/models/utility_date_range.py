@@ -78,7 +78,6 @@ class DateRange(models.Model):
         string="الفترة النشطة الحالية",
         default=False,
         index=True,
-        tracking=True,
         help="فترة واحدة فقط يمكن أن تكون نشطة لكل نوع فوترة ونوع عمل"
     )
 

@@ -21,6 +21,8 @@ class UtilityMeterLog(models.Model):
         ('disconnection', 'فصل'),
         ('reconnection', 'إعادة خدمة'),
         ('movement', 'حركة مخزون'),
+        ('status_change', 'Status Change'),
+        ('transfer', 'Customer Transfer'),
         ('reading', 'قراءة'),
         ('other', 'أخرى'),
     ], string='نوع الحدث', required=True)

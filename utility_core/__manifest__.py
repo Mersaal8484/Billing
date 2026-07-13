@@ -34,11 +34,11 @@ User Role.
 
         'views/utility_connection_views.xml',
         'views/utility_connection_type_views.xml',
+        'views/utility_meter_log_views.xml',
         'views/utility_meter_views.xml',
         'views/utility_meter_type_views.xml',
         'views/utility_meter_model_views.xml',
         'views/utility_meter_status_views.xml',
-        'views/utility_meter_log_views.xml',
 
         'views/utility_staff_views.xml',
         'views/utility_team_views.xml',

@@ -91,6 +91,22 @@ class UtilityCustomer(models.Model):
     last_invoice_reading = fields.Float('قراءة آخر فاتورة')
 
 
+    uploaded_reading_ids = fields.One2many(
+        'utility.reading', 'account_id',
+        domain=[('state', 'in', ['draft', 'under_review', 'approved'])],
+        string='Uploaded Readings')
+    billed_reading_ids = fields.One2many(
+        'utility.reading', 'account_id',
+        domain=[('state', '=', 'billed')],
+        string='Billed Readings')
+
+    invoice_count = fields.Integer('Bills', compute='_compute_smart_buttons')
+    accounting_invoice_count = fields.Integer('Accounting Invoices', compute='_compute_smart_buttons')
+    reading_count = fields.Integer('Readings', compute='_compute_smart_buttons')
+    payment_count = fields.Integer('Payments', compute='_compute_smart_buttons')
+    replacement_count = fields.Integer('Meter Replacements', compute='_compute_smart_buttons')
+    tamper_count = fields.Integer('Tamper Cases', compute='_compute_smart_buttons')
+
     _sql_constraints = [
         ('unique_customer_number_company', 'unique(customer_number, company_id)',
          'رقم العميل يجب أن يكون فريداً لكل شركة!'),

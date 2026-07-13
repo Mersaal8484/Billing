@@ -4,11 +4,10 @@
         <div class="utility_dashboard_container">
             <div class="dashboard-header">
                 <h2>لوحة القيادة الإدارية</h2>
-                <p>ملخص الأداء المالي والتشغيلي لشركة الكهرباء</p>
+                <p>ملخص الأداء المالي والتشغيلي حسب المنطقة</p>
             </div>
             
             <div class="kpi-cards-row">
-                <!-- Prepaid Total -->
                 <div class="kpi-card kpi-success">
                     <div class="kpi-icon"><i class="fa fa-bolt"></i></div>
                     <div class="kpi-info">
@@ -17,7 +16,6 @@
                     </div>
                 </div>
 
-                <!-- Postpaid Total -->
                 <div class="kpi-card kpi-info-color">
                     <div class="kpi-icon"><i class="fa fa-money"></i></div>
                     <div class="kpi-info">
@@ -26,7 +24,6 @@
                     </div>
                 </div>
 
-                <!-- Total Debt -->
                 <div class="kpi-card kpi-danger" t-on-click="openUnpaidInvoices">
                     <div class="kpi-icon"><i class="fa fa-exclamation-triangle"></i></div>
                     <div class="kpi-info">
@@ -35,7 +32,6 @@
                     </div>
                 </div>
 
-                <!-- Active Customers -->
                 <div class="kpi-card kpi-primary" t-on-click="openCustomers">
                     <div class="kpi-icon"><i class="fa fa-users"></i></div>
                     <div class="kpi-info">
@@ -45,12 +41,45 @@
                 </div>
             </div>
 
-            <!-- Charts Row -->
+            <div class="region-section">
+                <div class="section-title">
+                    <h3>المؤشرات حسب المنطقة</h3>
+                </div>
+                <table class="region-table">
+                    <thead>
+                        <tr>
+                            <th>المنطقة</th>
+                            <th>المشتركون النشطون</th>
+                            <th>مسبق اليوم</th>
+                            <th>آجل اليوم</th>
+                            <th>المديونية</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <t t-foreach="state.kpi.region_rows" t-as="row" t-key="row.region_id || 'unassigned'">
+                            <tr t-on-click="() => this.openCustomers(row.region_id)">
+                                <td><t t-esc="row.region_name" /></td>
+                                <td><t t-esc="row.active_customers" /></td>
+                                <td><t t-esc="row.today_prepaid" /> ريال</td>
+                                <td><t t-esc="row.today_postpaid" /> ريال</td>
+                                <td class="debt-cell" t-on-click.stop="() => this.openUnpaidInvoices(row.region_id)"><t t-esc="row.total_debt" /> ريال</td>
+                            </tr>
+                        </t>
+                    </tbody>
+                </table>
+            </div>
+
             <div class="dashboard-charts-row">
                 <div class="chart-container">
                     <h3>الإصدارات مقابل التحصيلات (آخر 7 أيام)</h3>
                     <div class="canvas-wrapper">
                         <canvas t-ref="chartCanvas"></canvas>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <h3>المشتركون والمديونية حسب المنطقة</h3>
+                    <div class="canvas-wrapper">
+                        <canvas t-ref="regionChartCanvas"></canvas>
                     </div>
                 </div>
             </div>

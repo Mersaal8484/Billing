@@ -65,6 +65,7 @@ class UtilityToken(models.Model):
         order_ref = self.pos_order_id.name or str(self.pos_order_id.id)
         _logger.info('Simulating STS token request for order %s', order_ref)
         dummy_token = ''.join([str((i * 7) % 10) for i in range(20)])
+        meter_ref = self.meter_id.meter_number or self.meter_id.display_name or ''
         self.write({
             'token_number': dummy_token,
             'token_identifier': 'TID-%s-%s' % (order_ref, fields.Datetime.now().strftime('%Y%m%d%H%M%S')),
@@ -74,7 +75,7 @@ class UtilityToken(models.Model):
             'response_message': _('تم إنشاء الرمز بنجاح'),
             'status': 'success',
             'raw_request': 'SIMULATED_REQUEST|amount=%s|kwh=%s|meter=%s' % (
-                self.amount, self.kwh, self.meter_id.name if self.meter_id else '',
+                self.amount, self.kwh, meter_ref,
             ),
             'raw_response': 'SIMULATED_RESPONSE|token=%s|status=success' % dummy_token,
             'sts_server': 'SIMULATED',

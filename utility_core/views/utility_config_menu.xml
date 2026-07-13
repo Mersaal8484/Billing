@@ -1,12 +1,8 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <odoo>
-    <!-- Root menu item -->
-    <menuitem id="menu_utility_root" name="الكهرباء" sequence="90" web_icon="utility_core,static/description/icon.png"/>
-
-    <!-- Configuration Menu -->
-    <menuitem id="menu_utility_config" name="الإعدادات" sequence="90" parent="menu_utility_root" groups="group_utility_admin"/>
-
-    <menuitem id="menu_utility_connection_type" name="أنواع التوصيلات" parent="menu_utility_config" action="action_utility_connection_type" sequence="40"/>
-
-    <menuitem id="menu_utility_user_role" name="صلاحيات المستخدمين" parent="menu_utility_config" action="action_utility_user_role" sequence="90"/>
+    <menuitem id="menu_utility_root" name="الكهرباء" sequence="90" web_icon="utility_core,static/description/icon.png" />
+    <menuitem id="menu_utility_config" name="الإعدادات" sequence="90" parent="menu_utility_root" groups="group_utility_admin" />
+    <menuitem id="menu_utility_connection_type" name="أنواع التوصيلات" parent="menu_utility_config" action="action_utility_connection_type" sequence="40" />
+    <menuitem id="menu_utility_meter_log" name="Meter Movement Log" parent="menu_utility_config" action="action_utility_meter_log" sequence="35" />
+    <menuitem id="menu_utility_user_role" name="صلاحيات المستخدمين" parent="menu_utility_config" action="action_utility_user_role" sequence="90" />
 </odoo>

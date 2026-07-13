@@ -31,7 +31,7 @@ class UtilityInstallmentPlan(models.Model):
         ('active', 'نشطة'),
         ('paid', 'مدفوعة'),
         ('cancelled', 'ملغاة'),
-    ], default='draft', string='الحالة', tracking=True)
+    ], default='draft', string='الحالة')
 
     @api.constrains('amount_total', 'installment_count')
     def _check_plan_values(self):

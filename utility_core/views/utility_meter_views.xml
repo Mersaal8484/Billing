@@ -112,9 +112,9 @@
                             <field name="power_rating"/>
                         </group>
                         <group string="الصيانة والتدقيق">
-                            <field name="idle_months" decoration-danger="idle_months >= 3"/>
+                            <field name="idle_months"/>
                             <field name="last_calibration_date"/>
-                            <field name="next_calibration_date" decoration-warning="next_calibration_date &lt; current_date" decoration-danger="next_calibration_date &lt; current_date"/>
+                            <field name="next_calibration_date"/>
                         </group>
                     </group>
                     <notebook>

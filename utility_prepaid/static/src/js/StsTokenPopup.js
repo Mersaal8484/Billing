@@ -10,6 +10,7 @@ export class StsTokenPopup extends AbstractAwaitablePopup {
         this.state = useState({
             selectedAccountId: this.props.accounts.length > 0 ? this.props.accounts[0].id : null,
             amount: 0,
+            kwh: 0,
         });
     }
 
@@ -24,6 +25,7 @@ export class StsTokenPopup extends AbstractAwaitablePopup {
             accountId: account ? account.id : null,
             meterId: account && account.meter_id ? account.meter_id[0] : null,
             amount: parseFloat(this.state.amount),
+            kwh: parseFloat(this.state.kwh),
         };
     }
 }

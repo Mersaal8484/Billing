@@ -31,7 +31,6 @@ POS integration, and cashier balancing.
             'utility_prepaid/static/src/js/StsTokenPopup.js',
             'utility_prepaid/static/src/xml/StsTokenButton.xml',
             'utility_prepaid/static/src/xml/StsTokenPopup.xml',
-            'utility_prepaid/static/src/xml/PartnerLine.xml',
         ],
     },
     'installable': True,

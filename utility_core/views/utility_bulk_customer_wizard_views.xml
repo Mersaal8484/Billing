@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8'?>
 <odoo>
     <record id="view_utility_bulk_customer_wizard_form" model="ir.ui.view">
         <field name="name">utility.bulk.customer.wizard.form</field>
@@ -10,57 +10,48 @@
                         <h1>الإنشاء المجمّع للحسابات</h1>
                         <p class="text-muted">اختر المالك الأساسي والبيانات المشتركة، ثم قم بإضافة أرقام العدادات وقراءاتها في الجدول أدناه.</p>
                     </div>
-                    
                     <group>
                         <group string="البيانات المشتركة">
-                            <field name="partner_id" options="{'no_create': True}"/>
-                            <field name="category_id" options="{'no_create': True}"/>
-                            <field name="subscriber_id" options="{'no_create': True}"/>
-                            <field name="contract_template_id" options="{'no_create': True}"/>
+                            <field name="partner_id" options="{'no_create': True}" />
+                            <field name="category_id" options="{'no_create': True}" />
+                            <field name="subscriber_id" options="{'no_create': True}" />
+                            <field name="contract_template_id" options="{'no_create': True}" />
                         </group>
                         <group string="البيانات الميدانية">
-                            <field name="utility_region_id"/>
-                            <field name="utility_area_id"/>
-                            <field name="transformer_zone_id"/>
-                            <field name="cell_id"/>
-                            <field name="transformer_id"/>
-                            <field name="route_id"/>
+                            <field name="utility_region_id" />
+                            <field name="utility_area_id" />
+                            <field name="transformer_zone_id" />
+                            <field name="cell_id" />
+                            <field name="transformer_id" />
+                            <field name="route_id" />
                         </group>
                     </group>
-                    
                     <notebook>
                         <page string="الحسابات والعدادات" name="lines">
                             <field name="line_ids">
                                 <tree editable="bottom">
-                                    <field name="name" placeholder="مثال: شقة 1 (اختياري)"/>
-                                    <field name="meter_serial"/>
-                                    <field name="meter_product_id"/>
-                                    <field name="meter_type_id"/>
-                                    <field name="communication_type"/>
-                                    <field name="initial_reading"/>
+                                    <field name="name" placeholder="مثال: شقة 1 (اختياري)" />
+                                    <field name="meter_serial" />
+                                    <field name="meter_product_id" />
+                                    <field name="meter_type_id" />
+                                    <field name="communication_type" />
+                                    <field name="initial_reading" />
                                 </tree>
                             </field>
                         </page>
                     </notebook>
                 </sheet>
                 <footer>
-                    <button name="action_create_bulk_accounts" string="إنشاء الحسابات" type="object" class="btn-primary" data-hotkey="q"/>
-                    <button string="إلغاء" class="btn-secondary" special="cancel" data-hotkey="z"/>
+                    <button name="action_create_bulk_accounts" string="إنشاء الحسابات" type="object" class="btn-primary" data-hotkey="q" />
+                    <button string="إلغاء" class="btn-secondary" special="cancel" data-hotkey="z" />
                 </footer>
             </form>
         </field>
     </record>
-
     <record id="action_utility_bulk_customer_wizard" model="ir.actions.act_window">
         <field name="name">إنشاء حسابات مجمّع</field>
         <field name="res_model">utility.bulk.customer.wizard</field>
         <field name="view_mode">form</field>
         <field name="target">new</field>
     </record>
-
-    <menuitem id="menu_utility_bulk_customer_wizard"
-              name="إنشاء حسابات مجمّع"
-              parent="utility_core.menu_utility_customer_root"
-              action="action_utility_bulk_customer_wizard"
-              sequence="25"/>
 </odoo>

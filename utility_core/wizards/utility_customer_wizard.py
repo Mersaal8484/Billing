@@ -181,7 +181,7 @@ class UtilityCustomerWizard(models.TransientModel):
             wizard.meter_model_id = meter_model
             wizard.meter_type_id = meter_model.meter_type_id if meter_model else False
             wizard.manufacturer = meter_model.manufacturer if meter_model and meter_model.manufacturer else wizard.manufacturer
-            wizard.phase = meter_model.phase if meter_model and meter_model.phase else wizard.phase
+            wizard.phase = meter_model.meter_type_id.phase if meter_model and meter_model.meter_type_id and meter_model.meter_type_id.phase else wizard.phase
 
     @api.depends('category_id')
     def _compute_available_subscriber_ids(self):
