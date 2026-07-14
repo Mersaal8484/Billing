@@ -5,12 +5,23 @@ class UtilityMeterLog(models.Model):
     _name = 'utility.meter.log'
     _description = 'سجل تاريخ العداد'
     _order = 'date desc, id desc'
+    _rec_name = 'name'
 
+    name = fields.Char('المرجع', compute='_compute_name')
     active = fields.Boolean(default=True)
     company_id = fields.Many2one('res.company', default=lambda self: self.env.company)
     meter_id = fields.Many2one('utility.meter', 'العداد', required=True, index=True, ondelete='cascade')
     date = fields.Datetime('التاريخ', default=fields.Datetime.now, required=True)
     user_id = fields.Many2one('res.users', 'المستخدم', default=lambda self: self.env.user)
+
+    @api.depends('meter_id', 'log_type', 'date')
+    def _compute_name(self):
+        for rec in self:
+            if rec.meter_id and rec.log_type:
+                log_label = dict(self._fields['log_type'].selection).get(rec.log_type, rec.log_type)
+                rec.name = f"{log_label} - {rec.meter_id.display_name}"
+            else:
+                rec.name = "سجل جديد"
 
     log_type = fields.Selection([
         ('installation', 'تركيب'),

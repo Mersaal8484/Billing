@@ -48,7 +48,6 @@ User Role.
         'views/utility_meter_replacement_views.xml',
         'views/utility_meter_menu.xml',
         'views/utility_customer_wizard_views.xml',
-        'views/utility_bulk_customer_wizard_views.xml',
         'views/utility_customer_menu.xml',
         'data/utility_subscriber_data.xml',
         'data/utility_sample_data.xml',

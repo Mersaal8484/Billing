@@ -18,7 +18,8 @@
                 <field name="char_code" placeholder="الرمز التعريفي"/>
                 <field name="new_no" placeholder="الرقم الجديد"/>
                 <field name="is_subscriber"/>
-                <field name="analytic_account_id" attrs="{'invisible': [('is_subscriber', '=', False)]}" options="{'no_create': True}"/>
+                <field name="subscriber_status" attrs="{'invisible': [('is_subscriber', '=', False)]}" widget="radio" options="{'horizontal': true}"/>
+                <field name="subscriber_active_status" attrs="{'invisible': [('is_subscriber', '=', False)]}" widget="radio" options="{'horizontal': true}"/>
                 <field name="subscriber_id" attrs="{'invisible': [('is_subscriber', '=', False)]}" options="{'no_create': True}"/>
                 <field name="sector_id" attrs="{'invisible': [('is_subscriber', '=', False)]}" options="{'no_create': True}"/>
                 <field name="sale_type" options="{'no_create': True}"/>
@@ -37,38 +38,15 @@
                             <field name="area_id" options="{'no_create': True}"/>
                             <field name="zone_id" options="{'no_create': True}"/>
                         </group>
-                        <group string="بيانات العداد والتركيب">
-                            <field name="opening_reading"/>
-                            <field name="register_number"/>
-                            <field name="reading_multiplier"/>
-                            <field name="vas"/>
-                            <field name="meter_digit_count"/>
-                        </group>
                     </group>
                     <group>
-                        <group string="بيانات الترحيل والنظام المؤسسي القديم (PEC)">
-                            <field name="tariff_code"/>
-                            <field name="base_name"/>
-                            <field name="opening_journal_no"/>
-                            <field name="subscription_amount_partner"/>
-                            <field name="is_credit_raised"/>
-                            <field name="credit_raise_date"/>
-                            <field name="n1"/>
-                            <field name="n2"/>
-                            <field name="n3"/>
-                            <field name="n11"/>
-                        </group>
                         <group string="السجل المالي والمحاسبي">
                             <field name="last_payment"/>
                             <field name="last_payment_date"/>
                             <field name="last_invoice"/>
                             <field name="last_invoice_date"/>
-                            <field name="old_payment"/>
-                            <field name="old_credit"/>
                             <field name="old_credit_before"/>
-                            <field name="credit_last"/>
                             <field name="previous_hotline_balance"/>
-                            <field name="balance_customer"/>
                             <field name="payment_token_ids" invisible="1"/>
                             <field name="payment_token_id" options="{'no_create': True}"/>
                         </group>

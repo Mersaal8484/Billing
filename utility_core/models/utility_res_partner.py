@@ -109,33 +109,25 @@ class ResPartner(models.Model):
 
     nickname = fields.Char(string="الاسم المختصر")
     is_subscriber = fields.Boolean(string="مشترك كهرباء", default=False, tracking=True)
+    subscriber_status = fields.Selection([
+        ('new', 'مشترك جديد'),
+        ('old', 'مشترك قديم'),
+    ], string="نوع الاشتراك", default='new', tracking=True)
+    subscriber_active_status = fields.Selection([
+        ('active', 'فعال'),
+        ('inactive', 'غير مفعل'),
+    ], string="حالة التفعيل", default='active', tracking=True)
     last_payment = fields.Monetary(string="آخر دفعة", compute='_compute_last_payment', store=False)
     last_payment_date = fields.Date(string="تاريخ آخر دفعة", compute='_compute_last_payment', store=False)
     last_invoice = fields.Monetary(string="آخر فاتورة", compute='_compute_last_invoice', store=False)
     last_invoice_date = fields.Date(string="تاريخ آخر فاتورة", compute='_compute_last_invoice', store=False)
     char_code = fields.Char(string="الحرف")
-    old_payment = fields.Monetary(string="آخر دفعة من المؤسسة")
-    old_credit = fields.Monetary(string="الرصيد السابق من المؤسسة")
     new_no = fields.Char(string="الرقم الجديد")
     opening_reading = fields.Integer(string="قراءة الافتتاح")
     register_number = fields.Integer(string="رقم السجل")
     is_credit_raised = fields.Boolean(string="رصيد مرحل")
-    n11 = fields.Integer(string="N11")
     pec_credit = fields.Monetary(string="رصيد مرحل من المؤسسة")
     credit_raise_date = fields.Date(string="تاريخ الترحيل")
-    reading_multiplier = fields.Float(string="معامل القراءة")
-    tariff_code = fields.Char(string="رمز التعرفة من المؤسسة")
-    subscription_amount_partner = fields.Integer(string="قيمة الاشتراك في المؤسسة")
-    opening_journal_no = fields.Integer(string="رقم يومية رصيد الافتتاح")
-    vas = fields.Integer(string="VAS")
-    meter_digit_count = fields.Integer(string="عدد أرقام العداد")
-    base_name = fields.Char(string="الاسم الأساسي من المؤسسة")
-    old_credit_before = fields.Monetary(string="الرصيد السابق قبل الحساب")
-    n1 = fields.Integer(string="N1")
-    n2 = fields.Integer(string="N2")
-    n3 = fields.Integer(string="N3")
-    balance_customer = fields.Monetary(string="إجمالي مدين المشترك", readonly=True)
-    credit_last = fields.Monetary(string="آخر رصيد")
 
     sale_type = fields.Many2one('sale.order.type', string='نوع أمر البيع', company_dependent=True)
     subscriber_id = fields.Many2one('utility.subscriber', string="نوع المشترك", tracking=True)
@@ -177,18 +169,6 @@ class ResPartner(models.Model):
     direct_branch_id = fields.Many2one('utility.region', string="فرع الخدمة المباشر", domain="[('type', '=', 'area')]")
     transformer_zone_id = fields.Many2one('utility.region', string="نطاق المحول", domain="[('type', '=', 'zone')]")
     residential_compound_id = fields.Many2one('utility.region', string="الحي أو المجمع السكني", domain="[('type', '=', 'zone')]")
-    
-    analytic_account_id = fields.Many2one(
-        'account.analytic.account', 
-        string="الحساب التحليلي",
-        compute="_compute_analytic_account_id", 
-        store=False
-    )
-
-    def _compute_analytic_account_id(self):
-        for partner in self:
-            account = self.env['account.analytic.account'].search([('partner_id', '=', partner.id)], limit=1)
-            partner.analytic_account_id = account.id if account else False
 
     payment_token_id = fields.Many2one(
         'payment.token',

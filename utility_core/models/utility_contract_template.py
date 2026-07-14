@@ -387,6 +387,30 @@ class UtilityContractTemplate(models.Model):
                 'tag': 'reload',
             }
 
+    def action_create_biweekly_blocks(self):
+        """إنشاء الشرائح الثمانية النموذجية لقالب العقد الحالي"""
+        for template in self:
+            template.block_ids.unlink()
+            blocks_data = [
+                {'sequence': 10, 'name': 'الشريحة الأولى (0-2,999)', 'from_kwh': 0, 'to_kwh': 3000, 'price_per_kwh': 230},
+                {'sequence': 20, 'name': 'الشريحة الثانية (3,000-9,999)', 'from_kwh': 3000, 'to_kwh': 10000, 'price_per_kwh': 220},
+                {'sequence': 30, 'name': 'الشريحة الثالثة (10,000-19,999)', 'from_kwh': 10000, 'to_kwh': 20000, 'price_per_kwh': 200},
+                {'sequence': 40, 'name': 'الشريحة الرابعة (20,000-29,999)', 'from_kwh': 20000, 'to_kwh': 30000, 'price_per_kwh': 190},
+                {'sequence': 50, 'name': 'الشريحة الخامسة (30,000-99,999)', 'from_kwh': 30000, 'to_kwh': 100000, 'price_per_kwh': 185},
+                {'sequence': 60, 'name': 'الشريحة السادسة (100,000-199,999)', 'from_kwh': 100000, 'to_kwh': 200000, 'price_per_kwh': 180},
+                {'sequence': 70, 'name': 'الشريحة السابعة (200,000-299,999)', 'from_kwh': 200000, 'to_kwh': 300000, 'price_per_kwh': 175},
+                {'sequence': 80, 'name': 'الشريحة الثامنة (300,000+)', 'from_kwh': 300000, 'to_kwh': 0, 'price_per_kwh': 170},
+            ]
+            for b in blocks_data:
+                b['template_id'] = template.id
+            self.env['utility.contract.template.block'].create(blocks_data)
+        
+        if len(self) == 1:
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'reload',
+            }
+
 
 class UtilityContractTemplateLine(models.Model):
     _name = 'utility.contract.template.line'
