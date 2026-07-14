@@ -54,6 +54,11 @@ class UtilityTransformer(models.Model):
         string='عقود المشتركين',
         help='عقود المشتركين المغذاة من هذا المحول'
     )
+    route_ids = fields.One2many(
+        'utility.route', 'transformer_id',
+        string='مسارات التوزيع',
+        help='مسارات التوزيع المرتبطة بهذا المحول'
+    )
     customer_count = fields.Integer(
         'عدد العقود',
         compute='_compute_customer_count',

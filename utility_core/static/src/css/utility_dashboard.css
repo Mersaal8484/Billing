@@ -8,17 +8,53 @@
 
 .dashboard-header {
     margin-bottom: 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
 }
 
-.dashboard-header h2 {
+.dashboard-header .header-left h2 {
     color: #2c3e50;
     margin-bottom: 5px;
     font-weight: 700;
 }
 
-.dashboard-header p {
+.dashboard-header .header-left p {
     color: #7f8c8d;
     font-size: 1.1em;
+    margin: 0;
+}
+
+.dashboard-header .header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dashboard-header .header-right label {
+    font-weight: 600;
+    color: #495057;
+    white-space: nowrap;
+}
+
+.region-selector {
+    padding: 8px 14px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    font-size: 0.95em;
+    background: #fff;
+    color: #495057;
+    min-width: 200px;
+    cursor: pointer;
+    direction: rtl;
+}
+
+.region-selector:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.15);
 }
 
 .kpi-cards-row {

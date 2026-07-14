@@ -10,9 +10,17 @@ class UtilityRoute(models.Model):
     company_id = fields.Many2one('res.company', 'الشركة', default=lambda self: self.env.company)
     name = fields.Char('اسم المسار', required=True)
     code = fields.Char('رمز المسار', required=True)
+
+    # ===== التسلسل التجاري: region → area → zone → route =====
     area_id = fields.Many2one('utility.region', 'المنطقة الفرعية', domain="[('type', '=', 'area')]")
     zone_id = fields.Many2one('utility.region', 'المنطقة التفصيلية', domain="[('type', '=', 'zone')]")
     region_id = fields.Many2one('utility.region', 'المنطقة', related='area_id.parent_id', store=True)
+
+    # ===== تسلسل التوزيع: substation → feeder → transformer → route =====
+    transformer_id = fields.Many2one('utility.transformer', 'المحول', index=True)
+    feeder_id = fields.Many2one('utility.feeder', 'الفيدر / الخلية', related='transformer_id.feeder_id', store=True)
+    substation_id = fields.Many2one('utility.substation', 'المحطة الفرعية', related='transformer_id.substation_id', store=True)
+
     customer_ids = fields.One2many('utility.customer', 'route_id', string='عقود المشتركين')
     customer_count = fields.Integer('عدد المشتركين', compute='_compute_customer_count', store=True)
     inspector_ids = fields.Many2many(
@@ -30,6 +38,16 @@ class UtilityRoute(models.Model):
     _sql_constraints = [
         ('unique_route_code_area', 'unique(code, area_id)', 'رمز المسار يجب أن يكون فريداً لكل منطقة!'),
     ]
+
+    @api.onchange('transformer_id')
+    def _onchange_transformer_set_distribution(self):
+        for rec in self:
+            if rec.transformer_id:
+                rec.zone_id = rec.transformer_id.zone_region_id.id
+                if rec.transformer_id.zone_region_id:
+                    rec.area_id = rec.transformer_id.zone_region_id.parent_id.id
+                    if rec.transformer_id.zone_region_id.parent_id:
+                        rec.region_id = rec.transformer_id.zone_region_id.parent_id.parent_id.id
 
     @api.depends('customer_ids')
     def _compute_customer_count(self):

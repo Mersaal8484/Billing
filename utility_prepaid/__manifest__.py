@@ -1,36 +1,64 @@
 {
     'name': 'Utility Prepaid',
-    'version': '16.0.2.0.0',
+    'version': '16.0.3.1.0',
     'category': 'Industries/Utilities',
-    'summary': 'Prepaid Electricity Vending Engine (POS Based)',
+    'summary': 'محرك بيع الكهرباء مسبقة الدفع (متكامل مع POS)',
     'description': """
-Enterprise Prepaid Electricity Vending Module
-===============================================
-Prepaid vending engine with STS token management,
-POS integration, and cashier balancing.
+محرك بيع الكهرباء مسبقة الدفع المتكامل
+========================================
+يشمل:
+- إدارة طلبات البيع (Vending Requests)
+- توليد وإدارة رموز STS
+- تكامل نقاط البيع POS
+- ورديات الكاشير
+- استقطاع الديون
+- العكس والتسويات
+- أحداث AMI
+- التقارير ولوحات المعلومات
     """,
     'author': 'Utility ERP Platform',
     'website': 'https://www.utility-erp.com',
     'license': 'LGPL-3',
-    'depends': ['utility_core', 'point_of_sale'],
+    'depends': [
+        'utility_core',
+        'point_of_sale',
+        'account',
+        'product',
+        'sms',
+    ],
     'data': [
+        'security/utility_prepaid_security.xml',
         'security/ir.model.access.csv',
-        'data/utility_sequence.xml',
+        'data/utility_prepaid_sequence.xml',
+        'data/utility_prepaid_products.xml',
+        'data/utility_prepaid_channels.xml',
+        'data/utility_prepaid_reversal_reasons.xml',
+        'data/utility_prepaid_cron.xml',
+        'data/utility_prepaid_sample_data.xml',
+        'views/vending_request_views.xml',
         'views/utility_token_views.xml',
+        'views/sts_provider_views.xml',
+        'views/sts_transaction_views.xml',
         'views/utility_transaction_views.xml',
-        'views/utility_adjustment_views.xml',
-        'views/utility_reversal_views.xml',
-        'views/utility_cashier_views.xml',
-        'views/utility_prepaid_menu.xml',
+        'views/cashier_shift_views.xml',
+        'views/debt_recovery_policy_views.xml',
+        'views/vending_reversal_views.xml',
+        'views/prepaid_adjustment_views.xml',
+        'views/ami_event_views.xml',
+        'views/prepaid_dashboard_views.xml',
+        'views/res_config_settings_views.xml',
+        'views/pos_order_views.xml',
+        'views/menus.xml',
         'report/utility_reports.xml',
     ],
     'demo': ['data/utility_demo.xml'],
     'assets': {
-        'point_of_sale.assets': [
-            'utility_prepaid/static/src/js/StsTokenButton.js',
-            'utility_prepaid/static/src/js/StsTokenPopup.js',
-            'utility_prepaid/static/src/xml/StsTokenButton.xml',
-            'utility_prepaid/static/src/xml/StsTokenPopup.xml',
+        'web.assets_backend': [
+            'utility_prepaid/static/src/scss/**/*.scss',
+        ],
+        'point_of_sale._assets_pos': [
+            'utility_prepaid/static/src/js/**/*.js',
+            'utility_prepaid/static/src/xml/**/*.xml',
         ],
     },
     'installable': True,

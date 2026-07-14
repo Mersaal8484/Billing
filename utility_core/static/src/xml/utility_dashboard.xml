@@ -3,8 +3,21 @@
     <t t-name="utility_dashboard.UtilityDashboard" owl="1">
         <div class="utility_dashboard_container">
             <div class="dashboard-header">
-                <h2>لوحة القيادة الإدارية</h2>
-                <p>ملخص الأداء المالي والتشغيلي حسب المنطقة</p>
+                <div class="header-left">
+                    <h2>لوحة القيادة الإدارية</h2>
+                    <p>ملخص الأداء المالي والتشغيلي حسب المنطقة</p>
+                </div>
+                <div class="header-right">
+                    <label for="region_select">اختر المنطقة:</label>
+                    <select id="region_select" t-on-change="onRegionChange" class="region-selector">
+                        <option value="">جميع المناطق</option>
+                        <t t-foreach="state.regions" t-as="region" t-key="region.id">
+                            <option t-att-value="region.id" t-att-selected="state.selectedRegionId === region.id ? 'selected' : false">
+                                <t t-esc="region.name"/>
+                            </option>
+                        </t>
+                    </select>
+                </div>
             </div>
             
             <div class="kpi-cards-row">

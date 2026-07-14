@@ -44,6 +44,45 @@ No test infrastructure exists yet. All `tests/` directories are empty. Do not ru
   - Both fields are mandatory on contract templates (`utility.contract.template`) and subscriber accounts (`utility.customer`). The selected type must belong to the selected category, and both must be compatible with the selected contract template.
   - In `utility.customer` and `utility.customer.wizard`, the contract template field (`contract_template_id`) must only display and accept templates that are suitable for both the selected subscriber classification (categories & types) and the geographic location (regions & areas).
 
+## Organized 2-Column Layout for Settings & Forms
+
+All `res.config.settings` views and complex forms MUST use an organized 2-column card layout:
+
+```xml
+<div class="row">
+    <div class="col-12 col-lg-6">
+        <div class="card o_settings_card">
+            <div class="card-header">
+                <div class="d-flex align-items-center">
+                    <i class="fa fa-[icon] fa-2x text-[color] me-3"/>
+                    <div>
+                        <h4 class="mb-0">عنوان القسم</h4>
+                        <small class="text-muted">وصف مختصر</small>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- settings fields -->
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-lg-6">
+        <!-- second card -->
+    </div>
+</div>
+```
+
+Rules:
+- Group related settings into cards with descriptive headers and Font Awesome icons
+- Use 2-column layout (`col-12 col-lg-6`) for side-by-side cards on desktop
+- Use `o_light_label` class for form labels
+- Add `text-muted` helper text below fields when needed
+- Use `attrs="{'invisible': [...]}"` to conditionally hide dependent fields
+- Each card should have a clear icon: `fa-shopping-cart`, `fa-cloud`, `fa-key`, `fa-calculator`, `fa-money`, `fa-bell`, etc.
+- Icon colors: `text-primary`, `text-success`, `text-warning`, `text-info`, `text-danger`, `text-purple`
+- Boolean fields: `<field/>` then `<label for="..." class="ms-2"/>`
+- Selection/Many2one fields: `<label for="..." class="o_light_label"/>` then `<field/>`
+
 
 
 ## Important files

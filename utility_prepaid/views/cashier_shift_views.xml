@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_cashier_shift_tree" model="ir.ui.view">
+        <field name="name">utility.cashier.shift.tree</field>
+        <field name="model">utility.cashier.shift</field>
+        <field name="arch" type="xml">
+            <tree decoration-success="state == 'verified'" decoration-warning="state == 'open'" decoration-info="state == 'closing'" decoration-muted="state == 'closed'">
+                <field name="name"/>
+                <field name="cashier_id"/>
+                <field name="start_time"/>
+                <field name="end_time"/>
+                <field name="state" widget="badge" decoration-success="state in ('closed', 'verified')" decoration-warning="state == 'open'" decoration-info="state == 'closing'"/>
+                <field name="opening_balance" widget="monetary"/>
+                <field name="prepaid_total" widget="monetary"/>
+                <field name="postpaid_total" widget="monetary"/>
+                <field name="expected_balance" widget="monetary"/>
+                <field name="closing_balance" widget="monetary"/>
+                <field name="difference" widget="monetary" decoration-danger="difference &lt; 0" decoration-success="difference &gt; 0"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_cashier_shift_form" model="ir.ui.view">
+        <field name="name">utility.cashier.shift.form</field>
+        <field name="model">utility.cashier.shift</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_close" string="إغلاق" type="object" class="oe_highlight" attrs="{'invisible': [('state', '!=', 'open')]}"/>
+                    <button name="action_verify" string="تدقيق" type="object" class="oe_highlight" attrs="{'invisible': [('state', '!=', 'closing')]}"/>
+                    <button name="action_reopen" string="إعادة فتح" type="object" attrs="{'invisible': [('state', 'in', ('closed', 'verified'))]}"/>
+                    <field name="state" widget="statusbar" statusbar_visible="open,closing,closed,verified"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_vending" type="object" class="oe_stat_button" icon="fa-shopping-cart" attrs="{'invisible': [('vending_count', '=', 0)]}">
+                            <field name="vending_count" widget="statinfo" string="عمليات البيع"/>
+                        </button>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="name" readonly="1"/>
+                            <field name="cashier_id" readonly="1"/>
+                            <field name="pos_session_id"/>
+                        </group>
+                        <group>
+                            <field name="start_time" readonly="1"/>
+                            <field name="end_time"/>
+                        </group>
+                    </group>
+                    <group string="الملخص المالي">
+                        <group>
+                            <field name="opening_balance" widget="monetary"/>
+                            <field name="prepaid_total" widget="monetary"/>
+                            <field name="postpaid_total" widget="monetary"/>
+                        </group>
+                        <group>
+                            <field name="expected_balance" widget="monetary"/>
+                            <field name="closing_balance" widget="monetary" attrs="{'readonly': [('state', 'in', ('closed', 'verified'))]}"/>
+                            <field name="difference" widget="monetary" class="oe_inline" decoration-danger="difference &lt; 0" decoration-success="difference &gt; 0"/>
+                        </group>
+                    </group>
+                    <group string="تفصيل الدفع المسبق">
+                        <group>
+                            <field name="prepaid_cash_total" widget="monetary"/>
+                            <field name="prepaid_bank_total" widget="monetary"/>
+                        </group>
+                        <group>
+                            <field name="postpaid_cash_total" widget="monetary"/>
+                            <field name="postpaid_bank_total" widget="monetary"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="طلبات البيع" name="vending_requests">
+                            <field name="vending_request_ids">
+                                <tree>
+                                    <field name="reference"/>
+                                    <field name="account_id"/>
+                                    <field name="meter_id"/>
+                                    <field name="gross_amount" widget="monetary"/>
+                                    <field name="state"/>
+                                    <field name="vending_date"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="تحصيلات الدفع الآجل" name="postpaid_payments">
+                            <field name="postpaid_payment_ids">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="partner_id"/>
+                                    <field name="amount" widget="monetary"/>
+                                    <field name="payment_type"/>
+                                    <field name="date"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="ملاحظات" name="notes">
+                            <field name="notes" placeholder="ملاحظات الوردية..."/>
+                            <field name="closing_notes" placeholder="ملاحظات الإغلاق..." attrs="{'invisible': [('state', '=', 'open')]}"/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_cashier_shift_search" model="ir.ui.view">
+        <field name="name">utility.cashier.shift.search</field>
+        <field name="model">utility.cashier.shift</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="cashier_id"/>
+                <filter name="open" string="مفتوحة" domain="[('state', '=', 'open')]"/>
+                <filter name="closed" string="مغلقة" domain="[('state', '=', 'closed')]"/>
+                <filter name="verified" string="مدققة" domain="[('state', '=', 'verified')]"/>
+                <filter name="my_shifts" string="وردياتي" domain="[('cashier_id', '=', uid)]"/>
+                <group expand="0" string="تجميع حسب">
+                    <filter name="group_state" string="الحالة" context="{'group_by': 'state'}"/>
+                    <filter name="group_cashier" string="الكاشير" context="{'group_by': 'cashier_id'}"/>
+                    <filter name="group_date" string="التاريخ" context="{'group_by': 'start_time:day'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_cashier_shift_all" model="ir.actions.act_window">
+        <field name="name">الورديات</field>
+        <field name="res_model">utility.cashier.shift</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_cashier_shift_search"/>
+    </record>
+
+    <record id="action_cashier_shift_open" model="ir.actions.act_window">
+        <field name="name">ورديات مفتوحة</field>
+        <field name="res_model">utility.cashier.shift</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('state', '=', 'open')]</field>
+    </record>
+</odoo>

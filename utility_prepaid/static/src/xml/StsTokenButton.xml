@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<templates id="template" xml:space="preserve">
-    <t t-name="utility_prepaid.StsTokenButton" owl="1">
-        <div class="control-button oe_highlight text-white" style="background-color: #28a745;">
-            <i class="fa fa-bolt" role="img" aria-label="STS Token" title="STS Token"/>
-            <span> بيع توكن STS</span>
-        </div>
-    </t>
-</templates>

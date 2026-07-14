@@ -9,7 +9,10 @@ class UtilityDashboard extends Component {
     setup() {
         this.rpc = useService("rpc");
         this.action = useService("action");
+        this.orm = useService("orm");
         this.state = useState({
+            selectedRegionId: false,
+            regions: [],
             kpi: {
                 today_prepaid: 0,
                 today_postpaid: 0,
@@ -26,9 +29,13 @@ class UtilityDashboard extends Component {
         });
         this.chartCanvasRef = useRef("chartCanvas");
         this.regionChartCanvasRef = useRef("regionChartCanvas");
+        this.chart = null;
+        this.regionChart = null;
 
         onWillStart(async () => {
-            this.state.kpi = await this.rpc("/utility/dashboard/kpi", {});
+            const regions = await this.orm.searchRead("utility.region", [["type", "=", "region"]], ["id", "name"], { order: "name" });
+            this.state.regions = regions;
+            await this.loadKPI(false);
             await loadJS("/web/static/lib/Chart/Chart.js");
         });
 
@@ -38,11 +45,32 @@ class UtilityDashboard extends Component {
         });
     }
 
+    async loadKPI(regionId) {
+        this.state.kpi = await this.rpc("/utility/dashboard/kpi", { region_id: regionId || false });
+        if (this.chart) {
+            this.chart.destroy();
+            this.chart = null;
+        }
+        if (this.regionChart) {
+            this.regionChart.destroy();
+            this.regionChart = null;
+        }
+        setTimeout(() => {
+            this.renderChart();
+            this.renderRegionChart();
+        }, 100);
+    }
+
+    async onRegionChange(ev) {
+        const regionId = ev.target.value ? parseInt(ev.target.value) : false;
+        this.state.selectedRegionId = regionId;
+        await this.loadKPI(regionId);
+    }
+
     renderChart() {
         if (!this.chartCanvasRef.el) return;
         const ctx = this.chartCanvasRef.el.getContext('2d');
-
-        new Chart(ctx, {
+        this.chart = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: this.state.kpi.chart_labels,
@@ -74,8 +102,7 @@ class UtilityDashboard extends Component {
     renderRegionChart() {
         if (!this.regionChartCanvasRef.el) return;
         const ctx = this.regionChartCanvasRef.el.getContext('2d');
-
-        new Chart(ctx, {
+        this.regionChart = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: this.state.kpi.region_chart_labels,
