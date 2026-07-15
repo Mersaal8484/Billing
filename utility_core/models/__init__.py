@@ -29,3 +29,5 @@ from . import utility_reading
 from . import utility_res_company
 from . import utility_notification
 from . import utility_integration
+from . import utility_migration_customer
+from . import utility_migration_mapping

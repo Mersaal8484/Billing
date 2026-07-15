@@ -108,7 +108,7 @@
 
     <record id="action_download_migration_template" model="ir.actions.act_url">
         <field name="name">تحميل قالب الرفع</field>
-        <field name="url">/utility_migration/static/src/Migration_Template.xlsx</field>
+        <field name="url">/utility_core/static/src/Migration_Template.xlsx</field>
         <field name="target">new</field>
     </record>
 

@@ -427,7 +427,7 @@ if products:
 if not template:
     template = env['utility.contract.template'].browse(1)
 if template:
-    template.block_ids.unlink()
+    old_blocks = template.block_ids
     blocks_data = [
         {'sequence': 10, 'name': 'الشريحة الأولى (0-2,999)', 'from_kwh': 0, 'to_kwh': 3000, 'price_per_kwh': 230},
         {'sequence': 20, 'name': 'الشريحة الثانية (3,000-9,999)', 'from_kwh': 3000, 'to_kwh': 10000, 'price_per_kwh': 220},
@@ -438,6 +438,7 @@ if template:
         {'sequence': 70, 'name': 'الشريحة السابعة (200,000-299,999)', 'from_kwh': 200000, 'to_kwh': 300000, 'price_per_kwh': 175},
         {'sequence': 80, 'name': 'الشريحة الثامنة (300,000+)', 'from_kwh': 300000, 'to_kwh': 0, 'price_per_kwh': 170},
     ]
+    env.cr.execute("DELETE FROM utility_contract_template_block WHERE template_id = %s", [template.id])
     for b in blocks_data:
         b['template_id'] = template.id
     env['utility.contract.template.block'].create(blocks_data)

@@ -45,7 +45,7 @@
                             <field name="last_payment_date"/>
                             <field name="last_invoice"/>
                             <field name="last_invoice_date"/>
-                            <field name="old_credit_before"/>
+
                             <field name="previous_hotline_balance"/>
                             <field name="payment_token_ids" invisible="1"/>
                             <field name="payment_token_id" options="{'no_create': True}"/>

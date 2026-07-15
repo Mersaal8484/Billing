@@ -34,7 +34,7 @@ class UtilityMigrationCustomer(models.Model):
     def action_download_template(self):
         return {
             'type': 'ir.actions.act_url',
-            'url': '/utility_migration/static/src/Migration_Template.xlsx',
+            'url': '/utility_core/static/src/Migration_Template.xlsx',
             'target': 'new',
         }
     
