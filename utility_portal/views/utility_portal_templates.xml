@@ -22,7 +22,7 @@
                     <t t-foreach="accounts" t-as="acc">
                         <div class="card mb-3">
                             <div class="card-body">
-                                <h5 t-esc="acc.account_number"/>
+                                <h5 t-esc="acc.customer_number"/>
                                 <p>الرصيد: <span t-esc="acc.accounting_balance"/></p>
                                 <a href="#" class="btn btn-sm btn-primary">شراء كهرباء</a>
                                 <a href="#" class="btn btn-sm btn-secondary">عرض الفواتير</a>

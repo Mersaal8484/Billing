@@ -71,5 +71,5 @@
         <field name="view_mode">tree,form</field>
     </record>
 
-    <menuitem id="menu_utility_installment_plan" name="خطط التقسيط" parent="utility_billing.menu_utility_billing" sequence="80" action="action_utility_installment_plan"/>
+    <menuitem id="menu_utility_installment_plan" name="خطط التقسيط" parent="utility_billing.menu_utility_billing" sequence="80" action="action_utility_installment_plan" active="False"/>
 </odoo>

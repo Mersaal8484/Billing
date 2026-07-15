@@ -18,10 +18,10 @@ class UtilityAPI(http.Controller):
             ('partner_id', '=', user.partner_id.id),
         ])
 
-    def _authorize_account(self, account_number):
+    def _authorize_account(self, customer_number):
         """التحقق من ملكية حساب الكهرباء وإرجاعه إن وجد."""
         accounts = self._get_authorized_accounts()
-        return accounts.filtered(lambda a: a.account_number == account_number)[:1]
+        return accounts.filtered(lambda a: a.customer_number == customer_number)[:1]
 
     def _authorize_order(self, order_id):
         """التحقق من ملكية الفاتورة وإرجاعها إن وجدت."""
@@ -38,10 +38,10 @@ class UtilityAPI(http.Controller):
     @http.route('/api/v1/utility/billing/balance', type='json', auth='user', methods=['POST'])
     def billing_balance(self, **kwargs):
         params = request.jsonrequest
-        account_number = params.get('account_number')
-        if not account_number:
-            return {'error': 'account_number is required'}
-        account = self._authorize_account(account_number)
+        customer_number = params.get('customer_number')
+        if not customer_number:
+            return {'error': 'customer_number is required'}
+        account = self._authorize_account(customer_number)
         if not account:
             return {'error': 'Account not found'}
         orders = request.env['sale.order'].sudo().search([
@@ -50,7 +50,7 @@ class UtilityAPI(http.Controller):
         ])
         debt = sum(orders.mapped('balance_due'))
         return {
-            'account_number': account.account_number,
+            'customer_number': account.customer_number,
             'accounting_balance': account.accounting_balance,
             'debt': debt,
             'last_purchase_date': account.last_purchase_date.isoformat() if account.last_purchase_date else None,
@@ -59,11 +59,11 @@ class UtilityAPI(http.Controller):
     @http.route('/api/v1/utility/billing/bills', type='json', auth='user', methods=['POST'])
     def billing_bills(self, **kwargs):
         params = request.jsonrequest
-        account_number = params.get('account_number')
+        customer_number = params.get('customer_number')
         limit = params.get('limit', 12)
-        if not account_number:
-            return {'error': 'account_number is required'}
-        account = self._authorize_account(account_number)
+        if not customer_number:
+            return {'error': 'customer_number is required'}
+        account = self._authorize_account(customer_number)
         if not account:
             return {'error': 'Account not found'}
         orders = request.env['sale.order'].sudo().search([

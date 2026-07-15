@@ -15,18 +15,10 @@ class UtilityCustomer(models.Model):
     active = fields.Boolean('نشط', default=True)
     company_id = fields.Many2one('res.company', 'الشركة', default=lambda self: self.env.company)
     customer_number = fields.Char('رقم العميل', required=True, index=True, default=lambda self: _('جديد'))
-    account_number = fields.Char(related='customer_number', string='رقم الحساب', store=True)
-    customer_id = fields.Many2one('utility.customer', compute='_compute_self_customer', string='العميل')
     partner_id = fields.Many2one('res.partner', 'العميل (شخص)', required=True, domain=[('is_company', '=', False)])
 
-    def _compute_self_customer(self):
-        for rec in self:
-            rec.customer_id = rec.id
     category_id = fields.Many2one('utility.subscriber.category', string='فئة المشترك الرئيسية', required=True)
-    phone = fields.Char(related='partner_id.phone', string='رقم الجوال')
-    mobile = fields.Char(related='partner_id.mobile', string='الجوال')
-    email = fields.Char(related='partner_id.email', string='البريد الإلكتروني')
-    national_id = fields.Char(string='الهوية الوطنية')
+    mobile = fields.Char(related='partner_id.mobile', string='رقم الجوال', readonly=False, size=9)
     subscriber_id = fields.Many2one('utility.subscriber', string='نوع المشترك', required=True, domain="[('category_id', '=', category_id)]")
     state = fields.Selection([
         ('draft', 'مسودة'),
@@ -36,13 +28,6 @@ class UtilityCustomer(models.Model):
         ('closed', 'مغلق'),
     ], string='الحالة', default='draft', tracking=True)
 
-    contract_state = fields.Selection([
-        ('active', 'نشط'),
-        ('suspended', 'موقوف'),
-        ('disconnected', 'مفصول'),
-        ('closed', 'مغلق'),
-    ], string='حالة الاشتراك', default='active', tracking=True,
-        help='حالة الاشتراك الحالية للمشترك')
     available_contract_template_ids = fields.Many2many('utility.contract.template', compute='_compute_available_contract_template_ids')
     contract_template_id = fields.Many2one('utility.contract.template', string='نموذج العقد')
     contract_start_date = fields.Date('تاريخ بداية العقد')
@@ -50,9 +35,7 @@ class UtilityCustomer(models.Model):
     date_contract = fields.Date(string='تاريخ العقد')
     date_sub_start = fields.Date(string='بداية الاشتراك')
     date_end = fields.Date(string='نهاية الاشتراك')
-    recurring_next_date = fields.Date(string='تاريخ التكرار القادم')
 
-    analytic_account_id = fields.Many2one('account.analytic.account', string='الحساب التحليلي')
     company_currency_id = fields.Many2one(related='company_id.currency_id', string='العملة')
 
     cell_id = fields.Many2one('utility.feeder', string='الفيدر / الخلية',
@@ -79,12 +62,9 @@ class UtilityCustomer(models.Model):
         help='الرصيد المستحق بناءً على القيود المحاسبية (الذمم المدينة)')
 
 
-    previous_hotline_balance = fields.Char(related='partner_id.previous_hotline_balance', string='الرصيد السابق (الخط الساخن)', readonly=True)
-    credit_limit = fields.Monetary('حد الائتمان', default=0.0, currency_field='company_currency_id')
-    total_purchases = fields.Monetary(string='إجمالي المشتريات', currency_field='company_currency_id')
-    total_kwh_purchased = fields.Float(string='إجمالي الكيلووات المشترى')
-    last_purchase_date = fields.Date(string='تاريخ آخر شراء')
-
+    opening_balance = fields.Monetary(string='الرصيد الافتتاحي', currency_field='company_currency_id', default=0.0)
+    current_balance = fields.Monetary(string='المديونية الحالية', currency_field='company_currency_id', compute='_compute_current_balance')
+    
     last_reading_date = fields.Datetime('آخر تاريخ قراءة')
     last_reading_value = fields.Float('آخر قراءة')
     last_invoice_date = fields.Datetime('آخر تاريخ فاتورة')
@@ -124,19 +104,6 @@ class UtilityCustomer(models.Model):
                     'customer_rank': max(customer.partner_id.customer_rank, 1),
                     'is_subscriber': True,
                 })
-            if not customer.analytic_account_id:
-                partner_name = customer.partner_id.name or customer.customer_number
-                plan = self.env.ref('analytic.analytic_plan_projects', raise_if_not_found=False)
-                if not plan:
-                    plan = self.env['account.analytic.plan'].search([], limit=1)
-                if not plan:
-                    plan = self.env['account.analytic.plan'].create({'name': 'Default Plan'})
-                analytic_account = self.env['account.analytic.account'].create({
-                    'name': f"{partner_name} - {customer.customer_number}",
-                    'partner_id': customer.partner_id.id,
-                    'plan_id': plan.id
-                })
-                customer.write({'analytic_account_id': analytic_account.id})
         return customers
 
     def write(self, vals):
@@ -237,10 +204,6 @@ class UtilityCustomer(models.Model):
         for rec in self:
             res.append((rec.id, f'[{rec.customer_number}] {rec.partner_id.name}'))
         return res
-
-    @api.model
-    def cron_retry_auto_pay(self):
-        _logger.info("Retrying auto pay for active accounts...")
 
     @api.depends('partner_id')
     def _compute_accounting_balance(self):
@@ -377,20 +340,3 @@ class UtilityCustomer(models.Model):
             'domain': [('utility_sale_order_id.customer_id', '=', self.id)],
             'views': [(False, 'tree'), (False, 'form')],
         }
-
-    def action_create_analytic_account(self):
-        for rec in self:
-            if not rec.analytic_account_id:
-                plan = self.env.ref('analytic.analytic_plan_projects', raise_if_not_found=False)
-                if not plan:
-                    plan = self.env['account.analytic.plan'].search([], limit=1)
-                if not plan:
-                    plan = self.env['account.analytic.plan'].create({'name': 'Default Plan'})
-                analytic = self.env['account.analytic.account'].create({
-                    'name': f'[{rec.customer_number}] {rec.partner_id.name}',
-                    'partner_id': rec.partner_id.id,
-                    'company_id': rec.company_id.id,
-                    'utility_customer_id': rec.id,
-                    'plan_id': plan.id,
-                })
-                rec.analytic_account_id = analytic.id

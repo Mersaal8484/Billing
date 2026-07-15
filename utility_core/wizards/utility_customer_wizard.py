@@ -19,32 +19,25 @@ class UtilityCustomerWizard(models.TransientModel):
             res.update({
                 'name': partner.name,
                 'mobile': partner.mobile,
-                'phone': partner.phone,
+                'national_id': getattr(partner, 'national_id', False),
                 'street': partner.street,
-                'city': partner.city,
-                'country_id': partner.country_id.id if partner.country_id else False,
                 'utility_region_id': partner.region_id.id if partner.region_id else False,
                 'utility_area_id': partner.area_id.id if partner.area_id else False,
                 'transformer_zone_id': partner.zone_id.id if partner.zone_id else False,
-                'sector_id': partner.sector_id.id if partner.sector_id else False,
                 'subscriber_id': partner.subscriber_id.id if partner.subscriber_id else False,
                 'category_id': partner.subscriber_id.category_id.id if partner.subscriber_id and partner.subscriber_id.category_id else False,
             })
         return res
 
     name = fields.Char(string='اسم المشترك / الجهة', required=True)
-    mobile = fields.Char(string='رقم الجوال', required=True)
-    phone = fields.Char(string='رقم الهاتف الثابت')
+    mobile = fields.Char(string='رقم الجوال', required=True, size=9)
     national_id = fields.Char(string='الرقم الوطني / الهوية')
     
     street = fields.Char(string='العنوان (الشارع)')
-    city = fields.Char(string='المدينة', default='صنعاء')
-    country_id = fields.Many2one('res.country', string='الدولة', default=lambda self: self.env.ref('base.ye', raise_if_not_found=False))
-
+    
     category_id = fields.Many2one('utility.subscriber.category', string='فئة المشترك الرئيسية', required=True)
     available_subscriber_ids = fields.Many2many('utility.subscriber', compute='_compute_available_subscriber_ids')
     subscriber_id = fields.Many2one('utility.subscriber', string='نوع المشترك', required=True)
-    sector_id = fields.Many2one('res.partner.sector', string='القطاع')
     
     available_contract_template_ids = fields.Many2many('utility.contract.template', compute='_compute_available_contract_template_ids')
     contract_template_id = fields.Many2one(
@@ -281,16 +274,12 @@ class UtilityCustomerWizard(models.TransientModel):
         if substation and substation.zone_id:
             self.transformer_zone_id = substation.zone_id
 
-    @api.constrains('mobile', 'phone')
+    @api.constrains('mobile')
     def _check_phone_9_digits(self):
         for rec in self:
             if rec.mobile and not PHONE_9_RE.match(rec.mobile):
                 raise ValidationError(
                     'رقم الجوال يجب أن يتكون من 9 أرقام فقط، بدون مفتاح دولة (+967/00) أو شرطات.'
-                )
-            if rec.phone and not PHONE_9_RE.match(rec.phone):
-                raise ValidationError(
-                    'رقم الهاتف يجب أن يتكون من 9 أرقام فقط، بدون مفتاح دولة (+967/00) أو شرطات.'
                 )
 
     @api.constrains('contract_template_id', 'category_id', 'subscriber_id', 'utility_region_id', 'utility_area_id')
@@ -408,13 +397,10 @@ class UtilityCustomerWizard(models.TransientModel):
         partner_vals = {
             'name': self.name,
             'mobile': self.mobile,
-            'phone': self.phone,
+            'national_id': self.national_id,
             'street': self.street,
-            'city': self.city,
-            'country_id': self.country_id.id if self.country_id else False,
             'is_subscriber': True,
             'subscriber_id': self.subscriber_id.id,
-            'sector_id': self.sector_id.id if self.sector_id else False,
             'region_id': self.utility_region_id.id if self.utility_region_id else False,
             'area_id': self.utility_area_id.id if self.utility_area_id else False,
             'zone_id': self.transformer_zone_id.id if self.transformer_zone_id else False,
@@ -456,13 +442,11 @@ class UtilityCustomerWizard(models.TransientModel):
         # 4. Create utility.customer
         customer_vals = {
             'partner_id': partner.id,
-            'national_id': self.national_id,
             'category_id': self.category_id.id,
             'subscriber_id': self.subscriber_id.id,
             'contract_template_id': self.contract_template_id.id,
             'route_id': self.route_id.id if self.route_id else False,
             'state': 'active',
-            'contract_state': 'active',
             'meter_id': meter.id if meter else False,
             'transformer_id': transformer.id if transformer else False,
             'cell_id': transformer.feeder_id.id if transformer and transformer.feeder_id else False,

@@ -6,7 +6,7 @@
     <menuitem id="menu_utility_region" name="المناطق" parent="menu_utility_network" action="action_utility_region" sequence="10"/>
     <menuitem id="menu_utility_area" name="المناطق الفرعية" parent="menu_utility_network" action="action_utility_area" sequence="20"/>
     <menuitem id="menu_utility_zone" name="النواحي" parent="menu_utility_network" action="action_utility_zone" sequence="30"/>
-    <menuitem id="menu_utility_office" name="المكاتب" parent="menu_utility_network" action="action_utility_office" sequence="40"/>
+    <menuitem id="menu_utility_office" name="المكاتب" parent="menu_utility_network" action="action_utility_office" sequence="40" active="False"/>
     <menuitem id="menu_utility_substation" name="المحطات الفرعية" parent="menu_utility_network" action="action_utility_substation" sequence="50"/>
     <menuitem id="menu_utility_feeder" name="المغذيات" parent="menu_utility_network" action="action_utility_feeder" sequence="60"/>
     <menuitem id="menu_utility_transformer" name="المحولات" parent="menu_utility_network" action="action_utility_transformer" sequence="70"/>

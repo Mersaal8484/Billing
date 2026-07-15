@@ -15,8 +15,9 @@
             </xpath>
             <xpath expr="//field[@name='vat']" position="after">
                 <field name="nickname" placeholder="الاسم المختصر..."/>
+                <field name="national_id" placeholder="الهوية الوطنية"/>
                 <field name="char_code" placeholder="الرمز التعريفي"/>
-                <field name="new_no" placeholder="الرقم الجديد"/>
+                <field name="subscriber_no" placeholder="الرقم الجديد"/>
                 <field name="is_subscriber"/>
                 <field name="subscriber_status" attrs="{'invisible': [('is_subscriber', '=', False)]}" widget="radio" options="{'horizontal': true}"/>
                 <field name="subscriber_active_status" attrs="{'invisible': [('is_subscriber', '=', False)]}" widget="radio" options="{'horizontal': true}"/>
@@ -40,13 +41,22 @@
                         </group>
                     </group>
                     <group>
+                        <group string="بيانات العداد والافتتاح">
+                            <field name="meter_number"/>
+                            <field name="meter_reading"/>
+                            <field name="opening_reading"/>
+                            <field name="consumption_difference"/>
+                            <field name="register_number"/>
+                            <field name="is_credit_raised"/>
+                            <field name="pec_credit" attrs="{'invisible': [('is_credit_raised', '=', False)]}"/>
+                            <field name="credit_raise_date" attrs="{'invisible': [('is_credit_raised', '=', False)]}"/>
+                        </group>
                         <group string="السجل المالي والمحاسبي">
                             <field name="last_payment"/>
                             <field name="last_payment_date"/>
                             <field name="last_invoice"/>
                             <field name="last_invoice_date"/>
 
-                            <field name="previous_hotline_balance"/>
                             <field name="payment_token_ids" invisible="1"/>
                             <field name="payment_token_id" options="{'no_create': True}"/>
                         </group>
@@ -57,6 +67,66 @@
         </field>
     </record>
 
+    <!-- Inherit res.partner tree view to add utility fields -->
+    <record id="view_partner_tree_inherit_utility_core" model="ir.ui.view">
+        <field name="name">res.partner.tree.inherit.utility.core</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='email']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='activity_ids']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='city']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='country_id']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='user_id']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
+            <xpath expr="//field[@name='email']" position="after">
+                <field name="region_id" optional="show"/>
+                <field name="area_id" optional="show"/>
+                <field name="meter_number" optional="show"/>
+                <field name="subscriber_status" optional="show"/>
+                <field name="subscriber_active_status" optional="show"/>
+                <field name="utility_postpaid_balance" optional="show" sum="Total Balance"/>
+                <field name="pec_credit" optional="show" sum="Total PEC Credit"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Inherit res.partner search view to add utility filters -->
+    <record id="view_res_partner_filter_inherit_utility" model="ir.ui.view">
+        <field name="name">res.partner.search.inherit.utility</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_res_partner_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='name']" position="after">
+                <field name="subscriber_status"/>
+                <field name="subscriber_active_status"/>
+                <field name="meter_number"/>
+                <field name="subscriber_no"/>
+            </xpath>
+            <xpath expr="//filter[@name='type_person']" position="after">
+                <separator/>
+                <filter string="مشترك كهرباء" name="filter_is_subscriber" domain="[('is_subscriber', '=', True)]"/>
+                <filter string="مشترك جديد" name="filter_subscriber_new" domain="[('subscriber_status', '=', 'new')]"/>
+                <filter string="مشترك قديم" name="filter_subscriber_old" domain="[('subscriber_status', '=', 'old')]"/>
+                <separator/>
+                <filter string="فعال" name="filter_subscriber_active" domain="[('subscriber_active_status', '=', 'active')]"/>
+                <filter string="غير مفعل" name="filter_subscriber_inactive" domain="[('subscriber_active_status', '=', 'inactive')]"/>
+            </xpath>
+            <xpath expr="//group[@name='group_by']" position="inside">
+                <filter string="نوع الاشتراك" name="group_by_subscriber_status" context="{'group_by': 'subscriber_status'}"/>
+                <filter string="حالة التفعيل" name="group_by_active_status" context="{'group_by': 'subscriber_active_status'}"/>
+            </xpath>
+        </field>
+    </record>
 
     <record id="action_server_open_utility_customer_registration" model="ir.actions.server">
         <field name="name">إنشاء/فتح حساب كهرباء</field>

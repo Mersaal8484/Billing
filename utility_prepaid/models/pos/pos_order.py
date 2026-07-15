@@ -152,7 +152,7 @@ class PosOrder(models.Model):
     def _send_token_notification(self):
         self.ensure_one()
         if self.token_id and self.token_id.status == 'success':
-            if self.company_id.enable_token_sms and self.partner_id.phone:
+            if self.company_id.enable_token_sms and self.partner_id.mobile:
                 try:
                     self.token_id._send_token_sms()
                     self.sms_sent = True

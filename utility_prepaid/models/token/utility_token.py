@@ -213,7 +213,7 @@ class UtilityToken(models.Model):
 
     def _send_token_sms(self):
         self.ensure_one()
-        if not self.customer_id or not self.customer_id.phone:
+        if not self.customer_id or not self.customer_id.mobile:
             raise UserError(_('لا يوجد رقم هاتف للعميل.'))
         if not self.token_number:
             raise UserError(_('لا يوجد رمز لإرساله.'))
@@ -226,10 +226,10 @@ class UtilityToken(models.Model):
                     self.kwh,
                     self.amount,
                 ),
-                'number': self.customer_id.phone,
+                'number': self.customer_id.mobile,
             }
             self.env['sms.sms'].sudo().create(sms_values)
-            _logger.info('SMS token sent to %s for token %s', self.customer_id.phone, self.token_number)
+            _logger.info('SMS token sent to %s for token %s', self.customer_id.mobile, self.token_number)
         except Exception:
             _logger.exception('Failed to send SMS for token %s', self.id)
             raise UserError(_('فشل إرسال SMS.'))
@@ -246,7 +246,7 @@ class UtilityToken(models.Model):
             ('customer_id', '!=', False),
         ], limit=200)
         for token in pending_tokens:
-            if token.company_id.enable_token_sms and token.customer_id.phone:
+            if token.company_id.enable_token_sms and token.customer_id.mobile:
                 try:
                     token._send_token_sms()
                     token.delivery_state = 'sms_sent'

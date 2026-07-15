@@ -32,13 +32,13 @@ class TokenResendWizard(models.TransientModel):
             token = self.env['utility.token'].browse(active_id)
             res['token_id'] = token.id
             if token.customer_id:
-                res['mobile_number'] = token.customer_id.phone or token.customer_id.mobile
+                res['mobile_number'] = token.customer_id.mobile
         return res
 
     @api.onchange('token_id')
     def _onchange_token_id(self):
         if self.token_id and self.token_id.customer_id:
-            self.mobile_number = self.token_id.customer_id.phone or self.token_id.customer_id.mobile
+            self.mobile_number = self.token_id.customer_id.mobile
 
     def action_resend(self):
         self.ensure_one()
@@ -52,14 +52,14 @@ class TokenResendWizard(models.TransientModel):
 
         if self.delivery_method == 'sms':
             if self.mobile_number:
-                original_phone = self.token_id.customer_id.phone
+                original_mobile = self.token_id.customer_id.mobile
                 try:
-                    if self.mobile_number != original_phone:
-                        self.token_id.customer_id.write({'phone': self.mobile_number})
+                    if self.mobile_number != original_mobile:
+                        self.token_id.customer_id.write({'mobile': self.mobile_number})
                     self.token_id.action_resend_sms()
                 finally:
-                    if self.mobile_number != original_phone:
-                        self.token_id.customer_id.write({'phone': original_phone})
+                    if self.mobile_number != original_mobile:
+                        self.token_id.customer_id.write({'mobile': original_mobile})
             else:
                 raise UserError(_('يجب تحديد رقم الهاتف.'))
         elif self.delivery_method == 'portal':

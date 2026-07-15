@@ -99,7 +99,6 @@ class ResPartner(models.Model):
     region_id = fields.Many2one('utility.region', string='المنطقة', domain="[('type', '=', 'region')]")
     area_id = fields.Many2one('utility.region', string='المنطقة الفرعية', domain="[('type', '=', 'area')]")
     zone_id = fields.Many2one('utility.region', string='المنطقة التفصيلية', domain="[('type', '=', 'zone')]")
-
     utility_postpaid_balance = fields.Monetary(string="مديونية آجل (فواتير)", compute='_compute_utility_balances')
 
     def _compute_utility_balances(self):
@@ -122,8 +121,22 @@ class ResPartner(models.Model):
     last_invoice = fields.Monetary(string="آخر فاتورة", compute='_compute_last_invoice', store=False)
     last_invoice_date = fields.Date(string="تاريخ آخر فاتورة", compute='_compute_last_invoice', store=False)
     char_code = fields.Char(string="الحرف")
-    new_no = fields.Char(string="الرقم الجديد")
+    subscriber_no = fields.Char(string="الرقم الجديد")
+    national_id = fields.Char(string="الهوية الوطنية")
+    meter_number = fields.Char(string="رقم العداد")
+    meter_reading = fields.Integer(string="قراءة العداد في النظام")
     opening_reading = fields.Integer(string="قراءة الافتتاح")
+    consumption_difference = fields.Integer(
+        string="فرق الاستهلاك", 
+        compute="_compute_consumption_difference", 
+        store=True
+    )
+    
+    @api.depends('meter_reading', 'opening_reading')
+    def _compute_consumption_difference(self):
+        for rec in self:
+            rec.consumption_difference = rec.meter_reading - rec.opening_reading
+
     register_number = fields.Integer(string="رقم السجل")
     is_credit_raised = fields.Boolean(string="رصيد مرحل")
     pec_credit = fields.Monetary(string="رصيد مرحل من المؤسسة")
@@ -132,7 +145,6 @@ class ResPartner(models.Model):
     sale_type = fields.Many2one('sale.order.type', string='نوع أمر البيع', company_dependent=True)
     subscriber_id = fields.Many2one('utility.subscriber', string="نوع المشترك", tracking=True)
     sector_id = fields.Many2one('res.partner.sector', string="القطاع", tracking=True)
-    previous_hotline_balance = fields.Char('الرصيد السابق (الخط الساخن)', help='رصيد قديم كمرجع من النظام السابق')
 
     def action_open_utility_customer_registration(self):
         """Open the linked utility account or the registration wizard for this partner."""

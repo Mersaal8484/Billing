@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
     <t t-name="utility_dashboard.UtilityDashboard" owl="1">
-        <div class="utility_dashboard_container">
+        <div class="utility_dashboard_container" dir="rtl">
             <div class="dashboard-header">
                 <div class="header-left">
                     <h2>لوحة القيادة الإدارية</h2>
                     <p>ملخص الأداء المالي والتشغيلي حسب المنطقة</p>
                 </div>
-                <div class="header-right">
+                <div class="header-right" style="display: flex; gap: 10px; align-items: center;">
                     <label for="region_select">اختر المنطقة:</label>
                     <select id="region_select" t-on-change="onRegionChange" class="region-selector">
                         <option value="">جميع المناطق</option>
@@ -17,6 +17,9 @@
                             </option>
                         </t>
                     </select>
+                    <button t-on-click="onFetchClick" class="btn btn-primary" style="padding: 6px 15px; font-weight: bold;">
+                        <i class="fa fa-refresh"></i> جلب
+                    </button>
                 </div>
             </div>
             

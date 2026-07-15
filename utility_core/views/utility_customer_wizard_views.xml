@@ -18,15 +18,11 @@
                                 <group string="بيانات الهوية والاتصال">
                                     <field name="national_id" placeholder="الرقم الوطني أو السجل التجاري"/>
                                     <field name="mobile" placeholder="777xxxxxx"/>
-                                    <field name="phone" placeholder="01xxxxxx"/>
                                     <field name="street" placeholder="اسم الشارع / الحي"/>
-                                    <field name="city"/>
-                                    <field name="country_id" options="{'no_create': True}"/>
                                 </group>
                                 <group string="تصنيف المشترك">
                                     <field name="category_id" options="{'no_create': True}"/>
                                     <field name="subscriber_id" options="{'no_create': True}"/>
-                                    <field name="sector_id" options="{'no_create': True}"/>
                                 </group>
                             </group>
                         </page>

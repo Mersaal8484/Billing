@@ -16,17 +16,28 @@ class UtilityMigrationCustomer(models.Model):
     meter_number = fields.Char('رقم العداد')
     last_reading = fields.Float('اخر قراءة مسجلة', digits=(12, 3))
     
+    char_code = fields.Char('رقم الحرف')
+    subscriber_no = fields.Char('الرقم الجديد')
+    meter_reading = fields.Integer('قراءة العداد في النظام')
+    opening_reading = fields.Integer('قراءة الافتتاح')
+    
     legacy_region = fields.Char('رمز المنطقة')
     legacy_area = fields.Char('رمز الفرع')
     legacy_category = fields.Char('رمز الفئة')
     legacy_subscriber_type = fields.Char('رمز نوع المشترك')
     legacy_contract = fields.Char('رمز قالب العقد')
     
-    region_id = fields.Many2one('utility.region', string='المنطقة (Odoo)')
-    area_id = fields.Many2one('utility.region', string='الفرع (Odoo)')
+    region_id = fields.Many2one('utility.region', string='المنطقة (Odoo)', domain="[('type', '=', 'region')]")
+    area_id = fields.Many2one('utility.region', string='الفرع (Odoo)', domain="[('type', '=', 'area')]")
     category_id = fields.Many2one('utility.subscriber.category', string='الفئة (Odoo)')
     subscriber_type_id = fields.Many2one('utility.subscriber', string='نوع المشترك (Odoo)')
-    contract_template_id = fields.Many2one('utility.contract.template', string='قالب العقد (Odoo)')
+    contract_template_id = fields.Many2one('utility.contract.template', string="قالب العقد (النظام)")
+    
+    phase = fields.Selection([
+        ('single', '1 Phase'),
+        ('three', '3 Phase')
+    ], string='الطور', default='single')
+    is_private_transformer = fields.Boolean(string='هل المحول خاص؟')
     
     is_active = fields.Boolean('هل فعال؟', default=True)
 
@@ -37,6 +48,14 @@ class UtilityMigrationCustomer(models.Model):
             'url': '/utility_core/static/src/Migration_Template.xlsx',
             'target': 'new',
         }
+    
+    @api.model
+    def action_open_import_wizard(self):
+        return self.env.ref('utility_core.action_utility_migration_import_wizard').read()[0]
+
+    @api.model
+    def action_open_mapping(self):
+        return self.env.ref('utility_core.action_utility_migration_mapping').read()[0]
     
     def action_map_codes(self):
         mapping_obj = self.env['utility.migration.mapping']
@@ -94,27 +113,51 @@ class UtilityMigrationCustomer(models.Model):
                 # 2. Create Partner
                 partner = self.env['res.partner'].search([('name', '=', rec.name), ('mobile', '=', rec.mobile)], limit=1)
                 if not partner:
+                    try:
+                        pec_credit_val = float(rec.previous_balance) if rec.previous_balance else 0.0
+                    except ValueError:
+                        pec_credit_val = 0.0
+
                     partner = self.env['res.partner'].create({
                         'name': rec.name,
                         'mobile': rec.mobile,
+                        'national_id': rec.national_id,
                         'region_id': rec.region_id.id,
                         'area_id': rec.area_id.id,
-                        'previous_hotline_balance': rec.previous_balance,
+                        'pec_credit': pec_credit_val,
+                        'is_credit_raised': pec_credit_val > 0,
+                        'subscriber_status': 'old',
+                        'char_code': rec.char_code,
+                        'subscriber_no': rec.subscriber_no,
+                        'meter_reading': rec.meter_reading,
+                        'opening_reading': rec.opening_reading,
+                        'meter_number': rec.meter_number,
                     })
                 else:
-                    partner.previous_hotline_balance = rec.previous_balance
+                    try:
+                        pec_credit_val = float(rec.previous_balance) if rec.previous_balance else 0.0
+                    except ValueError:
+                        pec_credit_val = 0.0
+                    partner.pec_credit = pec_credit_val
+                    partner.is_credit_raised = pec_credit_val > 0
+                    partner.subscriber_status = 'old'
+                    partner.char_code = rec.char_code
+                    partner.subscriber_no = rec.subscriber_no
+                    partner.meter_reading = rec.meter_reading
+                    partner.opening_reading = rec.opening_reading
+                    partner.meter_number = rec.meter_number
+                    if rec.national_id:
+                        partner.national_id = rec.national_id
                 rec.created_partner_id = partner.id
 
                 # 3. Create Customer and Meter ONLY if active
                 if rec.is_active:
                     customer = self.env['utility.customer'].create({
                         'customer_number': rec.customer_number,
-                        'national_id': rec.national_id,
                         'partner_id': partner.id,
                         'category_id': rec.category_id.id,
                         'subscriber_id': rec.subscriber_type_id.id,
                         'state': 'active',
-                        'contract_state': 'active',
                         'contract_template_id': rec.contract_template_id.id,
                     })
                     rec.created_customer_id = customer.id
@@ -126,11 +169,13 @@ class UtilityMigrationCustomer(models.Model):
                                 'meter_number': rec.meter_number,
                                 'connection_type': 'subscriber',
                                 'customer_id': customer.id,
+                                'phase': rec.phase,
                             })
                         else:
                             meter.write({
                                 'connection_type': 'subscriber',
                                 'customer_id': customer.id,
+                                'phase': rec.phase,
                             })
                         rec.created_meter_id = meter.id
                         customer.meter_id = meter.id

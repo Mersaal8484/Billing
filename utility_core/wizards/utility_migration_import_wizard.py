@@ -29,9 +29,10 @@ class UtilityMigrationImportWizard(models.TransientModel):
         sheet = wb.active
 
         # We assume the columns map exactly as our template
-        # 0: name, 1: mobile, 2: national_id, 3: customer_number, 4: is_active
-        # 5: legacy_region, 6: legacy_area, 7: legacy_category, 8: legacy_subscriber_type
-        # 9: legacy_contract, 10: meter_number, 11: last_reading, 12: previous_balance, 13: current_balance
+        # 0: name, 1: mobile, 2: national_id, 3: customer_number, 4: subscriber_no, 5: char_code, 6: is_active
+        # 7: legacy_region, 8: legacy_area, 9: legacy_category, 10: legacy_subscriber_type
+        # 11: legacy_contract, 12: meter_number, 13: meter_reading, 14: opening_reading
+        # 15: last_reading, 16: previous_balance, 17: current_balance
 
         migration_customer_obj = self.env['utility.migration.customer']
         
@@ -49,18 +50,20 @@ class UtilityMigrationImportWizard(models.TransientModel):
             mobile = str(row[1] or '').strip()
             national_id = str(row[2] or '').strip()
             customer_number = str(row[3] or '').strip()
+            subscriber_no = str(row[4] or '').strip()
+            char_code = str(row[5] or '').strip()
             
             # Boolean is_active
-            is_active_val = str(row[4] or '').strip().lower()
+            is_active_val = str(row[6] or '').strip().lower()
             is_active = is_active_val not in ('false', '0', 'no', 'لا')
             
-            legacy_region = str(row[5] or '').strip()
-            legacy_area = str(row[6] or '').strip()
-            legacy_category = str(row[7] or '').strip()
-            legacy_subscriber_type = str(row[8] or '').strip()
-            legacy_contract = str(row[9] or '').strip()
+            legacy_region = str(row[7] or '').strip()
+            legacy_area = str(row[8] or '').strip()
+            legacy_category = str(row[9] or '').strip()
+            legacy_subscriber_type = str(row[10] or '').strip()
+            legacy_contract = str(row[11] or '').strip()
             
-            meter_number = str(row[10] or '').strip()
+            meter_number = str(row[12] or '').strip()
             
             # Numeric fields
             def parse_float(val):
@@ -68,10 +71,25 @@ class UtilityMigrationImportWizard(models.TransientModel):
                     return float(val) if val else 0.0
                 except ValueError:
                     return 0.0
+
+            def parse_int(val):
+                try:
+                    return int(val) if val else 0
+                except ValueError:
+                    return 0
                     
-            last_reading = parse_float(row[11])
-            previous_balance = str(row[12] or '').strip() # Previous balance is Char
-            current_balance = parse_float(row[13])
+            meter_reading = parse_int(row[13])
+            opening_reading = parse_int(row[14])
+            last_reading = parse_float(row[15])
+            previous_balance = str(row[16] or '').strip() # Previous balance is Char
+            current_balance = parse_float(row[17])
+            
+            # New fields: phase and is_private_transformer
+            phase_val = str(row[18] if len(row) > 18 else '').strip().lower()
+            phase = 'three' if '3' in phase_val or 'three' in phase_val or 'ثلاث' in phase_val else 'single'
+            
+            is_private_val = str(row[19] if len(row) > 19 else '').strip().lower()
+            is_private_transformer = is_private_val in ('true', '1', 'yes', 'نعم', 'خاص')
             
             if not name:
                 raise UserError(_("الاسم مطلوب في الصف رقم %s") % row_idx)
@@ -83,6 +101,8 @@ class UtilityMigrationImportWizard(models.TransientModel):
                 'mobile': mobile,
                 'national_id': national_id,
                 'customer_number': customer_number,
+                'subscriber_no': subscriber_no,
+                'char_code': char_code,
                 'is_active': is_active,
                 'legacy_region': legacy_region,
                 'legacy_area': legacy_area,
@@ -90,9 +110,13 @@ class UtilityMigrationImportWizard(models.TransientModel):
                 'legacy_subscriber_type': legacy_subscriber_type,
                 'legacy_contract': legacy_contract,
                 'meter_number': meter_number,
+                'meter_reading': meter_reading,
+                'opening_reading': opening_reading,
                 'last_reading': last_reading,
                 'previous_balance': previous_balance,
                 'current_balance': current_balance,
+                'phase': phase,
+                'is_private_transformer': is_private_transformer,
                 'state': 'draft'
             }
             

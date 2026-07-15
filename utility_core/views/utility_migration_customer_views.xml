@@ -8,12 +8,16 @@
                 <header>
                     <button name="action_download_template" string="تحميل قالب الرفع (Excel)" type="object" class="btn-primary"/>
                     <button name="action_create_opening_balances" string="إنشاء الأرصدة الافتتاحية" type="object" class="btn-warning"/>
+                    <button name="action_open_import_wizard" string="رفع الإكسل (Wizard)" type="object" class="btn-secondary"/>
+                    <button name="action_open_mapping" string="جدول الترميز" type="object" class="btn-secondary"/>
                 </header>
                 <field name="customer_number"/>
+                <field name="subscriber_no"/>
                 <field name="name"/>
                 <field name="mobile"/>
                 <field name="is_active"/>
                 <field name="current_balance"/>
+                <field name="meter_reading"/>
                 <field name="state" widget="badge" decoration-info="state=='draft'" decoration-success="state=='imported'" decoration-danger="state=='error'"/>
             </tree>
         </field>
@@ -54,6 +58,14 @@
                             <field name="area_id" attrs="{'readonly': True}"/>
                             <field name="meter_number" attrs="{'invisible': [('is_active', '=', False)]}"/>
                             <field name="last_reading" attrs="{'invisible': [('is_active', '=', False)]}"/>
+                            <field name="meter_reading" attrs="{'invisible': [('is_active', '=', False)]}"/>
+                            <field name="opening_reading" attrs="{'invisible': [('is_active', '=', False)]}"/>
+                            <field name="phase"/>
+                            <field name="is_private_transformer"/>
+                        </group>
+                        <group string="بيانات أخرى">
+                            <field name="char_code"/>
+                            <field name="subscriber_no"/>
                         </group>
                     </group>
                     <group string="الأرصدة">
@@ -113,8 +125,6 @@
     </record>
 
     <!-- Create a top level menu for Migration in Utility -->
-    <menuitem id="menu_utility_migration_root" name="التهيئة والرفع" parent="utility_core.menu_utility_root" sequence="100"/>
-    <menuitem id="menu_utility_migration_customer" name="عملاء النظام القديم" parent="menu_utility_migration_root" action="action_utility_migration_customer" sequence="10"/>
-    <menuitem id="menu_utility_migration_template" name="تحميل قالب الإكسل" parent="menu_utility_migration_root" action="action_download_migration_template" sequence="30"/>
+    <menuitem id="menu_utility_migration_root" name="التهيئة والرفع" parent="utility_core.menu_utility_root" action="action_utility_migration_customer" sequence="100"/>
 
 </odoo>

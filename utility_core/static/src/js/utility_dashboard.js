@@ -35,13 +35,12 @@ class UtilityDashboard extends Component {
         onWillStart(async () => {
             const regions = await this.orm.searchRead("utility.region", [["type", "=", "region"]], ["id", "name"], { order: "name" });
             this.state.regions = regions;
-            await this.loadKPI(false);
+            // Removed await this.loadKPI(false); so it doesn't load data initially
             await loadJS("/web/static/lib/Chart/Chart.js");
         });
 
         onMounted(() => {
-            this.renderChart();
-            this.renderRegionChart();
+            // Don't render empty charts initially
         });
     }
 
@@ -61,10 +60,19 @@ class UtilityDashboard extends Component {
         }, 100);
     }
 
-    async onRegionChange(ev) {
-        const regionId = ev.target.value ? parseInt(ev.target.value) : false;
-        this.state.selectedRegionId = regionId;
-        await this.loadKPI(regionId);
+    onRegionChange(ev) {
+        this.state.selectedRegionId = ev.target.value ? parseInt(ev.target.value) : false;
+    }
+
+    async onFetchClick() {
+        if (!this.state.selectedRegionId) {
+            // Optional: You could show a warning if they try to fetch without region,
+            // but for now we just fetch for all if not selected, or enforce region.
+            // Since they said "عدم جلب البيانات الا عند اختيار المنطقة", let's alert if no region.
+            alert("الرجاء اختيار المنطقة أولاً");
+            return;
+        }
+        await this.loadKPI(this.state.selectedRegionId);
     }
 
     renderChart() {
@@ -90,9 +98,16 @@ class UtilityDashboard extends Component {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                legend: {
+                    rtl: true
+                },
+                tooltips: {
+                    rtl: true
+                },
                 scales: {
                     yAxes: [{
-                        ticks: { beginAtZero: true }
+                        ticks: { beginAtZero: true },
+                        position: 'right'
                     }]
                 }
             }
@@ -122,9 +137,16 @@ class UtilityDashboard extends Component {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                legend: {
+                    rtl: true
+                },
+                tooltips: {
+                    rtl: true
+                },
                 scales: {
                     yAxes: [{
                         ticks: { beginAtZero: true },
+                        position: 'right'
                     }],
                 },
             },

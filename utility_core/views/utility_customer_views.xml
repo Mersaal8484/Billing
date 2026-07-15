@@ -10,7 +10,6 @@
                   decoration-success="state == 'active'">
                 <field name="customer_number"/>
                 <field name="partner_id"/>
-                <field name="national_id"/>
                 <field name="category_id"/>
                 <field name="subscriber_id"/>
                 <field name="state" widget="badge" decoration-success="state == 'active'" decoration-warning="state in ('suspended', 'disconnected')" decoration-danger="state == 'closed'"/>
@@ -31,9 +30,6 @@
         <field name="arch" type="xml">
             <form>
                 <header>
-                    <button name="action_create_analytic_account" type="object"
-                            string="إنشاء حساب تحليلي" class="oe_highlight"
-                            attrs="{'invisible': [('analytic_account_id', '!=', False)]}"/>
                     <field name="state" widget="statusbar"
                            statusbar_visible="draft,active,suspended,disconnected,closed" options="{'clickable': '1'}"/>
                 </header>
@@ -78,7 +74,6 @@
                     <group>
                         <group string="معلومات الهوية والنوع">
                             <field name="partner_id"/>
-                            <field name="national_id"/>
                             <field name="category_id" options="{'no_create': True}"/>
                             <field name="subscriber_id" options="{'no_create': True}"/>
                             <field name="payment_type" widget="badge" decoration-info="payment_type == 'prepaid'" decoration-success="payment_type == 'postpaid'"/>
@@ -87,8 +82,6 @@
                         </group>
                         <group string="معلومات الاتصال والمنطقة">
                             <field name="mobile"/>
-                            <field name="phone"/>
-                            <field name="national_id"/>
                             <field name="region_id"/>
                             <field name="area_id"/>
                             <field name="zone_id"/>
@@ -104,15 +97,12 @@
                                 <group string="الأجهزة والتعرفة">
                                     <field name="meter_id" options="{'no_create': True}"/>
                                     <field name="last_reading_value" string="القراءة الحالية للعداد" readonly="1"/>
-                                    <field name="analytic_account_id" readonly="1"/>
                                 </group>
                                 <group string="الأرصدة والمبيعات">
                                     <field name="company_currency_id" invisible="1"/>
-                                    <field name="previous_hotline_balance"/>
+                                    <field name="opening_balance"/>
+                                    <field name="current_balance"/>
                                     <field name="accounting_balance" widget="monetary" options="{'currency_field': 'company_currency_id'}" attrs="{'invisible': [('payment_type', '!=', 'postpaid')]}"/>
-                                    <field name="total_purchases" widget="monetary" options="{'currency_field': 'company_currency_id'}" readonly="1" attrs="{'invisible': [('payment_type', '!=', 'prepaid')]}"/>
-                                    <field name="total_kwh_purchased" readonly="1" attrs="{'invisible': [('payment_type', '!=', 'prepaid')]}"/>
-                                    <field name="last_purchase_date" readonly="1" attrs="{'invisible': [('payment_type', '!=', 'prepaid')]}"/>
                                 </group>
                             </group>
                         </page>
@@ -127,8 +117,6 @@
                                     <field name="date_end"/>
                                 </group>
                                 <group string="دورة الفوترة والقرارات">
-                                    <field name="recurring_next_date"/>
-                                    <field name="contract_state" readonly="1"/>
                                     <field name="last_reading_date" readonly="1"/>
                                     <field name="last_invoice_date" readonly="1"/>
                                     <field name="last_reading_value" readonly="1"/>
@@ -193,7 +181,6 @@
             <search>
                 <field name="customer_number"/>
                 <field name="partner_id"/>
-                <field name="national_id"/>
                 <field name="mobile"/>
                 <field name="region_id"/>
                 <field name="area_id"/>

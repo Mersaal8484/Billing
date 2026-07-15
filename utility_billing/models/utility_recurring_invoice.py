@@ -64,7 +64,7 @@ class UtilityContractTemplate(models.Model):
         batch_size = int(self.env['ir.config_parameter'].sudo().get_param(
             'utility.recurring_batch_size', 200))
         accounts = self.env['utility.customer'].search([
-            ('contract_state', '=', 'active'),
+            ('state', '=', 'active'),
             ('contract_template_id', '!=', False),
         ], limit=batch_size)
         success = 0

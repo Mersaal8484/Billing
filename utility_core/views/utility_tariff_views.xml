@@ -78,7 +78,7 @@
                         <page name="accounts" string="Accounts">
                             <field name="account_ids">
                                 <tree>
-                                    <field name="account_number"/>
+                                    <field name="customer_number"/>
                                     <field name="customer_id"/>
                                     <field name="state"/>
                                     <field name="balance" widget="monetary"/>
