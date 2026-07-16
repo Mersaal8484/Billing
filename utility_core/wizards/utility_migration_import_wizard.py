@@ -31,16 +31,20 @@ class UtilityMigrationImportWizard(models.TransientModel):
         # We assume the columns map exactly as our template
         # 0: name, 1: mobile, 2: national_id, 3: customer_number, 4: subscriber_no, 5: char_code, 6: is_active
         # 7: legacy_region, 8: legacy_area, 9: legacy_category, 10: legacy_subscriber_type
-        # 11: legacy_contract, 12: meter_number, 13: meter_reading, 14: opening_reading
-        # 15: last_reading, 16: previous_balance, 17: current_balance
+        # 11: legacy_contract, 12: meter_number, 13: meter_reading (قراءة النظام القديم)
+        # 14: opening_reading (القراءة عند تفعيل العقد), 15: previous_balance, 16: current_balance
+        # 17: phase, 18: is_private_transformer
 
         migration_customer_obj = self.env['utility.migration.customer']
         
         # Keep track of created records to run mapping on them later
         created_records = self.env['utility.migration.customer']
         
-        row_idx = 1
-        for row in sheet.iter_rows(min_row=2, values_only=True):
+        # Template has 4 header rows:
+        # Row 1: Title, Row 2: Subtitle, Row 3: Section labels, Row 4: Column headers
+        # Data starts from Row 5
+        row_idx = 4
+        for row in sheet.iter_rows(min_row=5, values_only=True):
             row_idx += 1
             # Check if row is empty
             if not row[0] and not row[3]:
@@ -78,17 +82,16 @@ class UtilityMigrationImportWizard(models.TransientModel):
                 except ValueError:
                     return 0
                     
-            meter_reading = parse_int(row[13])
-            opening_reading = parse_int(row[14])
-            last_reading = parse_float(row[15])
-            previous_balance = str(row[16] or '').strip() # Previous balance is Char
-            current_balance = parse_float(row[17])
+            meter_reading = parse_int(row[13])           # قراءة العداد في النظام القديم
+            opening_reading = parse_int(row[14])          # القراءة عند تفعيل العقد
+            previous_balance = str(row[15] or '').strip() # Previous balance is Char
+            current_balance = parse_float(row[16])
             
-            # New fields: phase and is_private_transformer
-            phase_val = str(row[18] if len(row) > 18 else '').strip().lower()
+            # phase and is_private_transformer (cols 17, 18)
+            phase_val = str(row[17] if len(row) > 17 else '').strip().lower()
             phase = 'three' if '3' in phase_val or 'three' in phase_val or 'ثلاث' in phase_val else 'single'
             
-            is_private_val = str(row[19] if len(row) > 19 else '').strip().lower()
+            is_private_val = str(row[18] if len(row) > 18 else '').strip().lower()
             is_private_transformer = is_private_val in ('true', '1', 'yes', 'نعم', 'خاص')
             
             if not name:
@@ -112,7 +115,7 @@ class UtilityMigrationImportWizard(models.TransientModel):
                 'meter_number': meter_number,
                 'meter_reading': meter_reading,
                 'opening_reading': opening_reading,
-                'last_reading': last_reading,
+                'last_reading': opening_reading,  # same field: القراءة عند التفعيل
                 'previous_balance': previous_balance,
                 'current_balance': current_balance,
                 'phase': phase,

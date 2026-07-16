@@ -147,14 +147,27 @@ class ResPartner(models.Model):
     sector_id = fields.Many2one('res.partner.sector', string="القطاع", tracking=True)
 
     def action_open_utility_customer_registration(self):
-        """Open the linked utility account or the registration wizard for this partner."""
+        """
+        فتح حساب المشترك المرتبط أو تسجيل حساب جديد.
+
+        التسلسل:
+        1. إذا وُجد utility.customer مرتبط → فتح الفورم مباشرة.
+        2. إذا وُجد سجل تهيئة (utility.migration.customer) مرتبط
+           بحالة 'imported' ولم يُفعَّل بعد → استدعاء action_activate_inactive()
+           الذي ينشئ الحساب + العداد + الرصيد الافتتاحي ويُحدّث سجل التهيئة.
+        3. وإلا → فتح wizard التسجيل العادي للعملاء الجدد.
+        """
         if len(self) != 1:
-            raise UserError(_('Please select one partner only to create or open the utility account.'))
+            raise UserError(_('يرجى اختيار شريك واحد فقط.'))
         self.ensure_one()
-        customer = self.env['utility.customer'].search([('partner_id', '=', self.id)], limit=1)
+
+        # 1. حساب مشترك موجود بالفعل
+        customer = self.env['utility.customer'].search(
+            [('partner_id', '=', self.id)], limit=1
+        )
         if customer:
             return {
-                'name': _('Utility Customer'),
+                'name': _('حساب المشترك'),
                 'type': 'ir.actions.act_window',
                 'res_model': 'utility.customer',
                 'views': [(False, 'form')],
@@ -162,8 +175,42 @@ class ResPartner(models.Model):
                 'res_id': customer.id,
                 'target': 'current',
             }
+
+        # 2. سجل تهيئة مرتبط وبانتظار التفعيل — تفعيل تلقائي بدون wizard
+        migration_rec = self.env['utility.migration.customer'].search([
+            ('created_partner_id', '=', self.id),
+            ('state', '=', 'imported'),
+            ('created_customer_id', '=', False),
+        ], limit=1)
+        if migration_rec:
+            try:
+                # تفعيل تلقائي كامل: utility.customer + عداد + قراءة + رصيد افتتاحي
+                migration_rec.action_activate_inactive()
+                if migration_rec.created_customer_id:
+                    return {
+                        'name': _('حساب المشترك'),
+                        'type': 'ir.actions.act_window',
+                        'res_model': 'utility.customer',
+                        'views': [(False, 'form')],
+                        'view_mode': 'form',
+                        'res_id': migration_rec.created_customer_id.id,
+                        'target': 'current',
+                    }
+            except UserError:
+                # بيانات ناقصة — يُعاد المستخدم لسجل التهيئة لإكمال البيانات
+                return {
+                    'name': _('إكمال بيانات التفعيل'),
+                    'type': 'ir.actions.act_window',
+                    'res_model': 'utility.migration.customer',
+                    'views': [(False, 'form')],
+                    'view_mode': 'form',
+                    'res_id': migration_rec.id,
+                    'target': 'current',
+                }
+
+        # 3. عميل جديد (لا سجل تهيئة) — wizard التسجيل العادي
         return {
-            'name': _('Register Utility Customer'),
+            'name': _('تسجيل حساب مشترك'),
             'type': 'ir.actions.act_window',
             'res_model': 'utility.customer.wizard',
             'views': [(False, 'form')],

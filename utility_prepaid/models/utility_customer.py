@@ -15,7 +15,7 @@ class UtilityCustomer(models.Model):
     def _compute_prepaid_smart_buttons(self):
         for rec in self:
             rec.pos_order_count = self.env['pos.order'].search_count([('utility_account_id', '=', rec.id)])
-            rec.vending_request_count = self.env['vending.request'].search_count([('account_id', '=', rec.id)])
+            rec.vending_request_count = self.env['utility.vending.request'].search_count([('account_id', '=', rec.id)])
             rec.token_count = self.env['utility.token'].search_count([('account_id', '=', rec.id)])
 
     def action_view_pos_orders(self):
@@ -33,10 +33,11 @@ class UtilityCustomer(models.Model):
         return {
             'type': 'ir.actions.act_window',
             'name': 'طلبات الشحن',
-            'res_model': 'vending.request',
+            'res_model': 'utility.vending.request',
             'domain': [('account_id', '=', self.id)],
             'views': [(False, 'tree'), (False, 'form')],
         }
+
 
     def action_view_tokens(self):
         self.ensure_one()

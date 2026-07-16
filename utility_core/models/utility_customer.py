@@ -63,7 +63,7 @@ class UtilityCustomer(models.Model):
 
 
     opening_balance = fields.Monetary(string='الرصيد الافتتاحي', currency_field='company_currency_id', default=0.0)
-    current_balance = fields.Monetary(string='المديونية الحالية', currency_field='company_currency_id', compute='_compute_current_balance')
+    current_balance = fields.Monetary(string='المديونية الحالية', currency_field='company_currency_id', related='accounting_balance', store=False)
     
     last_reading_date = fields.Datetime('آخر تاريخ قراءة')
     last_reading_value = fields.Float('آخر قراءة')
