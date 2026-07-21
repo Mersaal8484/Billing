@@ -19,8 +19,7 @@ access_utility_transaction_admin,utility.transaction.admin,model_utility_transac
 access_utility_transaction_user,utility.transaction.user,model_utility_transaction,base.group_user,1,0,0,0
 access_pos_order_cashier,pos.order.cashier,point_of_sale.model_pos_order,base.group_user,1,1,1,0
 access_pos_order_admin,pos.order.admin,point_of_sale.model_pos_order,base.group_system,1,1,1,1
-access_cashier_shift_admin,utility.cashier.shift.admin,model_utility_cashier_shift,base.group_system,1,1,1,1
-access_cashier_shift_user,utility.cashier.shift.user,model_utility_cashier_shift,base.group_user,1,1,1,0
+
 access_debt_policy_admin,utility.prepaid.debt.policy.admin,model_utility_prepaid_debt_policy,base.group_system,1,1,1,1
 access_debt_policy_user,utility.prepaid.debt.policy.user,model_utility_prepaid_debt_policy,base.group_user,1,0,0,0
 access_debt_policy_line_admin,utility.prepaid.debt.policy.line.admin,model_utility_prepaid_debt_policy_line,base.group_system,1,1,1,1

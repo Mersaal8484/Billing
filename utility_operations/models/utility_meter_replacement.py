@@ -88,73 +88,18 @@ class UtilityMeterReplacement(models.Model):
         return picking
 
     def action_complete_replacement(self):
-
+        """Complete logistics around the unified core replacement flow."""
         self.ensure_one()
         if self.state == 'done':
-            raise ValidationError('هذه العملية مكتملة بالفعل!')
-        
-        acc = self.utility_account_id
+            raise ValidationError(_('هذه العملية مكتملة بالفعل!'))
+        self.write({
+            'old_closing_reading': self.old_meter_final_reading,
+            'new_opening_reading': self.new_meter_initial_reading,
+            'replace_date': fields.Datetime.to_datetime(self.replacement_date),
+        })
         old_meter = self.old_meter_id
         new_meter = self.new_meter_id
-        
-        if not acc:
-            raise ValidationError('يجب تحديد حساب الكهرباء!')
-        if not old_meter:
-            raise ValidationError('يجب تحديد العداد القديم!')
-        if not new_meter:
-            raise ValidationError('يجب تحديد العداد الجديد!')
-        
-        # 1. تحديث العداد في الحساب
-        acc.write({
-            'meter_id': new_meter.id,
-            'last_reading_value': self.new_meter_initial_reading,
-            'last_invoice_reading': self.new_meter_initial_reading,
-        })
-        
-        # 2. إيقاف العداد القديم وتعديل حالة الجديد
-        ctx = dict(self.env.context, skip_implicit_log=True, allow_log_update=True)
-        old_meter.with_context(ctx).write({
-            'active': False,
-            'customer_id': False,
-        })
+        result = self._action_confirm_replacement_unified()
         self._create_stock_picking(old_meter, 'scrap')
-        self.env['utility.meter.log'].with_context(ctx)._create_log(
-            old_meter, 'removal',
-            _('رفع العداد بسبب الاستبدال: %s') % (self.order_number or self.name),
-            ref_record=self)
-            
-        new_meter.with_context(ctx).write({
-            'customer_id': acc.id,
-            'last_read_date': fields.Datetime.now(),
-        })
         self._create_stock_picking(new_meter, 'customer')
-        self.env['utility.meter.log'].with_context(ctx)._create_log(
-            new_meter, 'replacement',
-            _('تركيب عداد جديد بسبب الاستبدال: %s') % (self.order_number or self.name),
-            ref_record=self)
-        
-        # 3. تسجيل قراءة نهائية للقديم وقراءة ابتدائية للجديد
-        Reading = self.env['utility.reading']
-        
-        Reading.create({
-            'meter_id': old_meter.id,
-            'reading_date': fields.Datetime.now(),
-            'reading_value': self.old_meter_final_reading,
-            'reading_type': 'manual',
-            'reading_category': 'customer',
-            'state': 'approved',
-            'remarks': f'قراءة إغلاق نهائية بسبب استبدال العداد بالعملية {self.order_number or self.name}',
-        })
-        
-        Reading.create({
-            'meter_id': new_meter.id,
-            'reading_date': fields.Datetime.now(),
-            'reading_value': self.new_meter_initial_reading,
-            'reading_type': 'manual',
-            'reading_category': 'customer',
-            'state': 'approved',
-            'remarks': f'قراءة افتتاحية ابتدائية بسبب استبدال العداد بالعملية {self.order_number or self.name}',
-        })
-        
-        self.state = 'done'
-        return True
+        return result

@@ -155,7 +155,9 @@ class UtilityMigrationCustomer(models.Model):
             'area_id': self.area_id.id,
             'pec_credit': pec_credit,
             'is_credit_raised': pec_credit > 0,
+            'open_balance': self.current_balance,
             'subscriber_status': 'old',
+            'is_subscriber': True,
             # تعكس حالة التفعيل الفعلية للعميل في النظام القديم
             'subscriber_active_status': 'active' if self.is_active else 'inactive',
             'char_code': self.char_code,
@@ -178,14 +180,18 @@ class UtilityMigrationCustomer(models.Model):
             partner = self.env['res.partner'].create(vals)
         return partner
 
-    def _create_opening_balance_entry(self, partner):
+    def _create_opening_balance_entry(self, partner, customer=None):
         """
-        إنشاء قيد محاسبي للرصيد الافتتاحي (مدين على حساب العميل،
-        دائن على حساب التسوية/حقوق الملكية).
-        لا يُنشئ القيد إذا كان موجوداً أو كان الرصيد صفراً.
+        إنشاء قيد محاسبي للرصيد الافتتاحي (مدين على حساب العميل للمديونية،
+        أو دائن للرصيد الدائن المرحل).
+        لا يُنشئ القيد إذا كان موجوداً أو كانت المبالغ صفراً.
         """
         self.ensure_one()
-        if self.opening_move_id or self.current_balance <= 0:
+        if self.opening_move_id:
+            return
+
+        pec_credit = self._get_pec_credit()
+        if self.current_balance <= 0 and pec_credit <= 0:
             return
 
         journal = self.env['account.journal'].search([('type', '=', 'general')], limit=1)
@@ -202,29 +208,38 @@ class UtilityMigrationCustomer(models.Model):
         if not journal:
             raise UserError(_('لا توجد يومية عمليات (General Journal) معرّفة في النظام.'))
 
-        move = self.env['account.move'].create({
-            'move_type': 'entry',
-            'journal_id': journal.id,
-            'date': fields.Date.today(),
-            'ref': 'رصيد افتتاحي - %s' % self.customer_number,
-            'line_ids': [
-                (0, 0, {
-                    'name': 'رصيد افتتاحي - %s' % self.name,
-                    'partner_id': partner.id,
-                    'account_id': account_receivable.id,
-                    'debit': self.current_balance,
-                    'credit': 0.0,
-                }),
-                (0, 0, {
-                    'name': 'رصيد افتتاحي - %s' % self.name,
-                    'account_id': account_suspense.id,
-                    'debit': 0.0,
-                    'credit': self.current_balance,
-                }),
-            ],
-        })
-        move.action_post()
-        self.opening_move_id = move.id
+        line_ids = []
+        
+        # 1. المديونية الحالية (مدين للعميل)
+        if self.current_balance > 0:
+            line_ids.append((0, 0, {
+                'name': 'رصيد افتتاح مديونية آجل - %s' % self.name,
+                'partner_id': partner.id,
+                'account_id': account_receivable.id,
+                'debit': self.current_balance,
+                'credit': 0.0,
+            }))
+            line_ids.append((0, 0, {
+                'name': 'رصيد افتتاح مديونية آجل - %s' % self.name,
+                'account_id': account_suspense.id,
+                'debit': 0.0,
+                'credit': self.current_balance,
+            }))
+            
+
+
+        if line_ids:
+            move = self.env['account.move'].create({
+                'move_type': 'entry',
+                'journal_id': journal.id,
+                'date': fields.Date.today(),
+                'ref': 'رصيد افتتاحي - %s' % self.customer_number,
+                'line_ids': line_ids,
+            })
+            move.action_post()
+            self.opening_move_id = move.id
+            if customer:
+                customer.opening_move_id = move.id
 
     def _create_customer_account(self, partner):
         """
@@ -255,7 +270,7 @@ class UtilityMigrationCustomer(models.Model):
             ) % self.name)
 
         # 1. Create utility.customer
-        customer = self.env['utility.customer'].create({
+        customer = self.env['utility.customer'].with_context(skip_opening_entry=True).create({
             'customer_number': self.customer_number,
             'partner_id': partner.id,
             'category_id': self.category_id.id,
@@ -292,12 +307,14 @@ class UtilityMigrationCustomer(models.Model):
                 'reading_value': self.last_reading,
                 'reading_date': fields.Datetime.now(),
                 'reading_type': 'manual',
+                'reading_purpose': 'opening',
+                'is_initial_reading': True,
                 'reading_category': 'customer',
                 'state': 'billed',
             })
 
         # 4. Create opening balance journal entry
-        self._create_opening_balance_entry(partner)
+        self._create_opening_balance_entry(partner, customer)
 
     # -------------------------------------------------------------------------
     # Main Actions
@@ -366,10 +383,24 @@ class UtilityMigrationCustomer(models.Model):
                     'يرجى إعادة رفع البيانات أولاً.'
                 ) % rec.name)
 
-            # تحديث بيانات الشريك وتعيين حالة التفعيل قبل إنشاء الحساب
-            rec.created_partner_id.write(rec._build_partner_vals())
+            # مزامنة أي تعديلات يدوية قام بها المستخدم على بطاقة جهة الاتصال (مثل الرصيد، رقم العداد) إلى سجل التهيئة
+            partner = rec.created_partner_id
+            rec.write({
+                 'meter_number': partner.meter_number or rec.meter_number,
+                 'meter_reading': partner.meter_reading or rec.meter_reading,
+                 'opening_reading': partner.opening_reading or rec.opening_reading,
+                 'previous_balance': str(partner.pec_credit) if partner.pec_credit else rec.previous_balance,
+                 'current_balance': partner.open_balance if partner.open_balance else rec.current_balance,
+                 'customer_number': partner.subscriber_no or rec.customer_number,
+                 'name': partner.name or rec.name,
+                 'mobile': partner.mobile or rec.mobile,
+                 'national_id': partner.national_id or rec.national_id,
+            })
 
-            rec._create_customer_account(rec.created_partner_id)
+            # تحديث بيانات الشريك وتعيين حالة التفعيل قبل إنشاء الحساب
+            partner.write(rec._build_partner_vals())
+
+            rec._create_customer_account(partner)
             rec.is_active = True
             # ضمان تحديث حالة التفعيل بعد نجاح العملية
-            rec.created_partner_id.subscriber_active_status = 'active'
+            partner.subscriber_active_status = 'active'

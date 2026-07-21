@@ -38,14 +38,18 @@
             <tree decoration-warning="state == 'under_review'"
                   decoration-success="state == 'approved'"
                   decoration-danger="state == 'error'">
+                <field name="company_id" invisible="1"/>
                 <field name="meter_image" widget="image" class="oe_avatar" options="{'size': [64, 64]}" string="الصورة"/>
                 <field name="reading_id" string="رقم القراءة"/>
+                <field name="reading_purpose" widget="badge" string="غرض القراءة"/>
                 <field name="customer_id" string="اسم المشترك"/>
                 <field name="meter_id" string="العداد"/>
                 <field name="reading_date" string="التاريخ"/>
                 <field name="date_range_id" optional="show" string="الفترة"/>
                 <field name="reading_value" string="القراءة الحالية"/>
-                <field name="consumption" string="الاستهلاك"/>
+                <field name="consumption" string="استهلاك العداد"/>
+                <field name="carried_consumption" optional="show" string="استهلاك مرحل"/>
+                <field name="billing_consumption" optional="show" string="استهلاك الفاتورة"/>
                 <field name="consumption_alert" widget="badge" decoration-danger="consumption_alert in ('high','negative','zero')" decoration-success="consumption_alert == 'normal'" string="الاستهلاك"/>
                 <field name="reading_type" string="نوع القراءة"/>
                 <field name="image_state" optional="show" string="حالة الصورة"/>
@@ -62,6 +66,7 @@
         <field name="model">utility.reading</field>
         <field name="arch" type="xml">
             <form>
+                <field name="company_id" invisible="1"/>
                 <header>
                     <!-- أزرار حسب الحالة متوافقة مع Odoo 17/18 -->
                     <button name="action_submit_review" type="object"
@@ -78,7 +83,7 @@
                             groups="utility_core.group_utility_supervisor"/>
                     <button name="action_generate_bill" type="object"
                             string="إنشاء فاتورة" class="oe_highlight"
-                            attrs="{'invisible': ['|', ('state', '!=', 'approved'), '&amp;', ('reading_category', '!=', 'customer'), '|', ('reading_category', '!=', 'transformer'), ('is_private_transformer', '=', False)]}"
+                            attrs="{'invisible': ['|', ('state', '!=', 'approved'), ('reading_purpose', '!=', 'periodic')]}"
                             groups="utility_core.group_utility_billing_manager"/>
                     <button name="action_requeue" type="object"
                             string="إعادة للطابور" class="oe_highlight"
@@ -111,8 +116,10 @@
                         <group string="معلومات القراءة">
                             <field name="reading_category" attrs="{'readonly': [('state', '!=', 'draft')]}"/>
                             <field name="reading_id" readonly="1"/>
+                            <field name="reading_purpose" attrs="{'readonly': [('state', '!=', 'draft')]}"/>
                             <field name="meter_serial_scan" widget="barcode_camera" attrs="{'invisible': [('state', '!=', 'draft')]}"/>
                             <field name="meter_id" options="{'no_create': True}" attrs="{'readonly': [('state', '!=', 'draft')]}"/>
+                            <field name="account_id" options="{'no_create': True}" attrs="{'readonly': [('state', '!=', 'draft')]}"/>
                             <field name="reading_history_count" string="سجل القراءات" widget="statinfo"/>
                             <field name="transformer_id" attrs="{'invisible': [('reading_category', '!=', 'transformer')]}"/>
                             <field name="is_private_transformer" invisible="1"/>
@@ -120,14 +127,19 @@
                             <field name="account_id" attrs="{'invisible': ['|', ('reading_category', 'not in', ('customer', 'transformer')), '&amp;', ('reading_category', '=', 'transformer'), ('is_private_transformer', '=', False)]}"/>
                             <field name="customer_id" attrs="{'invisible': ['|', ('reading_category', 'not in', ('customer', 'transformer')), '&amp;', ('reading_category', '=', 'transformer'), ('is_private_transformer', '=', False)]}"/>
                             <field name="reading_date" attrs="{'readonly': [('state', 'not in', ('draft', 'error'))]}"/>
-                            <field name="date_range_id" options="{'no_create': True}" attrs="{'readonly': [('state', 'not in', ('draft', 'error'))]}"/>
+                            <field name="date_range_id" options="{'no_create': True}" attrs="{'readonly': [('state', 'not in', ('draft', 'error'))], 'invisible': [('reading_purpose', '!=', 'periodic')], 'required': [('reading_purpose', '=', 'periodic')]}"/>
+                            <field name="replacement_id" readonly="1" attrs="{'invisible': [('replacement_id', '=', False)]}"/>
                             <field name="reading_type" attrs="{'readonly': [('state', '!=', 'draft')]}"/>
                         </group>
                         <group string="قراءات العداد">
                             <field name="previous_reading" readonly="1"/>
                             <field name="previous_reading_date" readonly="1"/>
                             <field name="reading_value" attrs="{'readonly': [('state', 'not in', ('draft', 'error'))]}"/>
+                            <field name="raw_consumption" readonly="1"/>
+                            <field name="meter_multiplier" readonly="1"/>
                             <field name="consumption" class="text-success" readonly="1"/>
+                            <field name="carried_consumption" readonly="1" attrs="{'invisible': [('reading_purpose', '!=', 'periodic')]}"/>
+                            <field name="billing_consumption" class="text-success" readonly="1" attrs="{'invisible': [('reading_purpose', '!=', 'periodic')]}"/>
                             <!-- تحليل الاستهلاك -->
                             <field name="consumption_difference" attrs="{'invisible': [('consumption_alert', '=', 'normal')]}"/>
                             <field name="consumption_diff_percentage" attrs="{'invisible': [('consumption_alert', '=', 'normal')]}"/>
@@ -231,6 +243,7 @@
         <field name="model">utility.reading</field>
         <field name="arch" type="xml">
             <search>
+                <field name="company_id" invisible="1"/>
                 <field name="meter_id"/>
                 <field name="account_id"/>
                 <field name="reading_date"/>
@@ -244,6 +257,11 @@
                 <filter name="error" string="خطأ" domain="[('state','=','error')]"/>
                 <filter name="awaiting_bill" string="تنتظر الفوترة" domain="[('state','=','approved')]"/>
                 <filter name="estimated" string="تقديرية" domain="[('is_estimated','=',True)]"/>
+                <separator/>
+                <filter name="purpose_opening" string="افتتاحية" domain="[('reading_purpose','=','opening')]"/>
+                <filter name="purpose_periodic" string="دورية" domain="[('reading_purpose','=','periodic')]"/>
+                <filter name="purpose_closing" string="ختامية استبدال" domain="[('reading_purpose','=','replacement_closing')]"/>
+                <filter name="pending_closing" string="ختاميات تنتظر الفوترة" domain="[('reading_purpose','=','replacement_closing'),('billing_anchor_id','=',False),('state','=','approved')]"/>
                 <!-- مجموعات -->
                 <group expand="0" string="حالة الصورة">
                     <filter name="img_clear" string="واضحة" domain="[('image_state','=','clear')]"/>

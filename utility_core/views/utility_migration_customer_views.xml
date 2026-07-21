@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <record id="action_download_migration_template" model="ir.actions.act_url">
+        <field name="name">تحميل قالب الرفع</field>
+        <field name="url">/utility_core/static/src/Migration_Template.xlsx</field>
+        <field name="target">new</field>
+    </record>
+
     <record id="view_utility_migration_customer_tree" model="ir.ui.view">
         <field name="name">utility.migration.customer.tree</field>
         <field name="model">utility.migration.customer</field>
@@ -203,12 +209,6 @@
         <field name="name">تهيئة العملاء</field>
         <field name="res_model">utility.migration.customer</field>
         <field name="view_mode">tree,form</field>
-    </record>
-
-    <record id="action_download_migration_template" model="ir.actions.act_url">
-        <field name="name">تحميل قالب الرفع</field>
-        <field name="url">/utility_core/static/src/Migration_Template.xlsx</field>
-        <field name="target">new</field>
     </record>
 
     <!-- Create a top level menu for Migration in Utility -->

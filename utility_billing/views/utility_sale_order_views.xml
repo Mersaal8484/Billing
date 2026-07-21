@@ -35,12 +35,35 @@
                         class="btn-secondary"
                         attrs="{'invisible': ['|', ('customer_id', '=', False), ('balance_due', '&lt;=', 0)]}"/>
             </xpath>
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_reading_components" type="object"
+                        class="oe_stat_button" icon="fa-tachometer"
+                        attrs="{'invisible': [('reading_component_count', '=', 0)]}">
+                    <field name="reading_component_count" widget="statinfo" string="مقاطع القراءة"/>
+                </button>
+            </xpath>
             <field name="partner_id" position="after">
                 <field name="customer_id" options="{'no_create': True}" attrs="{'readonly': [('bill_state', '!=', 'draft')]}"/>
                 <field name="meter_id" options="{'no_create': True}" attrs="{'readonly': [('bill_state', '!=', 'draft')]}"/>
                 <field name="date_range_id" attrs="{'readonly': [('bill_state', '!=', 'draft')]}"/>
             </field>
             <xpath expr="//notebook" position="inside">
+                <page string="مقاطع استهلاك العدادات" attrs="{'invisible': [('reading_component_count', '=', 0)]}">
+                    <field name="reading_component_ids" nolabel="1" readonly="1">
+                        <tree create="0" edit="0" delete="0">
+                            <field name="company_id" invisible="1"/>
+                            <field name="reading_id"/>
+                            <field name="reading_purpose" widget="badge"/>
+                            <field name="meter_id"/>
+                            <field name="period_start"/>
+                            <field name="period_end"/>
+                            <field name="previous_reading"/>
+                            <field name="current_reading"/>
+                            <field name="meter_multiplier"/>
+                            <field name="consumption" sum="إجمالي الاستهلاك"/>
+                        </tree>
+                    </field>
+                </page>
                 <page string="تفاصيل فاتورة الكهرباء" attrs="{'invisible': [('customer_id', '=', False)]}">
                     <div class="row">
                         <!-- القسم الفني (قراءات) -->

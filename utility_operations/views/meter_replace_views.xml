@@ -6,6 +6,7 @@
         <field name="model">utility.meter.replacement</field>
         <field name="arch" type="xml">
             <tree decoration-success="state == 'done'">
+                <field name="company_id" invisible="1"/>
                 <field name="name"/>
                 <field name="utility_account_id"/>
                 <field name="partner_id"/>
@@ -24,6 +25,7 @@
         <field name="model">utility.meter.replacement</field>
         <field name="arch" type="xml">
             <form>
+                <field name="company_id" invisible="1"/>
                 <header>
                     <button name="action_complete_replacement" type="object"
                             string="إكمال الاستبدال" class="oe_highlight"

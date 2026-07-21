@@ -62,7 +62,13 @@ class UtilityCustomer(models.Model):
         help='الرصيد المستحق بناءً على القيود المحاسبية (الذمم المدينة)')
 
 
-    opening_balance = fields.Monetary(string='الرصيد الافتتاحي', currency_field='company_currency_id', default=0.0)
+    opening_balance = fields.Monetary(
+        string='الرصيد الافتتاحي',
+        currency_field='company_currency_id',
+        related='partner_id.open_balance',
+        readonly=True,
+    )
+    opening_move_id = fields.Many2one('account.move', string="قيد الرصيد الافتتاحي", readonly=True)
     current_balance = fields.Monetary(string='المديونية الحالية', currency_field='company_currency_id', related='accounting_balance', store=False)
     
     last_reading_date = fields.Datetime('آخر تاريخ قراءة')
@@ -208,7 +214,7 @@ class UtilityCustomer(models.Model):
     @api.depends('partner_id')
     def _compute_accounting_balance(self):
         MoveLine = self.env.get('account.move.line')
-        if not MoveLine:
+        if MoveLine is None:
             for rec in self:
                 rec.accounting_balance = 0.0
             return
@@ -236,6 +242,7 @@ class UtilityCustomer(models.Model):
             )
             rec.accounting_balance = lines[0]['amount_residual'] if lines else 0.0
 
+    @api.depends('partner_id', 'meter_id')
     def _compute_smart_buttons(self):
         So = self.env.get('sale.order')
         Reading = self.env.get('utility.reading')

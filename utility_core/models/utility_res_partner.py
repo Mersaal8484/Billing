@@ -100,11 +100,25 @@ class ResPartner(models.Model):
     area_id = fields.Many2one('utility.region', string='المنطقة الفرعية', domain="[('type', '=', 'area')]")
     zone_id = fields.Many2one('utility.region', string='المنطقة التفصيلية', domain="[('type', '=', 'zone')]")
     utility_postpaid_balance = fields.Monetary(string="مديونية آجل (فواتير)", compute='_compute_utility_balances')
+    has_utility_customer = fields.Boolean(string="لديه حساب مشترك", compute='_compute_has_utility_customer')
+
+    def _compute_has_utility_customer(self):
+        for partner in self:
+            customer = self.env['utility.customer'].search([('partner_id', '=', partner.id)], limit=1)
+            partner.has_utility_customer = bool(customer)
 
     def _compute_utility_balances(self):
         for partner in self:
             customers = self.env['utility.customer'].search([('partner_id', '=', partner.id)])
-            partner.utility_postpaid_balance = sum(customers.mapped('accounting_balance'))
+            if customers:
+                ledger_balance = sum(customers.mapped('accounting_balance'))
+                has_posted_opening = any(c.opening_move_id for c in customers)
+                if has_posted_opening:
+                    partner.utility_postpaid_balance = ledger_balance
+                else:
+                    partner.utility_postpaid_balance = ledger_balance + partner.open_balance
+            else:
+                partner.utility_postpaid_balance = partner.open_balance
 
     nickname = fields.Char(string="الاسم المختصر")
     is_subscriber = fields.Boolean(string="مشترك كهرباء", default=False, tracking=True)
@@ -135,9 +149,10 @@ class ResPartner(models.Model):
     @api.depends('meter_reading', 'opening_reading')
     def _compute_consumption_difference(self):
         for rec in self:
-            rec.consumption_difference = rec.meter_reading - rec.opening_reading
+            rec.consumption_difference =   rec.meter_reading - rec.opening_reading
 
     register_number = fields.Integer(string="رقم السجل")
+    open_balance = fields.Monetary(string="الرصيد الافتتاحي (مدين)")
     is_credit_raised = fields.Boolean(string="رصيد مرحل")
     pec_credit = fields.Monetary(string="رصيد مرحل من المؤسسة")
     credit_raise_date = fields.Date(string="تاريخ الترحيل")

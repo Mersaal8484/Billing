@@ -9,9 +9,12 @@ class UtilityMeterReplacement(models.Model):
     _order = 'replace_date desc'
 
     name = fields.Char(string="الاسم", compute="_compute_name", store=True)
+    company_id = fields.Many2one('res.company', string='الشركة', required=True, index=True, default=lambda self: self.env.company)
+    closing_reading_id = fields.Many2one('utility.reading', string='سجل القراءة الختامية', readonly=True, copy=False, ondelete='restrict')
+    opening_reading_id = fields.Many2one('utility.reading', string='سجل القراءة الافتتاحية', readonly=True, copy=False, ondelete='restrict')
 
     # Primary Required Field: utility.customer
-    utility_account_id = fields.Many2one('utility.customer', required=True, string="حساب الكهرباء / المشترك", tracking=True)
+    utility_account_id = fields.Many2one('utility.customer', required=True, string="حساب الكهرباء / المشترك", tracking=True, check_company=True)
     partner_id = fields.Many2one('res.partner', related='utility_account_id.partner_id', string="العميل", store=True)
     contract_id = fields.Many2one('account.analytic.account', string="العقد التحليلي", compute="_compute_contract_id", store=True, readonly=False, tracking=True)
 
@@ -24,7 +27,7 @@ class UtilityMeterReplacement(models.Model):
                 rec.name = "استبدال جديد"
 
     # Old meter
-    old_meter_id = fields.Many2one('utility.meter', string="العداد القديم", readonly=True)
+    old_meter_id = fields.Many2one('utility.meter', string="العداد القديم", readonly=True, check_company=True)
     old_meter_number = fields.Char(string="رقم العداد القديم", readonly=True)
     old_meter_type_id = fields.Many2one('utility.meter.type', string="نوع العداد القديم", readonly=True)
     old_phase = fields.Selection([
@@ -41,7 +44,7 @@ class UtilityMeterReplacement(models.Model):
 
     # New meter
     new_meter_serial_scan = fields.Char(string="مسح العداد الجديد (باركود)", store=False, help="استخدم الكاميرا للبحث عن العداد الجديد")
-    new_meter_id = fields.Many2one('utility.meter', string="العداد الجديد (موجود بالنظام)", domain="[('customer_id', '=', False)]", tracking=True)
+    new_meter_id = fields.Many2one('utility.meter', string="العداد الجديد (موجود بالنظام)", domain="[('customer_id', '=', False)]", tracking=True, check_company=True)
     new_meter_number = fields.Char(string="رقم العداد الجديد (لإنشاء جديد)", tracking=True)
     new_meter_type_id = fields.Many2one('utility.meter.type', string="نوع العداد الجديد")
     new_phase = fields.Selection([
@@ -80,7 +83,7 @@ class UtilityMeterReplacement(models.Model):
     @api.depends('old_closing_reading', 'old_last_invo_reading', 'utility_account_id')
     def _compute_old_uninvoiced(self):
         for rec in self:
-            val = rec.utility_account_id.partner_id.reading_multiplier if rec.utility_account_id and rec.utility_account_id.partner_id.reading_multiplier else 1.0
+            val = rec.utility_account_id.meter_id.multiplier if rec.utility_account_id and rec.utility_account_id.meter_id else 1.0
             rec.old_uninvoiced_consumption = max((rec.old_closing_reading - rec.old_last_invo_reading) * val, 0.0)
 
     @api.onchange('utility_account_id')
@@ -139,87 +142,60 @@ class UtilityMeterReplacement(models.Model):
             else:
                 return {'warning': {'title': _('غير موجود'), 'message': _('العداد %s غير مسجل في المخازن/النظام.') % self.new_meter_serial_scan}}
 
-    def action_confirm_replacement(self):
+    def _action_confirm_replacement_unified(self):
+        """Complete replacement and create auditable closing/opening readings."""
         for rec in self:
             if rec.state == 'done':
                 continue
-            
-            acc = rec.utility_account_id
-            if not acc:
-                raise UserError(_("يجب تحديد حساب الكهرباء / المشترك لإتمام الاستبدال!"))
-
-            # Determine or create the new meter
-            if rec.new_meter_id:
-                new_meter = rec.new_meter_id
-            elif rec.new_meter_number:
+            account, old_meter = rec.utility_account_id, rec.old_meter_id
+            if not account or not old_meter:
+                raise UserError(_('يجب تحديد حساب المشترك والعداد القديم.'))
+            new_meter = rec.new_meter_id
+            if not new_meter and rec.new_meter_number:
                 new_meter = self.env['utility.meter'].create({
                     'meter_number': rec.new_meter_number,
                     'meter_type_id': rec.new_meter_type_id.id if rec.new_meter_type_id else False,
                     'phase': rec.new_phase,
-                    'customer_id': acc.id,
-                    'installation_date': rec.replace_date.date() if rec.replace_date else fields.Date.today(),
+                    'installation_date': rec.replace_date.date(),
                 })
                 rec.new_meter_id = new_meter
-            else:
-                raise UserError(_("الرجاء اختيار عداد موجود أو إدخال رقم عداد جديد!"))
+            if not new_meter or old_meter == new_meter:
+                raise UserError(_('يجب اختيار عداد جديد مختلف عن العداد القديم.'))
+            if rec.old_closing_reading < rec.old_last_invo_reading:
+                raise UserError(_('القراءة الختامية لا يمكن أن تقل عن آخر قراءة مفوترة.'))
 
-            # Decommission old meter
-            if rec.old_meter_id:
-                rec.old_meter_id.write({
-                    'customer_id': False,
-                    'active': False,
-                })
-
-            # Assign new meter to customer account
-            new_meter.write({'customer_id': acc.id})
-            acc.write({'meter_id': new_meter.id})
-
-            # Update partner details
-            if acc and acc.partner_id:
-                acc.partner_id.write({
-                    'reading_multiplier': rec.new_meter_val,
-                    'opening_reading': rec.new_opening_reading,
-                })
-                
-            # Create Readings for Billing Continuity
-            Reading = self.env['utility.reading']
-            if rec.old_meter_id:
-                Reading.create({
-                    'meter_id': rec.old_meter_id.id,
-                    'reading_date': fields.Datetime.now(),
-                    'reading_value': rec.old_closing_reading,
-                    'reading_type': 'manual',
-                    'reading_category': 'customer',
-                    'state': 'approved',
-                    'remarks': f'قراءة إغلاق نهائية بسبب استبدال العداد بالعملية {rec.name}',
-                })
-            
-            Reading.create({
-                'meter_id': new_meter.id,
-                'reading_date': fields.Datetime.now(),
-                'reading_value': rec.new_opening_reading,
-                'reading_type': 'manual',
-                'reading_category': 'customer',
-                'state': 'billed',
-                'is_initial_reading': True,
-                'remarks': f'قراءة افتتاحية ابتدائية بسبب تركيب/استبدال العداد بالعملية {rec.name}',
+            Reading = self.env['utility.reading'].with_context(_bypass_reading_protection=True)
+            closing = Reading.create({
+                'company_id': rec.company_id.id, 'account_id': account.id,
+                'meter_id': old_meter.id, 'reading_date': rec.replace_date,
+                'reading_value': rec.old_closing_reading,
+                'meter_multiplier': old_meter.multiplier or 1.0,
+                'reading_type': 'manual', 'reading_purpose': 'replacement_closing',
+                'reading_category': 'customer', 'replacement_id': rec.id,
+                'state': 'approved',
+                'remarks': _('قراءة إغلاق بسبب استبدال العداد بالعملية %s') % rec.display_name,
             })
-                
-            # تسجيل الحدث في سجل تاريخ العداد
-            if rec.old_meter_id:
-                self.env['utility.meter.log']._create_log(
-                    rec.old_meter_id, 'removal',
-                    _('رفع العداد القديم %s واستبداله بـ %s / السبب: %s') % (
-                        rec.old_meter_id.meter_number, new_meter.meter_number,
-                        dict(rec._fields['reason'].selection).get(rec.reason, rec.reason)),
-                    ref_record=rec)
-            self.env['utility.meter.log']._create_log(
-                new_meter, 'replacement',
-                _('تركيب العداد %s بدلاً من %s / المشترك: %s / السبب: %s') % (
-                    new_meter.meter_number,
-                    rec.old_meter_id.meter_number if rec.old_meter_id else '—',
-                    acc.display_name,
-                    dict(rec._fields['reason'].selection).get(rec.reason, rec.reason)),
-                ref_record=rec)
+            if closing.consumption < 0:
+                raise UserError(_(
+                    'القراءة الختامية أقل من آخر قراءة صحيحة للعداد القديم.'))
+            old_meter.write({'customer_id': False, 'active': False})
+            new_meter.write({'customer_id': account.id, 'multiplier': rec.new_meter_val, 'active': True})
+            account.write({'meter_id': new_meter.id, 'last_reading_value': rec.new_opening_reading})
+            opening = Reading.create({
+                'company_id': rec.company_id.id, 'account_id': account.id,
+                'meter_id': new_meter.id, 'reading_date': rec.replace_date,
+                'reading_value': rec.new_opening_reading,
+                'meter_multiplier': rec.new_meter_val or 1.0,
+                'reading_type': 'manual', 'reading_purpose': 'opening',
+                'reading_category': 'customer', 'replacement_id': rec.id,
+                'state': 'approved', 'is_initial_reading': True,
+                'remarks': _('قراءة افتتاحية بسبب استبدال العداد بالعملية %s') % rec.display_name,
+            })
+            self.env['utility.meter.log']._create_log(old_meter, 'removal', _('رفع العداد %s واستبداله بـ %s') % (old_meter.meter_number, new_meter.meter_number), ref_record=rec)
+            self.env['utility.meter.log']._create_log(new_meter, 'replacement', _('تركيب العداد %s للمشترك %s') % (new_meter.meter_number, account.display_name), ref_record=rec)
+            rec.write({'closing_reading_id': closing.id, 'opening_reading_id': opening.id, 'state': 'done'})
+        return True
 
-            rec.state = 'done'
+    def action_confirm_replacement(self):
+        """Run the unified replacement workflow from the core form."""
+        return self._action_confirm_replacement_unified()

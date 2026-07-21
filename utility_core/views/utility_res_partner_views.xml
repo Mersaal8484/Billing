@@ -6,14 +6,22 @@
         <field name="model">res.partner</field>
         <field name="inherit_id" ref="base.view_partner_form"/>
         <field name="arch" type="xml">
+            <xpath expr="//div[contains(@class, 'oe_button_box')]" position="inside">
+                <button name="action_open_utility_customer_registration" type="object"
+                        class="oe_stat_button" icon="fa-bolt"
+                        attrs="{'invisible': [('has_utility_customer', '=', False)]}">
+                    <field name="has_utility_customer" widget="statinfo" string="حساب كهرباء"/>
+                </button>
+            </xpath>
             <xpath expr="//sheet" position="before">
                 <header>
-                    <button name="%(utility_core.action_utility_customer_wizard)d" type="action" 
+                    <button name="action_open_utility_customer_registration" type="object" 
                             string="تفعيل كمشترك كهرباء" class="oe_highlight" 
-                            attrs="{'invisible': [('is_subscriber', '=', True)]}"/>
+                            attrs="{'invisible': [('has_utility_customer', '=', True)]}"/>
                 </header>
             </xpath>
             <xpath expr="//field[@name='vat']" position="after">
+                <field name="has_utility_customer" invisible="1"/>
                 <field name="nickname" placeholder="الاسم المختصر..."/>
                 <field name="national_id" placeholder="الهوية الوطنية"/>
                 <field name="char_code" placeholder="الرمز التعريفي"/>
@@ -47,6 +55,7 @@
                             <field name="opening_reading"/>
                             <field name="consumption_difference"/>
                             <field name="register_number"/>
+                            <field name="open_balance"/>
                             <field name="is_credit_raised"/>
                             <field name="pec_credit" attrs="{'invisible': [('is_credit_raised', '=', False)]}"/>
                             <field name="credit_raise_date" attrs="{'invisible': [('is_credit_raised', '=', False)]}"/>
@@ -94,6 +103,7 @@
                 <field name="meter_number" optional="show"/>
                 <field name="subscriber_status" optional="show"/>
                 <field name="subscriber_active_status" optional="show"/>
+                <field name="open_balance" optional="show" sum="Total Open Balance"/>
                 <field name="utility_postpaid_balance" optional="show" sum="Total Balance"/>
                 <field name="pec_credit" optional="show" sum="Total PEC Credit"/>
             </xpath>
@@ -147,32 +157,7 @@ if len(records) != 1:
         },
     }
 else:
-    partner = records[0]
-    customer = env['utility.customer'].search([('partner_id', '=', partner.id)], limit=1)
-    if customer:
-        action = {
-            'name': 'Utility Customer',
-            'type': 'ir.actions.act_window',
-            'res_model': 'utility.customer',
-            'views': [(False, 'form')],
-            'view_mode': 'form',
-            'res_id': customer.id,
-            'target': 'current',
-        }
-    else:
-        action = {
-            'name': 'Register Utility Customer',
-            'type': 'ir.actions.act_window',
-            'res_model': 'utility.customer.wizard',
-            'views': [(False, 'form')],
-            'view_mode': 'form',
-            'target': 'new',
-            'context': {
-                'active_model': 'res.partner',
-                'active_id': partner.id,
-                'active_ids': [partner.id],
-            },
-        }
+    action = records.action_open_utility_customer_registration()
         ]]></field>
     </record>
 

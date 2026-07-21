@@ -15,11 +15,22 @@ class UtilityReading(models.Model):
     reading_id = fields.Char('رقم القراءة', default=lambda self: _('جديد'), readonly=True)
     meter_serial_scan = fields.Char('مسح العداد (باركود)', store=False, help="استخدم الكاميرا لمسح رقم العداد وجلبه تلقائياً")
     meter_id = fields.Many2one('utility.meter', 'العداد', required=True, index=True)
-    customer_id = fields.Many2one('utility.customer', 'العميل/العقد', related='meter_id.customer_id', store=True, index=True)
-    account_id = fields.Many2one('utility.customer', 'الحساب', related='customer_id', store=True)
+    account_id = fields.Many2one(
+        'utility.customer', 'الحساب', index=True,
+        check_company=True, ondelete='restrict',
+        help='حساب المشترك المثبت تاريخياً وقت إنشاء القراءة.')
+    customer_id = fields.Many2one(
+        'utility.customer', 'العميل/العقد', related='account_id',
+        store=True, index=True, readonly=True)
     reading_date = fields.Datetime('تاريخ القراءة', default=fields.Datetime.now, required=True)
     reading_value = fields.Float('قيمة القراءة', required=True)
+    raw_consumption = fields.Float('الاستهلاك الخام', compute='_compute_consumption', store=True)
     consumption = fields.Float('الاستهلاك', compute='_compute_consumption', store=True)
+    meter_multiplier = fields.Float('معامل الضرب وقت القراءة', default=1.0, required=True)
+    reading_purpose = fields.Selection([
+        ('opening', 'افتتاحية'), ('periodic', 'دورية'),
+        ('replacement_closing', 'ختامية استبدال'),
+    ], string='غرض القراءة', default='periodic', required=True, index=True, tracking=True)
     reading_category = fields.Selection([
         ('customer', 'مشترك'),
         ('transformer', 'محول / خلية'),
@@ -32,9 +43,15 @@ class UtilityReading(models.Model):
         ('manual', 'يدوي'),
         ('estimated', 'تقديري'),
         ('ami', 'قراءة تلقائية (AMI)'),
-    ], string='نوع القراءة', default='manual')
+    ], string='طريقة أخذ القراءة', default='manual')
     is_estimated = fields.Boolean('تقديرية', default=False)
     is_initial_reading = fields.Boolean('قراءة افتتاحية', default=False)
+    replacement_id = fields.Many2one('utility.meter.replacement', 'عملية الاستبدال', index=True, check_company=True, ondelete='restrict')
+    billing_anchor_id = fields.Many2one('utility.reading', 'القراءة الدورية المرتبطة', index=True, readonly=True, copy=False, ondelete='restrict')
+    billing_component_ids = fields.One2many('utility.reading', 'billing_anchor_id', 'قراءات الإغلاق المضمّنة')
+    included_sale_order_id = fields.Many2one('sale.order', 'الفاتورة المتضمنة', index=True, readonly=True, copy=False, ondelete='restrict')
+    carried_consumption = fields.Float('استهلاك مرحل', compute='_compute_billing_consumption', store=True)
+    billing_consumption = fields.Float('استهلاك الفاتورة', compute='_compute_billing_consumption', store=True)
     meter_image = fields.Binary('صورة العداد', attachment=True,
         help='الصورة الملتقطة للعداد وقت القراءة')
     meter_image_secondary = fields.Binary('صورة إضافية', attachment=True)
@@ -81,6 +98,24 @@ class UtilityReading(models.Model):
     billing_error = fields.Text('خطأ الفوترة', readonly=True)
     reading_source = fields.Char('مصدر القراءة')
 
+    def init(self):
+        """Backfill stable accounts and legacy opening-reading purposes on upgrade."""
+        self.env.flush_all()
+        self.env.cr.execute("""
+            UPDATE utility_reading reading
+               SET account_id = meter.customer_id
+              FROM utility_meter meter
+             WHERE reading.meter_id = meter.id
+               AND reading.account_id IS NULL
+               AND meter.customer_id IS NOT NULL
+        """)
+        self.env.cr.execute("""
+            UPDATE utility_reading
+               SET reading_purpose = 'opening'
+             WHERE is_initial_reading = TRUE
+               AND reading_purpose != 'opening'
+        """)
+
     @api.onchange('meter_serial_scan')
     def _onchange_meter_serial_scan(self):
         if self.meter_serial_scan:
@@ -111,6 +146,19 @@ class UtilityReading(models.Model):
                     }
                 }
 
+
+    @api.onchange('meter_id')
+    def _onchange_meter_account(self):
+        """Snapshot the account and multiplier selected with the meter."""
+        if self.meter_id:
+            self.account_id = self.meter_id.customer_id
+            self.meter_multiplier = self.meter_id.multiplier or 1.0
+
+    @api.onchange('reading_purpose')
+    def _onchange_reading_purpose(self):
+        if self.reading_purpose != 'periodic':
+            self.date_range_id = False
+        self.is_initial_reading = self.reading_purpose == 'opening'
 
     @api.onchange('reading_category')
     def _onchange_reading_category(self):
@@ -154,38 +202,24 @@ class UtilityReading(models.Model):
 
     STATE_EDITABLE = {
         'draft': {'meter_id', 'reading_date', 'reading_value', 'reading_category',
-                  'reading_type', 'is_estimated', 'is_initial_reading', 'meter_image', 'meter_image_secondary',
+                  'reading_type', 'reading_purpose', 'account_id', 'meter_multiplier',
+                  'is_estimated', 'is_initial_reading', 'replacement_id', 'meter_image', 'meter_image_secondary',
                   'image_state', 'rejection_reason', 'remarks', 'date_range_id',
                   'reading_source', 'active', 'is_validated', 'validator_id',
                   'reviewer_id', 'review_date'},
         'under_review': {'meter_image', 'meter_image_secondary', 'image_state',
                           'review_notes', 'rejection_reason', 'state',
                           'is_validated', 'validator_id', 'reviewer_id', 'review_date'},
-        'approved': {'rejection_reason', 'state', 'active', 'attachment_id', 'date_range_id', 'billing_error'},
+        'approved': {'rejection_reason', 'state', 'active', 'attachment_id', 'date_range_id',
+                     'billing_error', 'billing_anchor_id', 'included_sale_order_id'},
         'queued': {'state', 'attachment_id', 'billing_error'},
         'billed': {'active', 'remarks', 'billing_error'},
         'error': {'reading_date', 'reading_value', 'meter_image', 'meter_image_secondary',
                   'image_state', 'remarks', 'date_range_id', 'state', 'billing_error'},
     }
 
-    def write(self, vals):
-        if self.env.context.get('_bypass_reading_protection'):
-            return super().write(vals)
-        bypass_states = {'state', 'active', 'remarks', 'rejection_reason'}
-        for r in self:
-            editable = self.STATE_EDITABLE.get(r.state, set())
-            changed = set(vals) - bypass_states
-            if changed and not changed.issubset(editable):
-                forbidden = changed - editable
-                raise ValidationError(
-                    'لا يمكن تعديل الحقول التالية في حالة "%s": %s.\n'
-                    'الحقول المسموحة: %s'
-                    % (r.state, ', '.join(forbidden), ', '.join(editable))
-                )
-        return super().write(vals)
-
     # ── FIX-2: منع أكثر من قراءة قابلة للفوترة لنفس العداد والفترة ──────────
-    @api.constrains('meter_id', 'date_range_id', 'state', 'reading_category')
+    @api.constrains('account_id', 'date_range_id', 'state', 'reading_category', 'reading_purpose')
     def _check_unique_billable_reading_per_period(self):
         """قراءة واحدة قابلة للفوترة لكل عداد + فترة — يمنع تكرار الفوترة."""
         for r in self:
@@ -193,21 +227,40 @@ class UtilityReading(models.Model):
                 r.reading_category == 'customer'
                 or (r.reading_category == 'transformer' and r.is_private_transformer)
             )
-            if not is_billable or not r.date_range_id or r.state == 'error':
+            if (not is_billable or r.reading_purpose != 'periodic'
+                    or not r.date_range_id or r.state == 'error'):
                 continue
             duplicate = self.search([
-                ('meter_id', '=', r.meter_id.id),
+                ('account_id', '=', r.account_id.id),
                 ('date_range_id', '=', r.date_range_id.id),
+                ('reading_purpose', '=', 'periodic'),
                 ('reading_category', '=', r.reading_category),
                 ('state', 'not in', ['error']),
                 ('id', '!=', r.id),
             ], limit=1)
             if duplicate:
                 raise ValidationError(
-                    'يوجد قراءة أخرى للعداد [%s] في نفس فترة الفوترة [%s].\n'
-                    'لا يُسمح بأكثر من قراءة واحدة قابلة للفوترة لنفس العداد والفترة.'
-                    % (r.meter_id.meter_number, r.date_range_id.name)
+                    'يوجد قراءة دورية أخرى للحساب [%s] في فترة الفوترة [%s].\n'
+                    'لا يُسمح بأكثر من قراءة دورية واحدة للحساب والفترة، حتى عند استبدال العداد.'
+                    % (r.account_id.display_name, r.date_range_id.name)
                 )
+
+    @api.constrains('reading_purpose', 'date_range_id', 'replacement_id', 'billing_anchor_id', 'account_id', 'reading_date')
+    def _check_reading_purpose_rules(self):
+        """Enforce period, replacement, and billing-anchor invariants."""
+        for reading in self:
+            is_billable = (reading.reading_category == 'customer' or (reading.reading_category == 'transformer' and reading.is_private_transformer))
+            if is_billable and not reading.account_id:
+                raise ValidationError(_('القراءة القابلة للفوترة تتطلب حساب مشترك.'))
+            if is_billable and reading.reading_purpose == 'periodic' and not reading.date_range_id and reading.state in ('under_review', 'approved', 'queued', 'billed'):
+                raise ValidationError(_('القراءة الدورية تتطلب تحديد فترة القراءة.'))
+            if reading.reading_purpose != 'periodic' and reading.date_range_id:
+                raise ValidationError(_('الفترة مسموحة للقراءة الدورية فقط.'))
+            if reading.reading_purpose == 'replacement_closing' and not reading.replacement_id:
+                raise ValidationError(_('القراءة الختامية تتطلب عملية استبدال مرتبطة.'))
+            anchor = reading.billing_anchor_id
+            if anchor and (anchor.reading_purpose != 'periodic' or anchor.account_id != reading.account_id or anchor.reading_date < reading.reading_date):
+                raise ValidationError(_('يجب أن تكون قراءة الربط دورية ولاحقة ومن حساب المشترك نفسه.'))
 
     @api.depends('account_id.contract_template_id.recurring_rule_type', 'account_id.area_id.recurring_rule_type', 'account_id.region_id.recurring_rule_type')
     def _compute_available_open_reading_period_ids(self):
@@ -231,13 +284,26 @@ class UtilityReading(models.Model):
             self.date_range_id = False
         return {'domain': {'date_range_id': [('id', 'in', available_periods.ids)]}}
 
-    @api.depends('reading_value', 'previous_reading', 'is_initial_reading')
+    @api.depends('reading_value', 'previous_reading', 'is_initial_reading', 'reading_purpose', 'meter_multiplier')
     def _compute_consumption(self):
         for r in self:
-            if r.is_initial_reading:
+            if r.is_initial_reading or r.reading_purpose == 'opening':
+                r.raw_consumption = 0.0
                 r.consumption = 0.0
             else:
-                r.consumption = r.reading_value - (r.previous_reading or 0.0)
+                raw = r.reading_value - (r.previous_reading or 0.0)
+                r.raw_consumption = raw
+                r.consumption = raw * (r.meter_multiplier or 1.0)
+
+    @api.depends('consumption', 'reading_purpose', 'billing_component_ids.consumption')
+    def _compute_billing_consumption(self):
+        for reading in self:
+            if reading.reading_purpose == 'periodic':
+                reading.carried_consumption = sum(reading.billing_component_ids.mapped('consumption'))
+                reading.billing_consumption = reading.consumption + reading.carried_consumption
+            else:
+                reading.carried_consumption = 0.0
+                reading.billing_consumption = 0.0
 
     @api.depends('consumption', 'meter_id')
     def _compute_consumption_analysis(self):
@@ -378,6 +444,18 @@ class UtilityReading(models.Model):
         readings.action_approve()
 
     def write(self, vals):
+        if not self.env.context.get('_bypass_reading_protection'):
+            bypass_fields = {'state', 'active', 'remarks', 'rejection_reason'}
+            for reading in self:
+                editable = self.STATE_EDITABLE.get(reading.state, set())
+                changed = set(vals) - bypass_fields
+                if changed and not changed.issubset(editable):
+                    forbidden = changed - editable
+                    raise ValidationError(_(
+                        'لا يمكن تعديل الحقول التالية في حالة %(state)s: %(fields)s') % {
+                            'state': reading.state,
+                            'fields': ', '.join(sorted(forbidden)),
+                        })
         meters = self.mapped('meter_id')
         res = super().write(vals)
         if meters:
@@ -386,9 +464,30 @@ class UtilityReading(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        Meter = self.env['utility.meter']
+        Sequence = self.env['ir.sequence']
+        sequence_codes = {
+            'opening': 'utility.reading.opening',
+            'periodic': 'utility.reading.periodic',
+            'replacement_closing': 'utility.reading.replacement_closing',
+        }
         for vals in vals_list:
+            purpose = vals.get('reading_purpose')
+            if vals.get('is_initial_reading'):
+                purpose = 'opening'
+            purpose = purpose or 'periodic'
+            vals['reading_purpose'] = purpose
             if vals.get('reading_id', _('جديد')) == _('جديد'):
-                vals['reading_id'] = self.env['ir.sequence'].next_by_code('utility.reading') or _('جديد')
+                sequence_code = sequence_codes.get(purpose, 'utility.reading.periodic')
+                vals['reading_id'] = (
+                    Sequence.next_by_code(sequence_code)
+                    or Sequence.next_by_code('utility.reading')
+                    or _('جديد')
+                )
+            meter = Meter.browse(vals.get('meter_id')).exists() if vals.get('meter_id') else Meter
+            if meter:
+                vals.setdefault('account_id', meter.customer_id.id)
+                vals.setdefault('meter_multiplier', meter.multiplier or 1.0)
         records = super().create(vals_list)
         for r in records:
             if r.meter_id:

@@ -21,6 +21,7 @@
     'license': 'LGPL-3',
     'depends': [
         'utility_core',
+        'utility_billing',
         'point_of_sale',
         'account',
         'product',

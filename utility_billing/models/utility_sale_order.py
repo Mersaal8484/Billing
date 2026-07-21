@@ -12,6 +12,11 @@ class UtilitySaleOrder(models.Model):
     customer_id = fields.Many2one('utility.customer', 'الحساب', index=True)
     meter_id = fields.Many2one('utility.meter', 'العداد', index=True)
     reading_id = fields.Many2one('utility.reading', 'قراءة العداد', index=True, ondelete='restrict')
+    reading_component_ids = fields.One2many(
+        'utility.bill.reading.component', 'sale_order_id',
+        string='مكونات استهلاك الفاتورة', copy=False, readonly=True)
+    reading_component_count = fields.Integer(
+        'عدد مقاطع القراءة', compute='_compute_reading_component_count')
     available_billing_period_ids = fields.Many2many('date.range', compute='_compute_available_billing_period_ids')
     date_range_id = fields.Many2one('date.range', 'فترة الفوترة', index=True, required=True)
     route_id = fields.Many2one('utility.route', related='customer_id.route_id', store=True, string='خط السير', index=True)
@@ -20,17 +25,7 @@ class UtilitySaleOrder(models.Model):
     reading_reviewer = fields.Many2one(related='reading_id.reviewer_id', string='مراجع القراءة')
     attachment_id = fields.Many2one('ir.attachment', string='ملف صورة القراءة الرسمي')
 
-    def write(self, vals):
-        # Allow system/sudo writes, or specific status/payment updates
-        if not self.env.is_superuser() and not self.env.context.get('allow_status_update'):
-            for order in self:
-                # Prevent modification of financial/core fields if beyond draft
-                if order.bill_state != 'draft' and not self.env.user.has_group('utility_core.group_utility_admin'):
-                    # Allow writing to specific fields like payment info, otherwise block
-                    restricted_fields = ['customer_id', 'meter_id', 'reading_id', 'period_start', 'period_end', 'previous_reading', 'current_reading', 'consumption', 'amount_energy', 'amount_service']
-                    if any(f in vals for f in restricted_fields):
-                        raise ValidationError(_('لا يمكن تعديل بيانات فاتورة معتمدة. يرجى إلغاء الفاتورة أو إنشاء تسوية بدلاً من ذلك.'))
-        return super().write(vals)
+
 
     transformer_reading_id = fields.Many2one('utility.reading', string='قراءة المحول/الخلية المرتبطة', compute='_compute_transformer_reading', store=True)
 
@@ -77,6 +72,22 @@ class UtilitySaleOrder(models.Model):
         ('overdue', 'متأخرة'),
         ('cancelled', 'ملغاة'),
     ], string='حالة الفاتورة', default='draft', tracking=True, compute='_compute_bill_state', store=True, index=True)
+
+    @api.depends('reading_component_ids')
+    def _compute_reading_component_count(self):
+        for order in self:
+            order.reading_component_count = len(order.reading_component_ids)
+
+    def action_view_reading_components(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('مكونات استهلاك الفاتورة'),
+            'res_model': 'utility.bill.reading.component',
+            'view_mode': 'tree,form',
+            'domain': [('sale_order_id', '=', self.id)],
+            'context': {'create': False, 'delete': False},
+        }
 
     @api.depends('customer_id.contract_template_id.recurring_rule_type', 'customer_id.area_id.recurring_rule_type', 'customer_id.region_id.recurring_rule_type')
     def _compute_available_billing_period_ids(self):
@@ -130,14 +141,11 @@ class UtilitySaleOrder(models.Model):
             )
             order.all_qty_delivered = delivered
 
-    @api.depends('partner_id', 'state')
+    @api.depends('partner_id')
     def _compute_previous_balance(self):
+        """Snapshot the customer's receivable balance before this bill is issued."""
         for order in self:
-            if order.state == 'draft' and order.partner_id:
-                # استخدام حقل credit القياسي من أودو والذي يمثل إجمالي الذمم المدينة (المتأخرات)
-                order.previous_balance = order.partner_id.credit
-            else:
-                order.previous_balance = 0.0
+            order.previous_balance = order.partner_id.credit if order.partner_id else 0.0
 
     @api.depends('amount_total', 'previous_balance')
     def _compute_total_due_amount(self):
@@ -289,15 +297,35 @@ class UtilitySaleOrder(models.Model):
     }
 
     def write(self, vals):
-        for order in self:
-            if order.bill_state != 'draft':
-                changed = self.BILL_PROTECTED_FIELDS & set(vals)
-                if changed:
-                    raise ValidationError(
-                        'لا يمكن تعديل الحقول المالية أو الفنية للفاتورة [%s] '
-                        'لأن حالتها "%s". الرجاء إعادة الفاتورة إلى مسودة أولاً.'
-                        % (order.name, order.bill_state)
-                    )
+        if vals.get('state') == 'cancel':
+            for order in self:
+                component_readings = order.reading_component_ids.mapped('reading_id')
+                closing_readings = component_readings.filtered(
+                    lambda reading: reading.reading_purpose == 'replacement_closing')
+                if closing_readings:
+                    closing_readings.with_context(_bypass_reading_protection=True).write({
+                        'state': 'approved',
+                        'billing_anchor_id': False,
+                        'included_sale_order_id': False,
+                        'billing_error': False,
+                    })
+                if order.reading_id:
+                    order.reading_id.with_context(_bypass_reading_protection=True).write({
+                        'state': 'approved',
+                        'included_sale_order_id': False,
+                        'billing_error': False,
+                    })
+        # Allow system/sudo writes, or specific status/payment updates
+        if not self.env.is_superuser() and not self.env.context.get('allow_status_update'):
+            for order in self:
+                if order.bill_state != 'draft':
+                    changed = self.BILL_PROTECTED_FIELDS & set(vals)
+                    if changed:
+                        raise ValidationError(
+                            'لا يمكن تعديل الحقول المالية أو الفنية للفاتورة [%s] '
+                            'لأن حالتها "%s". الرجاء إلغاء الفاتورة أو إنشاء تسوية بدلاً من ذلك.'
+                            % (order.name, order.bill_state)
+                        )
         return super(UtilitySaleOrder, self).write(vals)
 
     def action_draft(self):
@@ -955,6 +983,8 @@ class UtilitySaleOrder(models.Model):
         ], limit=batch_size, order='date_order asc, id asc')
         orders._create_overdue_notifications()
         return len(orders)
+
+
 
 
 class UtilitySaleOrderLine(models.Model):

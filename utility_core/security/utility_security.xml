@@ -100,5 +100,17 @@
             <field name="perm_create" eval="True"/>
             <field name="perm_unlink" eval="False"/>
         </record>
+        <record id="utility_reading_company_rule" model="ir.rule">
+            <field name="name">Reading Multi-Company Rule</field>
+            <field name="model_id" ref="utility_core.model_utility_reading"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+        </record>
+        <record id="utility_meter_replacement_company_rule" model="ir.rule">
+            <field name="name">Meter Replacement Multi-Company Rule</field>
+            <field name="model_id" ref="utility_core.model_utility_meter_replacement"/>
+            <field name="domain_force">[('company_id', 'in', company_ids)]</field>
+            <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+        </record>
     </data>
 </odoo>

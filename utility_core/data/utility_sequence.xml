@@ -26,6 +26,30 @@
             <field name="company_id" eval="False"/>
         </record>
 
+        <record id="seq_utility_reading_opening" model="ir.sequence">
+            <field name="name">تسلسل القراءات الافتتاحية</field>
+            <field name="code">utility.reading.opening</field>
+            <field name="prefix">RD-OPN/%(year)s/</field>
+            <field name="padding">6</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <record id="seq_utility_reading_periodic" model="ir.sequence">
+            <field name="name">تسلسل القراءات الدورية</field>
+            <field name="code">utility.reading.periodic</field>
+            <field name="prefix">RD-PER/%(year)s/</field>
+            <field name="padding">6</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <record id="seq_utility_reading_replacement_closing" model="ir.sequence">
+            <field name="name">تسلسل قراءات إغلاق الاستبدال</field>
+            <field name="code">utility.reading.replacement_closing</field>
+            <field name="prefix">RD-CLS/%(year)s/</field>
+            <field name="padding">6</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
 
     </data>
 </odoo>
