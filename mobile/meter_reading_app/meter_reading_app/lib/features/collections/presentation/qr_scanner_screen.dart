@@ -72,7 +72,7 @@ class _QrScannerScreenState extends ConsumerState<QrScannerScreen> {
                   padding: const EdgeInsets.all(12),
                   margin: const EdgeInsets.only(bottom: 12),
                   decoration: BoxDecoration(
-                    color: Colors.red.withValues(alpha: 0.18),
+                    color: Colors.red.withOpacity(0.18),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Text(

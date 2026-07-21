@@ -39,7 +39,7 @@ class ReceiptScreen extends StatelessWidget {
                       value: receipt.account.meter.meterNumber),
                   _InfoRow(
                       label: 'المبلغ',
-                      value: '${receipt.amount.toStringAsFixed(0)} ر.س'),
+                      value: '${receipt.amount.toStringAsFixed(0)} ﷼'),
                   _InfoRow(
                       label: 'طريقة الدفع',
                       value: _methodLabel(receipt.method)),

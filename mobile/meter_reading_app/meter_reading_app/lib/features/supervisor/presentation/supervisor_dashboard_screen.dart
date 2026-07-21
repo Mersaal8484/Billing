@@ -67,7 +67,7 @@ class SupervisorDashboardScreen extends ConsumerWidget {
                       icon: Icons.payments_outlined,
                       label: 'تحصيل اليوم',
                       value:
-                          '${collectionSummary.collectedAmount.toStringAsFixed(0)} ر.س',
+                          '${collectionSummary.collectedAmount.toStringAsFixed(0)} ﷼',
                     ),
                   ),
                 ],
@@ -92,10 +92,11 @@ class SupervisorDashboardScreen extends ConsumerWidget {
               Text('أداء الفرق',
                   style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
+              // فريق يمني: أحمد علي (كاشف) ومحمد عبدالسلام (متحصل)
               const _PerformanceTile(
-                  name: 'reader01', role: 'كاشف', done: 18, total: 24),
+                  name: 'أحمد علي', role: 'كاشف', done: 18, total: 24),
               const _PerformanceTile(
-                  name: 'collector01', role: 'متحصل', done: 7, total: 11),
+                  name: 'محمد عبدالسلام', role: 'متحصل', done: 7, total: 11),
             ],
           );
         },

@@ -52,7 +52,7 @@ class _CollectorHomeScreenState extends ConsumerState<CollectorHomeScreen> {
                   child: _SummaryTile(
                     icon: Icons.payments_outlined,
                     label: 'محصل اليوم',
-                    value: '${summary.collectedAmount.toStringAsFixed(0)} ر.س',
+                    value: '${summary.collectedAmount.toStringAsFixed(0)} ﷼',
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -169,7 +169,7 @@ class _CollectionAccountTile extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Text('${account.dueTotal.toStringAsFixed(0)} ر.س',
+            Text('${account.dueTotal.toStringAsFixed(0)} ﷼',
                 style: const TextStyle(fontWeight: FontWeight.w800)),
             Text(disconnected ? 'مقطوع' : 'متصل',
                 style: Theme.of(context).textTheme.bodySmall),

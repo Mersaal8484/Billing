@@ -49,7 +49,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'واجهة ميدانية عربية تعمل ببيانات محاكاة محلية',
+                    'المؤسسة العامة للكهرباء — الجمهورية اليمنية',
                     textAlign: TextAlign.center,
                     style: Theme.of(context)
                         .textTheme
@@ -97,7 +97,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'هذه المرحلة لا تنفذ أي اتصال حقيقي. كل الشاشات تعمل على mock محلي لحين اعتماد التصميم.',
+                    'بيانات تجريبية يمنية — لا يوجد اتصال حقيقي في هذه المرحلة.',
                     textAlign: TextAlign.center,
                     style: Theme.of(context)
                         .textTheme

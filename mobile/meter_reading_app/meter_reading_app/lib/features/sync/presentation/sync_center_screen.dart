@@ -36,7 +36,7 @@ class SyncCenterScreen extends ConsumerWidget {
             children: [
               Card(
                 color: offline
-                    ? StatusColors.offline.withValues(alpha: 0.08)
+                    ? StatusColors.offline.withOpacity(0.08)
                     : null,
                 child: Padding(
                   padding: const EdgeInsets.all(16),

@@ -230,7 +230,7 @@ class _PhotoCaptureScreenState extends ConsumerState<PhotoCaptureScreen>
                 textAlign: TextAlign.center,
                 style: TextStyle(
                     color: Colors.white,
-                    backgroundColor: Colors.black.withValues(alpha: 0.4)),
+                    backgroundColor: Colors.black.withOpacity(0.4)),
               ),
             ),
             Positioned(
@@ -266,7 +266,7 @@ class _PhotoCaptureScreenState extends ConsumerState<PhotoCaptureScreen>
         if (_readabilityWarning)
           Container(
             width: double.infinity,
-            color: StatusColors.error.withValues(alpha: 0.15),
+            color: StatusColors.error.withOpacity(0.15),
             padding: const EdgeInsets.all(12),
             child: const Text(
               'تحذير: قد تكون الصورة غير واضحة بما يكفي لقراءة الأرقام. يُفضّل إعادة التصوير.',

@@ -90,10 +90,10 @@ class _AccountContent extends StatelessWidget {
                 const Divider(height: 24),
                 _InfoRow(
                     label: 'الرصيد الحالي',
-                    value: '${account.balance.toStringAsFixed(0)} ر.س'),
+                    value: '${account.balance.toStringAsFixed(0)} ﷼'),
                 _InfoRow(
                     label: 'الدين المستحق',
-                    value: '${account.debtAmount.toStringAsFixed(0)} ر.س'),
+                    value: '${account.debtAmount.toStringAsFixed(0)} ﷼'),
               ],
             ),
           ),
@@ -134,7 +134,7 @@ class _InvoiceTile extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Text('${invoice.amount.toStringAsFixed(0)} ر.س',
+            Text('${invoice.amount.toStringAsFixed(0)} ﷼',
                 style: const TextStyle(fontWeight: FontWeight.w800)),
             Text(label,
                 style: TextStyle(

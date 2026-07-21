@@ -56,7 +56,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
               leading: const Icon(Icons.person_outline_rounded),
               title: Text(account.customer.name),
               subtitle: Text(
-                  '${account.customer.accountNumber} · المستحق ${account.dueTotal.toStringAsFixed(0)} ر.س'),
+                  '${account.customer.accountNumber} · المستحق ${account.dueTotal.toStringAsFixed(0)} ﷼'),
             ),
           ),
           const SizedBox(height: 16),
@@ -102,7 +102,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
                   value: true,
                   onChanged: (_) {},
                   title: Text(invoice.invoiceNumber),
-                  subtitle: Text('${invoice.amount.toStringAsFixed(0)} ر.س'),
+                  subtitle: Text('${invoice.amount.toStringAsFixed(0)} ﷼'),
                   controlAffinity: ListTileControlAffinity.leading,
                 ),
               ),

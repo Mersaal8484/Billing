@@ -23,7 +23,7 @@ class CollectionHistoryScreen extends ConsumerWidget {
                   child: _MetricCard(
                       label: 'الإجمالي',
                       value:
-                          '${summary.collectedAmount.toStringAsFixed(0)} ر.س')),
+                          '${summary.collectedAmount.toStringAsFixed(0)} ﷼')),
               const SizedBox(width: 8),
               Expanded(
                   child: _MetricCard(
@@ -59,7 +59,7 @@ class CollectionHistoryScreen extends ConsumerWidget {
                   leading: const Icon(Icons.receipt_long_outlined),
                   title: Text(receipt.reference),
                   subtitle: Text(receipt.account.customer.name),
-                  trailing: Text('${receipt.amount.toStringAsFixed(0)} ر.س'),
+                  trailing: Text('${receipt.amount.toStringAsFixed(0)} ﷼'),
                 ),
               ),
             ),

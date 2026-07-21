@@ -118,7 +118,7 @@ class OfflineBanner extends StatelessWidget {
         ? 'وضع عدم الاتصال — سيتم الرفع تلقائياً عند توفر الشبكة'
         : '$pendingCount عنصر بانتظار المزامنة';
     return Material(
-      color: color.withValues(alpha: 0.12),
+      color: color.withOpacity(0.12),
       child: InkWell(
         onTap: offline ? null : onSyncNow,
         child: Padding(
@@ -163,7 +163,7 @@ class SyncStatusChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.12),
+          color: color.withOpacity(0.12),
           borderRadius: BorderRadius.circular(20)),
       child: Row(
         mainAxisSize: MainAxisSize.min,

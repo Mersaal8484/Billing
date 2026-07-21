@@ -77,9 +77,7 @@ class MockCollectionRepository implements CollectionRepository {
     required PaymentMethod method,
   }) async {
     final account = await findById(accountId);
-    if (account == null) {
-      throw StateError('الحساب غير موجود');
-    }
+    if (account == null) throw StateError('الحساب غير موجود');
     await Future.delayed(const Duration(milliseconds: 300));
     final receipt = CollectionReceipt(
       reference:
@@ -99,7 +97,7 @@ class MockCollectionRepository implements CollectionRepository {
     final collected =
         _receipts.fold<double>(0, (total, receipt) => total + receipt.amount);
     return CollectorDailySummary(
-      collectedAmount: collected + 1840,
+      collectedAmount: collected + 18400, // مبلغ أساسي بالريال اليمني
       operationCount: _receipts.length + 7,
       pendingAccounts:
           _accounts.where((account) => account.dueTotal > 0).length,
@@ -110,48 +108,63 @@ class MockCollectionRepository implements CollectionRepository {
   List<CollectionReceipt> receipts() => List.unmodifiable(_receipts);
 
   List<CollectionAccount> _mockAccounts() {
+    // ── بيانات تجريبية يمنية ─────────────────────────────────────────────
     final names = [
-      'راشد عبدالله العتيق',
-      'أمل منصور الحربي',
-      'بدر فهد السبيعي',
-      'ريم محمد الغامدي',
-      'حسن علي الشهري',
+      'محمد أحمد علي',
+      'عبدالله حسن الشرعبي',
+      'خالد عبدالكريم السامعي',
+      'يحيى صالح الأنسي',
+      'أحمد علي الحميري',
     ];
+    final addresses = [
+      'حي السنينة، شارع الستين',
+      'حي شميلة، شارع جمال',
+      'حي الأصبحي، شارع النصر',
+      'حي التحرير، شارع الزبيري',
+      'حي الجراف، شارع السبعين',
+    ];
+    final regions = ['صنعاء', 'صنعاء', 'صنعاء', 'صنعاء', 'صنعاء'];
+    final areas = ['معين', 'السبعين', 'الثورة', 'التحرير', 'آزال'];
+    final phones = [
+      '770123456', '771654321', '733555222', '775888999', '777345678',
+    ];
+
     return List.generate(names.length, (i) {
       final customer = Customer(
         remoteId: 3000 + i,
-        customerNumber: 'CUS-${810000 + i}',
+        customerNumber: 'YEM-${810000 + i}',   // ← required
         accountNumber: 'ACC-${220000 + i}',
         name: names[i],
-        mobile: '05${74000000 + i * 4521}',
-        address: 'قطاع التحصيل ${i + 1}، مبنى ${18 + i}',
-        regionName: 'المنطقة الشمالية',
-        areaName: i.isEven ? 'حي النخيل' : 'حي السلام',
+        mobile: phones[i],
+        address: addresses[i],
+        regionName: regions[i],
+        areaName: areas[i],
         lastReadingDate: DateTime.now().subtract(Duration(days: 28 + i)),
         lastReadingValue: (1800 + i * 310).toDouble(),
       );
       final meter = Meter(
         remoteId: 4100 + i,
-        meterNumber: 'MTR-${3200 + i}',
-        serialNumber: 'SN${77000 + i}',
+        meterNumber: '${100001 + i}',           // عدادات كهرباء يمنية
+        serialNumber: 'YE${77000 + i}',
         customerRemoteId: customer.remoteId,
         paymentType: MeterPaymentType.postpaid,
         meterType: i == 2 ? 'Three Phase' : 'Single Phase',
         connectionStatus: i == 3 ? 'disconnected' : 'connected',
       );
+      // فواتير كهرباء بالريال اليمني (YER)
       final invoices = [
         CollectionInvoice(
           id: 'inv-$i-1',
           invoiceNumber: 'INV-${20260700 + i}',
           dueDate: DateTime.now().subtract(Duration(days: 8 + i)),
-          amount: 215 + (i * 35),
+          amount: (2150 + (i * 350)).toDouble(),
           status: i == 1 ? InvoiceStatus.paid : InvoiceStatus.overdue,
         ),
         CollectionInvoice(
           id: 'inv-$i-2',
           invoiceNumber: 'INV-${20260600 + i}',
           dueDate: DateTime.now().add(Duration(days: 5 + i)),
-          amount: 165 + (i * 28),
+          amount: (1650 + (i * 280)).toDouble(),
           status: InvoiceStatus.unpaid,
         ),
       ];
@@ -159,10 +172,10 @@ class MockCollectionRepository implements CollectionRepository {
         id: 'collection-$i',
         customer: customer,
         meter: meter,
-        balance: i == 1 ? 42 : -18,
+        balance: i == 1 ? 420 : -180,
         debtAmount: invoices
-            .where((invoice) => invoice.status != InvoiceStatus.paid)
-            .fold<double>(0, (total, invoice) => total + invoice.amount),
+            .where((inv) => inv.status != InvoiceStatus.paid)
+            .fold<double>(0, (total, inv) => total + inv.amount),
         qrPayload: 'UTILITY:${customer.accountNumber}',
         invoices: invoices,
       );

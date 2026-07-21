@@ -16,8 +16,8 @@ class SettingsScreen extends ConsumerWidget {
           const _SectionHeader('الحساب'),
           const ListTile(
             leading: CircleAvatar(child: Icon(Icons.person_outline)),
-            title: Text('reader01'),
-            subtitle: Text('قارئ عدادات — منطقة أ'),
+            title: Text('kasher01'),
+            subtitle: Text('كاشف عدادات كهرباء — المؤسسة العامة للكهرباء — صنعاء'),
           ),
           const _SectionHeader('المزامنة'),
           SwitchListTile(
@@ -40,7 +40,7 @@ class SettingsScreen extends ConsumerWidget {
           const ListTile(
             title: Text('حالة التكامل مع Odoo'),
             subtitle:
-                Text('لم يتم الربط بعد — قيد استخدام بيانات محاكاة محلية'),
+                Text('المؤسسة العامة للكهرباء — بيانات محاكاة محلية'),
           ),
           const Divider(),
           Padding(

@@ -134,7 +134,7 @@ class _AssignmentTile extends StatelessWidget {
       child: ListTile(
         onTap: () => context.push('/customers/${assignment.id}'),
         leading: CircleAvatar(
-          backgroundColor: status.color.withValues(alpha: 0.14),
+          backgroundColor: status.color.withOpacity(0.14),
           child: Icon(status.icon, color: status.color),
         ),
         title: Text(assignment.customer.name,
