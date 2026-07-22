@@ -6,10 +6,10 @@ class UtilityCustomerStatementWizard(models.TransientModel):
     _name = 'utility.customer.statement.wizard'
     _description = 'كشف حساب مشترك كهرباء'
 
-    customer_id = fields.Many2one('utility.customer', string='الحساب', required=True)
+    customer_id = fields.Many2one('utility.customer', string='الحساب / المشترك', required=True)
     date_from = fields.Date(string='من تاريخ')
     date_to = fields.Date(string='إلى تاريخ', default=fields.Date.context_today)
-    include_draft = fields.Boolean(string='تضمين المسودات')
+    include_draft = fields.Boolean(string='تضمين المسودات', help='تضمين الفواتير والسدادات المسودة غير المعتمدة')
 
     @api.model
     def default_get(self, fields_list):
@@ -26,7 +26,12 @@ class UtilityCustomerStatementWizard(models.TransientModel):
 
     def _order_domain(self, before=False):
         self.ensure_one()
-        domain = [('customer_id', '=', self.customer_id.id), ('state', '!=', 'cancel')]
+        domain = [
+            '|',
+            ('customer_id', '=', self.customer_id.id),
+            ('partner_id', '=', self.customer_id.partner_id.id),
+            ('state', '!=', 'cancel'),
+        ]
         if not self.include_draft:
             domain.append(('state', 'not in', ('draft', 'sent')))
         if before and self.date_from:
@@ -40,7 +45,11 @@ class UtilityCustomerStatementWizard(models.TransientModel):
 
     def _payment_domain(self, before=False):
         self.ensure_one()
-        domain = [('utility_sale_order_id.customer_id', '=', self.customer_id.id)]
+        domain = [
+            '|',
+            ('utility_sale_order_id.customer_id', '=', self.customer_id.id),
+            ('partner_id', '=', self.customer_id.partner_id.id),
+        ]
         if not self.include_draft:
             domain.append(('state', '=', 'posted'))
         else:
@@ -54,13 +63,32 @@ class UtilityCustomerStatementWizard(models.TransientModel):
                 domain.append(('date', '<=', self.date_to))
         return domain
 
+    def _writeoff_domain(self, before=False):
+        self.ensure_one()
+        domain = [
+            '|',
+            ('customer_id', '=', self.customer_id.id),
+            ('sale_order_id.customer_id', '=', self.customer_id.id),
+            ('state', '=', 'applied'),
+        ]
+        if before and self.date_from:
+            domain.append(('date', '<', self.date_from))
+        else:
+            if self.date_from:
+                domain.append(('date', '>=', self.date_from))
+            if self.date_to:
+                domain.append(('date', '<=', '%s 23:59:59' % self.date_to))
+        return domain
+
     def _get_opening_balance(self):
         self.ensure_one()
+        base_opening = self.customer_id.opening_balance or (self.customer_id.partner_id.open_balance if hasattr(self.customer_id.partner_id, 'open_balance') else 0.0) or 0.0
         if not self.date_from:
-            return 0.0
+            return base_opening
         orders = self.env['sale.order'].search(self._order_domain(before=True))
         payments = self.env['account.payment'].search(self._payment_domain(before=True))
-        return sum(orders.mapped('amount_total')) - sum(payments.mapped('amount'))
+        writeoffs = self.env['utility.writeoff'].search(self._writeoff_domain(before=True))
+        return base_opening + sum(orders.mapped('amount_total')) - sum(payments.mapped('amount')) - sum(writeoffs.mapped('amount'))
 
     def _get_statement_lines(self, opening_balance=None):
         self.ensure_one()
@@ -72,21 +100,36 @@ class UtilityCustomerStatementWizard(models.TransientModel):
                 'sequence': order.id,
                 'kind': 'invoice',
                 'ref': order.name,
-                'description': _('فاتورة كهرباء'),
+                'description': _('فاتورة كهرباء رقم %s') % (order.name or ''),
                 'debit': order.amount_total,
                 'credit': 0.0,
             })
 
         payments = self.env['account.payment'].search(self._payment_domain(), order='date, id')
         for payment in payments:
+            pay_ref = payment.name or payment.ref or ''
+            bill_ref = payment.utility_sale_order_id.name if payment.utility_sale_order_id else ''
+            desc = _('سداد فاتورة %s') % bill_ref if bill_ref else _('سداد دفعة حساب')
             entries.append({
                 'date': payment.date,
                 'sequence': payment.id,
                 'kind': 'payment',
-                'ref': payment.name or payment.ref,
-                'description': _('سداد فاتورة %s') % (payment.utility_sale_order_id.name or ''),
+                'ref': pay_ref,
+                'description': desc,
                 'debit': 0.0,
                 'credit': payment.amount,
+            })
+
+        writeoffs = self.env['utility.writeoff'].search(self._writeoff_domain(), order='date, id')
+        for wo in writeoffs:
+            entries.append({
+                'date': wo.date.date() if wo.date else False,
+                'sequence': wo.id,
+                'kind': 'writeoff',
+                'ref': wo.writeoff_number,
+                'description': _('إعفاء / تسوية: %s') % (wo.reason or _('خصم معتمد')),
+                'debit': 0.0,
+                'credit': wo.amount,
             })
 
         entries.sort(key=lambda line: (line['date'] or fields.Date.today(), line['kind'], line['sequence']))
@@ -115,13 +158,16 @@ class UtilityCustomerStatementWizard(models.TransientModel):
         lines = self._get_statement_lines(opening)
         debit = sum(line['debit'] for line in lines)
         credit = sum(line['credit'] for line in lines)
+        closing = opening + debit - credit
         return {
+            'customer': self.customer_id,
+            'partner': self.customer_id.partner_id,
             'lines': lines,
             'totals': {
                 'opening': opening,
                 'debit': debit,
                 'credit': credit,
-                'closing': opening + debit - credit,
+                'closing': closing,
             },
         }
 
