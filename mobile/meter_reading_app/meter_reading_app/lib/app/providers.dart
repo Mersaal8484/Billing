@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/image/image_processing_service.dart';
+import '../core/printing/thermal_printer_service.dart';
 import '../core/sync/sync_engine.dart';
 import '../features/collections/data/mock_collection_repository.dart';
 import '../features/collections/domain/collection_models.dart';
@@ -35,6 +36,10 @@ final collectionRepositoryProvider = Provider<CollectionRepository>((ref) {
 
 final imageProcessingServiceProvider = Provider<ImageProcessingService>((ref) {
   return ImageProcessingService();
+});
+
+final thermalPrinterServiceProvider = Provider<ThermalPrinterService>((ref) {
+  return ThermalPrinterService();
 });
 
 final syncEngineProvider = Provider<SyncEngine>((ref) {

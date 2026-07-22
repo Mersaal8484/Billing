@@ -5,7 +5,9 @@ import 'package:go_router/go_router.dart';
 import '../../../app/providers.dart';
 
 class QrScannerScreen extends ConsumerStatefulWidget {
-  const QrScannerScreen({super.key});
+  final bool isReaderMode;
+
+  const QrScannerScreen({super.key, this.isReaderMode = false});
 
   @override
   ConsumerState<QrScannerScreen> createState() => _QrScannerScreenState();
@@ -20,16 +22,30 @@ class _QrScannerScreenState extends ConsumerState<QrScannerScreen> {
       _scanning = true;
       _failed = false;
     });
-    final account = await ref
-        .read(collectionRepositoryProvider)
-        .resolveQr('UTILITY:ACC-220000');
-    if (!mounted) return;
-    setState(() => _scanning = false);
-    if (account == null) {
-      setState(() => _failed = true);
-      return;
+
+    if (widget.isReaderMode) {
+      final assignment = await ref
+          .read(assignmentRepositoryProvider)
+          .resolveQr('UTILITY:ACC-100000');
+      if (!mounted) return;
+      setState(() => _scanning = false);
+      if (assignment == null) {
+        setState(() => _failed = true);
+        return;
+      }
+      context.go('/customers/${assignment.id}');
+    } else {
+      final account = await ref
+          .read(collectionRepositoryProvider)
+          .resolveQr('UTILITY:ACC-220000');
+      if (!mounted) return;
+      setState(() => _scanning = false);
+      if (account == null) {
+        setState(() => _failed = true);
+        return;
+      }
+      context.go('/collector/accounts/${account.id}');
     }
-    context.go('/collector/accounts/${account.id}');
   }
 
   @override
@@ -97,7 +113,7 @@ class _QrScannerScreenState extends ConsumerState<QrScannerScreen> {
               ),
               const SizedBox(height: 10),
               TextButton.icon(
-                onPressed: () => context.go('/collector'),
+                onPressed: () => context.go(widget.isReaderMode ? '/customers' : '/collector'),
                 icon: const Icon(Icons.keyboard_alt_outlined),
                 label: const Text('إدخال يدوي'),
                 style: TextButton.styleFrom(foregroundColor: Colors.white),

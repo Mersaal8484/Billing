@@ -7,6 +7,7 @@ abstract class AssignmentRepository {
   Stream<List<ReadingAssignment>> watchAssignments(
       {String? query, AssignmentStatus? filter});
   Future<ReadingAssignment?> lookupByMeterNumber(String meterNumber);
+  Future<ReadingAssignment?> resolveQr(String payload);
   Future<void> markStatus(String assignmentId, AssignmentStatus status);
   void dispose();
 }
@@ -77,6 +78,23 @@ class MockAssignmentRepository implements AssignmentRepository {
     await Future.delayed(const Duration(milliseconds: 150));
     try {
       return _all.firstWhere((a) => a.meter.meterNumber == meterNumber);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Future<ReadingAssignment?> resolveQr(String payload) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    try {
+      final clean = payload.replaceAll('UTILITY:', '').trim().toLowerCase();
+      return _all.firstWhere(
+        (a) =>
+            a.customer.accountNumber.toLowerCase() == clean ||
+            a.meter.meterNumber.toLowerCase() == clean ||
+            'utility:${a.customer.accountNumber.toLowerCase()}' ==
+                payload.trim().toLowerCase(),
+      );
     } catch (_) {
       return null;
     }

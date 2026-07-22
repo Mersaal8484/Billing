@@ -1,15 +1,90 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../app/providers.dart';
+import '../../../core/printing/collection_receipt_builder.dart';
+import '../../../core/printing/thermal_printer_service.dart';
 import '../domain/collection_models.dart';
+import 'thermal_printer_picker_sheet.dart';
 
-class ReceiptScreen extends StatelessWidget {
+class ReceiptScreen extends ConsumerStatefulWidget {
   final CollectionReceipt receipt;
 
   const ReceiptScreen({super.key, required this.receipt});
 
   @override
+  ConsumerState<ReceiptScreen> createState() => _ReceiptScreenState();
+}
+
+class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
+  bool _printing = false;
+  ThermalPrinterDevice? _connectedPrinter;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedPrinter();
+  }
+
+  Future<void> _loadSavedPrinter() async {
+    final saved =
+        await ref.read(thermalPrinterServiceProvider).savedDevice();
+    if (mounted && saved != null) {
+      setState(() => _connectedPrinter = saved);
+    }
+  }
+
+  Future<void> _printReceipt() async {
+    if (_printing) return;
+
+    setState(() => _printing = true);
+    final printer = ref.read(thermalPrinterServiceProvider);
+    final messenger = ScaffoldMessenger.of(context);
+
+    try {
+      var device = await printer.ensureConnected(device: _connectedPrinter);
+      device ??= await showThermalPrinterPickerSheet(
+        context,
+        printerService: printer,
+        selected: _connectedPrinter,
+      );
+
+      if (device == null) {
+        return;
+      }
+
+      device = await printer.ensureConnected(device: device);
+      if (device == null) {
+        throw const ThermalPrinterException('تعذر الاتصال بالطابعة');
+      }
+
+      final bytes = await CollectionReceiptBuilder.build(widget.receipt);
+      await printer.printBytes(bytes);
+
+      if (mounted) {
+        setState(() => _connectedPrinter = device);
+        messenger.showSnackBar(
+          SnackBar(content: Text('تمت الطباعة على ${device.name}')),
+        );
+      }
+    } on ThermalPrinterException catch (error) {
+      messenger.showSnackBar(SnackBar(content: Text(error.message)));
+    } catch (error) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('فشلت الطباعة: $error')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _printing = false);
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final receipt = widget.receipt;
+
     return Scaffold(
       appBar: AppBar(title: const Text('إيصال التحصيل')),
       body: ListView(
@@ -48,14 +123,48 @@ class ReceiptScreen extends StatelessWidget {
               ),
             ),
           ),
+          if (_connectedPrinter != null) ...[
+            const SizedBox(height: 12),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.print_outlined),
+              title: const Text('الطابعة المحفوظة'),
+              subtitle: Text(_connectedPrinter!.name),
+              trailing: TextButton(
+                onPressed: _printing
+                    ? null
+                    : () async {
+                        final device = await showThermalPrinterPickerSheet(
+                          context,
+                          printerService:
+                              ref.read(thermalPrinterServiceProvider),
+                          selected: _connectedPrinter,
+                        );
+                        if (device != null && mounted) {
+                          setState(() => _connectedPrinter = device);
+                          await ref
+                              .read(thermalPrinterServiceProvider)
+                              .saveDevice(device);
+                        }
+                      },
+                child: const Text('تغيير'),
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           Row(
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.print_outlined),
-                  label: const Text('طباعة'),
+                  onPressed: _printing ? null : _printReceipt,
+                  icon: _printing
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.print_outlined),
+                  label: Text(_printing ? 'جاري الطباعة...' : 'طباعة'),
                 ),
               ),
               const SizedBox(width: 12),
@@ -68,6 +177,17 @@ class ReceiptScreen extends StatelessWidget {
               ),
             ],
           ),
+          if (receipt.method == PaymentMethod.cash) ...[
+            const SizedBox(height: 8),
+            Text(
+              'للتحصيل النقدي: اطبع الإيصال على الطابعة الحرارية وسلّمه للمشترك.',
+              textAlign: TextAlign.center,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: Theme.of(context).colorScheme.outline),
+            ),
+          ],
           const SizedBox(height: 12),
           FilledButton.icon(
             onPressed: () => context.go('/collector'),

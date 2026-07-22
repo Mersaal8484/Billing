@@ -28,6 +28,14 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: FilledButton.icon(
+              onPressed: () => context.push('/customers/qr'),
+              icon: const Icon(Icons.qr_code_scanner_rounded),
+              label: const Text('مسح QR'),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
             child: TextField(
               onChanged: (value) => setState(() => _query = value),
               decoration: const InputDecoration(

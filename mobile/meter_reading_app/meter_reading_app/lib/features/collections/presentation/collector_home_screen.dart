@@ -28,14 +28,6 @@ class _CollectorHomeScreenState extends ConsumerState<CollectorHomeScreen> {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: FilledButton.icon(
-              onPressed: () => context.push('/collector/qr'),
-              icon: const Icon(Icons.qr_code_scanner_rounded),
-              label: const Text('مسح QR'),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
             child: TextField(
               onChanged: (value) => setState(() => _query = value),
               decoration: const InputDecoration(
@@ -84,7 +76,7 @@ class _CollectorHomeScreenState extends ConsumerState<CollectorHomeScreen> {
                   return const EmptyState(
                     icon: Icons.search_off_rounded,
                     title: 'لا توجد نتائج',
-                    subtitle: 'استخدم رقم الحساب أو امسح رمز QR من الملصق.',
+                    subtitle: 'استخدم رقم الحساب أو اسم المشترك.',
                   );
                 }
                 return ListView.separated(

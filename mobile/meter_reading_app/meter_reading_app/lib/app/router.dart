@@ -41,6 +41,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           path: '/customers',
           builder: (context, state) => const CustomerListScreen()),
       GoRoute(
+        path: '/customers/qr',
+        builder: (context, state) => const QrScannerScreen(isReaderMode: true),
+      ),
+      GoRoute(
         path: '/customers/:id',
         builder: (context, state) =>
             CustomerDetailScreen(assignmentId: state.pathParameters['id']!),

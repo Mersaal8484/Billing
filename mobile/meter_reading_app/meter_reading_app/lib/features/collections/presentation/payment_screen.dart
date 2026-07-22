@@ -21,6 +21,43 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   final _amountCtrl = TextEditingController();
   PaymentMethod _method = PaymentMethod.cash;
   bool _saving = false;
+  final Set<String> _selectedInvoiceIds = {};
+  bool _initialized = false;
+
+  @override
+  void dispose() {
+    _amountCtrl.dispose();
+    super.dispose();
+  }
+
+  void _initInvoicesIfNeeded(CollectionAccount account) {
+    if (_initialized) return;
+    final unpaidInvoices = account.invoices
+        .where((invoice) => invoice.status != InvoiceStatus.paid)
+        .toList();
+    _selectedInvoiceIds.addAll(unpaidInvoices.map((inv) => inv.id));
+    if (_amountCtrl.text.isEmpty) {
+      final initialTotal = unpaidInvoices.fold<double>(
+          0, (sum, invoice) => sum + invoice.amount);
+      _amountCtrl.text = initialTotal.toStringAsFixed(0);
+    }
+    _initialized = true;
+  }
+
+  void _toggleInvoice(
+      CollectionAccount account, String invoiceId, bool isSelected) {
+    setState(() {
+      if (isSelected) {
+        _selectedInvoiceIds.add(invoiceId);
+      } else {
+        _selectedInvoiceIds.remove(invoiceId);
+      }
+      final newTotal = account.invoices
+          .where((inv) => _selectedInvoiceIds.contains(inv.id))
+          .fold<double>(0, (sum, inv) => sum + inv.amount);
+      _amountCtrl.text = newTotal.toStringAsFixed(0);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,9 +79,7 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
   }
 
   Widget _buildForm(BuildContext context, CollectionAccount account) {
-    if (_amountCtrl.text.isEmpty) {
-      _amountCtrl.text = account.dueTotal.toStringAsFixed(0);
-    }
+    _initInvoicesIfNeeded(account);
 
     return Form(
       key: _formKey,
@@ -69,6 +104,9 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
             style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
             decoration: const InputDecoration(labelText: 'المبلغ المحصل'),
             validator: (value) {
+              if (_selectedInvoiceIds.isEmpty) {
+                return 'يرجى اختيار فاتورة واحدة على الأقل';
+              }
               final amount = double.tryParse(value ?? '');
               if (amount == null || amount <= 0) return 'أدخل مبلغًا صحيحًا';
               return null;
@@ -98,13 +136,18 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
           ...account.invoices
               .where((invoice) => invoice.status != InvoiceStatus.paid)
               .map(
-                (invoice) => CheckboxListTile(
-                  value: true,
-                  onChanged: (_) {},
-                  title: Text(invoice.invoiceNumber),
-                  subtitle: Text('${invoice.amount.toStringAsFixed(0)} ﷼'),
-                  controlAffinity: ListTileControlAffinity.leading,
-                ),
+                (invoice) {
+                  final isSelected = _selectedInvoiceIds.contains(invoice.id);
+                  return CheckboxListTile(
+                    value: isSelected,
+                    onChanged: (checked) {
+                      _toggleInvoice(account, invoice.id, checked ?? false);
+                    },
+                    title: Text(invoice.invoiceNumber),
+                    subtitle: Text('${invoice.amount.toStringAsFixed(0)} ﷼'),
+                    controlAffinity: ListTileControlAffinity.leading,
+                  );
+                },
               ),
           const SizedBox(height: 24),
           FilledButton.icon(
