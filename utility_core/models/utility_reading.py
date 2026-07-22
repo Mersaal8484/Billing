@@ -158,6 +158,9 @@ class UtilityReading(models.Model):
     def _onchange_reading_purpose(self):
         if self.reading_purpose != 'periodic':
             self.date_range_id = False
+        else:
+            if not self.date_range_id and self.available_open_reading_period_ids:
+                self.date_range_id = self.available_open_reading_period_ids[0].id
         self.is_initial_reading = self.reading_purpose == 'opening'
 
     @api.onchange('reading_category')
@@ -252,8 +255,11 @@ class UtilityReading(models.Model):
             is_billable = (reading.reading_category == 'customer' or (reading.reading_category == 'transformer' and reading.is_private_transformer))
             if is_billable and not reading.account_id:
                 raise ValidationError(_('القراءة القابلة للفوترة تتطلب حساب مشترك.'))
-            if is_billable and reading.reading_purpose == 'periodic' and not reading.date_range_id and reading.state in ('under_review', 'approved', 'queued', 'billed'):
-                raise ValidationError(_('القراءة الدورية تتطلب تحديد فترة القراءة.'))
+            if is_billable and reading.reading_purpose == 'periodic':
+                if not reading.date_range_id:
+                    raise ValidationError(_('القراءة الدورية تتطلب تحديد الفترة المفتوحة للقراءة بحسب العقد.'))
+                if not reading.date_range_id.is_current_period:
+                    raise ValidationError(_('يجب أن تكون الفترة المختارة للقراءة الدورية فترة مفتوحة (الفترة الحالية).'))
             if reading.reading_purpose != 'periodic' and reading.date_range_id:
                 raise ValidationError(_('الفترة مسموحة للقراءة الدورية فقط.'))
             if reading.reading_purpose == 'replacement_closing' and not reading.replacement_id:
@@ -274,14 +280,27 @@ class UtilityReading(models.Model):
                     billing_period = account.area_id.recurring_rule_type
                 elif account.region_id and account.region_id.recurring_rule_type:
                     billing_period = account.region_id.recurring_rule_type
-            domain = self._get_open_period_domain(work_type='readings', billing_period=billing_period)
-            rec.available_open_reading_period_ids = self.env['date.range'].search(domain)
+            
+            # 1. البحث بالشروط الدقيقة: الفترة المفتوحة + نوع العمل قراءات + نوع تكرار الفوترة
+            periods = self.env['date.range'].search(self._get_open_period_domain(work_type='readings', billing_period=billing_period))
+            
+            # 2. البحث بالفترات المفتوحة للقراءات بصرف النظر عن التكرار
+            if not periods and billing_period:
+                periods = self.env['date.range'].search(self._get_open_period_domain(work_type='readings'))
+            
+            # 3. خيار احتياطي شامل لجميع فترات القراءات
+            if not periods:
+                periods = self.env['date.range'].search([('work_type', '=', 'readings')])
 
-    @api.onchange('account_id', 'meter_id')
+            rec.available_open_reading_period_ids = periods
+
+    @api.onchange('account_id', 'meter_id', 'reading_purpose')
     def _onchange_account_id_date_range(self):
         available_periods = self.available_open_reading_period_ids
         if self.date_range_id and self.date_range_id not in available_periods:
             self.date_range_id = False
+        if self.reading_purpose == 'periodic' and not self.date_range_id and available_periods:
+            self.date_range_id = available_periods[0].id
         return {'domain': {'date_range_id': [('id', 'in', available_periods.ids)]}}
 
     @api.depends('reading_value', 'previous_reading', 'is_initial_reading', 'reading_purpose', 'meter_multiplier')
@@ -488,6 +507,21 @@ class UtilityReading(models.Model):
             if meter:
                 vals.setdefault('account_id', meter.customer_id.id)
                 vals.setdefault('meter_multiplier', meter.multiplier or 1.0)
+            if purpose == 'periodic' and not vals.get('date_range_id'):
+                account = self.env['utility.customer'].browse(vals.get('account_id')).exists() if vals.get('account_id') else (meter.customer_id if meter else False)
+                billing_period = False
+                if account:
+                    if account.contract_template_id and account.contract_template_id.recurring_rule_type:
+                        billing_period = account.contract_template_id.recurring_rule_type
+                    elif account.area_id and account.area_id.recurring_rule_type:
+                        billing_period = account.area_id.recurring_rule_type
+                    elif account.region_id and account.region_id.recurring_rule_type:
+                        billing_period = account.region_id.recurring_rule_type
+                open_periods = self.env['date.range'].search(self._get_open_period_domain(work_type='readings', billing_period=billing_period), limit=1)
+                if not open_periods:
+                    open_periods = self.env['date.range'].search(self._get_open_period_domain(work_type='readings'), limit=1)
+                if open_periods:
+                    vals['date_range_id'] = open_periods[0].id
         records = super().create(vals_list)
         for r in records:
             if r.meter_id:

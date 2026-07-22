@@ -30,8 +30,8 @@ class UtilityRoute(models.Model):
     )
     cashier_ids = fields.Many2many(
         'utility.staff', 'route_cashier_rel', 'route_id', 'staff_id',
-        string='المحصلون',
-        domain="[('user_role_id.code', '=', 'cashier')]",
+        string='المحصلون الميدانيون',
+        domain="['|', ('user_role_id.code', '=', 'collector'), ('user_role_id.code', '=', 'cashier')]",
     )
     supervisor_id = fields.Many2one('utility.staff', string='المشرف', domain="[('user_role_id.code', '=', 'supervisor')]")
 

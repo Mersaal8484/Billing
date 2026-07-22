@@ -259,6 +259,51 @@
                         </div>
                         <div class="col-12 col-lg-6 o_setting_box">
                             <div class="o_setting_right_pane">
+                                <label for="opening_journal_id"/>
+                                <div class="text-muted">يومية الأرصدة الافتتاحية</div>
+                                <div class="content-group">
+                                    <div class="mt16"><field name="opening_journal_id" class="o_light_label"/></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_right_pane">
+                                <label for="sales_journal_id"/>
+                                <div class="text-muted">يومية مبيعات الكهرباء (الفواتير)</div>
+                                <div class="content-group">
+                                    <div class="mt16"><field name="sales_journal_id" class="o_light_label"/></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_right_pane">
+                                <label for="electricity_income_account_id"/>
+                                <div class="text-muted">حساب إيرادات مبيعات الكهرباء</div>
+                                <div class="content-group">
+                                    <div class="mt16"><field name="electricity_income_account_id" class="o_light_label"/></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_right_pane">
+                                <label for="electricity_product_id"/>
+                                <div class="text-muted">منتج طاقة الكهرباء الرئيسي</div>
+                                <div class="content-group">
+                                    <div class="mt16"><field name="electricity_product_id" class="o_light_label"/></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_right_pane">
+                                <label for="discount_product_id"/>
+                                <div class="text-muted">منتج الخصم والإعفاءات</div>
+                                <div class="content-group">
+                                    <div class="mt16"><field name="discount_product_id" class="o_light_label"/></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_right_pane">
                                 <label for="penalty_product_id"/>
                                 <div class="text-muted">منتج الغرامات</div>
                                 <div class="content-group">

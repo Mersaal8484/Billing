@@ -20,6 +20,7 @@
                             <field name="deposit_journal_id"/>
                             <field name="settlement_journal_id"/>
                             <field name="collection_journal_id"/>
+                            <field name="opening_journal_id"/>
                         </group>
                         <group string="المنتجات الافتراضية">
                             <field name="penalty_product_id"/>

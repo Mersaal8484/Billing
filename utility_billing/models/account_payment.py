@@ -48,19 +48,55 @@ class AccountPayment(models.Model):
             payment.qr_code_url = '/report/barcode/?barcode_type=QR&value=%s' % quote(payload)
 
     def _get_payment_period_for_order(self, order):
-        if not order or not order.date_range_id:
-            return self.env['date.range']
-        payment_period = self.env['date.range'].search([
-            ('work_type', '=', 'payment'),
-            ('parent_id', '=', order.date_range_id.id),
-            ('is_current_period', '=', True),
-        ], limit=1)
-        if not payment_period:
-            payment_period = self.env['date.range'].search([
+        billing_period = False
+        if order and order.customer_id:
+            customer = order.customer_id
+            if customer.contract_template_id and customer.contract_template_id.recurring_rule_type:
+                billing_period = customer.contract_template_id.recurring_rule_type
+            elif customer.area_id and customer.area_id.recurring_rule_type:
+                billing_period = customer.area_id.recurring_rule_type
+            elif customer.region_id and customer.region_id.recurring_rule_type:
+                billing_period = customer.region_id.recurring_rule_type
+
+        if not billing_period and order and order.date_range_id:
+            billing_period = order.date_range_id.billing_period
+
+        if order and order.date_range_id:
+            period = self.env['date.range'].search([
+                ('work_type', '=', 'payment'),
+                ('parent_id', '=', order.date_range_id.id),
+                ('is_current_period', '=', True),
+            ], limit=1)
+            if period:
+                return period
+
+            period = self.env['date.range'].search([
                 ('work_type', '=', 'payment'),
                 ('parent_id', '=', order.date_range_id.id),
             ], limit=1)
-        return payment_period
+            if period:
+                return period
+
+        if billing_period:
+            period = self.env['date.range'].search([
+                ('work_type', '=', 'payment'),
+                ('billing_period', '=', billing_period),
+                ('is_current_period', '=', True),
+            ], limit=1)
+            if period:
+                return period
+
+            period = self.env['date.range'].search([
+                ('work_type', '=', 'payment'),
+                ('billing_period', '=', billing_period),
+            ], limit=1)
+            if period:
+                return period
+
+        return self.env['date.range'].search([
+            ('work_type', '=', 'payment'),
+            ('is_current_period', '=', True),
+        ], limit=1)
 
     @api.onchange('utility_sale_order_id')
     def _onchange_utility_sale_order_id(self):
@@ -73,12 +109,14 @@ class AccountPayment(models.Model):
     def _check_utility_payment_period_matches_bill(self):
         for payment in self.filtered('utility_sale_order_id'):
             order_period = payment.utility_sale_order_id.date_range_id
-            if not payment.date_range_id or not order_period:
+            if not payment.date_range_id:
                 continue
             if payment.date_range_id.work_type != 'payment':
                 raise ValidationError(_('فترة التحصيل يجب أن تكون من نوع دفع.'))
-            if payment.date_range_id.parent_id != order_period:
-                raise ValidationError(_('فترة التحصيل يجب أن تكون مرتبطة بفترة قراءة الفاتورة.'))
+            if order_period and payment.date_range_id.parent_id and payment.date_range_id.parent_id != order_period:
+                if payment.date_range_id.billing_period and order_period.billing_period:
+                    if payment.date_range_id.billing_period != order_period.billing_period:
+                        raise ValidationError(_('فترة التحصيل يجب أن تتوافق مع نوع دورية عقد المشترك (%s).') % payment.date_range_id.billing_period)
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -119,13 +157,7 @@ class AccountPayment(models.Model):
 
     @api.model
     def _default_collector_shift(self):
-        if self.env.context.get('collector_shift_id'):
-            return self.env.context['collector_shift_id']
-        shift = self.env['utility.collector.shift'].search([
-            ('collector_id', '=', self.env.user.id),
-            ('state', '=', 'open'),
-        ], limit=1)
-        return shift.id if shift else False
+        return False
 
     @api.model
     def default_get(self, fields_list):
@@ -171,20 +203,31 @@ class AccountPayment(models.Model):
                 )
         res = super().action_post()
         self.filtered('service_charge_id').mapped('service_charge_id').action_mark_paid_from_payment()
-        utility_payments = self.filtered('utility_sale_order_id')
-        for payment in utility_payments:
+        for payment in self:
             payment._reconcile_utility_sale_order()
-        utility_payments._create_payment_notification()
+        self.filtered('utility_sale_order_id')._create_payment_notification()
         return res
 
     def _reconcile_utility_sale_order(self):
         self.ensure_one()
+        if not self.move_id:
+            return
+
         order = self.utility_sale_order_id
-        if not order or not self.move_id:
-            return
-        invoices = (order.invoice_ids | order.utility_move_ids).filtered(lambda m: m.state == 'posted' and m.payment_state != 'paid')
-        if not invoices:
-            return
+        invoices = self.env['account.move']
+        if order:
+            invoices |= (order.invoice_ids | order.utility_move_ids)
+
+        if not invoices and self.partner_id:
+            invoices = self.env['account.move'].search([
+                ('partner_id', '=', self.partner_id.id),
+                ('move_type', '=', 'out_invoice'),
+                ('state', '=', 'posted'),
+                ('payment_state', 'in', ('not_paid', 'partial', 'in_payment'))
+            ])
+
+        invoices = invoices.filtered(lambda m: m.state == 'posted' and m.payment_state in ('not_paid', 'partial', 'in_payment'))
+
         payment_lines = self.move_id.line_ids.filtered(
             lambda line: not line.reconciled and line.account_id.account_type == 'asset_receivable'
         )
@@ -192,6 +235,20 @@ class AccountPayment(models.Model):
             lambda line: not line.reconciled and line.account_id.account_type == 'asset_receivable'
         )
         lines = payment_lines | invoice_lines
-        if lines:
+        if len(lines) >= 2:
             lines.reconcile()
+
+        # إجراء تسوية شاملة لحساب العملاء للشريك لضمان سداد الفاتورة تلقائياً
+        if self.partner_id:
+            partner_lines = self.env['account.move.line'].search([
+                ('partner_id', '=', self.partner_id.id),
+                ('reconciled', '=', False),
+                ('account_id.account_type', '=', 'asset_receivable'),
+                ('move_id.state', '=', 'posted')
+            ])
+            if len(partner_lines) >= 2:
+                try:
+                    partner_lines.reconcile()
+                except Exception:
+                    pass
 

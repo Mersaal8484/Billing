@@ -320,9 +320,10 @@ class UtilityMeter(models.Model):
             if meter.customer_id:
                 customer_number = meter.customer_id.customer_number or ''
                 customer_name = meter.customer_id.partner_id.name or ''
+            company_name = (meter.company_id.name if meter.company_id else self.env.company.name) or ''
             payload = '|'.join([
                 'UTILITY-METER',
-                meter.company_id.name or '',
+                company_name,
                 meter.meter_number or '',
                 meter.serial_number or '',
                 customer_number,

@@ -125,14 +125,5 @@
             </field>
         </record>
 
-        <!-- Menu Items -->
-        <menuitem id="menu_utility_collections" name="التحصيل"
-                  parent="utility_billing.menu_utility_billing_root" sequence="35"/>
-
-        <menuitem id="menu_utility_collector_shifts" name="يوميات التحصيل"
-                  parent="menu_utility_collections" sequence="10"
-                  action="action_utility_collector_shift"
-                  groups="utility_core.group_utility_collector,utility_core.group_utility_supervisor,utility_core.group_utility_auditor"/>
-
     </data>
 </odoo>

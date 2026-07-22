@@ -190,40 +190,108 @@ class UtilityMigrationCustomer(models.Model):
         if self.opening_move_id:
             return
 
-        pec_credit = self._get_pec_credit()
-        if self.current_balance <= 0 and pec_credit <= 0:
+        if not self.current_balance:
             return
 
-        journal = self.env['account.journal'].search([('type', '=', 'general')], limit=1)
+        journal = (
+            self.env.company.opening_journal_id
+            or self.env['account.journal'].search([('code', '=', 'OPEN'), ('type', '=', 'general')], limit=1)
+            or self.env['account.journal'].search([('type', '=', 'general')], limit=1)
+        )
         account_receivable = partner.property_account_receivable_id
+        if not account_receivable:
+            account_receivable = (
+                self.env['account.account'].search([
+                    ('account_type', '=', 'asset_receivable'),
+                    ('company_id', 'in', (self.env.company.id, False))
+                ], limit=1)
+                or self.env['account.account'].search([
+                    ('code', '=like', '12%'),
+                    ('company_id', 'in', (self.env.company.id, False))
+                ], limit=1)
+                or self.env['account.account'].search([
+                    ('name', 'ilike', 'عملاء'),
+                    ('company_id', 'in', (self.env.company.id, False))
+                ], limit=1)
+                or self.env['account.account'].search([
+                    ('account_type', 'in', ('asset_receivable', 'asset_current'))
+                ], limit=1)
+            )
+            if not account_receivable:
+                # إنشاء حساب ذمم مدينة افتراضي للشركة إن لم يوجد أي حساب مطابق
+                account_receivable = self.env['account.account'].create({
+                    'name': 'حساب العملاء والذمم المدينة',
+                    'code': '120000',
+                    'account_type': 'asset_receivable',
+                    'company_id': self.env.company.id,
+                    'reconcile': True,
+                })
+            partner.sudo().write({'property_account_receivable_id': account_receivable.id})
+
         account_suspense = (
             self.env.company.account_journal_suspense_account_id
-            or self.env['account.account'].search([('account_type', '=', 'equity')], limit=1)
+            or self.env['account.account'].search([
+                ('account_type', 'in', ('equity', 'equity_unaffected')),
+                ('company_id', 'in', (self.env.company.id, False))
+            ], limit=1)
+            or self.env['account.account'].search([
+                ('code', '=like', '3%'),
+                ('company_id', 'in', (self.env.company.id, False))
+            ], limit=1)
+            or self.env['account.account'].search([
+                ('name', 'ilike', 'افتتاح'),
+                ('company_id', 'in', (self.env.company.id, False))
+            ], limit=1)
+            or self.env['account.account'].search([
+                ('name', 'ilike', 'أرباح'),
+                ('company_id', 'in', (self.env.company.id, False))
+            ], limit=1)
+            or self.env['account.account'].search([
+                ('account_type', 'in', ('equity', 'equity_unaffected', 'liability_current'))
+            ], limit=1)
         )
-
-        if not account_receivable or not account_suspense:
-            raise UserError(_(
-                'يجب إعداد حساب العميل (الذمم المدينة) والحساب المعلق / حقوق الملكية في النظام.'
-            ))
+        if not account_suspense:
+            # إنشاء حساب الأرصدة الافتتاحية المعلق افتراضي إن لم يوجد أي حساب مطابق
+            account_suspense = self.env['account.account'].create({
+                'name': 'حساب الأرصدة الافتتاحية (حقوق ملكية)',
+                'code': '300000',
+                'account_type': 'equity',
+                'company_id': self.env.company.id,
+            })
         if not journal:
             raise UserError(_('لا توجد يومية عمليات (General Journal) معرّفة في النظام.'))
 
         line_ids = []
         
-        # 1. المديونية الحالية (مدين للعميل)
+        # 1. الرصيد الحالي (إذا كان الرصيد موجباً: مدين للعميل، وإذا كان سالباً: دائن للعميل)
         if self.current_balance > 0:
             line_ids.append((0, 0, {
-                'name': 'رصيد افتتاح مديونية آجل - %s' % self.name,
+                'name': 'رصيد افتتاح مديونية - %s' % self.name,
                 'partner_id': partner.id,
                 'account_id': account_receivable.id,
                 'debit': self.current_balance,
                 'credit': 0.0,
             }))
             line_ids.append((0, 0, {
-                'name': 'رصيد افتتاح مديونية آجل - %s' % self.name,
+                'name': 'رصيد افتتاح مديونية - %s' % self.name,
                 'account_id': account_suspense.id,
                 'debit': 0.0,
                 'credit': self.current_balance,
+            }))
+        elif self.current_balance < 0:
+            credit_amount = abs(self.current_balance)
+            line_ids.append((0, 0, {
+                'name': 'رصيد افتتاح دائن - %s' % self.name,
+                'account_id': account_suspense.id,
+                'debit': credit_amount,
+                'credit': 0.0,
+            }))
+            line_ids.append((0, 0, {
+                'name': 'رصيد افتتاح دائن - %s' % self.name,
+                'partner_id': partner.id,
+                'account_id': account_receivable.id,
+                'debit': 0.0,
+                'credit': credit_amount,
             }))
             
 
@@ -269,15 +337,28 @@ class UtilityMigrationCustomer(models.Model):
                 'يجب تحديد نوع المشترك للعميل "%s".'
             ) % self.name)
 
-        # 1. Create utility.customer
-        customer = self.env['utility.customer'].with_context(skip_opening_entry=True).create({
+        # 1. Create or update utility.customer
+        company_id = self.env.company.id
+        customer = self.env['utility.customer'].search([
+            ('customer_number', '=', self.customer_number),
+            ('company_id', '=', company_id)
+        ], limit=1)
+
+        customer_vals = {
             'customer_number': self.customer_number,
             'partner_id': partner.id,
             'category_id': self.category_id.id,
             'subscriber_id': self.subscriber_type_id.id,
             'state': 'active',
             'contract_template_id': self.contract_template_id.id,
-        })
+            'company_id': company_id,
+        }
+
+        if customer:
+            customer.with_context(skip_opening_entry=True).write(customer_vals)
+        else:
+            customer = self.env['utility.customer'].with_context(skip_opening_entry=True).create(customer_vals)
+
         self.created_customer_id = customer.id
 
         # 2. Create / link meter
@@ -302,16 +383,25 @@ class UtilityMigrationCustomer(models.Model):
 
         # 3. Create opening reading (state=billed so it won't be re-billed)
         if self.last_reading > 0:
-            self.env['utility.reading'].create({
-                'meter_id': meter.id,
-                'reading_value': self.last_reading,
-                'reading_date': fields.Datetime.now(),
-                'reading_type': 'manual',
-                'reading_purpose': 'opening',
-                'is_initial_reading': True,
-                'reading_category': 'customer',
-                'state': 'billed',
-            })
+            existing_reading = self.env['utility.reading'].search([
+                ('meter_id', '=', meter.id),
+                ('reading_purpose', '=', 'opening')
+            ], limit=1)
+            if not existing_reading:
+                self.env['utility.reading'].create({
+                    'meter_id': meter.id,
+                    'reading_value': self.last_reading,
+                    'reading_date': fields.Datetime.now(),
+                    'reading_type': 'manual',
+                    'reading_purpose': 'opening',
+                    'is_initial_reading': True,
+                    'reading_category': 'customer',
+                    'state': 'billed',
+                })
+            else:
+                existing_reading.write({
+                    'reading_value': self.last_reading,
+                })
 
         # 4. Create opening balance journal entry
         self._create_opening_balance_entry(partner, customer)
@@ -339,14 +429,15 @@ class UtilityMigrationCustomer(models.Model):
             if rec.state == 'imported':
                 continue
             try:
-                partner = rec._upsert_partner()
-                rec.created_partner_id = partner.id
+                with self.env.cr.savepoint():
+                    partner = rec._upsert_partner()
+                    rec.created_partner_id = partner.id
 
-                if rec.is_active:
-                    rec._create_customer_account(partner)
+                    if rec.is_active:
+                        rec._create_customer_account(partner)
 
-                rec.state = 'imported'
-                rec.error_message = False
+                    rec.state = 'imported'
+                    rec.error_message = False
 
             except Exception as e:
                 rec.state = 'error'

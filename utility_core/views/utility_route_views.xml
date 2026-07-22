@@ -14,7 +14,7 @@
                 <field name="feeder_id" optional="show"/>
                 <field name="transformer_id"/>
                 <field name="inspector_ids" widget="many2many_tags" optional="show"/>
-                <field name="cashier_ids" widget="many2many_tags" optional="show"/>
+                <field name="cashier_ids" string="المحصلون الميدانيون" widget="many2many_tags" optional="show"/>
                 <field name="supervisor_id" optional="show"/>
                 <field name="customer_count" string="مشتركون" optional="show"/>
                 <field name="active"/>
@@ -61,7 +61,7 @@
                         </group>
                         <group string="طاقم العمل">
                             <field name="inspector_ids" widget="many2many_tags" options="{'no_create': True}"/>
-                            <field name="cashier_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                            <field name="cashier_ids" string="المحصلون الميدانيون" widget="many2many_tags" options="{'no_create': True}"/>
                             <field name="supervisor_id" options="{'no_create': True}"/>
                         </group>
                     </group>

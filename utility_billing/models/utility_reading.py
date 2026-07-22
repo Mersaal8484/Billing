@@ -117,7 +117,8 @@ class UtilityReading(models.Model):
             'date_order': fields.Datetime.now(),
             'period_start': self.date_range_id.date_start or (
                 self.previous_reading_date.date() if self.previous_reading_date else fields.Date.today()),
-            'period_end': self.reading_date.date(),
+            'period_end': self.date_range_id.date_end or (
+                self.reading_date.date() if self.reading_date else fields.Date.today()),
             'previous_reading': self.previous_reading,
             'current_reading': self.reading_value,
             'consumption': total_consumption,

@@ -109,6 +109,11 @@ class ResConfigSettings(models.TransientModel):
         related='company_id.settlement_journal_id',
         readonly=False,
         string='يومية التسويات')
+    opening_journal_id = fields.Many2one(
+        'account.journal',
+        related='company_id.opening_journal_id',
+        readonly=False,
+        string='يومية الأرصدة الافتتاحية')
     penalty_product_id = fields.Many2one(
         'product.product',
         related='company_id.penalty_product_id',
@@ -139,3 +144,23 @@ class ResConfigSettings(models.TransientModel):
         related='company_id.collection_journal_id',
         readonly=False,
         string='يومية التحصيل الافتراضية')
+    sales_journal_id = fields.Many2one(
+        'account.journal',
+        related='company_id.sales_journal_id',
+        readonly=False,
+        string='يومية مبيعات الكهرباء')
+    electricity_income_account_id = fields.Many2one(
+        'account.account',
+        related='company_id.electricity_income_account_id',
+        readonly=False,
+        string='حساب إيرادات مبيعات الكهرباء')
+    electricity_product_id = fields.Many2one(
+        'product.product',
+        related='company_id.electricity_product_id',
+        readonly=False,
+        string='منتج طاقة الكهرباء الرئيسي')
+    discount_product_id = fields.Many2one(
+        'product.product',
+        related='company_id.discount_product_id',
+        readonly=False,
+        string='منتج الخصم والإعفاءات')

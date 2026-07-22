@@ -107,4 +107,8 @@
         <field name="view_mode">tree,form</field>
         <field name="search_view_id" ref="view_utility_service_charge_search"/>
     </record>
+
+    <menuitem id="menu_utility_service_charges" name="رسوم الخدمات"
+              parent="utility_billing.menu_utility_accounting" sequence="35"
+              action="action_utility_service_charge"/>
 </odoo>

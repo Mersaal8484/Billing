@@ -111,6 +111,14 @@ class UtilitySaleOrder(models.Model):
             self.date_range_id = False
         return {'domain': {'date_range_id': [('id', 'in', available_periods.ids)]}}
 
+    @api.onchange('date_range_id')
+    def _onchange_date_range_id_set_period_dates(self):
+        if self.date_range_id:
+            if self.date_range_id.date_start:
+                self.period_start = self.date_range_id.date_start
+            if self.date_range_id.date_end:
+                self.period_end = self.date_range_id.date_end
+
     @api.depends('name', 'customer_id.customer_number', 'partner_id.name', 'meter_id.meter_number', 'date_range_id.name', 'amount_total', 'total_due_amount', 'bill_state')
     def _compute_qr_code(self):
         for order in self:
@@ -278,6 +286,146 @@ class UtilitySaleOrder(models.Model):
             sms_config_key='utility.send_sms_on_invoice',
             subject=_('إصدار فاتورة كهرباء'),
         )
+
+    def action_register_utility_payment(self):
+        """Open payment creation wizard pre-filled with customer bill details and collector's dedicated cash journal."""
+        self.ensure_one()
+        current_user = self.env.user
+        journal = current_user.collection_journal_id
+
+        if not journal:
+            staff = self.env['utility.staff'].search([
+                ('user_id', '=', current_user.id),
+                ('company_id', '=', self.company_id.id)
+            ], limit=1)
+            if staff:
+                staff._auto_create_collector_journal()
+                journal = staff.collection_journal_id
+
+        if not journal:
+            code = ('C%s' % current_user.id)[:5].upper()
+            journal_name = 'يومية تحصيل - %s' % current_user.name
+            journal = self.env['account.journal'].search([
+                ('company_id', '=', self.company_id.id),
+                ('type', '=', 'cash'),
+                '|', ('code', '=', code), ('name', '=', journal_name)
+            ], limit=1)
+            if not journal:
+                acc_name = 'حساب صندوق - %s' % current_user.name
+                cash_acc = self.env['account.account'].search([
+                    ('name', '=', acc_name),
+                    ('company_id', '=', self.company_id.id)
+                ], limit=1)
+                if not cash_acc:
+                    code_num = str(current_user.id).zfill(3)
+                    cash_acc = self.env['account.account'].create({
+                        'name': acc_name,
+                        'code': '101%s' % code_num[-3:],
+                        'account_type': 'asset_cash',
+                        'company_id': self.company_id.id,
+                    })
+                journal = self.env['account.journal'].create({
+                    'name': journal_name,
+                    'code': code,
+                    'type': 'cash',
+                    'company_id': self.company_id.id,
+                    'default_account_id': cash_acc.id,
+                })
+            current_user.sudo().write({'collection_journal_id': journal.id})
+
+        if journal:
+            company = journal.company_id
+            if not company.account_journal_payment_debit_account_id or not company.account_journal_payment_credit_account_id:
+                outstanding_acc = self.env['account.account'].search([
+                    ('name', 'ilike', 'مستحق'),
+                    ('company_id', 'in', (company.id, False))
+                ], limit=1) or self.env['account.account'].search([
+                    ('account_type', 'in', ('asset_current', 'asset_cash')),
+                    ('company_id', 'in', (company.id, False))
+                ], limit=1)
+                if not outstanding_acc:
+                    outstanding_acc = self.env['account.account'].create({
+                        'name': 'حساب الإيصالات والدفعات المستحقة',
+                        'code': '101200',
+                        'account_type': 'asset_current',
+                        'company_id': company.id,
+                    })
+                c_vals = {}
+                if not company.account_journal_payment_debit_account_id:
+                    c_vals['account_journal_payment_debit_account_id'] = outstanding_acc.id
+                if not company.account_journal_payment_credit_account_id:
+                    c_vals['account_journal_payment_credit_account_id'] = outstanding_acc.id
+                if c_vals:
+                    company.sudo().write(c_vals)
+
+            j_vals = {}
+            acc_name = 'حساب صندوق - %s' % current_user.name
+            cash_acc = journal.default_account_id
+            if not cash_acc or (current_user.name and current_user.name not in cash_acc.name):
+                cash_acc = self.env['account.account'].search([
+                    ('name', '=', acc_name),
+                    ('company_id', '=', company.id)
+                ], limit=1)
+                if not cash_acc:
+                    code_num = str(current_user.id).zfill(3)
+                    cash_acc = self.env['account.account'].create({
+                        'name': acc_name,
+                        'code': '101%s' % code_num[-3:],
+                        'account_type': 'asset_cash',
+                        'company_id': company.id,
+                    })
+                j_vals['default_account_id'] = cash_acc.id
+
+            LineModel = self.env['account.payment.method.line']
+            acc_field = 'payment_account_id' if hasattr(LineModel, 'payment_account_id') else ('outstanding_account_id' if hasattr(LineModel, 'outstanding_account_id') else False)
+            target_out_acc = company.account_journal_payment_debit_account_id.id if company.account_journal_payment_debit_account_id else (cash_acc.id if cash_acc else False)
+
+            if not journal.inbound_payment_method_line_ids:
+                manual_inbound = self.env['account.payment.method'].search([
+                    ('payment_type', '=', 'inbound'),
+                    ('code', '=', 'manual')
+                ], limit=1)
+                if manual_inbound:
+                    m_line = {'name': 'يدوي', 'payment_method_id': manual_inbound.id}
+                    if acc_field and target_out_acc: m_line[acc_field] = target_out_acc
+                    j_vals['inbound_payment_method_line_ids'] = [(0, 0, m_line)]
+            elif acc_field and target_out_acc:
+                for line in journal.inbound_payment_method_line_ids:
+                    if not getattr(line, acc_field, False):
+                        line.sudo().write({acc_field: target_out_acc})
+
+            if not journal.outbound_payment_method_line_ids:
+                manual_outbound = self.env['account.payment.method'].search([
+                    ('payment_type', '=', 'outbound'),
+                    ('code', '=', 'manual')
+                ], limit=1)
+                if manual_outbound:
+                    m_line = {'name': 'يدوي', 'payment_method_id': manual_outbound.id}
+                    if acc_field and target_out_acc: m_line[acc_field] = target_out_acc
+                    j_vals['outbound_payment_method_line_ids'] = [(0, 0, m_line)]
+            elif acc_field and target_out_acc:
+                for line in journal.outbound_payment_method_line_ids:
+                    if not getattr(line, acc_field, False):
+                        line.sudo().write({acc_field: target_out_acc})
+
+            if j_vals:
+                journal.sudo().write(j_vals)
+
+        return {
+            'name': _('تسجيل تحصيل الفاتورة'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'account.payment',
+            'view_mode': 'form',
+            'target': 'current',
+            'context': {
+                'default_payment_type': 'inbound',
+                'default_partner_type': 'customer',
+                'default_partner_id': self.partner_id.id,
+                'default_amount': self.balance_due if self.balance_due > 0 else self.amount_total,
+                'default_utility_sale_order_id': self.id,
+                'default_journal_id': journal.id if journal else False,
+            }
+        }
 
     def _create_overdue_notifications(self):
         self._create_notification_logs(
@@ -1042,6 +1190,8 @@ class UtilitySaleOrderLine(models.Model):
             product_id = company.local_fee_product_id.id
 
         elif self.meter_line_type == 'discount':
+            if company.discount_product_id:
+                product_id = company.discount_product_id.id
             acc_id = self._get_company_config('discount_account_id', 'utility.discount_account_id')
 
         elif self.meter_line_type == 'penalty':

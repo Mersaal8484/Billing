@@ -25,6 +25,9 @@
         <field name="inherit_id" ref="sale.view_order_form"/>
         <field name="arch" type="xml">
             <xpath expr="//header" position="inside">
+                <button name="action_register_utility_payment" string="تسجيل تحصيل الفاتورة" type="object"
+                        class="btn-primary"
+                        attrs="{'invisible': [('bill_state', '=', 'paid')]}"/>
                 <button name="action_create_disconnection_order" string="إنشاء أمر فصل" type="object"
                         class="btn-secondary"
                         attrs="{'invisible': ['|', ('customer_id', '=', False), '|', ('balance_due', '&lt;=', 0), ('bill_state', '=', 'paid')]}"/>

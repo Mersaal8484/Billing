@@ -52,8 +52,10 @@ class UtilityContractTemplate(models.Model):
             'reading_id': reading.id,
             'date_range_id': reading.date_range_id.id,
             'contract_template_id': template.id if template else False,
-            'period_start': reading.previous_reading_date.date() if reading.previous_reading_date else fields.Date.today(),
-            'period_end': reading.reading_date.date() if reading.reading_date else fields.Date.today(),
+            'period_start': reading.date_range_id.date_start or (
+                reading.previous_reading_date.date() if reading.previous_reading_date else fields.Date.today()),
+            'period_end': reading.date_range_id.date_end or (
+                reading.reading_date.date() if reading.reading_date else fields.Date.today()),
             'previous_reading': reading.previous_reading,
             'current_reading': reading.reading_value,
             'consumption': consumption,
