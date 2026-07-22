@@ -11,6 +11,34 @@ class ResConfigSettings(models.TransientModel):
         readonly=True,
     )
 
+    group_display_incoterm = fields.Boolean(
+        string='شروط التجارة الدولية (Incoterms)',
+        implied_group='account.group_delivery_invoice_address',
+    )
+    default_picking_policy = fields.Selection([
+        ('direct', 'تسليم كل منتج عند توفره'),
+        ('one', 'تسليم جميع المنتجات دفعة واحدة'),
+    ], string='سياسة الشحن والتوصيل', default='direct', default_model='sale.order')
+    use_security_lead = fields.Boolean(
+        string='مهلة الأمان للتسليم',
+        config_parameter='sale.use_security_lead',
+    )
+    security_lead = fields.Float(
+        string='مهلة أمان التسليم بالأيام',
+        config_parameter='sale.security_lead',
+    )
+    group_stock_packaging = fields.Boolean(
+        string='التعبئة والتغليف للمخزون',
+        implied_group='product.group_stock_packaging',
+    )
+    group_discount_per_so_line = fields.Boolean(
+        string='خصومات بنود أوامر البيع',
+        implied_group='product.group_discount_per_so_line',
+    )
+    module_delivery = fields.Boolean(
+        string='طرق التوصيل والشحن',
+    )
+
     # --- Meter Reading ---
     meter_review_required = fields.Boolean(
         string='مطلوب مراجعة صورة العداد',

@@ -9,9 +9,9 @@ class UtilityMeterReplacement(models.Model):
 
     order_number = fields.Char('رقم العملية', default=lambda self: _('New'), readonly=True)
     replacement_date = fields.Date('تاريخ الاستبدال', default=fields.Date.today)
-    old_meter_final_reading = fields.Float('القراءة النهائية للقديم')
-    new_meter_initial_reading = fields.Float('القراءة الابتدائية للجديد', default=0.0)
-    unbilled_consumption = fields.Float('الاستهلاك غير المفوتر للقديم', compute='_compute_unbilled_consumption', store=True)
+    old_meter_final_reading = fields.Float('القراءة النهائية للقديم', related='old_closing_reading', readonly=False, store=True)
+    new_meter_initial_reading = fields.Float('القراءة الابتدائية للجديد', related='new_opening_reading', readonly=False, store=True)
+    unbilled_consumption = fields.Float('الاستهلاك غير المفوتر للقديم', related='old_uninvoiced_consumption', store=True)
     replacement_notes = fields.Text('ملاحظات الاستبدال')
     picking_ids = fields.One2many('stock.picking', compute='_compute_picking_ids', string='حركات المخزون')
     picking_count = fields.Integer(compute='_compute_picking_ids', string='عدد حركات المخزون')
@@ -22,12 +22,6 @@ class UtilityMeterReplacement(models.Model):
             rec.picking_ids = pickings
             rec.picking_count = len(pickings)
 
-    @api.depends('old_meter_final_reading', 'utility_account_id.last_invoice_reading')
-    def _compute_unbilled_consumption(self):
-        for rec in self:
-            last_invoiced = rec.utility_account_id.last_invoice_reading or 0.0
-            rec.unbilled_consumption = max(0.0, rec.old_meter_final_reading - last_invoiced)
-
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
@@ -35,9 +29,8 @@ class UtilityMeterReplacement(models.Model):
                 vals['order_number'] = self.env['ir.sequence'].next_by_code('utility.meter.replacement') or _('New')
         return super().create(vals_list)
 
-
     def _create_stock_picking(self, meter, location_dest_usage):
-        if not meter.product_id:
+        if not meter or not meter.product_id:
             return False
             
         stock_location = self.env.ref('stock.stock_location_stock', raise_if_not_found=False)
@@ -58,7 +51,7 @@ class UtilityMeterReplacement(models.Model):
             'picking_type_id': picking_type.id,
             'location_id': loc_id,
             'location_dest_id': dest_id,
-            'origin': self.order_number,
+            'origin': self.order_number or self.name,
         })
         
         move = self.env['stock.move'].create({
@@ -93,13 +86,15 @@ class UtilityMeterReplacement(models.Model):
         if self.state == 'done':
             raise ValidationError(_('هذه العملية مكتملة بالفعل!'))
         self.write({
-            'old_closing_reading': self.old_meter_final_reading,
-            'new_opening_reading': self.new_meter_initial_reading,
-            'replace_date': fields.Datetime.to_datetime(self.replacement_date),
+            'old_closing_reading': self.old_meter_final_reading or self.old_closing_reading,
+            'new_opening_reading': self.new_meter_initial_reading or self.new_opening_reading,
+            'replace_date': fields.Datetime.to_datetime(self.replacement_date) if self.replacement_date else self.replace_date,
         })
         old_meter = self.old_meter_id
         new_meter = self.new_meter_id
         result = self._action_confirm_replacement_unified()
-        self._create_stock_picking(old_meter, 'scrap')
-        self._create_stock_picking(new_meter, 'customer')
+        if old_meter:
+            self._create_stock_picking(old_meter, 'scrap')
+        if new_meter:
+            self._create_stock_picking(new_meter, 'customer')
         return result

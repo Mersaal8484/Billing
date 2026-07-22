@@ -1,7 +1,7 @@
 {
     'name': 'Utility Operations',
     'version': '16.0.1.0.0',
-    'category': 'Industries/Utilities',
+    'category': 'Utility ERP',
     'summary': 'Field Operations & Service Order Management',
     'description': """
 Enterprise Utility Operations Module
@@ -35,5 +35,5 @@ Maintenance, Alarm, Work Order.
     'installable': True,
     'application': True,
     'auto_install': False,
-    'sequence': 30,
+    'sequence': 2,
 }

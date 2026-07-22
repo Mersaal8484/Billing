@@ -30,6 +30,7 @@
         <field name="model">utility.meter</field>
         <field name="arch" type="xml">
             <form>
+                <field name="customer_id" invisible="1"/>
                 <header>
                     <button name="action_request_ami_reading" type="object" string="طلب قراءة AMI" class="btn-secondary"
                             attrs="{'invisible': [('payment_type', '!=', 'postpaid')]}"/>
@@ -53,7 +54,7 @@
                         </button>
                         <button name="action_add_subscriber" type="object"
                                 class="oe_stat_button" icon="fa-user-plus"
-                                attrs="{'invisible': [('connection_type', '!=', 'subscriber')]}"
+                                attrs="{'invisible': ['|', ('connection_type', '!=', 'not_connected'), ('customer_id', '!=', False)]}"
                                 help="إضافة مشترك جديد لهذا العداد">
                             <div class="o_stat_info">
                                 <span class="o_stat_text">إضافة مشترك</span>
@@ -120,8 +121,9 @@
                     <notebook>
                         <page name="reading_history" string="سجل القراءات">
                             <field name="reading_ids" readonly="1">
-                                <tree>
+                                <tree default_order="reading_date desc">
                                     <field name="reading_id"/>
+                                    <field name="reading_purpose" widget="badge"/>
                                     <field name="reading_date"/>
                                     <field name="reading_value"/>
                                     <field name="consumption"/>

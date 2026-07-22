@@ -1,7 +1,7 @@
 {
     'name': 'Utility Prepaid',
     'version': '16.0.3.1.0',
-    'category': 'Industries/Utilities',
+    'category': 'Utility ERP',
     'summary': 'محرك بيع الكهرباء مسبقة الدفع (متكامل مع POS)',
     'description': """
 محرك بيع الكهرباء مسبقة الدفع المتكامل
@@ -66,5 +66,5 @@
     'installable': True,
     'application': True,
     'auto_install': False,
-    'sequence': 20,
+    'sequence': 2,
 }

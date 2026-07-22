@@ -1,7 +1,7 @@
 {
     'name': 'Utility Core',
     'version': '16.0.1.0.0',
-    'category': 'Industries/Utilities',
+    'category': 'Utility ERP',
     'summary': 'Core Master Data for Utility ERP Platform',
     'description': """
 Enterprise Utility Core Module
@@ -92,5 +92,5 @@ User Role.
             'utility_core/static/src/xml/utility_dashboard.xml',
         ],
     },
-    'sequence': 10,
+    'sequence': 2,
 }

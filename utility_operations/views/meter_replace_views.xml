@@ -14,7 +14,7 @@
                 <field name="new_meter_id"/>
                 <field name="replacement_date"/>
                 <field name="unbilled_consumption"/>
-                <field name="state"/>
+                <field name="state" widget="badge" decoration-info="state == 'draft'" decoration-success="state == 'done'"/>
             </tree>
         </field>
     </record>
@@ -26,6 +26,9 @@
         <field name="arch" type="xml">
             <form>
                 <field name="company_id" invisible="1"/>
+                <field name="closing_reading_id" invisible="1"/>
+                <field name="opening_reading_id" invisible="1"/>
+                <field name="sale_order_id" invisible="1"/>
                 <header>
                     <button name="action_complete_replacement" type="object"
                             string="إكمال الاستبدال" class="oe_highlight"
@@ -39,33 +42,63 @@
                                 context="{'search_default_origin': name}">
                             <field string="حركات المخزون" name="picking_count" widget="statinfo"/>
                         </button>
+                        <button class="oe_stat_button" type="object" name="action_view_closing_reading"
+                                icon="fa-tachometer"
+                                attrs="{'invisible': [('closing_reading_id', '=', False)]}">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">القراءة الختامية</span>
+                            </div>
+                        </button>
+                        <button class="oe_stat_button" type="object" name="action_view_opening_reading"
+                                icon="fa-power-off"
+                                attrs="{'invisible': [('opening_reading_id', '=', False)]}">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">القراءة الافتتاحية</span>
+                            </div>
+                        </button>
+                        <button class="oe_stat_button" type="object" name="action_view_sale_order"
+                                icon="fa-file-text-o"
+                                attrs="{'invisible': [('sale_order_id', '=', False)]}">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">فاتورة الاستهلاك</span>
+                            </div>
+                        </button>
                     </div>
+
+                    <div class="alert alert-info text-center" role="alert" attrs="{'invisible': [('state', '!=', 'done')]}">
+                        <i class="fa fa-info-circle me-2" title="تنبيه"/>
+                        <strong>تم الاستبدال واكتمال حركات المخزون!</strong>
+                        الاستهلاك غير المفوتر المرحل للعداد القديم: 
+                        <strong><field name="unbilled_consumption" readonly="1"/> ك.و.س</strong>
+                    </div>
+
                     <div class="oe_title">
                         <label for="name" string="رقم العملية"/>
                         <h1><field name="name"/></h1>
                     </div>
                     <group>
                         <group string="معلومات الاشتراك">
-                            <field name="utility_account_id"/>
+                            <field name="utility_account_id" attrs="{'readonly': [('state', '=', 'done')]}"/>
                             <field name="partner_id"/>
                         </group>
-                        <group string="تفاصيل العدادات">
-                            <field name="old_meter_id"/>
-                            <field name="new_meter_id"/>
-                            <field name="replacement_date"/>
+                        <group string="تفاصيل العدادات والتاريخ">
+                            <field name="old_meter_id" attrs="{'readonly': [('state', '=', 'done')]}"/>
+                            <field name="new_meter_id" attrs="{'readonly': [('state', '=', 'done')]}"/>
+                            <field name="replacement_date" attrs="{'readonly': [('state', '=', 'done')]}"/>
                         </group>
                     </group>
-                    <group string="قراءات الاستبدال والاستهلاك">
+                    <group string="قراءات الاستبدال والاستهلاك غير المفوتر">
                         <group>
-                            <field name="old_meter_final_reading"/>
-                            <field name="new_meter_initial_reading"/>
+                            <field name="old_meter_final_reading" attrs="{'readonly': [('state', '=', 'done')]}"/>
+                            <field name="new_meter_initial_reading" attrs="{'readonly': [('state', '=', 'done')]}"/>
                         </group>
                         <group>
                             <field name="unbilled_consumption" readonly="1"/>
                         </group>
                     </group>
-                    <group string="تفاصيل إضافية">
-                        <field name="reason"/>
+                    <group string="تفاصيل إضافية وملاحظات">
+                        <field name="reason" attrs="{'readonly': [('state', '=', 'done')]}"/>
+                        <field name="replacement_notes" attrs="{'readonly': [('state', '=', 'done')]}"/>
                     </group>
                 </sheet>
             </form>

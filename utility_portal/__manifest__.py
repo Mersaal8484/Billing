@@ -1,7 +1,7 @@
 {
     'name': 'Utility Portal',
     'version': '16.0.1.0.0',
-    'category': 'Industries/Utilities',
+    'category': 'Utility ERP',
     'summary': 'Customer Self-Service Portal & REST API',
     'description': """
 Enterprise Utility Customer Portal
@@ -28,5 +28,5 @@ Notifications (Email/SMS/Push).
     'installable': True,
     'application': True,
     'auto_install': False,
-    'sequence': 50,
+    'sequence': 2,
 }

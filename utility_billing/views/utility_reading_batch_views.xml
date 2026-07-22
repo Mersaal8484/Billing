@@ -68,8 +68,9 @@
                     <notebook>
                         <page string="القراءات المُنشأة" attrs="{'invisible': [('processed_count', '=', 0)]}">
                             <field name="reading_ids" readonly="1">
-                                <tree>
+                                <tree default_order="reading_date desc">
                                     <field name="reading_id"/>
+                                    <field name="reading_purpose" widget="badge"/>
                                     <field name="meter_id"/>
                                     <field name="customer_id"/>
                                     <field name="reading_value"/>

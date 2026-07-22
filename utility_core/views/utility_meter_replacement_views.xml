@@ -9,9 +9,9 @@
                 <field name="company_id" invisible="1"/>
                 <field name="utility_account_id"/>
                 <field name="partner_id"/>
-                <field name="contract_id"/>
                 <field name="old_meter_number"/>
                 <field name="new_meter_id"/>
+                <field name="old_uninvoiced_consumption"/>
                 <field name="replace_date"/>
                 <field name="reason"/>
                 <field name="state" widget="badge" decoration-info="state == 'draft'" decoration-success="state == 'done'"/>
@@ -26,11 +26,45 @@
         <field name="arch" type="xml">
             <form string="عملية استبدال عداد عبر حساب المشترك">
                 <field name="company_id" invisible="1"/>
+                <field name="closing_reading_id" invisible="1"/>
+                <field name="opening_reading_id" invisible="1"/>
+                <field name="sale_order_id" invisible="1"/>
                 <header>
                     <button name="action_confirm_replacement" string="تأكيد الاستبدال" type="object" class="oe_highlight" states="draft" groups="utility_core.group_utility_supervisor"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,done"/>
                 </header>
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button" type="object" name="action_view_closing_reading"
+                                icon="fa-tachometer"
+                                attrs="{'invisible': [('closing_reading_id', '=', False)]}">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">القراءة الختامية</span>
+                            </div>
+                        </button>
+                        <button class="oe_stat_button" type="object" name="action_view_opening_reading"
+                                icon="fa-power-off"
+                                attrs="{'invisible': [('opening_reading_id', '=', False)]}">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">القراءة الافتتاحية</span>
+                            </div>
+                        </button>
+                        <button class="oe_stat_button" type="object" name="action_view_sale_order"
+                                icon="fa-file-text-o"
+                                attrs="{'invisible': [('sale_order_id', '=', False)]}">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">فاتورة الاستهلاك</span>
+                            </div>
+                        </button>
+                    </div>
+
+                    <div class="alert alert-info text-center" role="alert" attrs="{'invisible': [('state', '!=', 'done')]}">
+                        <i class="fa fa-info-circle me-2" title="تنبيه"/>
+                        <strong>تم الاستبدال بنجاح!</strong>
+                        تم إنشاء القراءة الختامية والقراءة الافتتاحية المعتمدة. الاستهلاك غير المفوتر المرحل: 
+                        <strong><field name="old_uninvoiced_consumption" readonly="1"/> ك.و.س</strong>
+                    </div>
+
                     <div class="oe_title">
                         <label for="utility_account_id" class="oe_edit_only" string="حساب الكهرباء / المشترك"/>
                         <h1>
@@ -40,7 +74,6 @@
                     <group>
                         <group>
                             <field name="partner_id"/>
-                            <field name="contract_id" options="{'no_create': True}" attrs="{'readonly': [('state', '=', 'done')]}"/>
                         </group>
                         <group>
                             <field name="replace_date" attrs="{'readonly': [('state', '=', 'done')]}"/>
@@ -49,19 +82,18 @@
                         </group>
                     </group>
                     
-                    <group string="بيانات العداد القديم المستبدل">
+                    <group string="بيانات العداد القديم والقراءة الختامية">
                         <field name="old_meter_serial_scan" widget="barcode_camera" attrs="{'invisible': [('state', '=', 'done')]}"/>
                         <group>
-                            <field name="old_meter_id" invisible="1"/>
-                            <field name="old_meter_number"/>
-                            <field name="old_meter_type_id"/>
-                            <field name="old_phase"/>
+                            <field name="old_meter_id" invisible="1" force_save="1"/>
+                            <field name="old_meter_number" force_save="1"/>
+                            <field name="old_meter_type_id" force_save="1"/>
+                            <field name="old_phase" force_save="1"/>
                         </group>
                         <group>
-                            <field name="old_last_invo_reading"/>
+                            <field name="old_last_invo_reading" force_save="1"/>
                             <field name="old_closing_reading" attrs="{'readonly': [('state', '=', 'done')]}"/>
-                            <field name="old_uninvoiced_consumption"/>
-                            <field name="closing_reading_id" readonly="1" attrs="{'invisible': [('closing_reading_id', '=', False)]}"/>
+                            <field name="old_uninvoiced_consumption" force_save="1"/>
                         </group>
                     </group>
 
@@ -69,7 +101,7 @@
                         <field name="replacement_image" widget="image" nolabel="1" class="oe_avatar" attrs="{'readonly': [('state', '=', 'done')]}"/>
                     </group>
 
-                    <group string="بيانات العداد الجديد">
+                    <group string="بيانات العداد الجديد والقراءة الافتتاحية">
                         <field name="new_meter_serial_scan" widget="barcode_camera" attrs="{'invisible': [('state', '=', 'done')]}"/>
                         <group>
                             <field name="new_meter_id" options="{'no_create': True}" attrs="{'readonly': [('state', '=', 'done')]}"/>
@@ -79,7 +111,6 @@
                             <field name="new_meter_type_id" attrs="{'readonly': [('state', '=', 'done')], 'required': [('new_meter_id', '=', False)], 'invisible': [('new_meter_id', '!=', False)]}"/>
                             <field name="new_phase" attrs="{'readonly': [('state', '=', 'done')], 'invisible': [('new_meter_id', '!=', False)]}"/>
                             <field name="new_opening_reading" attrs="{'readonly': [('state', '=', 'done')]}"/>
-                                <field name="opening_reading_id" readonly="1" attrs="{'invisible': [('opening_reading_id', '=', False)]}"/>
                             <field name="new_meter_val" attrs="{'readonly': [('state', '=', 'done')]}"/>
                         </group>
                     </group>
@@ -107,7 +138,6 @@
                 <field name="company_id" invisible="1"/>
                 <field name="utility_account_id"/>
                 <field name="partner_id"/>
-                <field name="contract_id"/>
                 <field name="old_meter_number"/>
                 <field name="new_meter_number"/>
                 <separator/>
@@ -137,6 +167,4 @@
             </p>
         </field>
     </record>
-
-    <!-- Menu Item moved to utility_meter_menu.xml under menu_utility_meters -->
 </odoo>

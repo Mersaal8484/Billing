@@ -1,5 +1,5 @@
 from odoo import models, fields, api, _
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 
 
 class UtilityMeterReplacement(models.Model):
@@ -12,11 +12,11 @@ class UtilityMeterReplacement(models.Model):
     company_id = fields.Many2one('res.company', string='الشركة', required=True, index=True, default=lambda self: self.env.company)
     closing_reading_id = fields.Many2one('utility.reading', string='سجل القراءة الختامية', readonly=True, copy=False, ondelete='restrict')
     opening_reading_id = fields.Many2one('utility.reading', string='سجل القراءة الافتتاحية', readonly=True, copy=False, ondelete='restrict')
+    sale_order_id = fields.Many2one('sale.order', string='فاتورة الاستهلاك المركبة', related='closing_reading_id.included_sale_order_id', store=True, readonly=True)
 
     # Primary Required Field: utility.customer
     utility_account_id = fields.Many2one('utility.customer', required=True, string="حساب الكهرباء / المشترك", tracking=True, check_company=True)
     partner_id = fields.Many2one('res.partner', related='utility_account_id.partner_id', string="العميل", store=True)
-    contract_id = fields.Many2one('account.analytic.account', string="العقد التحليلي", compute="_compute_contract_id", store=True, readonly=False, tracking=True)
 
     @api.depends('utility_account_id')
     def _compute_name(self):
@@ -26,20 +26,25 @@ class UtilityMeterReplacement(models.Model):
             else:
                 rec.name = "استبدال جديد"
 
-    # Old meter
-    old_meter_id = fields.Many2one('utility.meter', string="العداد القديم", readonly=True, check_company=True)
-    old_meter_number = fields.Char(string="رقم العداد القديم", readonly=True)
-    old_meter_type_id = fields.Many2one('utility.meter.type', string="نوع العداد القديم", readonly=True)
+    # Old meter (computed from account to guarantee value is set and saved)
+    old_meter_id = fields.Many2one(
+        'utility.meter', string="العداد القديم",
+        compute='_compute_old_meter_info', store=True, readonly=False, check_company=True)
+    old_meter_number = fields.Char(
+        string="رقم العداد القديم", compute='_compute_old_meter_info', store=True, readonly=False)
+    old_meter_type_id = fields.Many2one(
+        'utility.meter.type', string="نوع العداد القديم", compute='_compute_old_meter_info', store=True, readonly=False)
     old_phase = fields.Selection([
         ('single', 'طور واحد'),
         ('three', 'ثلاثة أطوار'),
-    ], string="طور العداد القديم", readonly=True)
+    ], string="طور العداد القديم", compute='_compute_old_meter_info', store=True, readonly=False)
+    old_last_invo_reading = fields.Float(
+        string="آخر قراءة مفوترة", digits=(12, 3), compute='_compute_old_meter_info', store=True, readonly=False)
+
     old_closing_reading = fields.Float(string="آخر قراءة للعداد عند الاستبدال", digits=(12, 3), required=True, tracking=True)
-    old_last_invo_reading = fields.Float(string="آخر قراءة مفوترة", digits=(12, 3), readonly=True)
     old_uninvoiced_consumption = fields.Float(string="الاستهلاك غير المفوتر", digits=(12, 3), compute="_compute_old_uninvoiced", store=True)
 
     old_meter_serial_scan = fields.Char(string="مسح العداد القديم (باركود)", store=False, help="استخدم الكاميرا لمسح العداد واستدعاء حساب المشترك")
-
     replacement_image = fields.Binary(string="صورة العداد (اختياري)", attachment=True)
 
     # New meter
@@ -69,22 +74,39 @@ class UtilityMeterReplacement(models.Model):
         ('done', 'تم الاستبدال (Done)'),
     ], string="الحالة", default='draft', tracking=True)
 
-    @api.depends('utility_account_id')
-    def _compute_contract_id(self):
+    @api.depends('utility_account_id', 'utility_account_id.meter_id')
+    def _compute_old_meter_info(self):
         for rec in self:
-            if rec.utility_account_id:
-                contract = self.env['account.analytic.account'].search([
-                    ('partner_id', '=', rec.utility_account_id.partner_id.id)
-                ], limit=1)
-                rec.contract_id = contract.id if contract else False
+            if rec.utility_account_id and rec.utility_account_id.meter_id:
+                acc = rec.utility_account_id
+                meter = acc.meter_id
+                rec.old_meter_id = meter
+                rec.old_meter_number = meter.meter_number
+                rec.old_meter_type_id = meter.meter_type_id
+                rec.old_phase = meter.phase
+                rec.old_last_invo_reading = acc.last_invoice_reading or acc.last_reading_value or 0.0
             else:
-                rec.contract_id = False
+                if not rec.old_meter_id:
+                    rec.old_meter_id = False
+                if not rec.old_meter_number:
+                    rec.old_meter_number = False
+                if not rec.old_meter_type_id:
+                    rec.old_meter_type_id = False
+                if not rec.old_phase:
+                    rec.old_phase = False
+                if not rec.old_last_invo_reading:
+                    rec.old_last_invo_reading = 0.0
 
     @api.depends('old_closing_reading', 'old_last_invo_reading', 'utility_account_id')
     def _compute_old_uninvoiced(self):
         for rec in self:
             val = rec.utility_account_id.meter_id.multiplier if rec.utility_account_id and rec.utility_account_id.meter_id else 1.0
             rec.old_uninvoiced_consumption = max((rec.old_closing_reading - rec.old_last_invo_reading) * val, 0.0)
+
+    @api.onchange('old_closing_reading', 'old_last_invo_reading')
+    def _onchange_old_closing_reading(self):
+        val = self.utility_account_id.meter_id.multiplier if self.utility_account_id and self.utility_account_id.meter_id else 1.0
+        self.old_uninvoiced_consumption = max((self.old_closing_reading - self.old_last_invo_reading) * val, 0.0)
 
     @api.onchange('utility_account_id')
     def _onchange_utility_account_id(self):
@@ -95,24 +117,20 @@ class UtilityMeterReplacement(models.Model):
                 self.old_meter_number = acc.meter_id.meter_number
                 self.old_meter_type_id = acc.meter_id.meter_type_id
                 self.old_phase = acc.meter_id.phase
-            
-            contract = self.env['account.analytic.account'].search([
-                ('partner_id', '=', acc.partner_id.id)
-            ], limit=1)
-            if contract:
-                self.contract_id = contract.id
                 
-            if acc.last_reading_value or acc.last_invoice_reading:
-                self.old_last_invo_reading = acc.last_invoice_reading
-                self.old_closing_reading = acc.last_reading_value
+            if acc.last_invoice_reading or acc.last_reading_value:
+                self.old_last_invo_reading = acc.last_invoice_reading or acc.last_reading_value or 0.0
+                self.old_closing_reading = acc.last_reading_value or acc.last_invoice_reading or 0.0
             else:
-                # Fallback to get last reading from utility.reading if no contract exists
                 last_reading = self.env['utility.reading'].search([
                     ('meter_id', '=', acc.meter_id.id),
                     ('state', '=', 'approved')
                 ], order='reading_date desc', limit=1)
                 self.old_last_invo_reading = last_reading.reading_value if last_reading else 0.0
                 self.old_closing_reading = self.old_last_invo_reading
+
+            val = acc.meter_id.multiplier if acc.meter_id else 1.0
+            self.old_uninvoiced_consumption = max((self.old_closing_reading - self.old_last_invo_reading) * val, 0.0)
 
     @api.onchange('old_meter_serial_scan')
     def _onchange_old_meter_serial_scan(self):
@@ -142,14 +160,65 @@ class UtilityMeterReplacement(models.Model):
             else:
                 return {'warning': {'title': _('غير موجود'), 'message': _('العداد %s غير مسجل في المخازن/النظام.') % self.new_meter_serial_scan}}
 
+    @api.constrains('old_closing_reading', 'old_last_invo_reading', 'new_opening_reading')
+    def _check_readings_validity(self):
+        for rec in self:
+            if rec.old_closing_reading < rec.old_last_invo_reading:
+                raise ValidationError(_('القراءة الختامية للعداد القديم (%.2f) لا يمكن أن تقل عن آخر قراءة مفوترة (%.2f).') % (rec.old_closing_reading, rec.old_last_invo_reading))
+            if rec.new_opening_reading < 0:
+                raise ValidationError(_('القراءة الافتتاحية للعداد الجديد لا يمكن أن تكون سالبة.'))
+
+    def action_view_closing_reading(self):
+        self.ensure_one()
+        if not self.closing_reading_id:
+            raise UserError(_('لا توجد قراءة ختامية مرتبطة بهذا الاستبدال.'))
+        return {
+            'name': _('القراءة الختامية للعداد القديم'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'utility.reading',
+            'res_id': self.closing_reading_id.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
+
+    def action_view_opening_reading(self):
+        self.ensure_one()
+        if not self.opening_reading_id:
+            raise UserError(_('لا توجد قراءة افتتاحية مرتبطة بهذا الاستبدال.'))
+        return {
+            'name': _('القراءة الافتتاحية للعداد الجديد'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'utility.reading',
+            'res_id': self.opening_reading_id.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
+
+    def action_view_sale_order(self):
+        self.ensure_one()
+        if not self.sale_order_id:
+            raise UserError(_('لم يتم إدراج الاستهلاك غير المفوتر في فاتورة بعد.'))
+        return {
+            'name': _('فاتورة الاستهلاك المركبة'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'sale.order',
+            'res_id': self.sale_order_id.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
+
     def _action_confirm_replacement_unified(self):
         """Complete replacement and create auditable closing/opening readings."""
         for rec in self:
             if rec.state == 'done':
                 continue
-            account, old_meter = rec.utility_account_id, rec.old_meter_id
-            if not account or not old_meter:
-                raise UserError(_('يجب تحديد حساب المشترك والعداد القديم.'))
+            account = rec.utility_account_id
+            if not account:
+                raise UserError(_('يجب تحديد حساب المشترك أولاً.'))
+            old_meter = rec.old_meter_id or account.meter_id
+            if not old_meter:
+                raise UserError(_('حساب المشترك المختار [%s] لا يملك عداداً فعالاً في النظام لكي يتم استبداله.') % account.display_name)
+
             new_meter = rec.new_meter_id
             if not new_meter and rec.new_meter_number:
                 new_meter = self.env['utility.meter'].create({
@@ -169,6 +238,8 @@ class UtilityMeterReplacement(models.Model):
                 'company_id': rec.company_id.id, 'account_id': account.id,
                 'meter_id': old_meter.id, 'reading_date': rec.replace_date,
                 'reading_value': rec.old_closing_reading,
+                'previous_reading': rec.old_last_invo_reading,
+                'previous_reading_date': account.last_invoice_date or rec.replace_date,
                 'meter_multiplier': old_meter.multiplier or 1.0,
                 'reading_type': 'manual', 'reading_purpose': 'replacement_closing',
                 'reading_category': 'customer', 'replacement_id': rec.id,
@@ -185,6 +256,8 @@ class UtilityMeterReplacement(models.Model):
                 'company_id': rec.company_id.id, 'account_id': account.id,
                 'meter_id': new_meter.id, 'reading_date': rec.replace_date,
                 'reading_value': rec.new_opening_reading,
+                'previous_reading': rec.new_opening_reading,
+                'previous_reading_date': rec.replace_date,
                 'meter_multiplier': rec.new_meter_val or 1.0,
                 'reading_type': 'manual', 'reading_purpose': 'opening',
                 'reading_category': 'customer', 'replacement_id': rec.id,
@@ -193,7 +266,7 @@ class UtilityMeterReplacement(models.Model):
             })
             self.env['utility.meter.log']._create_log(old_meter, 'removal', _('رفع العداد %s واستبداله بـ %s') % (old_meter.meter_number, new_meter.meter_number), ref_record=rec)
             self.env['utility.meter.log']._create_log(new_meter, 'replacement', _('تركيب العداد %s للمشترك %s') % (new_meter.meter_number, account.display_name), ref_record=rec)
-            rec.write({'closing_reading_id': closing.id, 'opening_reading_id': opening.id, 'state': 'done'})
+            rec.write({'closing_reading_id': closing.id, 'opening_reading_id': opening.id, 'old_meter_id': old_meter.id, 'state': 'done'})
         return True
 
     def action_confirm_replacement(self):

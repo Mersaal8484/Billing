@@ -1,7 +1,7 @@
 {
     'name': 'Utility Billing',
     'version': '16.0.2.0.0',
-    'category': 'Industries/Utilities',
+    'category': 'Utility ERP',
     'summary': 'Postpaid Billing & Collections Engine (Sale Order Based)',
     'description': """
 Enterprise Utility Billing Module
@@ -48,7 +48,7 @@ debt management, and collections.
     'installable': True,
     'application': True,
     'auto_install': False,
-    'sequence': 40,
+    'sequence': 2,
 }
 
 

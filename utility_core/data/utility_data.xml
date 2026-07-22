@@ -153,28 +153,28 @@
         <!-- Fee & Sales Revenue Accounts -->
         <record id="account_income_electricity" model="account.account">
             <field name="name">إيرادات مبيعات استهلاك الكهرباء</field>
-            <field name="code">400000</field>
+            <field name="code">400099</field>
             <field name="account_type">income</field>
         </record>
         <record id="account_income_mu_allim" model="account.account">
             <field name="name">إيرادات رسوم المعلم</field>
-            <field name="code">400100</field>
+            <field name="code">400109</field>
             <field name="account_type">income</field>
         </record>
         <record id="account_income_cleaning" model="account.account">
             <field name="name">إيرادات رسوم النظافة</field>
-            <field name="code">400200</field>
+            <field name="code">400209</field>
             <field name="account_type">income</field>
         </record>
         <record id="account_income_municipality" model="account.account">
             <field name="name">إيرادات رسوم المجالس المحلية</field>
-            <field name="code">400300</field>
+            <field name="code">400309</field>
             <field name="account_type">income</field>
         </record>
 
         <record id="account_discount_utility" model="account.account">
             <field name="name">خصومات وإعفاءات استهلاك الكهرباء</field>
-            <field name="code">490000</field>
+            <field name="code">490099</field>
             <field name="account_type">income</field>
         </record>
 

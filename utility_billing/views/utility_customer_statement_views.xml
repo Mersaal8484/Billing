@@ -12,7 +12,7 @@
                             <div class="card o_settings_card h-100">
                                 <div class="card-header bg-light">
                                     <div class="d-flex align-items-center">
-                                        <i class="fa fa-user fa-2x text-primary me-3"/>
+                                        <i class="fa fa-user fa-2x text-primary me-3" title="المشترك"/>
                                         <div>
                                             <h4 class="mb-0">بيانات المشترك</h4>
                                             <small class="text-muted">اختر الحساب وتحديد الخيارات</small>
@@ -35,7 +35,7 @@
                             <div class="card o_settings_card h-100">
                                 <div class="card-header bg-light">
                                     <div class="d-flex align-items-center">
-                                        <i class="fa fa-calendar fa-2x text-info me-3"/>
+                                        <i class="fa fa-calendar fa-2x text-info me-3" title="الفترة"/>
                                         <div>
                                             <h4 class="mb-0">فترة الكشف</h4>
                                             <small class="text-muted">تحديد نطاق التواريخ</small>

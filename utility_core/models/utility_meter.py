@@ -367,6 +367,8 @@ class UtilityMeter(models.Model):
 
     def action_add_subscriber(self):
         self.ensure_one()
+        if self.connection_type != 'not_connected' or self.customer_id:
+            raise UserError(_('هذا العداد مرتبط بالفعل بمشترك (%s) أو بعنصر آخر.') % (self.customer_id.display_name if self.customer_id else self.connection_type))
         return {
             'type': 'ir.actions.act_window',
             'name': _('إضافة مشترك جديد'),
@@ -432,25 +434,50 @@ class UtilityMeter(models.Model):
         args = args or []
         domain = []
         if name:
-            domain = ['|', ('meter_number', operator, name), ('serial_number', operator, name)]
+            domain = ['|', '|', '|',
+                ('meter_number', operator, name),
+                ('serial_number', operator, name),
+                ('customer_id.partner_id.name', operator, name),
+                ('meter_type_id.name', operator, name)
+            ]
         return self._search(domain + args, limit=limit, access_rights_uid=name_get_uid)
 
-    def name_get(self):
-        result = []
+    @api.depends('connection_type', 'meter_number', 'customer_id', 'customer_id.partner_id', 'linked_private_transformer_id', 'linked_transformer_id', 'transformer_id', 'linked_feeder_id', 'feeder_id', 'meter_type_id', 'payment_type')
+    def _compute_display_name(self):
         for meter in self:
-            name = '[%s]' % meter.meter_number
-            if hasattr(meter, 'connection_type'):
-                ct = meter.connection_type
-                if ct == 'subscriber' and meter.customer_id and meter.customer_id.partner_id:
-                    name += ' - %s' % meter.customer_id.partner_id.name
-                elif ct == 'private_transformer' and meter.linked_private_transformer_id:
-                    name += ' - %s' % meter.linked_private_transformer_id.name
-                elif ct == 'transformer' and meter.linked_transformer_id:
-                    name += ' - %s' % meter.linked_transformer_id.name
-                elif ct == 'feeder' and meter.linked_feeder_id:
-                    name += ' - %s' % meter.linked_feeder_id.name
-            result.append((meter.id, name))
-        return result
+            parts = [f"[{meter.meter_number}]"]
+
+            # 1. اسم العنصر المرتبط حسب نوع الربط (مشترك / محول خاص / محول / فيدر)
+            target_name = False
+            ct = getattr(meter, 'connection_type', False)
+            if ct == 'subscriber' and meter.customer_id and meter.customer_id.partner_id:
+                target_name = meter.customer_id.partner_id.name
+            elif ct == 'private_transformer' and meter.linked_private_transformer_id:
+                target_name = meter.linked_private_transformer_id.name
+            elif ct == 'transformer' and (meter.linked_transformer_id or meter.transformer_id):
+                target_name = (meter.linked_transformer_id or meter.transformer_id).name
+            elif ct == 'feeder' and (meter.linked_feeder_id or meter.feeder_id):
+                target_name = (meter.linked_feeder_id or meter.feeder_id).name
+            elif not ct and meter.customer_id and meter.customer_id.partner_id:
+                target_name = meter.customer_id.partner_id.name
+
+            if target_name:
+                parts.append(target_name)
+
+            # 2. نوع العداد
+            type_name = False
+            if meter.meter_type_id and meter.meter_type_id.name:
+                type_name = meter.meter_type_id.name
+            elif meter.payment_type:
+                type_name = dict(meter._fields['payment_type'].selection).get(meter.payment_type)
+
+            if type_name:
+                parts.append(type_name)
+
+            meter.display_name = " - ".join(parts)
+
+    def name_get(self):
+        return [(meter.id, meter.display_name or f"[{meter.meter_number}]") for meter in self]
 
     def write(self, vals):
         for meter in self:

@@ -1160,8 +1160,8 @@ class UtilitySaleOrderLine(models.Model):
     ], string='نوع البند')
 
     def _get_company_config(self, company_field, config_key):
-        company = self.env.company
-        val = company[company_field]
+        company = self.company_id or self.env.company
+        val = company[company_field] if hasattr(company, company_field) else False
         if val:
             return val.id if hasattr(val, 'id') else val
         return int(self.env['ir.config_parameter'].sudo().get_param(config_key, 0))
@@ -1174,28 +1174,41 @@ class UtilitySaleOrderLine(models.Model):
         acc_id = False
         product_id = False
         company = self.company_id or self.env.company
+        order = self.order_id
 
         if self.meter_line_type == 'consumption':
-            order = self.order_id
-            if order.customer_id:
+            if order and order.customer_id:
                 subscriber = order.customer_id.subscriber_id
                 if subscriber and subscriber.revenue_account_id:
                     acc_id = subscriber.revenue_account_id.id
 
-        elif self.meter_line_type == 'mu_allim' and company.mu_allim_product_id:
-            product_id = company.mu_allim_product_id.id
-        elif self.meter_line_type == 'cleaning' and company.cleaning_product_id:
-            product_id = company.cleaning_product_id.id
-        elif self.meter_line_type == 'municipality' and company.local_fee_product_id:
-            product_id = company.local_fee_product_id.id
+        elif self.meter_line_type in ('service_charge', 'fixed_fee'):
+            if hasattr(company, 'fixed_fee_product_id') and company.fixed_fee_product_id:
+                product_id = company.fixed_fee_product_id.id
+            acc_id = self._get_company_config('fixed_fee_account_id', 'utility.fixed_fee_account_id')
+
+        elif self.meter_line_type == 'mu_allim':
+            if hasattr(company, 'mu_allim_product_id') and company.mu_allim_product_id:
+                product_id = company.mu_allim_product_id.id
+            acc_id = self._get_company_config('mu_allim_account_id', 'utility.mu_allim_account_id')
+
+        elif self.meter_line_type == 'cleaning':
+            if hasattr(company, 'cleaning_product_id') and company.cleaning_product_id:
+                product_id = company.cleaning_product_id.id
+            acc_id = self._get_company_config('cleaning_account_id', 'utility.cleaning_account_id')
+
+        elif self.meter_line_type == 'municipality':
+            if hasattr(company, 'local_fee_product_id') and company.local_fee_product_id:
+                product_id = company.local_fee_product_id.id
+            acc_id = self._get_company_config('local_fee_account_id', 'utility.local_fee_account_id')
 
         elif self.meter_line_type == 'discount':
-            if company.discount_product_id:
+            if hasattr(company, 'discount_product_id') and company.discount_product_id:
                 product_id = company.discount_product_id.id
             acc_id = self._get_company_config('discount_account_id', 'utility.discount_account_id')
 
         elif self.meter_line_type == 'penalty':
-            if company.penalty_product_id:
+            if hasattr(company, 'penalty_product_id') and company.penalty_product_id:
                 product_id = company.penalty_product_id.id
             acc_id = self._get_company_config('fine_account_id', 'utility.fine_account_id')
 
@@ -1203,10 +1216,40 @@ class UtilitySaleOrderLine(models.Model):
             product_id = self.product_id.id
         if product_id:
             res['product_id'] = product_id
+
         if acc_id:
             res['account_id'] = acc_id
 
+        # Fallback if account_id is missing or False to satisfy database constraint
+        if not res.get('account_id'):
+            target_prod = self.env['product.product'].browse(res.get('product_id')) if res.get('product_id') else self.product_id
+            if target_prod:
+                income_acc = target_prod.property_account_income_id or target_prod.categ_id.property_account_income_categ_id
+                if income_acc:
+                    res['account_id'] = income_acc.id
+
+        if not res.get('account_id'):
+            journal = self.env['account.journal'].search([
+                ('type', '=', 'sale'), ('company_id', '=', company.id)
+            ], limit=1)
+            if journal and journal.default_account_id:
+                res['account_id'] = journal.default_account_id.id
+            else:
+                fallback_acc = self.env['account.account'].search([
+                    ('company_id', '=', company.id),
+                    ('account_type', 'in', ('income', 'income_other')),
+                    ('deprecated', '=', False)
+                ], limit=1)
+                if not fallback_acc:
+                    fallback_acc = self.env['account.account'].search([
+                        ('company_id', '=', company.id),
+                        ('deprecated', '=', False)
+                    ], limit=1)
+                if fallback_acc:
+                    res['account_id'] = fallback_acc.id
+
         return res
+
 
 
 class UtilityAccountMove(models.Model):

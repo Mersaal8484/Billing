@@ -269,10 +269,10 @@
                     <filter name="img_no_image" string="بدون صورة" domain="[('image_state','=','none')]"/>
                 </group>
                 <separator/>
-                <group expand="0" string="حالة الاستهلاك">
-                    <filter name="cons_high" string="مرتفع" domain="[('consumption_alert','=','high')]"/>
-                    <filter name="cons_negative" string="سلبي" domain="[('consumption_alert','=','negative')]"/>
-                    <filter name="cons_zero" string="صفر" domain="[('consumption_alert','=','zero')]"/>
+                <group expand="0" string="تجميع حسب">
+                    <filter string="غرض القراءة" name="group_by_reading_purpose" domain="[]" context="{'group_by': 'reading_purpose'}"/>
+                    <filter string="الحالة" name="group_by_state" domain="[]" context="{'group_by': 'state'}"/>
+                    <filter string="نوع القراءة" name="group_by_reading_type" domain="[]" context="{'group_by': 'reading_type'}"/>
                 </group>
             </search>
         </field>

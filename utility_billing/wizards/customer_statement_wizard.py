@@ -80,6 +80,27 @@ class UtilityCustomerStatementWizard(models.TransientModel):
                 domain.append(('date', '<=', '%s 23:59:59' % self.date_to))
         return domain
 
+    def _settlement_domain(self, before=False):
+        self.ensure_one()
+        domain = [
+            '|',
+            ('account_id', '=', self.customer_id.id),
+            ('partner_id', '=', self.customer_id.partner_id.id),
+        ]
+        if not self.include_draft:
+            domain.append(('state', '=', 'applied'))
+        else:
+            domain.append(('state', '!=', 'cancelled'))
+
+        if before and self.date_from:
+            domain.append(('date', '<', self.date_from))
+        else:
+            if self.date_from:
+                domain.append(('date', '>=', self.date_from))
+            if self.date_to:
+                domain.append(('date', '<=', self.date_to))
+        return domain
+
     def _get_opening_balance(self):
         self.ensure_one()
         base_opening = self.customer_id.opening_balance or (self.customer_id.partner_id.open_balance if hasattr(self.customer_id.partner_id, 'open_balance') else 0.0) or 0.0
@@ -88,7 +109,12 @@ class UtilityCustomerStatementWizard(models.TransientModel):
         orders = self.env['sale.order'].search(self._order_domain(before=True))
         payments = self.env['account.payment'].search(self._payment_domain(before=True))
         writeoffs = self.env['utility.writeoff'].search(self._writeoff_domain(before=True))
-        return base_opening + sum(orders.mapped('amount_total')) - sum(payments.mapped('amount')) - sum(writeoffs.mapped('amount'))
+        settlements = self.env['utility.financial.settlement'].search(self._settlement_domain(before=True))
+
+        settlement_debit = sum(s.amount for s in settlements if s.settlement_type == 'debit')
+        settlement_credit = sum(s.amount for s in settlements if s.settlement_type == 'credit')
+
+        return base_opening + sum(orders.mapped('amount_total')) + settlement_debit - sum(payments.mapped('amount')) - sum(writeoffs.mapped('amount')) - settlement_credit
 
     def _get_statement_lines(self, opening_balance=None):
         self.ensure_one()
@@ -127,9 +153,23 @@ class UtilityCustomerStatementWizard(models.TransientModel):
                 'sequence': wo.id,
                 'kind': 'writeoff',
                 'ref': wo.writeoff_number,
-                'description': _('إعفاء / تسوية: %s') % (wo.reason or _('خصم معتمد')),
+                'description': _('إعفاء / شطب: %s') % (wo.reason or _('خصم معتمد')),
                 'debit': 0.0,
                 'credit': wo.amount,
+            })
+
+        settlements = self.env['utility.financial.settlement'].search(self._settlement_domain(), order='date, id')
+        for st in settlements:
+            is_debit = (st.settlement_type == 'debit')
+            desc = _('تسوية مالية (%s): %s') % (_('مدين') if is_debit else _('دائن'), st.reason or '')
+            entries.append({
+                'date': st.date,
+                'sequence': st.id,
+                'kind': 'settlement',
+                'ref': st.name,
+                'description': desc,
+                'debit': st.amount if is_debit else 0.0,
+                'credit': 0.0 if is_debit else st.amount,
             })
 
         entries.sort(key=lambda line: (line['date'] or fields.Date.today(), line['kind'], line['sequence']))

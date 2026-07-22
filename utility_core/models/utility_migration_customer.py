@@ -147,25 +147,57 @@ class UtilityMigrationCustomer(models.Model):
         """Build res.partner field values from migration record."""
         self.ensure_one()
         pec_credit = self._get_pec_credit()
-        return {
+        vals = {
             'name': self.name,
             'mobile': self.mobile,
             'national_id': self.national_id,
-            'region_id': self.region_id.id,
-            'area_id': self.area_id.id,
+            'region_id': self.region_id.id if self.region_id else False,
+            'area_id': self.area_id.id if self.area_id else False,
             'pec_credit': pec_credit,
-            'is_credit_raised': pec_credit > 0,
+            'is_credit_raised': True if (pec_credit > 0 or self.current_balance != 0) else False,
+            'credit_raise_date': fields.Date.today() if (pec_credit > 0 or self.current_balance != 0) else False,
             'open_balance': self.current_balance,
             'subscriber_status': 'old',
             'is_subscriber': True,
             # تعكس حالة التفعيل الفعلية للعميل في النظام القديم
             'subscriber_active_status': 'active' if self.is_active else 'inactive',
             'char_code': self.char_code,
-            'subscriber_no': self.subscriber_no,
-            'meter_reading': self.meter_reading,
-            'opening_reading': self.opening_reading,
+            'subscriber_no': self.subscriber_no or self.customer_number,
+            'meter_reading': self.meter_reading or int(self.last_reading or 0),
+            'opening_reading': self.opening_reading or int(self.last_reading or 0),
             'meter_number': self.meter_number,
         }
+        if self.subscriber_type_id:
+            vals['subscriber_id'] = self.subscriber_type_id.id
+        return vals
+
+    def _get_or_create_private_transformer(self, partner):
+        """
+        إنشاء أو ربط محول خاص للمشترك إذا كانت خانة (is_private_transformer) مفعّلة.
+        """
+        self.ensure_one()
+        if not self.is_private_transformer:
+            return False
+
+        code = f"PRV-{self.customer_number or self.national_id or partner.id}"
+        name = f"محول خاص - {partner.name}"
+
+        transformer = self.env['utility.transformer'].search([
+            '|', ('code', '=', code), ('name', '=', name)
+        ], limit=1)
+
+        area_or_region = self.area_id or self.region_id
+
+        if not transformer:
+            transformer = self.env['utility.transformer'].create({
+                'name': name,
+                'code': code,
+                'phase': self.phase or 'single',
+                'area_id': area_or_region.id if area_or_region and area_or_region.type == 'area' else False,
+                'zone_region_id': area_or_region.id if area_or_region and area_or_region.type == 'zone' else False,
+                'is_private': True,
+            })
+        return transformer
 
     def _upsert_partner(self):
         """Create or update res.partner; return the partner record."""
@@ -293,8 +325,6 @@ class UtilityMigrationCustomer(models.Model):
                 'debit': 0.0,
                 'credit': credit_amount,
             }))
-            
-
 
         if line_ids:
             move = self.env['account.move'].create({
@@ -308,6 +338,10 @@ class UtilityMigrationCustomer(models.Model):
             self.opening_move_id = move.id
             if customer:
                 customer.opening_move_id = move.id
+            partner.write({
+                'is_credit_raised': True,
+                'credit_raise_date': fields.Date.today(),
+            })
 
     def _create_customer_account(self, partner):
         """
@@ -337,6 +371,9 @@ class UtilityMigrationCustomer(models.Model):
                 'يجب تحديد نوع المشترك للعميل "%s".'
             ) % self.name)
 
+        # 0. Private Transformer
+        transformer = self._get_or_create_private_transformer(partner)
+
         # 1. Create or update utility.customer
         company_id = self.env.company.id
         customer = self.env['utility.customer'].search([
@@ -353,6 +390,10 @@ class UtilityMigrationCustomer(models.Model):
             'contract_template_id': self.contract_template_id.id,
             'company_id': company_id,
         }
+        if transformer:
+            customer_vals['transformer_id'] = transformer.id
+            if transformer.feeder_id:
+                customer_vals['cell_id'] = transformer.feeder_id.id
 
         if customer:
             customer.with_context(skip_opening_entry=True).write(customer_vals)
@@ -362,24 +403,30 @@ class UtilityMigrationCustomer(models.Model):
         self.created_customer_id = customer.id
 
         # 2. Create / link meter
+        meter_vals = {
+            'meter_number': self.meter_number,
+            'connection_type': 'subscriber',
+            'customer_id': customer.id,
+            'phase': self.phase,
+        }
+        if transformer:
+            meter_vals['transformer_id'] = transformer.id
+            if transformer.feeder_id:
+                meter_vals['feeder_id'] = transformer.feeder_id.id
+
         meter = self.env['utility.meter'].search(
             [('meter_number', '=', self.meter_number)], limit=1
         )
         if not meter:
-            meter = self.env['utility.meter'].create({
-                'meter_number': self.meter_number,
-                'connection_type': 'subscriber',
-                'customer_id': customer.id,
-                'phase': self.phase,
-            })
+            meter = self.env['utility.meter'].create(meter_vals)
         else:
-            meter.write({
-                'connection_type': 'subscriber',
-                'customer_id': customer.id,
-                'phase': self.phase,
-            })
+            meter.write(meter_vals)
+
         self.created_meter_id = meter.id
         customer.meter_id = meter.id
+
+        if transformer and meter:
+            transformer.write({'coupling_meter_id': meter.id})
 
         # 3. Create opening reading (state=billed so it won't be re-billed)
         if self.last_reading > 0:

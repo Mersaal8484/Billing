@@ -143,8 +143,9 @@
                         <page name="readings" string="القراءات" attrs="{'invisible': [('payment_type', '=', 'prepaid')]}">
                             <separator string="القراءات المرفوعة"/>
                             <field name="uploaded_reading_ids" nolabel="1" readonly="1">
-                                <tree limit="20" readonly="1">
+                                <tree limit="20" readonly="1" default_order="reading_date desc">
                                     <field name="reading_id"/>
+                                    <field name="reading_purpose" widget="badge"/>
                                     <field name="reading_date"/>
                                     <field name="reading_value"/>
                                     <field name="consumption"/>
@@ -154,8 +155,9 @@
                             </field>
                             <separator string="القراءات المفوتـرة"/>
                             <field name="billed_reading_ids" nolabel="1" readonly="1">
-                                <tree limit="20" readonly="1">
+                                <tree limit="20" readonly="1" default_order="reading_date desc">
                                     <field name="reading_id"/>
+                                    <field name="reading_purpose" widget="badge"/>
                                     <field name="reading_date"/>
                                     <field name="reading_value"/>
                                     <field name="consumption"/>

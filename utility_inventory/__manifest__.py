@@ -1,7 +1,7 @@
 {
     'name': 'Utility Inventory',
     'version': '16.0.1.0.0',
-    'category': 'Industries/Utilities',
+    'category': 'Utility ERP',
     'summary': 'Inventory & Warehouse Management Integration',
     'description': """
 Utility Inventory Integration Module
@@ -19,4 +19,5 @@ Adds lot/serial tracking and product association for physical meters.
     'installable': True,
     'application': True,
     'auto_install': False,
+    'sequence': 2,
 }
