@@ -55,23 +55,9 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
                 ),
                 const SizedBox(width: 8),
                 _FilterChip(
-                  label: 'بانتظار قرار',
-                  selected: _filter == AssignmentStatus.pendingDecision,
-                  onTap: () => setState(
-                      () => _filter = AssignmentStatus.pendingDecision),
-                ),
-                const SizedBox(width: 8),
-                _FilterChip(
                   label: 'مكتمل',
                   selected: _filter == AssignmentStatus.read,
                   onTap: () => setState(() => _filter = AssignmentStatus.read),
-                ),
-                const SizedBox(width: 8),
-                _FilterChip(
-                  label: 'مرفوض',
-                  selected: _filter == AssignmentStatus.rejected,
-                  onTap: () =>
-                      setState(() => _filter = AssignmentStatus.rejected),
                 ),
               ],
             ),

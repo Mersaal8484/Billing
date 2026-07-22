@@ -34,14 +34,15 @@ class DashboardScreen extends ConsumerWidget {
               list.where((a) => a.status == AssignmentStatus.read).length;
           final pending =
               list.where((a) => a.status == AssignmentStatus.pending).length;
-          final pendingDecision = list
-              .where((a) => a.status == AssignmentStatus.pendingDecision)
-              .length;
-          final rejected =
-              list.where((a) => a.status == AssignmentStatus.rejected).length;
           final offline = sync.value?.connectivity.name == 'offline';
-          final pendingSync = (sync.value?.dataPipeline.pending ?? 0) +
-              (sync.value?.imagePipeline.pending ?? 0);
+          final data = sync.value?.dataPipeline;
+          final image = sync.value?.imagePipeline;
+          final pendingSync = (data?.pending ?? 0) +
+              (image?.pending ?? 0) +
+              (data?.inProgress ?? 0) +
+              (image?.inProgress ?? 0);
+          final synced = (data?.succeeded ?? 0) + (image?.succeeded ?? 0);
+          final failed = (data?.failed ?? 0) + (image?.failed ?? 0);
 
           return Column(
             children: [
@@ -57,8 +58,9 @@ class DashboardScreen extends ConsumerWidget {
                       total: total,
                       done: done,
                       pending: pending,
-                      pendingDecision: pendingDecision,
-                      rejected: rejected,
+                      pendingSync: pendingSync,
+                      synced: synced,
+                      failed: failed,
                     ),
                     const SizedBox(height: 16),
                     Text('مسارات العمل',
@@ -119,15 +121,17 @@ class _ProgressCard extends StatelessWidget {
   final int total;
   final int done;
   final int pending;
-  final int pendingDecision;
-  final int rejected;
+  final int pendingSync;
+  final int synced;
+  final int failed;
 
   const _ProgressCard({
     required this.total,
     required this.done,
     required this.pending,
-    required this.pendingDecision,
-    required this.rejected,
+    required this.pendingSync,
+    required this.synced,
+    required this.failed,
   });
 
   @override
@@ -163,13 +167,18 @@ class _ProgressCard extends StatelessWidget {
                     color: Colors.orange,
                     icon: Icons.hourglass_empty_rounded),
                 SyncStatusChip(
-                    label: '$pendingDecision قرار',
+                    label: '$pendingSync قيد الرفع',
                     color: Colors.blue,
-                    icon: Icons.rule_rounded),
+                    icon: Icons.sync_rounded),
                 SyncStatusChip(
-                    label: '$rejected مرفوض',
-                    color: Colors.red,
-                    icon: Icons.cancel_outlined),
+                    label: '$synced تم الرفع',
+                    color: Colors.green,
+                    icon: Icons.cloud_done_outlined),
+                if (failed > 0)
+                  SyncStatusChip(
+                      label: '$failed فشل الرفع',
+                      color: Colors.red,
+                      icon: Icons.error_outline),
               ],
             ),
           ],

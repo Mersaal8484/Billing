@@ -13,7 +13,6 @@ import '../features/auth/presentation/login_screen.dart';
 import '../features/customers/presentation/customer_detail_screen.dart';
 import '../features/customers/presentation/customer_list_screen.dart';
 import '../features/dashboard/presentation/dashboard_screen.dart';
-import '../features/readings/presentation/reading_decision_screen.dart';
 import '../features/readings/presentation/photo_capture_screen.dart';
 import '../features/readings/presentation/reading_entry_screen.dart';
 import '../features/settings/presentation/settings_screen.dart';
@@ -50,14 +49,6 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/readings/new/:assignmentId',
         builder: (context, state) => ReadingEntryScreen(
             assignmentId: state.pathParameters['assignmentId']!),
-      ),
-      GoRoute(
-        path: '/readings/decision/:assignmentId',
-        builder: (context, state) => ReadingDecisionScreen(
-          assignmentId: state.pathParameters['assignmentId']!,
-          currentReading:
-              double.tryParse(state.uri.queryParameters['value'] ?? '') ?? 0,
-        ),
       ),
       GoRoute(
           path: '/readings/photo',

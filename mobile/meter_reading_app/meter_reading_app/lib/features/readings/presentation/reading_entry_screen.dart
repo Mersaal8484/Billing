@@ -121,12 +121,12 @@ class _ReadingEntryScreenState extends ConsumerState<ReadingEntryScreen> {
                           height: 18,
                           width: 18,
                           child: CircularProgressIndicator(strokeWidth: 2.5))
-                      : const Icon(Icons.rule_rounded),
-                  label: const Text('حفظ القراءة وفتح قرار العداد'),
+                      : const Icon(Icons.cloud_upload_rounded),
+                  label: const Text('حفظ القراءة وإضافتها للرفع'),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'ستبقى القراءة محلية ضمن بيانات المحاكاة. لا يوجد أي إرسال شبكي في هذه المرحلة.',
+                  'تُحفظ القراءة محلياً وتُضاف لطابور المزامنة. اعتماد القراءة يتم لاحقاً في Odoo.',
                   textAlign: TextAlign.center,
                   style: Theme.of(context)
                       .textTheme
@@ -190,14 +190,14 @@ class _ReadingEntryScreenState extends ConsumerState<ReadingEntryScreen> {
 
     final repo = ref.read(readingRepositoryProvider);
     await repo.saveDraft(reading);
+    await repo.enqueueForSync(reading.id);
     await ref
         .read(assignmentRepositoryProvider)
-        .markStatus(assignment.id, AssignmentStatus.pendingDecision);
+        .markStatus(assignment.id, AssignmentStatus.read);
 
     if (mounted) {
       setState(() => _saving = false);
-      context
-          .go('/readings/decision/${assignment.id}?value=${_valueCtrl.text}');
+      context.go('/customers');
     }
   }
 }

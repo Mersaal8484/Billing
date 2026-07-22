@@ -115,16 +115,6 @@ class CustomerDetailScreen extends ConsumerWidget {
                 label: const Text('إدخال قراءة جديدة'),
                 onPressed: () => context.push('/readings/new/${assignment.id}'),
               ),
-              if (assignment.status == AssignmentStatus.pendingDecision) ...[
-                const SizedBox(height: 10),
-                OutlinedButton.icon(
-                  icon: const Icon(Icons.rule_rounded),
-                  label: const Text('فتح قرار العداد'),
-                  onPressed: () => context.push(
-                    '/readings/decision/${assignment.id}?value=${((assignment.customer.lastReadingValue ?? 0) + assignment.averageConsumption).toStringAsFixed(0)}',
-                  ),
-                ),
-              ],
             ],
           );
         },
