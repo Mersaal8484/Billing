@@ -7,7 +7,22 @@ from odoo.exceptions import ValidationError
 class UtilitySaleOrder(models.Model):
     _name = 'sale.order'
     _inherit = ['sale.order', 'utility.dropdown.mixin']
-    _description = 'فاتورة كهرباء (أمر بيع)'
+    effective_date = fields.Date(string='تاريخ الفعالية', copy=False)
+    commitment_date = fields.Datetime(string='تاريخ الالتزام', copy=False)
+    expected_date = fields.Datetime(string='التاريخ المتوقع', copy=False)
+    delivery_status = fields.Selection([
+        ('pending', 'معلق'),
+        ('partial', 'جزئي'),
+        ('full', 'تم التسليم'),
+    ], string='حالة التسليم', copy=False)
+    picking_policy = fields.Selection([
+        ('direct', 'تسليم كل منتج عند توفره'),
+        ('one', 'تسليم جميع المنتجات دفعة واحدة'),
+    ], string='سياسة الشحن')
+    incoterm = fields.Many2one('account.incoterms', string='الإنكوتيرمز')
+    incoterm_location = fields.Char(string='موقع الإنكوتيرم')
+    warehouse_id = fields.Many2one('stock.warehouse', string='المستودع')
+    delivery_count = fields.Integer(string='عدد الشحنات')
 
     customer_id = fields.Many2one('utility.customer', 'الحساب', index=True)
     meter_id = fields.Many2one('utility.meter', 'العداد', index=True)
@@ -1138,6 +1153,16 @@ class UtilitySaleOrder(models.Model):
 class UtilitySaleOrderLine(models.Model):
     _inherit = 'sale.order.line'
     _description = 'بند فاتورة كهرباء'
+
+    virtual_available_at_date = fields.Float(string='الكمية الافتراضية المتاحة في التاريخ', copy=False)
+    forecast_expected_date = fields.Datetime(string='تاريخ التوقع المتوقع', copy=False)
+    forecast_is_date_exceeded = fields.Boolean(string='تم تجاوز التاريخ المتوقع')
+    scheduled_date = fields.Datetime(string='التاريخ المجدول', copy=False)
+    qty_available_today = fields.Float(string='الكمية المتاحة اليوم', copy=False)
+    free_qty_today = fields.Float(string='الكمية الحرة اليوم', copy=False)
+    qty_to_deliver = fields.Float(string='الكمية المتبقية للتسليم', copy=False)
+    is_mto = fields.Boolean(string='إنتاج حسب الطلب')
+    display_qty_widget = fields.Boolean(string='عرض أداة الكمية')
 
     contract_id = fields.Many2one(
         'account.analytic.account',

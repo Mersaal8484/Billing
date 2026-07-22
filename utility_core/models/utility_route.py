@@ -82,18 +82,32 @@ class UtilityRouteAddCustomerWizard(models.TransientModel):
     _description = 'إضافة مشتركين إلى مسار'
 
     route_id = fields.Many2one('utility.route', 'المسار', required=True, readonly=True)
+    filter_same_area = fields.Boolean('تصفية حسب نطاق المسار فقط', default=True, help='عرض المشتركين التابعين لنفس الفرع/المنطقة للمسار فقط')
     customer_ids = fields.Many2many(
         'utility.customer', 'wizard_add_customer_rel', 'wizard_id', 'customer_id',
         string='المشتركين',
-        domain="[('route_id', '=', False)]",
     )
+    selected_count = fields.Integer('عدد المشتركين المحددين للإضافة', compute='_compute_counts')
+
+    @api.onchange('route_id', 'filter_same_area')
+    def _onchange_filter_same_area(self):
+        domain = [('route_id', '=', False)]
+        if self.filter_same_area and self.route_id:
+            if self.route_id.area_id:
+                domain.append(('area_id', '=', self.route_id.area_id.id))
+            elif self.route_id.region_id:
+                domain.append(('region_id', '=', self.route_id.region_id.id))
+        return {'domain': {'customer_ids': domain}}
+
+    @api.depends('customer_ids')
+    def _compute_counts(self):
+        for wizard in self:
+            wizard.selected_count = len(wizard.customer_ids)
 
     def action_add(self):
         self.ensure_one()
-        if self.customer_ids:
-            self.route_id.write({
-                'customer_ids': [(4, c.id) for c in self.customer_ids]
-            })
+        if self.customer_ids and self.route_id:
+            self.customer_ids.write({'route_id': self.route_id.id})
         return {'type': 'ir.actions.act_window_close'}
 
 
@@ -105,13 +119,22 @@ class UtilityRouteRemoveCustomerWizard(models.TransientModel):
     customer_ids = fields.Many2many(
         'utility.customer', 'wizard_remove_customer_rel', 'wizard_id', 'customer_id',
         string='المشتركين',
-        domain="[('route_id', '=', route_id)]",
     )
+    selected_count = fields.Integer('عدد المشتركين المحددين للاستبعاد', compute='_compute_counts')
+
+    @api.onchange('route_id')
+    def _onchange_route_id(self):
+        if self.route_id:
+            return {'domain': {'customer_ids': [('route_id', '=', self.route_id.id)]}}
+        return {'domain': {'customer_ids': [('id', '=', False)]}}
+
+    @api.depends('customer_ids')
+    def _compute_counts(self):
+        for wizard in self:
+            wizard.selected_count = len(wizard.customer_ids)
 
     def action_remove(self):
         self.ensure_one()
         if self.customer_ids:
-            self.route_id.write({
-                'customer_ids': [(3, c.id) for c in self.customer_ids]
-            })
+            self.customer_ids.write({'route_id': False})
         return {'type': 'ir.actions.act_window_close'}

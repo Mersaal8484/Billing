@@ -13,7 +13,7 @@ debt management, and collections.
     'author': 'Utility ERP Platform',
     'website': 'https://www.utility-erp.com',
     'license': 'LGPL-3',
-    'depends': ['utility_core', 'utility_operations', 'account', 'sale'],
+    'depends': ['utility_core', 'utility_operations', 'account', 'sale', 'sale_management', 'sale_stock'],
     'data': [
         'security/ir.model.access.csv',
         'security/utility_billing_security.xml',
