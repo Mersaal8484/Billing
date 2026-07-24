@@ -2,6 +2,7 @@ from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 import base64
 import io
+import datetime
 
 try:
     import openpyxl
@@ -11,83 +12,97 @@ except ImportError:
 
 class UtilityMigrationImportWizard(models.TransientModel):
     _name = 'utility.migration.import.wizard'
-    _description = 'معالج استيراد بيانات المشتركين'
+    _description = 'معالج استيراد بيانات التهيئة والميجريشن'
+
+    import_type = fields.Selection([
+        ('customer', 'تهيئة بيانات المشتركين'),
+        ('feeder', 'تهيئة بيانات الفيدرات / الخلايا'),
+        ('transformer', 'تهيئة بيانات المحولات'),
+    ], string='نوع البيانات المراد استيرادها', default='customer', required=True)
 
     import_file = fields.Binary(string='ملف الإكسل', required=True)
     file_name = fields.Char(string='اسم الملف')
+
+    def parse_float(self, val):
+        try:
+            return float(val) if val is not None and str(val).strip() != '' else 0.0
+        except (ValueError, TypeError):
+            return 0.0
+
+    def parse_int(self, val):
+        try:
+            return int(float(val)) if val is not None and str(val).strip() != '' else 0
+        except (ValueError, TypeError):
+            return 0
+
+    def parse_bool(self, val):
+        val_str = str(val or '').strip().lower()
+        return val_str in ('true', '1', 'yes', 'نعم', 'صح', 't')
+
+    def parse_datetime(self, val):
+        if isinstance(val, (datetime.datetime, datetime.date)):
+            return val
+        if not val:
+            return False
+        val_str = str(val).strip()
+        for fmt in ('%Y-%m-%d %H:%M:%S', '%Y-%m-%d', '%d/%m/%Y %H:%M:%S', '%d/%m/%Y'):
+            try:
+                return datetime.datetime.strptime(val_str, fmt)
+            except ValueError:
+                continue
+        return False
 
     def action_import_file(self):
         if not openpyxl:
             raise UserError(_("مكتبة openpyxl غير مثبتة. يرجى تثبيتها لقراءة ملفات الإكسل."))
             
-        if not self.file_name or not self.file_name.endswith('.xlsx'):
+        if not self.file_name or not self.file_name.endswith(('.xlsx', '.xls')):
             raise UserError(_("يجب أن يكون الملف بصيغة .xlsx فقط."))
 
-        # Read the file
         file_content = base64.b64decode(self.import_file)
         wb = openpyxl.load_workbook(filename=io.BytesIO(file_content), data_only=True)
         sheet = wb.active
 
-        # We assume the columns map exactly as our template
-        # 0: name, 1: mobile, 2: national_id, 3: customer_number, 4: subscriber_no, 5: char_code, 6: is_active
-        # 7: legacy_region, 8: legacy_area, 9: legacy_category, 10: legacy_subscriber_type
-        # 11: legacy_contract, 12: meter_number, 13: meter_reading (قراءة النظام القديم)
-        # 14: opening_reading (القراءة عند تفعيل العقد), 15: previous_balance, 16: current_balance
-        # 17: phase, 18: is_private_transformer
+        if self.import_type == 'customer':
+            return self._import_customers(sheet)
+        elif self.import_type == 'feeder':
+            return self._import_feeders(sheet)
+        elif self.import_type == 'transformer':
+            return self._import_transformers(sheet)
 
+    def _import_customers(self, sheet):
         migration_customer_obj = self.env['utility.migration.customer']
-        
-        # Keep track of created records to run mapping on them later
         created_records = self.env['utility.migration.customer']
-        
-        # Template has 4 header rows:
-        # Row 1: Title, Row 2: Subtitle, Row 3: Section labels, Row 4: Column headers
-        # Data starts from Row 5
-        row_idx = 4
-        for row in sheet.iter_rows(min_row=5, values_only=True):
+        row_idx = 0
+        for row in sheet.iter_rows(values_only=True):
             row_idx += 1
-            # Check if row is empty
-            if not row[0] and not row[3]:
+            if not row or (not row[0] and (len(row) <= 3 or not row[3])):
                 continue
-                
+            if str(row[0] or '').strip().startswith(('الاسم', 'Name', 'منطقة', 'رمز المنطقة', 'نموذج')):
+                continue
+
             name = str(row[0] or '').strip()
-            mobile = str(row[1] or '').strip()
-            national_id = str(row[2] or '').strip()
-            customer_number = str(row[3] or '').strip()
-            subscriber_no = str(row[4] or '').strip()
-            char_code = str(row[5] or '').strip()
+            mobile = str(row[1] or '').strip() if len(row) > 1 else ''
+            national_id = str(row[2] or '').strip() if len(row) > 2 else ''
+            customer_number = str(row[3] or '').strip() if len(row) > 3 else ''
+            subscriber_no = str(row[4] or '').strip() if len(row) > 4 else ''
+            char_code = str(row[5] or '').strip() if len(row) > 5 else ''
             
-            # Boolean is_active
-            is_active_val = str(row[6] or '').strip().lower()
+            is_active_val = str(row[6] or '').strip().lower() if len(row) > 6 else 'true'
             is_active = is_active_val not in ('false', '0', 'no', 'لا')
             
-            legacy_region = str(row[7] or '').strip()
-            legacy_area = str(row[8] or '').strip()
-            legacy_category = str(row[9] or '').strip()
-            legacy_subscriber_type = str(row[10] or '').strip()
-            legacy_contract = str(row[11] or '').strip()
+            legacy_region = str(row[7] or '').strip() if len(row) > 7 else ''
+            legacy_area = str(row[8] or '').strip() if len(row) > 8 else ''
+            legacy_category = str(row[9] or '').strip() if len(row) > 9 else ''
+            legacy_subscriber_type = str(row[10] or '').strip() if len(row) > 10 else ''
+            legacy_contract = str(row[11] or '').strip() if len(row) > 11 else ''
             
-            meter_number = str(row[12] or '').strip()
+            meter_number = str(row[12] or '').strip() if len(row) > 12 else ''
+            meter_reading = self.parse_int(row[13]) if len(row) > 13 else 0
+            opening_reading = self.parse_int(row[14]) if len(row) > 14 else 0
+            previous_balance = str(row[15] or '').strip() if len(row) > 15 else ''
+            current_balance = self.parse_float(row[16]) if len(row) > 16 else 0.0
             
-            # Numeric fields
-            def parse_float(val):
-                try:
-                    return float(val) if val else 0.0
-                except ValueError:
-                    return 0.0
-
-            def parse_int(val):
-                try:
-                    return int(val) if val else 0
-                except ValueError:
-                    return 0
-                    
-            meter_reading = parse_int(row[13])           # قراءة العداد في النظام القديم
-            opening_reading = parse_int(row[14])          # القراءة عند تفعيل العقد
-            previous_balance = str(row[15] or '').strip() # Previous balance is Char
-            current_balance = parse_float(row[16])
-            
-            # phase and is_private_transformer (cols 17, 18)
             phase_val = str(row[17] if len(row) > 17 else '').strip().lower()
             phase = 'three' if '3' in phase_val or 'three' in phase_val or 'ثلاث' in phase_val else 'single'
             
@@ -95,9 +110,9 @@ class UtilityMigrationImportWizard(models.TransientModel):
             is_private_transformer = is_private_val in ('true', '1', 'yes', 'نعم', 'خاص')
             
             if not name:
-                raise UserError(_("الاسم مطلوب في الصف رقم %s") % row_idx)
+                continue
             if not customer_number:
-                raise UserError(_("رقم المشترك مطلوب في الصف رقم %s") % row_idx)
+                customer_number = f"CUST-{row_idx}"
 
             vals = {
                 'name': name,
@@ -115,7 +130,7 @@ class UtilityMigrationImportWizard(models.TransientModel):
                 'meter_number': meter_number,
                 'meter_reading': meter_reading,
                 'opening_reading': opening_reading,
-                'last_reading': opening_reading,  # same field: القراءة عند التفعيل
+                'last_reading': opening_reading,
                 'previous_balance': previous_balance,
                 'current_balance': current_balance,
                 'phase': phase,
@@ -123,7 +138,6 @@ class UtilityMigrationImportWizard(models.TransientModel):
                 'state': 'draft'
             }
             
-            # Search if customer number already exists in migration staging to update or create
             existing = migration_customer_obj.search([('customer_number', '=', customer_number)], limit=1)
             if existing:
                 existing.write(vals)
@@ -132,16 +146,154 @@ class UtilityMigrationImportWizard(models.TransientModel):
                 new_record = migration_customer_obj.create(vals)
                 created_records |= new_record
 
-        # Trigger mapping
         if created_records:
             created_records.action_map_codes()
 
+        return self._show_success_notification(len(created_records))
+
+    def _import_feeders(self, sheet):
+        feeder_obj = self.env['utility.migration.feeder']
+        created_records = self.env['utility.migration.feeder']
+        row_idx = 0
+        for row in sheet.iter_rows(values_only=True):
+            row_idx += 1
+            if not row or not any(row):
+                continue
+            first_cell = str(row[0] or '').strip()
+            if first_cell.startswith(('نموذج', 'رمز المنطقة', 'المنطقة/Name', 'المنطقة')):
+                continue
+
+            legacy_region = first_cell
+            legacy_area = str(row[1] or '').strip() if len(row) > 1 else ''
+            legacy_analytic_id = str(row[2] or '').strip() if len(row) > 2 else ''
+            name = str(row[3] or '').strip() if len(row) > 3 else ''
+            meter_number = str(row[4] or '').strip() if len(row) > 4 else ''
+            meter_multiplier = self.parse_float(row[5]) if len(row) > 5 else 1.0
+            previous_reading = self.parse_float(row[6]) if len(row) > 6 else 0.0
+            current_reading = self.parse_float(row[7]) if len(row) > 7 else 0.0
+            reading_date = self.parse_datetime(row[8]) if len(row) > 8 else False
+            description = str(row[9] or '').strip() if len(row) > 9 else ''
+            opening_reading = self.parse_float(row[10]) if len(row) > 10 else 0.0
+            is_calc_cell = self.parse_bool(row[11]) if len(row) > 11 else True
+            feeder_code = str(row[12] or '').strip() if len(row) > 12 else ''
+            feeder_name = str(row[13] or '').strip() if len(row) > 13 else ''
+            cell_meter_multiplier = self.parse_float(row[14]) if len(row) > 14 else 1.0
+            cell_meter_number = str(row[15] or '').strip() if len(row) > 15 else ''
+            reference = str(row[16] or '').strip() if len(row) > 16 else ''
+
+            display_name = name or feeder_name or description or f"Feeder-{row_idx}"
+
+            vals = {
+                'name': display_name,
+                'legacy_region': legacy_region,
+                'legacy_area': legacy_area,
+                'legacy_analytic_id': legacy_analytic_id,
+                'meter_number': meter_number,
+                'meter_multiplier': meter_multiplier or 1.0,
+                'previous_reading': previous_reading,
+                'current_reading': current_reading,
+                'reading_date': reading_date,
+                'description': description,
+                'opening_reading': opening_reading,
+                'is_calculation_cell': is_calc_cell,
+                'feeder_code': feeder_code,
+                'feeder_name': feeder_name,
+                'cell_meter_multiplier': cell_meter_multiplier or 1.0,
+                'cell_meter_number': cell_meter_number,
+                'reference': reference,
+                'state': 'draft'
+            }
+
+            existing = feeder_obj.search([('name', '=', display_name)], limit=1)
+            if existing:
+                existing.write(vals)
+                created_records |= existing
+            else:
+                new_rec = feeder_obj.create(vals)
+                created_records |= new_rec
+
+        if created_records:
+            created_records.action_map_codes()
+
+        return self._show_success_notification(len(created_records))
+
+    def _import_transformers(self, sheet):
+        transformer_obj = self.env['utility.migration.transformer']
+        created_records = self.env['utility.migration.transformer']
+        row_idx = 0
+        for row in sheet.iter_rows(values_only=True):
+            row_idx += 1
+            if not row or not any(row):
+                continue
+            first_cell = str(row[0] or '').strip()
+            if first_cell.startswith(('نموذج', 'رمز المنطقة', 'المنطقة/Name', 'المنطقة')):
+                continue
+
+            legacy_region = first_cell
+            legacy_area = str(row[1] or '').strip() if len(row) > 1 else ''
+            legacy_analytic_id = str(row[2] or '').strip() if len(row) > 2 else ''
+            name = str(row[3] or '').strip() if len(row) > 3 else ''
+            meter_number = str(row[4] or '').strip() if len(row) > 4 else ''
+            meter_multiplier = self.parse_float(row[5]) if len(row) > 5 else 1.0
+            previous_reading = self.parse_float(row[6]) if len(row) > 6 else 0.0
+            current_reading = self.parse_float(row[7]) if len(row) > 7 else 0.0
+            total_consumption = self.parse_float(row[8]) if len(row) > 8 else 0.0
+            image_status = str(row[9] or '').strip() if len(row) > 9 else ''
+            reading_date = self.parse_datetime(row[10]) if len(row) > 10 else False
+            description = str(row[11] or '').strip() if len(row) > 11 else ''
+            opening_reading = self.parse_float(row[12]) if len(row) > 12 else 0.0
+            is_calc_cell = self.parse_bool(row[13]) if len(row) > 13 else False
+            transformer_code = str(row[14] or '').strip() if len(row) > 14 else ''
+            transformer_name = str(row[15] or '').strip() if len(row) > 15 else ''
+            cell_meter_multiplier = self.parse_float(row[16]) if len(row) > 16 else 1.0
+            cell_meter_number = str(row[17] or '').strip() if len(row) > 17 else ''
+            reference = str(row[18] or '').strip() if len(row) > 18 else ''
+
+            display_name = name or transformer_name or description or f"Transformer-{row_idx}"
+
+            vals = {
+                'name': display_name,
+                'legacy_region': legacy_region,
+                'legacy_area': legacy_area,
+                'legacy_analytic_id': legacy_analytic_id,
+                'meter_number': meter_number,
+                'meter_multiplier': meter_multiplier or 1.0,
+                'previous_reading': previous_reading,
+                'current_reading': current_reading,
+                'total_consumption': total_consumption,
+                'image_status': image_status,
+                'reading_date': reading_date,
+                'description': description,
+                'opening_reading': opening_reading,
+                'is_calculation_cell': is_calc_cell,
+                'transformer_code': transformer_code,
+                'transformer_name': transformer_name,
+                'cell_meter_multiplier': cell_meter_multiplier or 1.0,
+                'cell_meter_number': cell_meter_number,
+                'reference': reference,
+                'state': 'draft'
+            }
+
+            existing = transformer_obj.search([('name', '=', display_name)], limit=1)
+            if existing:
+                existing.write(vals)
+                created_records |= existing
+            else:
+                new_rec = transformer_obj.create(vals)
+                created_records |= new_rec
+
+        if created_records:
+            created_records.action_map_codes()
+
+        return self._show_success_notification(len(created_records))
+
+    def _show_success_notification(self, count):
         return {
-            'type': 'ir.actions.client',
+            'type': 'ir.actions.act_window_close',
             'tag': 'display_notification',
             'params': {
                 'title': _('تم الاستيراد بنجاح'),
-                'message': _('تم رفع %s سجل ومطابقتها تلقائياً.') % len(created_records),
+                'message': _('تم رفع %s سجل ومطابقتها تلقائياً.') % count,
                 'sticky': False,
                 'type': 'success',
                 'next': {'type': 'ir.actions.act_window_close'}

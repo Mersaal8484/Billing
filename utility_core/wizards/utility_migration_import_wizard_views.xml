@@ -4,19 +4,77 @@
         <field name="name">utility.migration.import.wizard.form</field>
         <field name="model">utility.migration.import.wizard</field>
         <field name="arch" type="xml">
-            <form string="رفع البيانات">
-                <group>
-                    <div class="alert alert-info" role="alert">
-                        قم بتحديد ملف الإكسل (بصيغة .xlsx) الذي قمت بتحميله سابقاً وتعبئته بالبيانات.
-                        سيقوم النظام برفع البيانات ومطابقة الأكواد تلقائياً!
+            <form string="معالج استيراد بيانات الإكسل (Staging)">
+                <sheet>
+                    <!-- Header Banner Callout -->
+                    <div class="p-3 rounded border-start border-4 border-primary bg-light shadow-sm d-flex align-items-center mb-3">
+                        <i class="fa fa-cloud-upload fa-3x text-primary me-3" title="رفع الإكسل"/>
+                        <div>
+                            <h4 class="mb-1 fw-bold text-primary">معالج رفع البيانات من ملفات الإكسل</h4>
+                            <p class="mb-0 text-muted">
+                                قم بتحديد نوع البيانات المراد استيرادها، ثم ارفع ملف الإكسل (بصيغة <code>.xlsx</code>) المحتوي على الأعمدة والرموز المعتمدة. سيقوم النظام برفع البيانات وإجراء المطابقة التلقائية بجدول الترميز.
+                            </p>
+                        </div>
                     </div>
-                </group>
-                <group>
-                    <field name="file_name" invisible="1"/>
-                    <field name="import_file" filename="file_name" widget="binary"/>
-                </group>
+
+                    <!-- Step 1: Type Selection Card -->
+                    <div class="card o_settings_card border-0 shadow-sm mb-3">
+                        <div class="card-header bg-light">
+                            <div class="d-flex align-items-center">
+                                <i class="fa fa-list-alt fa-2x text-primary me-3" title="نوع البيانات"/>
+                                <div>
+                                    <h5 class="mb-0 fw-bold">1. تحديد نوع البيانات المراد رفعها</h5>
+                                    <small class="text-muted">اختر تصنيف النموذج المطابق لملف الإكسل</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <group>
+                                <field name="import_type" widget="radio" options="{'horizontal': true}" class="fw-bold"/>
+                            </group>
+                            <div class="d-flex align-items-center mt-2 p-2 bg-light rounded">
+                                <i class="fa fa-download text-info me-2" title="تنزيل القالب"/>
+                                <span class="me-2 text-muted">هل تود تحميل القالب المعتمد؟</span>
+                                <button name="%(action_download_migration_template)d"
+                                        string="⬇ تحميل قالب المشتركين"
+                                        type="action"
+                                        class="btn btn-link btn-sm p-0 me-3"
+                                        attrs="{'invisible': [('import_type', '!=', 'customer')]}"/>
+                                <button name="%(action_download_feeder_migration_template)d"
+                                        string="⬇ تحميل قالب الفيدرات والخلايا"
+                                        type="action"
+                                        class="btn btn-link btn-sm p-0 me-3"
+                                        attrs="{'invisible': [('import_type', '!=', 'feeder')]}"/>
+                                <button name="%(action_download_transformer_migration_template)d"
+                                        string="⬇ تحميل قالب المحولات"
+                                        type="action"
+                                        class="btn btn-link btn-sm p-0 me-3"
+                                        attrs="{'invisible': [('import_type', '!=', 'transformer')]}"/>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 2: Excel File Selection Card -->
+                    <div class="card o_settings_card border-0 shadow-sm mb-2">
+                        <div class="card-header bg-light">
+                            <div class="d-flex align-items-center">
+                                <i class="fa fa-file-excel-o fa-2x text-success me-3" title="ملف الإكسل"/>
+                                <div>
+                                    <h5 class="mb-0 fw-bold">2. اختيار ملف الإكسل</h5>
+                                    <small class="text-muted">الملفات المدعومة صيغة .xlsx فقط</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <group>
+                                <field name="file_name" invisible="1"/>
+                                <field name="import_file" filename="file_name" widget="binary" string="ملف الإكسل"/>
+                            </group>
+                        </div>
+                    </div>
+                </sheet>
                 <footer>
-                    <button string="استيراد" name="action_import_file" type="object" class="oe_highlight"/>
+                    <button string="🚀 بدء الاستيراد والمطابقة" name="action_import_file" type="object" class="btn-primary"/>
                     <button string="إلغاء" class="btn-secondary" special="cancel"/>
                 </footer>
             </form>
@@ -29,6 +87,4 @@
         <field name="view_mode">form</field>
         <field name="target">new</field>
     </record>
-    
-
 </odoo>

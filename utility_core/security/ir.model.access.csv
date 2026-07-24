@@ -107,5 +107,8 @@ access_utility_meter_log_readonly,utility.meter.log.readonly,model_utility_meter
 access_utility_meter_log_technician,utility.meter.log.technician,model_utility_meter_log,group_utility_technician,1,1,1,0
 access_utility_meter_log_supervisor,utility.meter.log.supervisor,model_utility_meter_log,group_utility_supervisor,1,1,1,0
 access_utility_migration_customer,utility.migration.customer,model_utility_migration_customer,group_utility_admin,1,1,1,1
+access_utility_migration_feeder,utility.migration.feeder,model_utility_migration_feeder,group_utility_admin,1,1,1,1
+access_utility_migration_transformer,utility.migration.transformer,model_utility_migration_transformer,group_utility_admin,1,1,1,1
 access_utility_migration_mapping,utility.migration.mapping,model_utility_migration_mapping,group_utility_admin,1,1,1,1
 access_utility_migration_import_wizard,access_utility_migration_import_wizard,model_utility_migration_import_wizard,,1,1,1,1
+

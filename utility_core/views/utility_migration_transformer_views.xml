@@ -1,0 +1,213 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_download_transformer_migration_template" model="ir.actions.act_url">
+        <field name="name">تحميل قالب المحولات</field>
+        <field name="url">/utility_core/static/src/Transformer_Migration_Template.xlsx</field>
+        <field name="target">new</field>
+    </record>
+
+    <record id="view_utility_migration_transformer_tree" model="ir.ui.view">
+        <field name="name">utility.migration.transformer.tree</field>
+        <field name="model">utility.migration.transformer</field>
+        <field name="arch" type="xml">
+            <tree string="بيانات تهيئة المحولات"
+                  decoration-info="state=='draft'"
+                  decoration-success="state=='imported'"
+                  decoration-danger="state=='error'">
+                <header>
+                    <button name="%(action_download_transformer_migration_template)d"
+                            string="⬇ تحميل قالب المحولات"
+                            type="action"
+                            class="btn-primary"/>
+                    <button name="action_map_codes"
+                            string="🔗 مطابقة الترميز"
+                            type="object"
+                            class="btn-secondary"/>
+                    <button name="action_import_data"
+                            string="✅ اعتماد ورفع البيانات"
+                            type="object"
+                            class="btn-success"/>
+                </header>
+                <field name="reference"/>
+                <field name="name"/>
+                <field name="meter_number"/>
+                <field name="previous_reading"/>
+                <field name="current_reading"/>
+                <field name="total_consumption"/>
+                <field name="image_status"/>
+                <field name="feeder_id"/>
+                <field name="region_id"/>
+                <field name="state" widget="badge"
+                       decoration-info="state=='draft'"
+                       decoration-success="state=='imported'"
+                       decoration-danger="state=='error'"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_utility_migration_transformer_form" model="ir.ui.view">
+        <field name="name">utility.migration.transformer.form</field>
+        <field name="model">utility.migration.transformer</field>
+        <field name="arch" type="xml">
+            <form string="تهيئة المحول">
+                <header>
+                    <button name="action_map_codes"
+                            string="🔗 مطابقة الترميز"
+                            type="object"
+                            class="btn-secondary"
+                            attrs="{'invisible': [('state', '=', 'imported')]}"/>
+                    <button name="action_import_data"
+                            string="✅ رفع وتوليد البيانات"
+                            type="object"
+                            class="oe_highlight"
+                            attrs="{'invisible': [('state', '=', 'imported')]}"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,imported,error"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_transformer"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-cogs"
+                                attrs="{'invisible': [('created_transformer_id', '=', False)]}">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">المحول المنشأ</span>
+                            </div>
+                        </button>
+                        <button name="action_open_meter"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-tachometer"
+                                attrs="{'invisible': [('created_meter_id', '=', False)]}">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">عداد الرصد</span>
+                            </div>
+                        </button>
+                    </div>
+
+                    <div class="oe_title">
+                        <label for="name" string="اسم المحول للعرض"/>
+                        <h1><field name="name" placeholder="اسم المحول أو عداد الرصد..."/></h1>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-12 col-lg-6">
+                            <div class="card o_settings_card mb-3">
+                                <div class="card-header">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fa fa-cogs fa-2x text-warning me-3" title="المحول والخلية"/>
+                                        <div>
+                                            <h4 class="mb-0">بيانات المحول والخلية المغذية</h4>
+                                            <small class="text-muted">بيانات الهيكلية والربط بالشبكة</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <group>
+                                        <field name="reference"/>
+                                        <field name="transformer_code"/>
+                                        <field name="transformer_name"/>
+                                        <field name="legacy_region"/>
+                                        <field name="region_id"/>
+                                        <field name="legacy_area"/>
+                                        <field name="area_id"/>
+                                        <field name="cell_meter_number"/>
+                                        <field name="cell_meter_multiplier"/>
+                                        <field name="feeder_id"/>
+                                        <field name="legacy_analytic_id"/>
+
+                                    </group>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6">
+                            <div class="card o_settings_card mb-3">
+                                <div class="card-header">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fa fa-tachometer fa-2x text-info me-3" title="عداد الرصد والقراءات"/>
+
+                                        <div>
+                                            <h4 class="mb-0">عداد الرصد والقراءات الافتتاحية</h4>
+                                            <small class="text-muted">مؤشرات الاستهلاك وعداد المقارنة</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <group>
+                                        <field name="meter_number"/>
+                                        <field name="meter_multiplier"/>
+                                        <field name="previous_reading"/>
+                                        <field name="current_reading"/>
+                                        <field name="total_consumption"/>
+                                        <field name="opening_reading"/>
+                                        <field name="image_status"/>
+                                        <field name="reading_date"/>
+                                        <field name="is_calculation_cell"/>
+                                    </group>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <group string="الوصف والملاحظات">
+                        <field name="description" nolabel="1" placeholder="أدخل الوصف أو ملاحظات النظام السابق..."/>
+                    </group>
+
+                    <notebook>
+                        <page string="رسالة الخطأ" attrs="{'invisible': [('state', '!=', 'error')]}">
+                            <field name="error_message" style="color: red;"/>
+                        </page>
+                        <page string="الارتباطات المنشأة" attrs="{'invisible': [('state', '!=', 'imported')]}">
+                            <group>
+                                <field name="created_transformer_id"/>
+                                <field name="created_meter_id"/>
+                                <field name="created_reading_id"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_utility_migration_transformer_search" model="ir.ui.view">
+        <field name="name">utility.migration.transformer.search</field>
+        <field name="model">utility.migration.transformer</field>
+        <field name="arch" type="xml">
+            <search string="بحث تهيئة المحولات">
+                <field name="name"/>
+                <field name="reference"/>
+                <field name="meter_number"/>
+                <field name="legacy_region"/>
+                <field name="feeder_id"/>
+                <filter string="مسودة" name="filter_draft" domain="[('state', '=', 'draft')]"/>
+                <filter string="تم الرفع" name="filter_imported" domain="[('state', '=', 'imported')]"/>
+                <filter string="خطأ" name="filter_error" domain="[('state', '=', 'error')]"/>
+                <group expand="0" string="تجميع حسب...">
+                    <filter string="الحالة" name="group_by_state" context="{'group_by': 'state'}"/>
+                    <filter string="المنطقة" name="group_by_region" context="{'group_by': 'region_id'}"/>
+                    <filter string="الفيدر / الخلية" name="group_by_feeder" context="{'group_by': 'feeder_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_utility_migration_transformer" model="ir.actions.act_window">
+        <field name="name">تهيئة المحولات</field>
+        <field name="res_model">utility.migration.transformer</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <menuitem id="menu_utility_migration_transformer"
+              name="بيانات المحولات (Staging)"
+              parent="menu_utility_migration_root"
+              action="action_utility_migration_transformer"
+              sequence="18"/>
+
+    <menuitem id="menu_utility_migration_download_transformer_template"
+              name="تحميل قالب المحولات"
+              parent="menu_utility_migration_root"
+              action="action_download_transformer_migration_template"
+              sequence="35"/>
+</odoo>
+

@@ -71,6 +71,9 @@ User Role.
         'views/utility_migration_mapping_views.xml',
         'wizards/utility_migration_import_wizard_views.xml',
         'views/utility_migration_customer_views.xml',
+        'views/utility_migration_feeder_views.xml',
+        'views/utility_migration_transformer_views.xml',
+
         'report/transformer_balance_report_template.xml',
         'report/transformer_balance_report.xml',
         'report/utility_receipt_report.xml',
