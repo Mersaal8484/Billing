@@ -35,9 +35,23 @@ class UtilityMigrationImportWizard(models.TransientModel):
         except (ValueError, TypeError):
             return 0
 
-    def parse_bool(self, val):
-        val_str = str(val or '').strip().lower()
-        return val_str in ('true', '1', 'yes', 'نعم', 'صح', 't')
+    def parse_bool(self, val, default=True):
+        """
+        معالجة وتفسير الحقول المنطقية (Boolean) بمرونة عالية:
+        تقبل: True/False, true/false, 1/0, yes/no, نعم/لا, صح/خطأ
+        """
+        if val is None or str(val).strip() == '':
+            return default
+        if isinstance(val, bool):
+            return val
+        if isinstance(val, (int, float)):
+            return bool(val)
+        val_str = str(val).strip().lower()
+        if val_str in ('false', '0', '0.0', 'no', 'n', 'لا', 'خطأ', 'f'):
+            return False
+        if val_str in ('true', '1', '1.0', 'yes', 'y', 'نعم', 'صح', 't'):
+            return True
+        return default
 
     def parse_datetime(self, val):
         if isinstance(val, (datetime.datetime, datetime.date)):
@@ -78,7 +92,7 @@ class UtilityMigrationImportWizard(models.TransientModel):
             row_idx += 1
             if not row or (not row[0] and (len(row) <= 3 or not row[3])):
                 continue
-            if str(row[0] or '').strip().startswith(('الاسم', 'Name', 'منطقة', 'رمز المنطقة', 'نموذج')):
+            if str(row[0] or '').strip().startswith(('الاسم', 'Name', 'منطقة', 'رمز المنطقة', 'نموذج', 'يرجى', 'بيانات')):
                 continue
 
             name = str(row[0] or '').strip()
@@ -88,8 +102,7 @@ class UtilityMigrationImportWizard(models.TransientModel):
             subscriber_no = str(row[4] or '').strip() if len(row) > 4 else ''
             char_code = str(row[5] or '').strip() if len(row) > 5 else ''
             
-            is_active_val = str(row[6] or '').strip().lower() if len(row) > 6 else 'true'
-            is_active = is_active_val not in ('false', '0', 'no', 'لا')
+            is_active = self.parse_bool(row[6] if len(row) > 6 else True, default=True)
             
             legacy_region = str(row[7] or '').strip() if len(row) > 7 else ''
             legacy_area = str(row[8] or '').strip() if len(row) > 8 else ''
@@ -106,8 +119,7 @@ class UtilityMigrationImportWizard(models.TransientModel):
             phase_val = str(row[17] if len(row) > 17 else '').strip().lower()
             phase = 'three' if '3' in phase_val or 'three' in phase_val or 'ثلاث' in phase_val else 'single'
             
-            is_private_val = str(row[18] if len(row) > 18 else '').strip().lower()
-            is_private_transformer = is_private_val in ('true', '1', 'yes', 'نعم', 'خاص')
+            is_private_transformer = self.parse_bool(row[18] if len(row) > 18 else False, default=False)
             
             if not name:
                 continue
@@ -160,47 +172,34 @@ class UtilityMigrationImportWizard(models.TransientModel):
             if not row or not any(row):
                 continue
             first_cell = str(row[0] or '').strip()
-            if first_cell.startswith(('نموذج', 'رمز المنطقة', 'المنطقة/Name', 'المنطقة')):
+            if first_cell.startswith(('نموذج', 'رمز المنطقة', 'المنطقة/Name', 'المنطقة', 'يرجى', 'بيانات')):
                 continue
 
             legacy_region = first_cell
             legacy_area = str(row[1] or '').strip() if len(row) > 1 else ''
-            legacy_analytic_id = str(row[2] or '').strip() if len(row) > 2 else ''
-            name = str(row[3] or '').strip() if len(row) > 3 else ''
-            meter_number = str(row[4] or '').strip() if len(row) > 4 else ''
-            meter_multiplier = self.parse_float(row[5]) if len(row) > 5 else 1.0
-            previous_reading = self.parse_float(row[6]) if len(row) > 6 else 0.0
+            is_active = self.parse_bool(row[2], default=True) if len(row) > 2 else True
+            feeder_code = str(row[3] or '').strip() if len(row) > 3 else ''
+            feeder_name = str(row[4] or '').strip() if len(row) > 4 else ''
+            meter_number = str(row[5] or '').strip() if len(row) > 5 else ''
+            meter_multiplier = self.parse_float(row[6]) if len(row) > 6 else 1.0
             current_reading = self.parse_float(row[7]) if len(row) > 7 else 0.0
-            reading_date = self.parse_datetime(row[8]) if len(row) > 8 else False
+            is_calc_cell = self.parse_bool(row[8], default=True) if len(row) > 8 else True
             description = str(row[9] or '').strip() if len(row) > 9 else ''
-            opening_reading = self.parse_float(row[10]) if len(row) > 10 else 0.0
-            is_calc_cell = self.parse_bool(row[11]) if len(row) > 11 else True
-            feeder_code = str(row[12] or '').strip() if len(row) > 12 else ''
-            feeder_name = str(row[13] or '').strip() if len(row) > 13 else ''
-            cell_meter_multiplier = self.parse_float(row[14]) if len(row) > 14 else 1.0
-            cell_meter_number = str(row[15] or '').strip() if len(row) > 15 else ''
-            reference = str(row[16] or '').strip() if len(row) > 16 else ''
 
-            display_name = name or feeder_name or description or f"Feeder-{row_idx}"
+            display_name = feeder_name or feeder_code or description or f"Feeder-{row_idx}"
 
             vals = {
                 'name': display_name,
-                'legacy_region': legacy_region,
-                'legacy_area': legacy_area,
-                'legacy_analytic_id': legacy_analytic_id,
-                'meter_number': meter_number,
-                'meter_multiplier': meter_multiplier or 1.0,
-                'previous_reading': previous_reading,
-                'current_reading': current_reading,
-                'reading_date': reading_date,
-                'description': description,
-                'opening_reading': opening_reading,
-                'is_calculation_cell': is_calc_cell,
                 'feeder_code': feeder_code,
                 'feeder_name': feeder_name,
-                'cell_meter_multiplier': cell_meter_multiplier or 1.0,
-                'cell_meter_number': cell_meter_number,
-                'reference': reference,
+                'legacy_region': legacy_region,
+                'legacy_area': legacy_area,
+                'is_active': is_active,
+                'meter_number': meter_number,
+                'meter_multiplier': meter_multiplier or 1.0,
+                'current_reading': current_reading,
+                'is_calculation_cell': is_calc_cell,
+                'description': description,
                 'state': 'draft'
             }
 
@@ -226,51 +225,42 @@ class UtilityMigrationImportWizard(models.TransientModel):
             if not row or not any(row):
                 continue
             first_cell = str(row[0] or '').strip()
-            if first_cell.startswith(('نموذج', 'رمز المنطقة', 'المنطقة/Name', 'المنطقة')):
+            if first_cell.startswith(('نموذج', 'رمز المنطقة', 'المنطقة/Name', 'المنطقة', 'يرجى', 'بيانات')):
                 continue
 
             legacy_region = first_cell
             legacy_area = str(row[1] or '').strip() if len(row) > 1 else ''
-            legacy_analytic_id = str(row[2] or '').strip() if len(row) > 2 else ''
-            name = str(row[3] or '').strip() if len(row) > 3 else ''
-            meter_number = str(row[4] or '').strip() if len(row) > 4 else ''
-            meter_multiplier = self.parse_float(row[5]) if len(row) > 5 else 1.0
-            previous_reading = self.parse_float(row[6]) if len(row) > 6 else 0.0
+            is_active = self.parse_bool(row[2], default=True) if len(row) > 2 else True
+            transformer_code = str(row[3] or '').strip() if len(row) > 3 else ''
+            transformer_name = str(row[4] or '').strip() if len(row) > 4 else ''
+            meter_number = str(row[5] or '').strip() if len(row) > 5 else ''
+            meter_multiplier = self.parse_float(row[6]) if len(row) > 6 else 1.0
             current_reading = self.parse_float(row[7]) if len(row) > 7 else 0.0
             total_consumption = self.parse_float(row[8]) if len(row) > 8 else 0.0
             image_status = str(row[9] or '').strip() if len(row) > 9 else ''
-            reading_date = self.parse_datetime(row[10]) if len(row) > 10 else False
-            description = str(row[11] or '').strip() if len(row) > 11 else ''
-            opening_reading = self.parse_float(row[12]) if len(row) > 12 else 0.0
-            is_calc_cell = self.parse_bool(row[13]) if len(row) > 13 else False
-            transformer_code = str(row[14] or '').strip() if len(row) > 14 else ''
-            transformer_name = str(row[15] or '').strip() if len(row) > 15 else ''
-            cell_meter_multiplier = self.parse_float(row[16]) if len(row) > 16 else 1.0
-            cell_meter_number = str(row[17] or '').strip() if len(row) > 17 else ''
-            reference = str(row[18] or '').strip() if len(row) > 18 else ''
+            cell_meter_number = str(row[10] or '').strip() if len(row) > 10 else ''
+            cell_meter_multiplier = self.parse_float(row[11]) if len(row) > 11 else 1.0
+            reference = str(row[12] or '').strip() if len(row) > 12 else ''
+            description = str(row[13] or '').strip() if len(row) > 13 else ''
 
-            display_name = name or transformer_name or description or f"Transformer-{row_idx}"
+            display_name = transformer_name or transformer_code or description or f"Transformer-{row_idx}"
 
             vals = {
                 'name': display_name,
+                'transformer_code': transformer_code,
+                'transformer_name': transformer_name,
                 'legacy_region': legacy_region,
                 'legacy_area': legacy_area,
-                'legacy_analytic_id': legacy_analytic_id,
+                'is_active': is_active,
                 'meter_number': meter_number,
                 'meter_multiplier': meter_multiplier or 1.0,
-                'previous_reading': previous_reading,
                 'current_reading': current_reading,
                 'total_consumption': total_consumption,
                 'image_status': image_status,
-                'reading_date': reading_date,
-                'description': description,
-                'opening_reading': opening_reading,
-                'is_calculation_cell': is_calc_cell,
-                'transformer_code': transformer_code,
-                'transformer_name': transformer_name,
-                'cell_meter_multiplier': cell_meter_multiplier or 1.0,
                 'cell_meter_number': cell_meter_number,
+                'cell_meter_multiplier': cell_meter_multiplier or 1.0,
                 'reference': reference,
+                'description': description,
                 'state': 'draft'
             }
 

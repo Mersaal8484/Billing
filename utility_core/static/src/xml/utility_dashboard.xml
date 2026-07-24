@@ -1,104 +1,185 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
     <t t-name="utility_dashboard.UtilityDashboard" owl="1">
-        <div class="utility_dashboard_container" dir="rtl">
-            <div class="dashboard-header">
-                <div class="header-left">
-                    <h2>لوحة القيادة الإدارية</h2>
-                    <p>ملخص الأداء المالي والتشغيلي حسب المنطقة</p>
+        <div class="utility_dashboard_container w-100" dir="rtl" style="direction: rtl !important; text-align: right !important; background-color: #f8fafc; position: relative !important; overflow-y: auto !important; height: calc(100vh - 48px) !important; max-height: calc(100vh - 48px) !important; padding: 24px !important; box-sizing: border-box !important;">
+            <!-- Header Section -->
+            <div class="dashboard-header border-0 shadow-sm rounded bg-white p-3 mb-4 d-flex flex-column flex-md-row justify-content-between align-items-center gap-3" style="direction: rtl !important; text-align: right !important;">
+                <div class="title-area" style="text-align: right !important;">
+                    <h2 class="fw-bold text-primary mb-1" style="text-align: right !important;">
+                        <i class="fa fa-tachometer" style="font-family: FontAwesome !important; margin-left: 8px !important; margin-right: 0 !important;"></i> لوحة قيادة الفوترة والتحصيل الآجل
+                    </h2>
+                    <p class="text-muted mb-0" style="text-align: right !important;">مؤشرات الأداء المالي وإحصائيات الدفع الآجل والمديونية حسب المنطقة</p>
                 </div>
-                <div class="header-right" style="display: flex; gap: 10px; align-items: center;">
-                    <label for="region_select">اختر المنطقة:</label>
-                    <select id="region_select" t-on-change="onRegionChange" class="region-selector">
-                        <option value="">جميع المناطق</option>
+                <div class="controls-area d-flex align-items-center gap-2" style="direction: rtl !important;">
+                    <label for="region_select" class="fw-bold text-secondary mb-0 text-nowrap" style="text-align: right !important;">تصفية حسب المنطقة:</label>
+                    <select id="region_select" t-on-change="onRegionChange" class="form-select region-selector shadow-sm" style="direction: rtl !important; text-align: right !important; min-width: 200px;">
+                        <option value="">جميع المناطق (إجمالي)</option>
                         <t t-foreach="state.regions" t-as="region" t-key="region.id">
                             <option t-att-value="region.id" t-att-selected="state.selectedRegionId === region.id ? 'selected' : false">
                                 <t t-esc="region.name"/>
                             </option>
                         </t>
                     </select>
-                    <button t-on-click="onFetchClick" class="btn btn-primary" style="padding: 6px 15px; font-weight: bold;">
-                        <i class="fa fa-refresh"></i> جلب
+                    <button t-on-click="onFetchClick" class="btn btn-primary px-4 py-2 shadow-sm text-nowrap fw-bold" t-att-disabled="state.isLoading">
+                        <t t-if="state.isLoading">
+                            <i class="fa fa-spinner fa-spin" style="font-family: FontAwesome !important; margin-left: 8px !important;"></i> جاري التحميل...
+                        </t>
+                        <t t-else="">
+                            <i class="fa fa-refresh" style="font-family: FontAwesome !important; margin-left: 8px !important;"></i> تحديث
+                        </t>
                     </button>
                 </div>
             </div>
-            
-            <div class="kpi-cards-row">
-                <div class="kpi-card kpi-success">
-                    <div class="kpi-icon"><i class="fa fa-bolt"></i></div>
-                    <div class="kpi-info">
-                        <h3><t t-esc="state.kpi.today_prepaid" /> ريال</h3>
-                        <p>مبيعات الدفع المسبق (اليوم)</p>
+
+            <!-- Empty State Prompt when Data is not loaded yet -->
+            <t t-if="!state.isDataLoaded">
+                <div class="card border-0 shadow-sm rounded bg-white p-5 text-center my-4" style="direction: rtl !important; text-align: center !important;">
+                    <div class="card-body py-5">
+                        <i class="fa fa-line-chart fa-4x text-primary mb-3" style="font-family: FontAwesome !important;"></i>
+                        <h3 class="fw-bold text-dark mb-2">مرحباً بك في لوحة قيادة الفوترة والتحصيل الآجل</h3>
+                        <p class="text-muted fs-5 mb-4">يرجى تحديد المنطقة المطلوبة (أو إبقاء جميع المناطق) ثم الضغط على زر <strong class="text-primary">"تحديث"</strong> لجلب وتحميل البيانات.</p>
+                        <button t-on-click="onFetchClick" class="btn btn-primary btn-lg px-5 shadow-sm fw-bold">
+                            <i class="fa fa-refresh" style="font-family: FontAwesome !important; margin-left: 8px !important;"></i> جلب البيانات الآن
+                        </button>
+                    </div>
+                </div>
+            </t>
+
+            <!-- Dashboard Content Row when Loaded -->
+            <t t-if="state.isDataLoaded">
+                <!-- KPI Cards Row -->
+                <div class="kpi-cards-row row g-3 mb-4" style="direction: rtl !important;">
+                    <div class="col-12 col-sm-6 col-xl-3">
+                        <div class="kpi-card kpi-success shadow-sm rounded bg-white p-3 d-flex align-items-center" t-on-click="() => this.openTodayPayments()" style="direction: rtl !important; text-align: right !important;">
+                            <div class="kpi-icon bg-success text-white rounded-circle" style="min-width: 54px; height: 54px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-left: 16px !important; margin-right: 0 !important;">
+                                <i class="fa fa-money" style="font-family: FontAwesome !important;"></i>
+                            </div>
+                            <div class="kpi-info" style="text-align: right !important; direction: rtl !important;">
+                                <h3 class="fw-bold text-success mb-1" style="text-align: right !important;">
+                                    <t t-esc="formatMoney(state.kpi.today_postpaid)" /> <small class="fs-6">ريال</small>
+                                </h3>
+                                <p class="text-muted mb-0" style="text-align: right !important;">تحصيلات الآجل (اليوم)</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-sm-6 col-xl-3">
+                        <div class="kpi-card kpi-info-color shadow-sm rounded bg-white p-3 d-flex align-items-center" style="direction: rtl !important; text-align: right !important;">
+                            <div class="kpi-icon bg-info text-white rounded-circle" style="min-width: 54px; height: 54px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-left: 16px !important; margin-right: 0 !important;">
+                                <i class="fa fa-file-text-o" style="font-family: FontAwesome !important;"></i>
+                            </div>
+                            <div class="kpi-info" style="text-align: right !important; direction: rtl !important;">
+                                <h3 class="fw-bold text-info mb-1" style="text-align: right !important;">
+                                    <t t-esc="formatMoney(state.kpi.today_billed)" /> <small class="fs-6">ريال</small>
+                                </h3>
+                                <p class="text-muted mb-0" style="text-align: right !important;">الفواتير الآجلة الصادرة (اليوم)</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-sm-6 col-xl-3">
+                        <div class="kpi-card kpi-warning shadow-sm rounded bg-white p-3 d-flex align-items-center" t-on-click="() => this.openPostpaidOrders()" style="direction: rtl !important; text-align: right !important;">
+                            <div class="kpi-icon bg-warning text-white rounded-circle" style="min-width: 54px; height: 54px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-left: 16px !important; margin-right: 0 !important;">
+                                <i class="fa fa-balance-scale" style="font-family: FontAwesome !important;"></i>
+                            </div>
+                            <div class="kpi-info" style="text-align: right !important; direction: rtl !important;">
+                                <h3 class="fw-bold text-warning mb-1" style="text-align: right !important;">
+                                    <t t-esc="formatMoney(state.kpi.total_debt)" /> <small class="fs-6">ريال</small>
+                                </h3>
+                                <p class="text-muted mb-0" style="text-align: right !important;">إجمالي الذمم والمديونية القائمة</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 col-sm-6 col-xl-3">
+                        <div class="kpi-card kpi-danger shadow-sm rounded bg-white p-3 d-flex align-items-center" t-on-click="() => this.openOverdueOrders()" style="direction: rtl !important; text-align: right !important;">
+                            <div class="kpi-icon bg-danger text-white rounded-circle" style="min-width: 54px; height: 54px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-left: 16px !important; margin-right: 0 !important;">
+                                <i class="fa fa-exclamation-triangle" style="font-family: FontAwesome !important;"></i>
+                            </div>
+                            <div class="kpi-info" style="text-align: right !important; direction: rtl !important;">
+                                <h3 class="fw-bold text-danger mb-1" style="text-align: right !important;">
+                                    <t t-esc="formatMoney(state.kpi.overdue_debt)" /> <small class="fs-6">ريال</small>
+                                </h3>
+                                <p class="text-muted mb-0" style="text-align: right !important;">ديون المتأخرات الفائتة (<t t-esc="state.kpi.overdue_count"/> فاتورة)</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="kpi-card kpi-info-color">
-                    <div class="kpi-icon"><i class="fa fa-money"></i></div>
-                    <div class="kpi-info">
-                        <h3><t t-esc="state.kpi.today_postpaid" /> ريال</h3>
-                        <p>تحصيلات الفواتير الآجلة (اليوم)</p>
+                <!-- Region Summary Table Section -->
+                <div class="region-section shadow-sm rounded bg-white p-4 mb-4" style="direction: rtl !important; text-align: right !important;">
+                    <div class="section-title d-flex justify-content-between align-items-center mb-3" style="direction: rtl !important;">
+                        <h4 class="fw-bold text-dark mb-0" style="text-align: right !important;">
+                            <i class="fa fa-map-marker text-primary" style="font-family: FontAwesome !important; margin-left: 8px !important; margin-right: 0 !important;"></i> مؤشرات الدفع الآجل حسب المنطقة
+                        </h4>
+                        <span class="badge bg-primary fs-6 px-3 py-2 cursor-pointer" t-on-click="() => this.openCustomers()">
+                            مشتركو الدفع الآجل: <t t-esc="state.kpi.active_customers"/> مشترك
+                        </span>
+                    </div>
+                    <div class="table-responsive" style="direction: rtl !important;">
+                        <table class="table table-hover align-middle region-table mb-0 w-100" style="direction: rtl !important; text-align: right !important;">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="text-align: right !important;">المنطقة / الفرع</th>
+                                    <th style="text-align: center !important;">مشتركو الدفع الآجل</th>
+                                    <th style="text-align: right !important;">تحصيلات اليوم (آجل)</th>
+                                    <th style="text-align: right !important;">فواتير اليوم الصادرة</th>
+                                    <th style="text-align: right !important;">إجمالي المديونية القائمة</th>
+                                    <th style="text-align: right !important;">ديون المتأخرات</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="state.kpi.region_rows" t-as="row" t-key="row.region_id || 'unassigned'">
+                                    <tr>
+                                        <td class="fw-bold text-primary" style="text-align: right !important;" t-on-click="() => this.openCustomers(row.region_id)">
+                                            <i class="fa fa-building-o" style="font-family: FontAwesome !important; margin-left: 6px !important; margin-right: 0 !important;"></i> <t t-esc="row.region_name" />
+                                        </td>
+                                        <td style="text-align: center !important;" t-on-click="() => this.openCustomers(row.region_id)">
+                                            <span class="badge bg-light text-dark border px-2 py-1"><t t-esc="row.active_customers" /></span>
+                                        </td>
+                                        <td class="text-success fw-bold" style="text-align: right !important;" t-on-click="() => this.openTodayPayments(row.region_id)">
+                                            <t t-esc="formatMoney(row.today_postpaid)" /> ريال
+                                        </td>
+                                        <td class="text-info fw-bold" style="text-align: right !important;">
+                                            <t t-esc="formatMoney(row.today_billed)" /> ريال
+                                        </td>
+                                        <td class="text-warning fw-bold debt-cell" style="text-align: right !important;" t-on-click="() => this.openPostpaidOrders(row.region_id)">
+                                            <t t-esc="formatMoney(row.total_debt)" /> ريال
+                                        </td>
+                                        <td class="text-danger fw-bold" style="text-align: right !important;" t-on-click="() => this.openOverdueOrders(row.region_id)">
+                                            <t t-esc="formatMoney(row.overdue_debt)" /> ريال
+                                        </td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
-                <div class="kpi-card kpi-danger" t-on-click="openUnpaidInvoices">
-                    <div class="kpi-icon"><i class="fa fa-exclamation-triangle"></i></div>
-                    <div class="kpi-info">
-                        <h3><t t-esc="state.kpi.total_debt" /> ريال</h3>
-                        <p>إجمالي المديونية المفتوحة</p>
+                <!-- Charts Section -->
+                <div class="dashboard-charts-row row g-3 mb-5" style="direction: rtl !important;">
+                    <div class="col-12 col-lg-6">
+                        <div class="chart-container shadow-sm rounded bg-white p-4" style="direction: rtl !important; text-align: right !important;">
+                            <h5 class="fw-bold text-dark mb-3" style="text-align: right !important;">
+                                <i class="fa fa-line-chart text-info" style="font-family: FontAwesome !important; margin-left: 8px !important; margin-right: 0 !important;"></i> إصدارات الفواتير مقابل تحصيلات الآجل (آخر 7 أيام)
+                            </h5>
+                            <div class="canvas-wrapper">
+                                <canvas t-ref="chartCanvas"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-lg-6">
+                        <div class="chart-container shadow-sm rounded bg-white p-4" style="direction: rtl !important; text-align: right !important;">
+                            <h5 class="fw-bold text-dark mb-3" style="text-align: right !important;">
+                                <i class="fa fa-bar-chart text-primary" style="font-family: FontAwesome !important; margin-left: 8px !important; margin-right: 0 !important;"></i> المديونية ومشتركو الآجل حسب المنطقة
+                            </h5>
+                            <div class="canvas-wrapper">
+                                <canvas t-ref="regionChartCanvas"></canvas>
+                            </div>
+                        </div>
                     </div>
                 </div>
-
-                <div class="kpi-card kpi-primary" t-on-click="openCustomers">
-                    <div class="kpi-icon"><i class="fa fa-users"></i></div>
-                    <div class="kpi-info">
-                        <h3><t t-esc="state.kpi.active_customers" /></h3>
-                        <p>إجمالي المشتركين النشطين</p>
-                    </div>
-                </div>
-            </div>
-
-            <div class="region-section">
-                <div class="section-title">
-                    <h3>المؤشرات حسب المنطقة</h3>
-                </div>
-                <table class="region-table">
-                    <thead>
-                        <tr>
-                            <th>المنطقة</th>
-                            <th>المشتركون النشطون</th>
-                            <th>مسبق اليوم</th>
-                            <th>آجل اليوم</th>
-                            <th>المديونية</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <t t-foreach="state.kpi.region_rows" t-as="row" t-key="row.region_id || 'unassigned'">
-                            <tr t-on-click="() => this.openCustomers(row.region_id)">
-                                <td><t t-esc="row.region_name" /></td>
-                                <td><t t-esc="row.active_customers" /></td>
-                                <td><t t-esc="row.today_prepaid" /> ريال</td>
-                                <td><t t-esc="row.today_postpaid" /> ريال</td>
-                                <td class="debt-cell" t-on-click.stop="() => this.openUnpaidInvoices(row.region_id)"><t t-esc="row.total_debt" /> ريال</td>
-                            </tr>
-                        </t>
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="dashboard-charts-row">
-                <div class="chart-container">
-                    <h3>الإصدارات مقابل التحصيلات (آخر 7 أيام)</h3>
-                    <div class="canvas-wrapper">
-                        <canvas t-ref="chartCanvas"></canvas>
-                    </div>
-                </div>
-                <div class="chart-container">
-                    <h3>المشتركون والمديونية حسب المنطقة</h3>
-                    <div class="canvas-wrapper">
-                        <canvas t-ref="regionChartCanvas"></canvas>
-                    </div>
-                </div>
-            </div>
+            </t>
         </div>
     </t>
 </templates>

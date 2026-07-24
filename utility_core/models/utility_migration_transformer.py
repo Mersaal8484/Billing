@@ -11,19 +11,18 @@ class UtilityMigrationTransformer(models.Model):
     legacy_region = fields.Char('رمز المنطقة')
     legacy_area = fields.Char('رمز الفرع')
     legacy_analytic_id = fields.Char('معرف الحساب التحليلي')
+    is_active = fields.Boolean('هل فعال؟', default=True)
 
     transformer_code = fields.Char('رمز المحول / الحساب التحليلي')
     transformer_name = fields.Char('اسم المحول / الشريك')
-    reference = fields.Char('المرجع / رقم المحول')
+    reference = fields.Char('المرجع / كود المحول الفيدر')
     description = fields.Text('الوصف')
 
     meter_number = fields.Char('رقم العداد (عداد رصد المحول)')
     meter_multiplier = fields.Float('معامل الضرب للعداد', default=1.0)
-    previous_reading = fields.Float('القراءة السابقة', digits=(12, 3))
     current_reading = fields.Float('القراءة الحالية', digits=(12, 3))
     total_consumption = fields.Float('إجمالي الاستهلاك', digits=(12, 3))
     image_status = fields.Char('حالة الصورة')
-    reading_date = fields.Datetime('تاريخ القراءة')
     opening_reading = fields.Float('قراءة بداية الاشتراك', digits=(12, 3))
 
     is_calculation_cell = fields.Boolean('خلية إحتساب', default=False)
@@ -156,6 +155,7 @@ class UtilityMigrationTransformer(models.Model):
                         'code': code,
                         'notes': rec.description,
                         'company_id': self.env.company.id,
+                        'active': rec.is_active,
                     }
                     if rec.feeder_id:
                         trans_vals['feeder_id'] = rec.feeder_id.id
@@ -186,6 +186,7 @@ class UtilityMigrationTransformer(models.Model):
                         'linked_transformer_id': transformer.id,
                         'company_id': self.env.company.id,
                         'payment_type': 'manual',
+                        'active': rec.is_active,
                     }
 
                     if meter:
@@ -198,23 +199,21 @@ class UtilityMigrationTransformer(models.Model):
                     # Set coupling meter on transformer
                     transformer.write({'coupling_meter_id': meter.id})
 
-                    # 3. Create initial/opening reading if reading values present
-                    curr_val = rec.current_reading or rec.opening_reading or rec.previous_reading
-                    if curr_val or rec.previous_reading:
+                    # 3. Create initial/opening reading using current_reading or opening_reading
+                    curr_val = rec.current_reading or rec.opening_reading
+                    if curr_val:
                         existing_reading = self.env['utility.reading'].search([
                             ('meter_id', '=', meter.id),
                             ('transformer_id', '=', transformer.id),
                             ('reading_purpose', '=', 'opening')
                         ], limit=1)
 
-                        reading_date = rec.reading_date or fields.Datetime.now()
                         reading_vals = {
                             'meter_id': meter.id,
                             'transformer_id': transformer.id,
                             'feeder_id': transformer.feeder_id.id if transformer.feeder_id else False,
                             'reading_value': curr_val,
-                            'previous_reading': rec.previous_reading,
-                            'reading_date': reading_date,
+                            'reading_date': fields.Datetime.now(),
                             'reading_type': 'manual',
                             'reading_purpose': 'opening',
                             'is_initial_reading': True,

@@ -11,18 +11,16 @@ class UtilityMigrationFeeder(models.Model):
     legacy_region = fields.Char('رمز المنطقة')
     legacy_area = fields.Char('رمز الفرع')
     legacy_analytic_id = fields.Char('معرف الحساب التحليلي')
+    is_active = fields.Boolean('هل فعال؟', default=True)
 
     feeder_code = fields.Char('رمز الفيدر / الحساب التحليلي')
     feeder_name = fields.Char('اسم الفيدر / الخلية')
-    reference = fields.Char('المرجع / كود الفيدر')
     description = fields.Text('الوصف')
 
     meter_number = fields.Char('رقم العداد (عداد الفيدر)')
     meter_multiplier = fields.Float('معامل الضرب للعداد', default=1.0)
-    previous_reading = fields.Float('القراءة السابقة', digits=(12, 3))
     current_reading = fields.Float('القراءة الحالية', digits=(12, 3))
     opening_reading = fields.Float('قراءة بداية الاشتراك', digits=(12, 3))
-    reading_date = fields.Datetime('تاريخ القراءة')
 
     is_calculation_cell = fields.Boolean('خلية إحتساب', default=True)
 
@@ -117,7 +115,7 @@ class UtilityMigrationFeeder(models.Model):
                 continue
             try:
                 with self.env.cr.savepoint():
-                    code = rec.feeder_code or rec.reference or rec.legacy_analytic_id or rec.name
+                    code = rec.feeder_code or rec.legacy_analytic_id or rec.name
                     feeder_name = rec.feeder_name or rec.name
 
                     # 1. Search or create utility.feeder
@@ -130,6 +128,7 @@ class UtilityMigrationFeeder(models.Model):
                         'code': code,
                         'notes': rec.description,
                         'company_id': self.env.company.id,
+                        'active': rec.is_active,
                     }
                     if rec.area_id:
                         feeder_vals['area_id'] = rec.area_id.id
@@ -158,6 +157,7 @@ class UtilityMigrationFeeder(models.Model):
                         'linked_feeder_id': feeder.id,
                         'company_id': self.env.company.id,
                         'payment_type': 'manual',
+                        'active': rec.is_active,
                     }
 
                     if meter:
@@ -170,22 +170,20 @@ class UtilityMigrationFeeder(models.Model):
                     # Set coupling meter on feeder
                     feeder.write({'coupling_meter_id': meter.id})
 
-                    # 3. Create initial/opening reading if reading values present
-                    curr_val = rec.current_reading or rec.opening_reading or rec.previous_reading
-                    if curr_val or rec.previous_reading:
+                    # 3. Create initial/opening reading using current_reading or opening_reading
+                    curr_val = rec.current_reading or rec.opening_reading
+                    if curr_val:
                         existing_reading = self.env['utility.reading'].search([
                             ('meter_id', '=', meter.id),
                             ('feeder_id', '=', feeder.id),
                             ('reading_purpose', '=', 'opening')
                         ], limit=1)
 
-                        reading_date = rec.reading_date or fields.Datetime.now()
                         reading_vals = {
                             'meter_id': meter.id,
                             'feeder_id': feeder.id,
                             'reading_value': curr_val,
-                            'previous_reading': rec.previous_reading,
-                            'reading_date': reading_date,
+                            'reading_date': fields.Datetime.now(),
                             'reading_type': 'manual',
                             'reading_purpose': 'opening',
                             'is_initial_reading': True,

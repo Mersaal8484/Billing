@@ -30,9 +30,9 @@
                 </header>
                 <field name="feeder_code"/>
                 <field name="name"/>
+                <field name="is_active"/>
                 <field name="meter_number"/>
                 <field name="meter_multiplier"/>
-                <field name="previous_reading"/>
                 <field name="current_reading"/>
                 <field name="is_calculation_cell"/>
                 <field name="region_id"/>
@@ -105,14 +105,13 @@
                                     <group>
                                         <field name="feeder_code"/>
                                         <field name="feeder_name"/>
-                                        <field name="reference"/>
+                                        <field name="is_active"/>
                                         <field name="legacy_region"/>
                                         <field name="region_id"/>
                                         <field name="legacy_area"/>
                                         <field name="area_id"/>
                                         <field name="legacy_analytic_id"/>
                                         <field name="is_calculation_cell"/>
-
                                     </group>
                                 </div>
                             </div>
@@ -122,10 +121,9 @@
                                 <div class="card-header">
                                     <div class="d-flex align-items-center">
                                         <i class="fa fa-tachometer fa-2x text-success me-3" title="العداد والقراءات"/>
-
                                         <div>
-                                            <h4 class="mb-0">العداد والقراءات الافتتاحية</h4>
-                                            <small class="text-muted">تفاصيل العداد والقراءات المرتبطة بالفيدر</small>
+                                            <h4 class="mb-0">العداد والقراءة الافتتاحية</h4>
+                                            <small class="text-muted">تفاصيل العداد والقراءة الحالية</small>
                                         </div>
                                     </div>
                                 </div>
@@ -133,10 +131,8 @@
                                     <group>
                                         <field name="meter_number"/>
                                         <field name="meter_multiplier"/>
-                                        <field name="previous_reading"/>
                                         <field name="current_reading"/>
                                         <field name="opening_reading"/>
-                                        <field name="reading_date"/>
                                         <field name="cell_meter_number"/>
                                         <field name="cell_meter_multiplier"/>
                                     </group>
@@ -206,4 +202,3 @@
               action="action_download_feeder_migration_template"
               sequence="32"/>
 </odoo>
-

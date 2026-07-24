@@ -13,10 +13,14 @@ class UtilityDashboard extends Component {
         this.state = useState({
             selectedRegionId: false,
             regions: [],
+            isDataLoaded: false,
+            isLoading: false,
             kpi: {
-                today_prepaid: 0,
                 today_postpaid: 0,
+                today_billed: 0,
                 total_debt: 0,
+                overdue_debt: 0,
+                overdue_count: 0,
                 active_customers: 0,
                 chart_labels: [],
                 chart_invoices: [],
@@ -35,29 +39,41 @@ class UtilityDashboard extends Component {
         onWillStart(async () => {
             const regions = await this.orm.searchRead("utility.region", [["type", "=", "region"]], ["id", "name"], { order: "name" });
             this.state.regions = regions;
-            // Removed await this.loadKPI(false); so it doesn't load data initially
             await loadJS("/web/static/lib/Chart/Chart.js");
+            // Data is NOT fetched on page load per user instructions
         });
 
         onMounted(() => {
-            // Don't render empty charts initially
+            if (this.state.isDataLoaded && this.state.kpi.chart_labels.length) {
+                this.renderChart();
+                this.renderRegionChart();
+            }
         });
     }
 
     async loadKPI(regionId) {
-        this.state.kpi = await this.rpc("/utility/dashboard/kpi", { region_id: regionId || false });
-        if (this.chart) {
-            this.chart.destroy();
-            this.chart = null;
+        this.state.isLoading = true;
+        try {
+            const res = await this.rpc("/utility/dashboard/kpi", { region_id: regionId || false });
+            if (res) {
+                this.state.kpi = res;
+                this.state.isDataLoaded = true;
+            }
+            if (this.chart) {
+                this.chart.destroy();
+                this.chart = null;
+            }
+            if (this.regionChart) {
+                this.regionChart.destroy();
+                this.regionChart = null;
+            }
+            setTimeout(() => {
+                this.renderChart();
+                this.renderRegionChart();
+            }, 100);
+        } finally {
+            this.state.isLoading = false;
         }
-        if (this.regionChart) {
-            this.regionChart.destroy();
-            this.regionChart = null;
-        }
-        setTimeout(() => {
-            this.renderChart();
-            this.renderRegionChart();
-        }, 100);
     }
 
     onRegionChange(ev) {
@@ -65,14 +81,11 @@ class UtilityDashboard extends Component {
     }
 
     async onFetchClick() {
-        if (!this.state.selectedRegionId) {
-            // Optional: You could show a warning if they try to fetch without region,
-            // but for now we just fetch for all if not selected, or enforce region.
-            // Since they said "عدم جلب البيانات الا عند اختيار المنطقة", let's alert if no region.
-            alert("الرجاء اختيار المنطقة أولاً");
-            return;
-        }
         await this.loadKPI(this.state.selectedRegionId);
+    }
+
+    formatMoney(val) {
+        return new Intl.NumberFormat('ar-YE', { maximumFractionDigits: 2 }).format(val || 0);
     }
 
     renderChart() {
@@ -81,17 +94,23 @@ class UtilityDashboard extends Component {
         this.chart = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: this.state.kpi.chart_labels,
+                labels: this.state.kpi.chart_labels || [],
                 datasets: [
                     {
-                        label: '\u0627\u0644\u0641\u0648\u0627\u062a\u064a\u0631 \u0627\u0644\u0645\u0635\u062f\u0631\u0629',
-                        data: this.state.kpi.chart_invoices,
-                        backgroundColor: '#ff4d4d',
+                        label: 'الفواتير الآجلة الصادرة (ريال)',
+                        data: this.state.kpi.chart_invoices || [],
+                        backgroundColor: '#3b82f6',
+                        borderColor: '#2563eb',
+                        borderWidth: 1,
+                        borderRadius: 4,
                     },
                     {
-                        label: '\u0627\u0644\u062a\u062d\u0635\u064a\u0644\u0627\u062a',
-                        data: this.state.kpi.chart_collections,
-                        backgroundColor: '#28a745',
+                        label: 'تحصيلات الدفع الآجل (ريال)',
+                        data: this.state.kpi.chart_collections || [],
+                        backgroundColor: '#10b981',
+                        borderColor: '#059669',
+                        borderWidth: 1,
+                        borderRadius: 4,
                     }
                 ]
             },
@@ -99,12 +118,30 @@ class UtilityDashboard extends Component {
                 responsive: true,
                 maintainAspectRatio: false,
                 legend: {
-                    rtl: true
+                    rtl: true,
+                    textDirection: 'rtl',
+                    labels: {
+                        fontFamily: 'Cairo, Segoe UI, sans-serif',
+                        fontSize: 12
+                    }
                 },
                 tooltips: {
-                    rtl: true
+                    rtl: true,
+                    textDirection: 'rtl',
+                    callbacks: {
+                        label: (tooltipItem, data) => {
+                            const datasetLabel = data.datasets[tooltipItem.datasetIndex].label || '';
+                            const value = tooltipItem.yLabel || 0;
+                            return `${datasetLabel}: ${this.formatMoney(value)} ريال`;
+                        }
+                    }
                 },
                 scales: {
+                    xAxes: [{
+                        ticks: {
+                            fontFamily: 'Cairo, Segoe UI, sans-serif'
+                        }
+                    }],
                     yAxes: [{
                         ticks: { beginAtZero: true },
                         position: 'right'
@@ -120,17 +157,17 @@ class UtilityDashboard extends Component {
         this.regionChart = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: this.state.kpi.region_chart_labels,
+                labels: this.state.kpi.region_chart_labels || [],
                 datasets: [
                     {
-                        label: '\u0627\u0644\u0645\u0634\u062a\u0631\u0643\u0648\u0646 \u0627\u0644\u0646\u0634\u0637\u0648\u0646',
-                        data: this.state.kpi.region_chart_customers,
-                        backgroundColor: '#007bff',
+                        label: 'مشتركو الدفع الآجل',
+                        data: this.state.kpi.region_chart_customers || [],
+                        backgroundColor: '#6366f1',
                     },
                     {
-                        label: '\u0627\u0644\u0645\u062f\u064a\u0648\u0646\u064a\u0629 \u0627\u0644\u0645\u0641\u062a\u0648\u062d\u0629',
-                        data: this.state.kpi.region_chart_debt,
-                        backgroundColor: '#dc3545',
+                        label: 'إجمالي المديونية الآجلة (ريال)',
+                        data: this.state.kpi.region_chart_debt || [],
+                        backgroundColor: '#ef4444',
                     },
                 ],
             },
@@ -138,12 +175,30 @@ class UtilityDashboard extends Component {
                 responsive: true,
                 maintainAspectRatio: false,
                 legend: {
-                    rtl: true
+                    rtl: true,
+                    textDirection: 'rtl',
+                    labels: {
+                        fontFamily: 'Cairo, Segoe UI, sans-serif',
+                        fontSize: 12
+                    }
                 },
                 tooltips: {
-                    rtl: true
+                    rtl: true,
+                    textDirection: 'rtl',
+                    callbacks: {
+                        label: (tooltipItem, data) => {
+                            const datasetLabel = data.datasets[tooltipItem.datasetIndex].label || '';
+                            const value = tooltipItem.yLabel || 0;
+                            return `${datasetLabel}: ${this.formatMoney(value)}`;
+                        }
+                    }
                 },
                 scales: {
+                    xAxes: [{
+                        ticks: {
+                            fontFamily: 'Cairo, Segoe UI, sans-serif'
+                        }
+                    }],
                     yAxes: [{
                         ticks: { beginAtZero: true },
                         position: 'right'
@@ -153,18 +208,15 @@ class UtilityDashboard extends Component {
         });
     }
 
-    _regionDomain(regionId) {
-        return regionId ? [['region_id', '=', regionId]] : [['region_id', '=', false]];
-    }
-
     openCustomers(regionId = null) {
+        const rid = (typeof regionId === 'number') ? regionId : false;
         const domain = [['state', '=', 'active']];
-        if (regionId !== null) {
-            domain.push(...this._regionDomain(regionId));
+        if (rid) {
+            domain.push(['region_id', '=', rid]);
         }
         this.action.doAction({
             type: 'ir.actions.act_window',
-            name: regionId === null ? '\u0627\u0644\u0639\u0645\u0644\u0627\u0621 \u0627\u0644\u0646\u0634\u0637\u064a\u0646' : '\u0645\u0634\u062a\u0631\u0643\u0648 \u0627\u0644\u0645\u0646\u0637\u0642\u0629',
+            name: rid ? 'مشتركو المنطقة (دفع آجل)' : 'إجمالي مشتركي الدفع الآجل',
             res_model: 'utility.customer',
             views: [[false, 'tree'], [false, 'form']],
             view_mode: 'tree,form',
@@ -173,16 +225,54 @@ class UtilityDashboard extends Component {
         });
     }
 
-    openUnpaidInvoices(regionId = null) {
-        const domain = [['move_type', '=', 'out_invoice'], ['state', '=', 'posted'], ['payment_state', 'in', ['not_paid', 'partial']]];
-        if (regionId !== null) {
-            const row = this.state.kpi.region_rows.find((item) => item.region_id === regionId);
-            domain.push(['partner_id', 'in', row ? row.partner_ids : []]);
+    openPostpaidOrders(regionId = null) {
+        const rid = (typeof regionId === 'number') ? regionId : false;
+        const domain = [['bill_state', 'in', ['confirmed', 'sent', 'overdue']], ['balance_due', '>', 0]];
+        if (rid) {
+            const row = (this.state.kpi.region_rows || []).find((item) => item.region_id === rid);
+            const partnerIds = (row && Array.isArray(row.partner_ids)) ? row.partner_ids : [];
+            domain.push(['partner_id', 'in', partnerIds]);
         }
         this.action.doAction({
             type: 'ir.actions.act_window',
-            name: regionId === null ? '\u0627\u0644\u0641\u0648\u0627\u062a\u064a\u0631 \u0627\u0644\u0645\u0641\u062a\u0648\u062d\u0629' : '\u0641\u0648\u0627\u062a\u064a\u0631 \u0627\u0644\u0645\u0646\u0637\u0642\u0629 \u0627\u0644\u0645\u0641\u062a\u0648\u062d\u0629',
-            res_model: 'account.move',
+            name: 'فواتير الدفع الآجل القائمة',
+            res_model: 'sale.order',
+            views: [[false, 'tree'], [false, 'form']],
+            view_mode: 'tree,form',
+            domain: domain,
+        });
+    }
+
+    openOverdueOrders(regionId = null) {
+        const rid = (typeof regionId === 'number') ? regionId : false;
+        const domain = [['bill_state', '=', 'overdue']];
+        if (rid) {
+            const row = (this.state.kpi.region_rows || []).find((item) => item.region_id === rid);
+            const partnerIds = (row && Array.isArray(row.partner_ids)) ? row.partner_ids : [];
+            domain.push(['partner_id', 'in', partnerIds]);
+        }
+        this.action.doAction({
+            type: 'ir.actions.act_window',
+            name: 'فواتير الدفع الآجل المتأخرة',
+            res_model: 'sale.order',
+            views: [[false, 'tree'], [false, 'form']],
+            view_mode: 'tree,form',
+            domain: domain,
+        });
+    }
+
+    openTodayPayments(regionId = null) {
+        const rid = (typeof regionId === 'number') ? regionId : false;
+        const domain = [['state', '=', 'posted'], ['payment_type', '=', 'inbound']];
+        if (rid) {
+            const row = (this.state.kpi.region_rows || []).find((item) => item.region_id === rid);
+            const partnerIds = (row && Array.isArray(row.partner_ids)) ? row.partner_ids : [];
+            domain.push(['partner_id', 'in', partnerIds]);
+        }
+        this.action.doAction({
+            type: 'ir.actions.act_window',
+            name: 'تحصيلات اليوم (دفع آجل)',
+            res_model: 'account.payment',
             views: [[false, 'tree'], [false, 'form']],
             view_mode: 'tree,form',
             domain: domain,

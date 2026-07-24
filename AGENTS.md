@@ -137,7 +137,6 @@ Both cells and transformers share the same model `utility.transformer` with `_pa
 | Deleted Model | Replaced By |
 |---|---|
 | `utility.bill` | `sale.order` (inherited) |
-| `utility.bill.line` | `sale.order.line` (inherited) |
 | `utility.collection` | `account.payment` |
 | `utility.payment.allocation` | *(removed)* |
 | `utility.sale` | `pos.order` (inherited) |
@@ -177,6 +176,18 @@ As of July 2026, the following major updates and architectural improvements have
 7. **Performance & Indexes**:
    - Added database indexes (`index=True`) on critical fields: `bill_state`, `balance_due`, `is_overdue` on `sale.order`, `state` on `utility.reading`, and `sale_order_id` on `utility.penalty`.
    - Optimized crons with batching limits (e.g. 500 for penalties, 1000 for overdue orders) and optimized reading computations using bulk queries.
+8. **Migration Templates & Deduplicated Staging Models (نماذج الميجريشن النظيفة والخالية من التكرار)**:
+   - **Feeder Migration (`utility.migration.feeder`)**: Deduplicated to 10 clean columns (`legacy_region`, `legacy_area`, `is_active`, `feeder_code`, `feeder_name`, `meter_number`, `meter_multiplier`, `current_reading`, `is_calculation_cell`, `description`).
+   - **Transformer Migration (`utility.migration.transformer`)**: Deduplicated to 14 clean columns (`legacy_region`, `legacy_area`, `is_active`, `transformer_code`, `transformer_name`, `meter_number`, `meter_multiplier`, `current_reading`, `total_consumption`, `image_status`, `cell_meter_number`, `cell_meter_multiplier`, `reference`, `description`). `reference` retained exclusively for Transformers.
+   - **Flexible Boolean Parser**: `parse_bool()` supports all boolean formats (`True`/`False`, `true`/`false`, `1`/`0`, `yes`/`no`, `y`/`n`, `نعم`/`لا`, `صح`/`خطأ`).
+   - **Updated Excel Templates**: Generated via `openpyxl` with Cairo typography, pastel banners, and `تعليمات الاستيراد` sheet.
+9. **Dedicated Postpaid Dashboard (لوحة قيادة الفوترة والتحصيل الآجل)**:
+   - **Strict Postpaid Scope**: Removed all prepaid vending (`pos.order`, STS tokens) from `dashboard_api.py` and `utility_dashboard.js`. Dedicated 100% to postpaid billing (`sale.order` & `account.payment`).
+   - **Postpaid KPIs**: `today_postpaid` (inbound postpaid payments), `today_billed` (postpaid invoices issued today), `total_debt` (open residual debt), and `overdue_debt` (overdue debt).
+   - **SearchModel & Event Protection**: Prevented `TypeError: Cannot read properties of undefined (reading 'toString') at SearchModel._getDomain` by type-checking `regionId` parameters and using explicit arrow functions `() => this.openPostpaidOrders()` on click events. Fixed `sale.order` field name from `account_id` to `customer_id`.
+   - **Manual Fetch & Empty State**: Removed auto-load on start (`onWillStart`). Dashboard displays a clean prompt requiring the user to select a region and click "تحديث" to fetch data.
+   - **RTL & FontAwesome Protection**: Enforced `direction: rtl !important; text-align: right !important;` with explicit `text-start` for Bootstrap 5 RTL alignment. Excluded FontAwesome icons from Cairo font override (`font-family: FontAwesome !important;`).
+   - **Smooth Scrollbar**: Applied `position: absolute; overflow-y: auto !important; scroll-behavior: smooth;` with custom sleek webkit scrollbar.
 
 ## Odoo 16 Development Squad Role
 
@@ -772,4 +783,3 @@ Never produce only backend models without considering:
 
 ## 3. Code Documentation
 * Every non-standard or complex method must have a Python docstring briefly explaining the expected inputs, outputs, and side effects.
-
