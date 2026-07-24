@@ -35,19 +35,19 @@
                             <div class="d-flex align-items-center mt-2 p-2 bg-light rounded">
                                 <i class="fa fa-download text-info me-2" title="تنزيل القالب"/>
                                 <span class="me-2 text-muted">هل تود تحميل القالب المعتمد؟</span>
-                                <button name="%(action_download_migration_template)d"
+                                <button name="action_download_customer_template"
                                         string="⬇ تحميل قالب المشتركين"
-                                        type="action"
+                                        type="object"
                                         class="btn btn-link btn-sm p-0 me-3"
                                         attrs="{'invisible': [('import_type', '!=', 'customer')]}"/>
-                                <button name="%(action_download_feeder_migration_template)d"
+                                <button name="action_download_feeder_template"
                                         string="⬇ تحميل قالب الفيدرات والخلايا"
-                                        type="action"
+                                        type="object"
                                         class="btn btn-link btn-sm p-0 me-3"
                                         attrs="{'invisible': [('import_type', '!=', 'feeder')]}"/>
-                                <button name="%(action_download_transformer_migration_template)d"
+                                <button name="action_download_transformer_template"
                                         string="⬇ تحميل قالب المحولات"
-                                        type="action"
+                                        type="object"
                                         class="btn btn-link btn-sm p-0 me-3"
                                         attrs="{'invisible': [('import_type', '!=', 'transformer')]}"/>
                             </div>

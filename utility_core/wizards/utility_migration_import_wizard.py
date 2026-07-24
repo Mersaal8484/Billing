@@ -23,6 +23,27 @@ class UtilityMigrationImportWizard(models.TransientModel):
     import_file = fields.Binary(string='ملف الإكسل', required=True)
     file_name = fields.Char(string='اسم الملف')
 
+    def action_download_customer_template(self):
+        return {
+            'type': 'ir.actions.act_url',
+            'url': '/utility_core/static/src/Migration_Template.xlsx',
+            'target': 'new',
+        }
+
+    def action_download_feeder_template(self):
+        return {
+            'type': 'ir.actions.act_url',
+            'url': '/utility_core/static/src/Feeder_Migration_Template.xlsx',
+            'target': 'new',
+        }
+
+    def action_download_transformer_template(self):
+        return {
+            'type': 'ir.actions.act_url',
+            'url': '/utility_core/static/src/Transformer_Migration_Template.xlsx',
+            'target': 'new',
+        }
+
     def parse_float(self, val):
         try:
             return float(val) if val is not None and str(val).strip() != '' else 0.0
@@ -92,7 +113,8 @@ class UtilityMigrationImportWizard(models.TransientModel):
             row_idx += 1
             if not row or (not row[0] and (len(row) <= 3 or not row[3])):
                 continue
-            if str(row[0] or '').strip().startswith(('الاسم', 'Name', 'منطقة', 'رمز المنطقة', 'نموذج', 'يرجى', 'بيانات')):
+            row_head = ' '.join(str(cell or '').strip() for cell in row[:5])
+            if any(h in row_head for h in ('الاسم', 'Name', 'منطقة', 'رمز المنطقة', 'نموذج', 'يرجى', 'بيانات')):
                 continue
 
             name = str(row[0] or '').strip()
@@ -171,11 +193,12 @@ class UtilityMigrationImportWizard(models.TransientModel):
             row_idx += 1
             if not row or not any(row):
                 continue
-            first_cell = str(row[0] or '').strip()
-            if first_cell.startswith(('نموذج', 'رمز المنطقة', 'المنطقة/Name', 'المنطقة', 'يرجى', 'بيانات')):
+            
+            row_head = ' '.join(str(cell or '').strip() for cell in row[:4])
+            if any(h in row_head for h in ('نموذج', 'رمز المنطقة', 'المنطقة/Name', 'المنطقة', 'يرجى', 'بيانات')):
                 continue
 
-            legacy_region = first_cell
+            legacy_region = str(row[0] or '').strip() if len(row) > 0 else ''
             legacy_area = str(row[1] or '').strip() if len(row) > 1 else ''
             is_active = self.parse_bool(row[2], default=True) if len(row) > 2 else True
             feeder_code = str(row[3] or '').strip() if len(row) > 3 else ''
@@ -185,6 +208,9 @@ class UtilityMigrationImportWizard(models.TransientModel):
             current_reading = self.parse_float(row[7]) if len(row) > 7 else 0.0
             is_calc_cell = self.parse_bool(row[8], default=True) if len(row) > 8 else True
             description = str(row[9] or '').strip() if len(row) > 9 else ''
+
+            if not feeder_code and not feeder_name and not meter_number and not description:
+                continue
 
             display_name = feeder_name or feeder_code or description or f"Feeder-{row_idx}"
 
@@ -224,11 +250,12 @@ class UtilityMigrationImportWizard(models.TransientModel):
             row_idx += 1
             if not row or not any(row):
                 continue
-            first_cell = str(row[0] or '').strip()
-            if first_cell.startswith(('نموذج', 'رمز المنطقة', 'المنطقة/Name', 'المنطقة', 'يرجى', 'بيانات')):
+
+            row_head = ' '.join(str(cell or '').strip() for cell in row[:4])
+            if any(h in row_head for h in ('نموذج', 'رمز المنطقة', 'المنطقة/Name', 'المنطقة', 'يرجى', 'بيانات')):
                 continue
 
-            legacy_region = first_cell
+            legacy_region = str(row[0] or '').strip() if len(row) > 0 else ''
             legacy_area = str(row[1] or '').strip() if len(row) > 1 else ''
             is_active = self.parse_bool(row[2], default=True) if len(row) > 2 else True
             transformer_code = str(row[3] or '').strip() if len(row) > 3 else ''
@@ -242,6 +269,9 @@ class UtilityMigrationImportWizard(models.TransientModel):
             cell_meter_multiplier = self.parse_float(row[11]) if len(row) > 11 else 1.0
             reference = str(row[12] or '').strip() if len(row) > 12 else ''
             description = str(row[13] or '').strip() if len(row) > 13 else ''
+
+            if not transformer_code and not transformer_name and not meter_number and not reference and not description:
+                continue
 
             display_name = transformer_name or transformer_code or description or f"Transformer-{row_idx}"
 

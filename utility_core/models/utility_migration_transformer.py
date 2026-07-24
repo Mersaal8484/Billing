@@ -134,7 +134,7 @@ class UtilityMigrationTransformer(models.Model):
         """
         اعتماد ورفع بيانات المحولات:
         - إنشاء / تحديث utility.transformer
-        - إنشاء / تحديث utility.meter وتعيين connection_type = 'transformer'
+        - إنشاء / تحديث utility.meter وتعيين connection_type = 'transformer' و is_coupling_meter = True
         - إنشاء القراءة الافتتاحية utility.reading (state='billed')
         """
         for rec in self:
@@ -171,7 +171,7 @@ class UtilityMigrationTransformer(models.Model):
 
                     rec.created_transformer_id = transformer.id
 
-                    # 2. Search or create meter
+                    # 2. Search or create meter as a Coupling Meter (عداد مقارنة ورصد رئيسي)
                     meter_num = rec.meter_number or code
                     multiplier = rec.meter_multiplier or 1.0
 
@@ -186,6 +186,7 @@ class UtilityMigrationTransformer(models.Model):
                         'linked_transformer_id': transformer.id,
                         'company_id': self.env.company.id,
                         'payment_type': 'manual',
+                        'is_coupling_meter': True,  # عداد مقارنة ورصد رئيسي
                         'active': rec.is_active,
                     }
 

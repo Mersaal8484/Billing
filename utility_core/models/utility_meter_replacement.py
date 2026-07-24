@@ -4,7 +4,7 @@ from odoo.exceptions import UserError, ValidationError
 
 class UtilityMeterReplacement(models.Model):
     _name = 'utility.meter.replacement'
-    _description = 'سجل استبدال العدادات عبر حساب المشترك'
+    _description = 'سجل استبدال العدادات (مشتركين / فيدرات / محولات)'
     _inherit = ['mail.thread']
     _order = 'replace_date desc'
 
@@ -14,19 +14,31 @@ class UtilityMeterReplacement(models.Model):
     opening_reading_id = fields.Many2one('utility.reading', string='سجل القراءة الافتتاحية', readonly=True, copy=False, ondelete='restrict')
     sale_order_id = fields.Many2one('sale.order', string='فاتورة الاستهلاك المركبة', related='closing_reading_id.included_sale_order_id', store=True, readonly=True)
 
-    # Primary Required Field: utility.customer
-    utility_account_id = fields.Many2one('utility.customer', required=True, string="حساب الكهرباء / المشترك", tracking=True, check_company=True)
-    partner_id = fields.Many2one('res.partner', related='utility_account_id.partner_id', string="العميل", store=True)
+    target_type = fields.Selection([
+        ('subscriber', 'عداد مشترك (حساب كهرباء)'),
+        ('feeder', 'عداد فيدر / خلية'),
+        ('transformer', 'عداد محول'),
+    ], string="نوع العداد المستبدل", default='subscriber', required=True, tracking=True)
 
-    @api.depends('utility_account_id')
+    # Target Entities
+    utility_account_id = fields.Many2one('utility.customer', string="حساب الكهرباء / المشترك", tracking=True, check_company=True)
+    partner_id = fields.Many2one('res.partner', related='utility_account_id.partner_id', string="العميل", store=True)
+    feeder_id = fields.Many2one('utility.feeder', string="الفيدر / الخلية", tracking=True, check_company=True)
+    transformer_id = fields.Many2one('utility.transformer', string="المحول", tracking=True, check_company=True)
+
+    @api.depends('target_type', 'utility_account_id', 'feeder_id', 'transformer_id')
     def _compute_name(self):
         for rec in self:
-            if rec.utility_account_id:
-                rec.name = f"استبدال لـ {rec.utility_account_id.display_name}"
+            if rec.target_type == 'subscriber' and rec.utility_account_id:
+                rec.name = f"استبدال عداد مشترك: {rec.utility_account_id.display_name}"
+            elif rec.target_type == 'feeder' and rec.feeder_id:
+                rec.name = f"استبدال عداد فيدر: {rec.feeder_id.name}"
+            elif rec.target_type == 'transformer' and rec.transformer_id:
+                rec.name = f"استبدال عداد محول: {rec.transformer_id.name}"
             else:
-                rec.name = "استبدال جديد"
+                rec.name = "استبدال عداد جديد"
 
-    # Old meter (computed from account to guarantee value is set and saved)
+    # Old meter
     old_meter_id = fields.Many2one(
         'utility.meter', string="العداد القديم",
         compute='_compute_old_meter_info', store=True, readonly=False, check_company=True)
@@ -44,12 +56,12 @@ class UtilityMeterReplacement(models.Model):
     old_closing_reading = fields.Float(string="آخر قراءة للعداد عند الاستبدال", digits=(12, 3), required=True, tracking=True)
     old_uninvoiced_consumption = fields.Float(string="الاستهلاك غير المفوتر", digits=(12, 3), compute="_compute_old_uninvoiced", store=True)
 
-    old_meter_serial_scan = fields.Char(string="مسح العداد القديم (باركود)", store=False, help="استخدم الكاميرا لمسح العداد واستدعاء حساب المشترك")
+    old_meter_serial_scan = fields.Char(string="مسح العداد القديم (باركود)", store=False, help="استخدم الكاميرا لمسح العداد واستدعاء العنصر المربوط")
     replacement_image = fields.Binary(string="صورة العداد (اختياري)", attachment=True)
 
     # New meter
     new_meter_serial_scan = fields.Char(string="مسح العداد الجديد (باركود)", store=False, help="استخدم الكاميرا للبحث عن العداد الجديد")
-    new_meter_id = fields.Many2one('utility.meter', string="العداد الجديد (موجود بالنظام)", domain="[('customer_id', '=', False)]", tracking=True, check_company=True)
+    new_meter_id = fields.Many2one('utility.meter', string="العداد الجديد (موجود بالنظام)", domain="[('connection_type', '=', 'not_connected')]", tracking=True, check_company=True)
     new_meter_number = fields.Char(string="رقم العداد الجديد (لإنشاء جديد)", tracking=True)
     new_meter_type_id = fields.Many2one('utility.meter.type', string="نوع العداد الجديد")
     new_phase = fields.Selection([
@@ -74,75 +86,98 @@ class UtilityMeterReplacement(models.Model):
         ('done', 'تم الاستبدال (Done)'),
     ], string="الحالة", default='draft', tracking=True)
 
-    @api.depends('utility_account_id', 'utility_account_id.meter_id')
+    @api.depends('target_type', 'utility_account_id', 'utility_account_id.meter_id', 'feeder_id', 'feeder_id.coupling_meter_id', 'transformer_id', 'transformer_id.coupling_meter_id')
     def _compute_old_meter_info(self):
         for rec in self:
-            if rec.utility_account_id and rec.utility_account_id.meter_id:
+            meter = False
+            last_invo_reading = 0.0
+            if rec.target_type == 'subscriber' and rec.utility_account_id:
                 acc = rec.utility_account_id
                 meter = acc.meter_id
+                last_invo_reading = acc.last_invoice_reading or acc.last_reading_value or 0.0
+            elif rec.target_type == 'feeder' and rec.feeder_id:
+                feeder = rec.feeder_id
+                meter = feeder.coupling_meter_id or self.env['utility.meter'].search([('linked_feeder_id', '=', feeder.id)], limit=1)
+                last_invo_reading = meter.last_reading_value if meter else 0.0
+            elif rec.target_type == 'transformer' and rec.transformer_id:
+                trans = rec.transformer_id
+                meter = trans.coupling_meter_id or self.env['utility.meter'].search([('linked_transformer_id', '=', trans.id)], limit=1)
+                last_invo_reading = meter.last_reading_value if meter else 0.0
+
+            if meter:
                 rec.old_meter_id = meter
                 rec.old_meter_number = meter.meter_number
                 rec.old_meter_type_id = meter.meter_type_id
                 rec.old_phase = meter.phase
-                rec.old_last_invo_reading = acc.last_invoice_reading or acc.last_reading_value or 0.0
+                rec.old_last_invo_reading = last_invo_reading
             else:
-                if not rec.old_meter_id:
-                    rec.old_meter_id = False
-                if not rec.old_meter_number:
-                    rec.old_meter_number = False
-                if not rec.old_meter_type_id:
-                    rec.old_meter_type_id = False
-                if not rec.old_phase:
-                    rec.old_phase = False
-                if not rec.old_last_invo_reading:
-                    rec.old_last_invo_reading = 0.0
+                if not rec.old_meter_id: rec.old_meter_id = False
+                if not rec.old_meter_number: rec.old_meter_number = False
+                if not rec.old_meter_type_id: rec.old_meter_type_id = False
+                if not rec.old_phase: rec.old_phase = False
+                rec.old_last_invo_reading = last_invo_reading
 
-    @api.depends('old_closing_reading', 'old_last_invo_reading', 'utility_account_id')
+    @api.depends('old_closing_reading', 'old_last_invo_reading', 'old_meter_id')
     def _compute_old_uninvoiced(self):
         for rec in self:
-            val = rec.utility_account_id.meter_id.multiplier if rec.utility_account_id and rec.utility_account_id.meter_id else 1.0
+            val = rec.old_meter_id.multiplier if rec.old_meter_id else 1.0
             rec.old_uninvoiced_consumption = max((rec.old_closing_reading - rec.old_last_invo_reading) * val, 0.0)
 
     @api.onchange('old_closing_reading', 'old_last_invo_reading')
     def _onchange_old_closing_reading(self):
-        val = self.utility_account_id.meter_id.multiplier if self.utility_account_id and self.utility_account_id.meter_id else 1.0
+        val = self.old_meter_id.multiplier if self.old_meter_id else 1.0
         self.old_uninvoiced_consumption = max((self.old_closing_reading - self.old_last_invo_reading) * val, 0.0)
 
-    @api.onchange('utility_account_id')
-    def _onchange_utility_account_id(self):
-        if self.utility_account_id:
+    @api.onchange('target_type', 'utility_account_id', 'feeder_id', 'transformer_id')
+    def _onchange_target_entity(self):
+        meter = False
+        last_reading = 0.0
+        if self.target_type == 'subscriber' and self.utility_account_id:
             acc = self.utility_account_id
-            if acc.meter_id:
-                self.old_meter_id = acc.meter_id
-                self.old_meter_number = acc.meter_id.meter_number
-                self.old_meter_type_id = acc.meter_id.meter_type_id
-                self.old_phase = acc.meter_id.phase
-                
-            if acc.last_invoice_reading or acc.last_reading_value:
-                self.old_last_invo_reading = acc.last_invoice_reading or acc.last_reading_value or 0.0
-                self.old_closing_reading = acc.last_reading_value or acc.last_invoice_reading or 0.0
-            else:
-                last_reading = self.env['utility.reading'].search([
-                    ('meter_id', '=', acc.meter_id.id),
-                    ('state', '=', 'approved')
-                ], order='reading_date desc', limit=1)
-                self.old_last_invo_reading = last_reading.reading_value if last_reading else 0.0
-                self.old_closing_reading = self.old_last_invo_reading
+            meter = acc.meter_id
+            last_reading = acc.last_invoice_reading or acc.last_reading_value or 0.0
+        elif self.target_type == 'feeder' and self.feeder_id:
+            feeder = self.feeder_id
+            meter = feeder.coupling_meter_id or self.env['utility.meter'].search([('linked_feeder_id', '=', feeder.id)], limit=1)
+            last_reading = meter.last_reading_value if meter else 0.0
+        elif self.target_type == 'transformer' and self.transformer_id:
+            trans = self.transformer_id
+            meter = trans.coupling_meter_id or self.env['utility.meter'].search([('linked_transformer_id', '=', trans.id)], limit=1)
+            last_reading = meter.last_reading_value if meter else 0.0
 
-            val = acc.meter_id.multiplier if acc.meter_id else 1.0
-            self.old_uninvoiced_consumption = max((self.old_closing_reading - self.old_last_invo_reading) * val, 0.0)
+        if meter:
+            self.old_meter_id = meter
+            self.old_meter_number = meter.meter_number
+            self.old_meter_type_id = meter.meter_type_id
+            self.old_phase = meter.phase
+            self.old_last_invo_reading = last_reading
+            self.old_closing_reading = last_reading
+        
+        val = meter.multiplier if meter else 1.0
+        self.old_uninvoiced_consumption = max((self.old_closing_reading - self.old_last_invo_reading) * val, 0.0)
 
     @api.onchange('old_meter_serial_scan')
     def _onchange_old_meter_serial_scan(self):
         if self.old_meter_serial_scan:
             meter = self.env['utility.meter'].search(['|', ('meter_number', '=', self.old_meter_serial_scan), ('serial_number', '=', self.old_meter_serial_scan)], limit=1)
             if meter:
-                if meter.customer_id:
+                if meter.connection_type == 'feeder' and meter.linked_feeder_id:
+                    self.target_type = 'feeder'
+                    self.feeder_id = meter.linked_feeder_id.id
+                    self.old_meter_serial_scan = False
+                    return {'warning': {'title': _('نجاح'), 'message': _('تم تحديد الفيدر (%s) بناءً على العداد الممسوح.') % meter.linked_feeder_id.name, 'type': 'notification'}}
+                elif meter.connection_type == 'transformer' and meter.linked_transformer_id:
+                    self.target_type = 'transformer'
+                    self.transformer_id = meter.linked_transformer_id.id
+                    self.old_meter_serial_scan = False
+                    return {'warning': {'title': _('نجاح'), 'message': _('تم تحديد المحول (%s) بناءً على العداد الممسوح.') % meter.linked_transformer_id.name, 'type': 'notification'}}
+                elif meter.customer_id:
+                    self.target_type = 'subscriber'
                     self.utility_account_id = meter.customer_id.id
                     self.old_meter_serial_scan = False
                     return {'warning': {'title': _('نجاح'), 'message': _('تم تحديد حساب المشترك (%s) بناءً على العداد الممسوح.') % meter.customer_id.display_name, 'type': 'notification'}}
                 else:
-                    return {'warning': {'title': _('تنبيه'), 'message': _('العداد الممسوح غير مرتبط بأي حساب مشترك حالياً.')}}
+                    return {'warning': {'title': _('تنبيه'), 'message': _('العداد الممسوح غير مرتبط بأي حساب أو فيدر أو محول حالياً.')}}
             else:
                 return {'warning': {'title': _('غير موجود'), 'message': _('لم يتم العثور على عداد يحمل الرقم: %s') % self.old_meter_serial_scan}}
 
@@ -151,12 +186,12 @@ class UtilityMeterReplacement(models.Model):
         if self.new_meter_serial_scan:
             meter = self.env['utility.meter'].search(['|', ('meter_number', '=', self.new_meter_serial_scan), ('serial_number', '=', self.new_meter_serial_scan)], limit=1)
             if meter:
-                if not meter.customer_id:
+                if meter.connection_type == 'not_connected' and not meter.customer_id:
                     self.new_meter_id = meter.id
                     self.new_meter_serial_scan = False
                     return {'warning': {'title': _('نجاح'), 'message': _('تم اختيار العداد الجديد (%s).') % meter.display_name, 'type': 'notification'}}
                 else:
-                    return {'warning': {'title': _('مرفوض'), 'message': _('هذا العداد مرتبط بالفعل بمشترك آخر (%s)!') % meter.customer_id.display_name}}
+                    return {'warning': {'title': _('مرفوض'), 'message': _('هذا العداد مرتبط بالفعل بعنصر آخر!')}}
             else:
                 return {'warning': {'title': _('غير موجود'), 'message': _('العداد %s غير مسجل في المخازن/النظام.') % self.new_meter_serial_scan}}
 
@@ -208,64 +243,150 @@ class UtilityMeterReplacement(models.Model):
         }
 
     def _action_confirm_replacement_unified(self):
-        """Complete replacement and create auditable closing/opening readings."""
+        """Complete replacement and create auditable closing/opening readings for Subscribers, Feeders, or Transformers."""
         for rec in self:
             if rec.state == 'done':
                 continue
-            account = rec.utility_account_id
-            if not account:
-                raise UserError(_('يجب تحديد حساب المشترك أولاً.'))
-            old_meter = rec.old_meter_id or account.meter_id
-            if not old_meter:
-                raise UserError(_('حساب المشترك المختار [%s] لا يملك عداداً فعالاً في النظام لكي يتم استبداله.') % account.display_name)
+
+            account = False
+            feeder = False
+            transformer = False
+            old_meter = rec.old_meter_id
+
+            if rec.target_type == 'subscriber':
+                account = rec.utility_account_id
+                if not account:
+                    raise UserError(_('يجب تحديد حساب المشترك أولاً.'))
+                old_meter = old_meter or account.meter_id
+                if not old_meter:
+                    raise UserError(_('حساب المشترك المختار [%s] لا يملك عداداً فعالاً في النظام.') % account.display_name)
+            elif rec.target_type == 'feeder':
+                feeder = rec.feeder_id
+                if not feeder:
+                    raise UserError(_('يجب تحديد الفيدر / الخلية أولاً.'))
+                old_meter = old_meter or feeder.coupling_meter_id
+                if not old_meter:
+                    raise UserError(_('الفيدر المختار [%s] لا يملك عداد مقارنة ورصد فعال.') % feeder.name)
+            elif rec.target_type == 'transformer':
+                transformer = rec.transformer_id
+                if not transformer:
+                    raise UserError(_('يجب تحديد المحول أولاً.'))
+                old_meter = old_meter or transformer.coupling_meter_id
+                if not old_meter:
+                    raise UserError(_('المحول المختار [%s] لا يملك عداد مقارنة ورصد فعال.') % transformer.name)
 
             new_meter = rec.new_meter_id
             if not new_meter and rec.new_meter_number:
-                new_meter = self.env['utility.meter'].create({
+                meter_vals = {
                     'meter_number': rec.new_meter_number,
                     'meter_type_id': rec.new_meter_type_id.id if rec.new_meter_type_id else False,
                     'phase': rec.new_phase,
                     'installation_date': rec.replace_date.date(),
-                })
+                    'company_id': rec.company_id.id,
+                    'multiplier': rec.new_meter_val or 1.0,
+                }
+                if rec.target_type == 'subscriber':
+                    meter_vals['connection_type'] = 'subscriber'
+                elif rec.target_type == 'feeder':
+                    meter_vals['connection_type'] = 'feeder'
+                    meter_vals['is_coupling_meter'] = True
+                    meter_vals['linked_feeder_id'] = feeder.id
+                elif rec.target_type == 'transformer':
+                    meter_vals['connection_type'] = 'transformer'
+                    meter_vals['is_coupling_meter'] = True
+                    meter_vals['linked_transformer_id'] = transformer.id
+
+                new_meter = self.env['utility.meter'].create(meter_vals)
                 rec.new_meter_id = new_meter
+
             if not new_meter or old_meter == new_meter:
                 raise UserError(_('يجب اختيار عداد جديد مختلف عن العداد القديم.'))
             if rec.old_closing_reading < rec.old_last_invo_reading:
                 raise UserError(_('القراءة الختامية لا يمكن أن تقل عن آخر قراءة مفوترة.'))
 
             Reading = self.env['utility.reading'].with_context(_bypass_reading_protection=True)
-            closing = Reading.create({
-                'company_id': rec.company_id.id, 'account_id': account.id,
-                'meter_id': old_meter.id, 'reading_date': rec.replace_date,
+
+            # Build Closing Reading
+            closing_vals = {
+                'company_id': rec.company_id.id,
+                'meter_id': old_meter.id,
+                'reading_date': rec.replace_date,
                 'reading_value': rec.old_closing_reading,
                 'previous_reading': rec.old_last_invo_reading,
-                'previous_reading_date': account.last_invoice_date or rec.replace_date,
+                'previous_reading_date': (account.last_invoice_date if account else False) or rec.replace_date,
                 'meter_multiplier': old_meter.multiplier or 1.0,
-                'reading_type': 'manual', 'reading_purpose': 'replacement_closing',
-                'reading_category': 'customer', 'replacement_id': rec.id,
+                'reading_type': 'manual',
+                'reading_purpose': 'replacement_closing',
+                'replacement_id': rec.id,
                 'state': 'approved',
                 'remarks': _('قراءة إغلاق بسبب استبدال العداد بالعملية %s') % rec.display_name,
-            })
+            }
+
+            if rec.target_type == 'subscriber':
+                closing_vals['reading_category'] = 'customer'
+                closing_vals['account_id'] = account.id
+            elif rec.target_type == 'feeder':
+                closing_vals['reading_category'] = 'feeder'
+                closing_vals['feeder_id'] = feeder.id
+            elif rec.target_type == 'transformer':
+                closing_vals['reading_category'] = 'transformer'
+                closing_vals['transformer_id'] = transformer.id
+                if transformer.feeder_id:
+                    closing_vals['feeder_id'] = transformer.feeder_id.id
+
+            closing = Reading.create(closing_vals)
+
             if closing.consumption < 0:
-                raise UserError(_(
-                    'القراءة الختامية أقل من آخر قراءة صحيحة للعداد القديم.'))
-            old_meter.write({'customer_id': False, 'active': False})
-            new_meter.write({'customer_id': account.id, 'multiplier': rec.new_meter_val, 'active': True})
-            account.write({'meter_id': new_meter.id, 'last_reading_value': rec.new_opening_reading})
-            opening = Reading.create({
-                'company_id': rec.company_id.id, 'account_id': account.id,
-                'meter_id': new_meter.id, 'reading_date': rec.replace_date,
+                raise UserError(_('القراءة الختامية أقل من آخر قراءة صحيحة للعداد القديم.'))
+
+            # Detach Old Meter & Attach New Meter
+            if rec.target_type == 'subscriber':
+                old_meter.write({'customer_id': False, 'active': False})
+                new_meter.write({'customer_id': account.id, 'multiplier': rec.new_meter_val, 'active': True, 'connection_type': 'subscriber'})
+                account.write({'meter_id': new_meter.id, 'last_reading_value': rec.new_opening_reading})
+            elif rec.target_type == 'feeder':
+                old_meter.write({'linked_feeder_id': False, 'active': False})
+                new_meter.write({'linked_feeder_id': feeder.id, 'multiplier': rec.new_meter_val, 'active': True, 'connection_type': 'feeder', 'is_coupling_meter': True})
+                feeder.write({'coupling_meter_id': new_meter.id})
+            elif rec.target_type == 'transformer':
+                old_meter.write({'linked_transformer_id': False, 'active': False})
+                new_meter.write({'linked_transformer_id': transformer.id, 'multiplier': rec.new_meter_val, 'active': True, 'connection_type': 'transformer', 'is_coupling_meter': True})
+                transformer.write({'coupling_meter_id': new_meter.id})
+
+            # Build Opening Reading
+            opening_vals = {
+                'company_id': rec.company_id.id,
+                'meter_id': new_meter.id,
+                'reading_date': rec.replace_date,
                 'reading_value': rec.new_opening_reading,
                 'previous_reading': rec.new_opening_reading,
                 'previous_reading_date': rec.replace_date,
                 'meter_multiplier': rec.new_meter_val or 1.0,
-                'reading_type': 'manual', 'reading_purpose': 'opening',
-                'reading_category': 'customer', 'replacement_id': rec.id,
-                'state': 'approved', 'is_initial_reading': True,
+                'reading_type': 'manual',
+                'reading_purpose': 'opening',
+                'replacement_id': rec.id,
+                'state': 'approved',
+                'is_initial_reading': True,
                 'remarks': _('قراءة افتتاحية بسبب استبدال العداد بالعملية %s') % rec.display_name,
-            })
+            }
+
+            if rec.target_type == 'subscriber':
+                opening_vals['reading_category'] = 'customer'
+                opening_vals['account_id'] = account.id
+            elif rec.target_type == 'feeder':
+                opening_vals['reading_category'] = 'feeder'
+                opening_vals['feeder_id'] = feeder.id
+            elif rec.target_type == 'transformer':
+                opening_vals['reading_category'] = 'transformer'
+                opening_vals['transformer_id'] = transformer.id
+                if transformer.feeder_id:
+                    opening_vals['feeder_id'] = transformer.feeder_id.id
+
+            opening = Reading.create(opening_vals)
+
             self.env['utility.meter.log']._create_log(old_meter, 'removal', _('رفع العداد %s واستبداله بـ %s') % (old_meter.meter_number, new_meter.meter_number), ref_record=rec)
-            self.env['utility.meter.log']._create_log(new_meter, 'replacement', _('تركيب العداد %s للمشترك %s') % (new_meter.meter_number, account.display_name), ref_record=rec)
+            self.env['utility.meter.log']._create_log(new_meter, 'replacement', _('تركيب العداد %s') % new_meter.meter_number, ref_record=rec)
+
             rec.write({'closing_reading_id': closing.id, 'opening_reading_id': opening.id, 'old_meter_id': old_meter.id, 'state': 'done'})
         return True
 

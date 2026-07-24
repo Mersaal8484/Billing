@@ -19,8 +19,8 @@ class UtilityTransformer(models.Model):
         domain="[('type', '=', 'zone')]",
         help='سجل المنطقة (zone) المنشأ تلقائياً في التدرج الهرمي للمناطق'
     )
-    area_id = fields.Many2one('utility.region', 'المنطقة الفرعية', related='zone_region_id.parent_id', store=True)
-    region_id = fields.Many2one('utility.region', 'المنطقة', related='zone_region_id.parent_id.parent_id', store=True)
+    area_id = fields.Many2one('utility.region', 'المنطقة الفرعية', related='zone_region_id.parent_id', store=True, readonly=False)
+    region_id = fields.Many2one('utility.region', 'المنطقة', related='zone_region_id.parent_id.parent_id', store=True, readonly=False)
 
     is_private = fields.Boolean(string='محول خاص', default=False, help='يُحدد ما إذا كان المحول خاصاً بمشترك واحد')
 
@@ -68,8 +68,8 @@ class UtilityTransformer(models.Model):
     notes = fields.Text('ملاحظات')
 
     _sql_constraints = [
-        ('unique_transformer_code_substation', 'unique(code, substation_id)',
-         'رمز المحول يجب أن يكون فريداً لكل محطة!'),
+        ('unique_transformer_code_company', 'unique(code, company_id)',
+         'رمز المحول يجب أن يكون فريداً!'),
     ]
 
     # ===== Compute =====
@@ -119,15 +119,23 @@ class UtilityTransformer(models.Model):
     # ===== ORM Overrides =====
     @api.model_create_multi
     def create(self, vals_list):
+        # Extract initial area_id or region_id passed in vals
+        passed_parents = []
+        for vals in vals_list:
+            area_id = vals.get('area_id', False)
+            region_id = vals.get('region_id', False)
+            passed_parents.append(area_id or region_id)
+
         records = super().create(vals_list)
-        for rec in records:
+
+        for idx, rec in enumerate(records):
             if not rec.zone_region_id:
-                parent = rec.area_id or rec.region_id
+                parent_id = passed_parents[idx]
                 zone = self.env['utility.region'].create({
                     'name': rec.name,
                     'code': rec.code,
                     'type': 'zone',
-                    'parent_id': parent.id if parent else False,
+                    'parent_id': parent_id if parent_id else False,
                     'company_id': rec.company_id.id,
                     'transformer_origin_id': rec.id,
                 })
@@ -136,7 +144,7 @@ class UtilityTransformer(models.Model):
 
     def write(self, vals):
         res = super().write(vals)
-        if 'name' in vals or 'code' in vals:
+        if 'name' in vals or 'code' in vals or 'area_id' in vals or 'region_id' in vals:
             for rec in self:
                 if rec.zone_region_id:
                     zone_vals = {}
@@ -144,6 +152,9 @@ class UtilityTransformer(models.Model):
                         zone_vals['name'] = rec.name
                     if 'code' in vals:
                         zone_vals['code'] = rec.code
+                    if 'area_id' in vals or 'region_id' in vals:
+                        parent = rec.area_id or rec.region_id
+                        zone_vals['parent_id'] = parent.id if parent else False
                     if zone_vals:
                         rec.zone_region_id.write(zone_vals)
         return res

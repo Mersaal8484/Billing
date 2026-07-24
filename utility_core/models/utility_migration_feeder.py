@@ -107,7 +107,7 @@ class UtilityMigrationFeeder(models.Model):
         """
         اعتماد ورفع بيانات الفيدرات والخلايا:
         - إنشاء / تحديث utility.feeder
-        - إنشاء / تحديث utility.meter وتعيين connection_type = 'feeder' وربط الفيدر بها
+        - إنشاء / تحديث utility.meter وتعيين connection_type = 'feeder' و is_coupling_meter = True
         - إنشاء القراءة الافتتاحية utility.reading (state='billed')
         """
         for rec in self:
@@ -142,7 +142,7 @@ class UtilityMigrationFeeder(models.Model):
 
                     rec.created_feeder_id = feeder.id
 
-                    # 2. Search or create meter
+                    # 2. Search or create meter as a Coupling Meter (عداد مقارنة ورصد رئيسي)
                     meter_num = rec.meter_number or rec.cell_meter_number or code
                     multiplier = rec.meter_multiplier or rec.cell_meter_multiplier or 1.0
 
@@ -157,6 +157,7 @@ class UtilityMigrationFeeder(models.Model):
                         'linked_feeder_id': feeder.id,
                         'company_id': self.env.company.id,
                         'payment_type': 'manual',
+                        'is_coupling_meter': True,  # عداد مقارنة ورصد رئيسي
                         'active': rec.is_active,
                     }
 

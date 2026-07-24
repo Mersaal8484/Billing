@@ -137,7 +137,7 @@
         <!-- Opening Balance Journal -->
         <record id="journal_opening_balance" model="account.journal">
             <field name="name">يومية الأرصدة الافتتاحية</field>
-            <field name="code">OPEN</field>
+            <field name="code">UOPEN</field>
             <field name="type">general</field>
             <field name="sequence">99</field>
         </record>
@@ -145,7 +145,7 @@
         <!-- Utility Sales Journal -->
         <record id="journal_utility_sales" model="account.journal">
             <field name="name">يومية مبيعات الكهرباء (فواتير المشتركين)</field>
-            <field name="code">BILL</field>
+            <field name="code">UBILL</field>
             <field name="type">sale</field>
             <field name="sequence">5</field>
         </record>

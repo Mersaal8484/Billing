@@ -15,8 +15,8 @@ class UtilityFeeder(models.Model):
 
     # ===== الموقع في الشبكة =====
     substation_id = fields.Many2one('utility.substation', 'المحطة', index=True)
-    area_id = fields.Many2one('utility.region', 'المنطقة الفرعية', related='substation_id.area_id', store=True)
-    region_id = fields.Many2one('utility.region', 'المنطقة', related='substation_id.region_id', store=True)
+    region_id = fields.Many2one('utility.region', 'المنطقة', domain="[('type', '=', 'region')]", tracking=True)
+    area_id = fields.Many2one('utility.region', 'المنطقة الفرعية / الفرع', domain="[('type', '=', 'area')]", tracking=True)
 
     # ===== المواصفات الكهربائية =====
     voltage_level = fields.Selection([
@@ -63,8 +63,17 @@ class UtilityFeeder(models.Model):
     notes = fields.Text('ملاحظات')
 
     _sql_constraints = [
-        ('unique_feeder_code_substation', 'unique(code, substation_id)', 'رمز الفيدر يجب أن يكون فريداً داخل نفس المحطة!'),
+        ('unique_feeder_code_substation', 'unique(code, company_id)', 'رمز الفيدر يجب أن يكون فريداً!'),
     ]
+
+    # ===== Onchange =====
+    @api.onchange('substation_id')
+    def _onchange_substation_id(self):
+        if self.substation_id:
+            if self.substation_id.area_id:
+                self.area_id = self.substation_id.area_id
+            if self.substation_id.region_id:
+                self.region_id = self.substation_id.region_id
 
     # ===== Compute =====
     @api.depends('current_load', 'rated_capacity')
@@ -77,7 +86,6 @@ class UtilityFeeder(models.Model):
 
     @api.depends('transformer_ids', 'coupling_reading_ids.consumption')
     def _compute_feeder_stats(self):
-        Reading = self.env.get('utility.reading')
         for rec in self:
             rec.transformer_count = len(rec.transformer_ids)
 

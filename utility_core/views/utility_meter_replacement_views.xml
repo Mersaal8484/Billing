@@ -5,10 +5,12 @@
         <field name="name">utility.meter.replacement.tree</field>
         <field name="model">utility.meter.replacement</field>
         <field name="arch" type="xml">
-            <tree string="استبدال العدادات عبر حساب المشترك" decoration-info="state == 'draft'" decoration-success="state == 'done'">
+            <tree string="استبدال العدادات (مشتركين / فيدرات / محولات)" decoration-info="state == 'draft'" decoration-success="state == 'done'">
                 <field name="company_id" invisible="1"/>
+                <field name="target_type"/>
                 <field name="utility_account_id"/>
-                <field name="partner_id"/>
+                <field name="feeder_id"/>
+                <field name="transformer_id"/>
                 <field name="old_meter_number"/>
                 <field name="new_meter_id"/>
                 <field name="old_uninvoiced_consumption"/>
@@ -24,7 +26,7 @@
         <field name="name">utility.meter.replacement.form</field>
         <field name="model">utility.meter.replacement</field>
         <field name="arch" type="xml">
-            <form string="عملية استبدال عداد عبر حساب المشترك">
+            <form string="عملية استبدال عداد (مشترك / فيدر / محول)">
                 <field name="company_id" invisible="1"/>
                 <field name="closing_reading_id" invisible="1"/>
                 <field name="opening_reading_id" invisible="1"/>
@@ -61,23 +63,24 @@
                     <div class="alert alert-info text-center" role="alert" attrs="{'invisible': [('state', '!=', 'done')]}">
                         <i class="fa fa-info-circle me-2" title="تنبيه"/>
                         <strong>تم الاستبدال بنجاح!</strong>
-                        تم إنشاء القراءة الختامية والقراءة الافتتاحية المعتمدة. الاستهلاك غير المفوتر المرحل: 
+                        تم إنشاء القراءة الختامية والقراءة الافتتاحية المعتمدة بنجاح. الاستهلاك غير المفوتر المرحل: 
                         <strong><field name="old_uninvoiced_consumption" readonly="1"/> ك.و.س</strong>
                     </div>
 
-                    <div class="oe_title">
-                        <label for="utility_account_id" class="oe_edit_only" string="حساب الكهرباء / المشترك"/>
-                        <h1>
-                            <field name="utility_account_id" options="{'no_create': True}" attrs="{'readonly': [('state', '=', 'done')]}"/>
-                        </h1>
-                    </div>
+                    <group string="نوع التبعية والعنصر المستبدل">
+                        <field name="target_type" widget="radio" options="{'horizontal': true}" attrs="{'readonly': [('state', '=', 'done')]}"/>
+                        <field name="utility_account_id" options="{'no_create': True}" attrs="{'readonly': [('state', '=', 'done')], 'invisible': [('target_type', '!=', 'subscriber')], 'required': [('target_type', '=', 'subscriber')]}"/>
+                        <field name="partner_id" attrs="{'invisible': [('target_type', '!=', 'subscriber')]}"/>
+                        <field name="feeder_id" options="{'no_create': True}" attrs="{'readonly': [('state', '=', 'done')], 'invisible': [('target_type', '!=', 'feeder')], 'required': [('target_type', '=', 'feeder')]}"/>
+                        <field name="transformer_id" options="{'no_create': True}" attrs="{'readonly': [('state', '=', 'done')], 'invisible': [('target_type', '!=', 'transformer')], 'required': [('target_type', '=', 'transformer')]}"/>
+                    </group>
+
                     <group>
-                        <group>
-                            <field name="partner_id"/>
-                        </group>
                         <group>
                             <field name="replace_date" attrs="{'readonly': [('state', '=', 'done')]}"/>
                             <field name="reason" attrs="{'readonly': [('state', '=', 'done')]}"/>
+                        </group>
+                        <group>
                             <field name="user_id" readonly="1"/>
                         </group>
                     </group>
@@ -136,14 +139,22 @@
         <field name="arch" type="xml">
             <search string="البحث في عمليات استبدال العدادات">
                 <field name="company_id" invisible="1"/>
+                <field name="target_type"/>
                 <field name="utility_account_id"/>
+                <field name="feeder_id"/>
+                <field name="transformer_id"/>
                 <field name="partner_id"/>
                 <field name="old_meter_number"/>
                 <field name="new_meter_number"/>
                 <separator/>
+                <filter string="عدادات المشتركين" name="target_subscriber" domain="[('target_type', '=', 'subscriber')]"/>
+                <filter string="عدادات الفيدرات" name="target_feeder" domain="[('target_type', '=', 'feeder')]"/>
+                <filter string="عدادات المحولات" name="target_transformer" domain="[('target_type', '=', 'transformer')]"/>
+                <separator/>
                 <filter string="مسودة" name="state_draft" domain="[('state', '=', 'draft')]"/>
                 <filter string="تم الاستبدال" name="state_done" domain="[('state', '=', 'done')]"/>
                 <group expand="0" string="تجميع حسب">
+                    <filter string="نوع العداد" name="group_by_target" domain="[]" context="{'group_by': 'target_type'}"/>
                     <filter string="السبب" name="group_by_reason" domain="[]" context="{'group_by': 'reason'}"/>
                     <filter string="الحالة" name="group_by_state" domain="[]" context="{'group_by': 'state'}"/>
                     <filter string="تاريخ الاستبدال" name="group_by_date" domain="[]" context="{'group_by': 'replace_date'}"/>
@@ -160,10 +171,10 @@
         <field name="search_view_id" ref="view_utility_meter_replacement_search"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
-                قم بتسجيل أول عملية استبدال عداد عبر حساب المشترك في النظام!
+                قم بتسجيل أول عملية استبدال عداد (مشترك / فيدر / محول) في النظام!
             </p>
             <p>
-                يسمح لك هذا السجل بمتابعة استبدال العدادات المعطلة أو التالفة مباشرة عبر حساب المشترك (utility.customer).
+                يسمح لك هذا السجل بمتابعة واستبدال العدادات لجميع مكونات الشبكة (المشتركين، الفيدرات، المحولات).
             </p>
         </field>
     </record>
