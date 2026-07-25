@@ -20,6 +20,7 @@ Maintenance, Alarm, Work Order.
     'depends': ['utility_core', 'maintenance', 'stock', 'mail'],
     'data': [
         'security/ir.model.access.csv',
+        'security/utility_operations_security.xml',
         'data/utility_sequence.xml',
         'views/utility_service_order_views.xml',
         'views/utility_installation_views.xml',

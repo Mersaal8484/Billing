@@ -3,9 +3,8 @@ from . import utility_reading_batch
 from . import utility_billing_cycle
 from . import utility_sale_order
 from . import utility_recurring_invoice
-from . import utility_cashier_shift
-from . import utility_collector_shift
 from . import utility_service_charge
+from . import utility_customer
 from . import account_move
 from . import account_payment
 from . import utility_writeoff
@@ -14,6 +13,4 @@ from . import utility_penalty
 from . import utility_financial_settlement
 from . import utility_sale_workflow
 from . import utility_billing_settings
-from . import utility_installment_plan
-from . import utility_service_order_billing
 from . import utility_bill_reading_component

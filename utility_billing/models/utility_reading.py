@@ -9,11 +9,11 @@ class UtilityReading(models.Model):
 
     def _get_billing_period_type(self):
         self.ensure_one()
-        template = self.account_id.contract_template_id if self.account_id else False
-        recurring_type = template.recurring_rule_type if template else False
-        return {
-            'bi_monthly': 'biweekly',
-        }.get(recurring_type or 'monthly', recurring_type or 'monthly')
+        recurring_type = (
+            self.account_id._get_effective_billing_period()
+            if self.account_id else False
+        )
+        return {'bi_monthly': 'biweekly'}.get(recurring_type, recurring_type)
 
     def _get_current_billing_date_range(self):
         self.ensure_one()
@@ -25,11 +25,6 @@ class UtilityReading(models.Model):
         if billing_period:
             domain.append(('billing_period', '=', billing_period))
         period = self.env['date.range'].search(domain, limit=1)
-        if not period:
-            period = self.env['date.range'].search([
-                ('is_current_period', '=', True),
-                ('work_type', '=', 'readings'),
-            ], limit=1)
         return period
 
     def _get_unbilled_closing_components(self):
@@ -220,19 +215,20 @@ class UtilityReading(models.Model):
         error_count = 0
         for reading in readings:
             try:
-                reading.action_generate_bill()
-                self.env.cr.commit()
+                with self.env.cr.savepoint():
+                    reading.action_generate_bill()
                 success_count += 1
-            except Exception as e:
-                self.env.cr.rollback()
+            except Exception as exc:
                 reading.write({
                     'state': 'error',
-                    'billing_error': str(e),
+                    'billing_error': str(exc),
                 })
-                self.env.cr.commit()
+                _logger.exception(
+                    'Bill generation failed for reading %s',
+                    reading.display_name,
+                )
                 error_count += 1
 
-        _logger = __import__('logging').getLogger(__name__)
         _logger.info(
             'Batch Billing: processed %d readings (%d success, %d errors)',
             len(readings), success_count, error_count

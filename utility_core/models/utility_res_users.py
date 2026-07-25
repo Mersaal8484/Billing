@@ -4,6 +4,14 @@ from odoo import api, fields, models
 class ResUsers(models.Model):
     _inherit = 'res.users'
 
+    # Kept as a compatibility field so databases upgrading from versions that
+    # exposed it in res.users views can rebuild the generated groups view.
+    # Installment-plan business logic has been removed from utility_billing.
+    prevent_installment = fields.Boolean(
+        string='منع إنشاء خطط التقسيط (حقل قديم)',
+        default=False,
+        help='حقل توافق قديم غير مستخدم في منطق النظام الحالي.',
+    )
     collection_journal_id = fields.Many2one(
         'account.journal', string='اليومية النقدية للتحصيل',
         domain="[('type', 'in', ('cash', 'bank'))]",
@@ -16,10 +24,6 @@ class ResUsers(models.Model):
     legacy_user_code = fields.Char(
         string="كود المستخدم بالنظام القديم (Legacy User Code)",
         help="معرف المستخدم الخاص بالنظام المؤسسي السابق (PEC)"
-    )
-    prevent_installment = fields.Boolean(
-        string="منع الدفع بالتقسيط (Prevent Installment)",
-        help="تجريد المستخدم من صلاحية قبول أو جدولة دفعات الفواتير على أقساط"
     )
     assigned_region_ids = fields.Many2many(
         'utility.region', 'res_users_region_rel',

@@ -8,6 +8,7 @@
                 <field name="sequence" widget="handle"/>
                 <field name="name"/>
                 <field name="provider_type"/>
+                <field name="company_id" groups="base.group_multi_company"/>
                 <field name="mode"/>
                 <field name="endpoint_url"/>
                 <field name="active" widget="boolean_toggle"/>
@@ -27,6 +28,7 @@
                             <field name="provider_type"/>
                             <field name="mode"/>
                             <field name="active"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
                         </group>
                         <group>
                             <field name="endpoint_url" attrs="{'required': [('mode','=','http_json')]}"/>
@@ -51,6 +53,7 @@
                 <field name="create_date"/>
                 <field name="provider_id"/>
                 <field name="provider_type"/>
+                <field name="company_id" groups="base.group_multi_company"/>
                 <field name="event_type"/>
                 <field name="http_status"/>
                 <field name="state" widget="badge"/>
@@ -68,6 +71,7 @@
                         <group>
                             <field name="provider_id"/>
                             <field name="provider_type"/>
+                <field name="company_id" groups="base.group_multi_company"/>
                             <field name="event_type"/>
                             <field name="state"/>
                         </group>

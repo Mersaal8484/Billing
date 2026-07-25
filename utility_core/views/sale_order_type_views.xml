@@ -111,66 +111,8 @@
         </field>
     </record>
 
-    <!-- res.partner.sector tree view -->
-    <record id="view_res_partner_sector_tree" model="ir.ui.view">
-        <field name="name">res.partner.sector.tree</field>
-        <field name="model">res.partner.sector</field>
-        <field name="arch" type="xml">
-            <tree string="قطاعات المشتركين">
-                <field name="name"/>
-                <field name="code"/>
-                <field name="active" widget="boolean_toggle"/>
-            </tree>
-        </field>
-    </record>
-
-    <!-- res.partner.sector form view -->
-    <record id="view_res_partner_sector_form" model="ir.ui.view">
-        <field name="name">res.partner.sector.form</field>
-        <field name="model">res.partner.sector</field>
-        <field name="arch" type="xml">
-            <form string="قطاع المشترك">
-                <sheet>
-                    <div class="oe_button_box" name="button_box">
-                        <button name="toggle_active" type="object" class="oe_stat_button" icon="fa-archive">
-                            <field name="active" widget="boolean_button" options='{"terminology": "archive"}'/>
-                        </button>
-                    </div>
-                    <div class="oe_title">
-                        <label for="name" class="oe_edit_only"/>
-                        <h1>
-                            <field name="name" placeholder="اسم القطاع..."/>
-                        </h1>
-                    </div>
-                    <group>
-                        <field name="code"/>
-                    </group>
-                </sheet>
-            </form>
-        </field>
-    </record>
-
-    <!-- res.partner.sector action -->
-    <record id="action_res_partner_sector" model="ir.actions.act_window">
-        <field name="name">قطاعات المشتركين</field>
-        <field name="res_model">res.partner.sector</field>
-        <field name="view_mode">tree,form</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">
-                إنشاء قطاع جديد للمشتركين
-            </p>
-            <p>
-                استخدم القطاعات لتصنيف المشتركين (مثال: قطاع حكومي، قطاع تجاري، قطاع سكني، إلخ).
-            </p>
-        </field>
-    </record>
-
     <!-- Menu Items under Utility Core Configuration -->
     <menuitem id="menu_sale_order_type" name="أنواع أوامر البيع"
               parent="utility_core.menu_utility_config" sequence="50"
               action="action_sale_order_type"/>
-
-    <menuitem id="menu_res_partner_sector" name="قطاعات المشتركين"
-              parent="utility_core.menu_utility_config" sequence="60"
-              action="action_res_partner_sector"/>
 </odoo>

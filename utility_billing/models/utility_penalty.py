@@ -16,6 +16,7 @@ class UtilityPenaltyType(models.Model):
 class UtilityPenalty(models.Model):
     _name = 'utility.penalty'
     _description = 'غرامة'
+    _rec_name = 'name'
     _order = 'calculated_date desc'
 
     name = fields.Char(string="الاسم", compute="_compute_name", store=True)

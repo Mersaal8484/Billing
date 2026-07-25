@@ -24,16 +24,6 @@
     <menuitem id="menu_utility_readings" name="القراءات"
               parent="menu_utility_billing_root" sequence="10"/>
 
-    <record id="action_cashier_shift_all" model="ir.actions.act_window">
-        <field name="name">ورديات الكاشير</field>
-        <field name="res_model">utility.cashier.shift</field>
-        <field name="view_mode">tree,form</field>
-    </record>
-
-    <menuitem id="menu_utility_cashier_shifts" name="ورديات الكاشير"
-              parent="menu_utility_billing_root" sequence="25"
-              action="action_cashier_shift_all"/>
-
     <menuitem id="menu_utility_billing" name="الفوترة"
               parent="menu_utility_billing_root" sequence="20"/>
 

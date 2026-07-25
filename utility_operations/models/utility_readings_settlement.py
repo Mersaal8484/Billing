@@ -9,7 +9,8 @@ _logger = logging.getLogger(__name__)
 class UtilityReadingSettlement(models.Model):
     _name = 'utility.reading.settlement'
     _inherit = ['mail.thread', 'mail.activity.mixin']
-    _description = 'Reading Settlement Record'
+    _description = 'تسوية قراءة'
+    _rec_name = 'name'
     _order = 'adjustment_date desc'
 
     name = fields.Char('Settlement Number', default=lambda self: _('New'), readonly=True)

@@ -4,6 +4,7 @@ from odoo import api, fields, models, _
 class UtilityInspection(models.Model):
     _name = 'utility.inspection'
     _description = 'معاينة'
+    _rec_name = 'name'
     _order = 'inspection_date desc'
 
     active = fields.Boolean('نشط', default=True)

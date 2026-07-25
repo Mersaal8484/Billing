@@ -1,76 +1,101 @@
-<?xml version='1.0' encoding='utf-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <record id="view_utility_meter_log_tree" model="ir.ui.view">
         <field name="name">utility.meter.log.tree</field>
         <field name="model">utility.meter.log</field>
         <field name="arch" type="xml">
-            <tree default_order="date desc" create="0" edit="0" delete="0">
-                <field name="date" />
-                <field name="meter_id" />
-                <field name="log_type" widget="badge" />
-                <field name="description" />
-                <field name="customer_id" />
-                <field name="user_id" />
+            <tree default_order="date desc, id desc" create="0" edit="0" delete="0"
+                  decoration-info="log_type in ('installation', 'replacement', 'reconnection')"
+                  decoration-warning="log_type in ('removal', 'disconnection', 'status_change')"
+                  decoration-danger="log_type == 'tamper'">
+                <field name="date"/>
+                <field name="meter_id"/>
+                <field name="log_type" widget="badge"/>
+                <field name="description"/>
+                <field name="customer_id"/>
+                <field name="ref_name" optional="show"/>
+                <field name="user_id"/>
+                <field name="company_id"/>
             </tree>
         </field>
     </record>
+
     <record id="view_utility_meter_log_form" model="ir.ui.view">
         <field name="name">utility.meter.log.form</field>
         <field name="model">utility.meter.log</field>
         <field name="arch" type="xml">
             <form create="0" edit="0" delete="0" string="سجل العداد">
+                <header>
+                    <button name="action_open_source" type="object" string="فتح المستند المصدر"
+                            class="btn-primary"
+                            attrs="{'invisible': ['|', ('ref_model', '=', False), ('ref_id', '=', False)]}"/>
+                </header>
                 <sheet>
-                    <widget name="web_ribbon" title="مؤرشف" bg_color="bg-info"/>
+                    <field name="active" invisible="1"/>
+                    <field name="company_id" invisible="1"/>
+                    <widget name="web_ribbon" title="مؤرشف" bg_color="bg-info"
+                            attrs="{'invisible': [('active', '=', True)]}"/>
                     <div class="oe_title">
-                        <label for="meter_id" class="oe_edit_only" string="العداد"/>
-                        <h1>
-                            <field name="meter_id" />
-                        </h1>
-                        <h2>
-                            <field name="log_type" class="text-primary"/>
-                        </h2>
+                        <h1><field name="name"/></h1>
+                        <h2><field name="log_type" widget="badge"/></h2>
                     </div>
                     <group>
                         <group string="معلومات الحدث">
-                            <field name="date" />
-                            <field name="user_id" />
+                            <field name="meter_id"/>
+                            <field name="date"/>
+                            <field name="user_id"/>
+                            <field name="company_id"/>
                         </group>
-                        <group string="التفاصيل الإضافية">
-                            <field name="customer_id" />
-                            <field name="ref_name" />
+                        <group string="المصدر">
+                            <field name="customer_id"/>
+                            <field name="ref_name"/>
                             <field name="ref_model" invisible="1"/>
                             <field name="ref_id" invisible="1"/>
                         </group>
                     </group>
                     <notebook>
-                        <page string="التفاصيل والملاحظات">
-                            <field name="description" placeholder="تفاصيل الحدث..."/>
+                        <page string="تفاصيل الحدث">
+                            <field name="description" nolabel="1"/>
                         </page>
                     </notebook>
                 </sheet>
             </form>
         </field>
     </record>
+
     <record id="view_utility_meter_log_search" model="ir.ui.view">
         <field name="name">utility.meter.log.search</field>
         <field name="model">utility.meter.log</field>
         <field name="arch" type="xml">
             <search>
-                <field name="meter_id" />
-                <field name="log_type" />
-                <field name="customer_id" />
-                <filter string="آخر 30 يوم" name="last_30_days" domain="[('date', '&gt;=', (context_today() - relativedelta(days=30)).strftime('%%Y-%%m-%%d'))]" />
-                <group expand="0" string="Group By">
-                    <filter string="نوع الحدث" name="group_by_log_type" context="{'group_by':'log_type'}" />
-                    <filter string="العداد" name="group_by_meter" context="{'group_by':'meter_id'}" />
+                <field name="name"/>
+                <field name="meter_id"/>
+                <field name="log_type"/>
+                <field name="customer_id"/>
+                <field name="ref_name"/>
+                <field name="user_id"/>
+                <filter string="آخر 30 يوم" name="last_30_days"
+                        domain="[('date', '&gt;=', (context_today() - relativedelta(days=30)).strftime('%%Y-%%m-%%d'))]"/>
+                <filter string="تركيب واستبدال" name="installation_events"
+                        domain="[('log_type', 'in', ['installation', 'replacement'])]"/>
+                <filter string="فصل ورفع" name="removal_events"
+                        domain="[('log_type', 'in', ['removal', 'disconnection'])]"/>
+                <filter string="تلاعب" name="tamper_events" domain="[('log_type', '=', 'tamper')]"/>
+                <group expand="0" string="تجميع حسب">
+                    <filter string="نوع الحدث" name="group_by_log_type" context="{'group_by': 'log_type'}"/>
+                    <filter string="العداد" name="group_by_meter" context="{'group_by': 'meter_id'}"/>
+                    <filter string="المشترك" name="group_by_customer" context="{'group_by': 'customer_id'}"/>
+                    <filter string="اليوم" name="group_by_date" context="{'group_by': 'date:day'}"/>
                 </group>
             </search>
         </field>
     </record>
+
     <record id="action_utility_meter_log" model="ir.actions.act_window">
         <field name="name">سجل حركات العدادات</field>
         <field name="res_model">utility.meter.log</field>
         <field name="view_mode">tree,form</field>
-        <field name="context">{'search_default_group_by_meter': 1}</field>
+        <field name="search_view_id" ref="view_utility_meter_log_search"/>
+        <field name="context">{'search_default_group_by_meter': 1, 'create': False}</field>
     </record>
 </odoo>

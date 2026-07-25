@@ -33,7 +33,7 @@
       <field name="cashier_id" ref="base.user_admin"/>
       <field name="start_time">2024-06-27 08:00:00</field>
       <field name="opening_balance">1000.00</field>
-      <field name="state">closed</field>
+      <field name="state">verified</field>
       <field name="end_time">2024-06-27 16:00:00</field>
       <field name="closing_balance">2100.00</field>
       <field name="notes">Demo shift for testing purposes</field>

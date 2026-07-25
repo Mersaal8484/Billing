@@ -4,6 +4,7 @@ from odoo import api, fields, models, _
 class UtilityInstallation(models.Model):
     _name = 'utility.installation'
     _description = 'تركيبة'
+    _rec_name = 'name'
     _order = 'installation_date desc'
 
     active = fields.Boolean('نشط', default=True)

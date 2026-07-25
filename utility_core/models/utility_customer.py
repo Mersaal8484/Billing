@@ -98,6 +98,17 @@ class UtilityCustomer(models.Model):
          'رقم العميل يجب أن يكون فريداً لكل شركة!'),
     ]
 
+    def _get_effective_billing_period(self):
+        """Return the mandatory billing cadence using geographic precedence."""
+        self.ensure_one()
+        recurring_type = False
+        if self.area_id and self.area_id.recurring_rule_type:
+            recurring_type = self.area_id.recurring_rule_type
+        elif self.region_id and self.region_id.recurring_rule_type:
+            recurring_type = self.region_id.recurring_rule_type
+        elif self.contract_template_id and self.contract_template_id.recurring_rule_type:
+            recurring_type = self.contract_template_id.recurring_rule_type
+        return {'bi_monthly': 'biweekly'}.get(recurring_type, recurring_type)
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
@@ -218,29 +229,43 @@ class UtilityCustomer(models.Model):
             for rec in self:
                 rec.accounting_balance = 0.0
             return
+
+        partner_map = {rec.id: rec.partner_id.id for rec in self if rec.partner_id}
+        if not partner_map:
+            for rec in self:
+                rec.accounting_balance = 0.0
+            return
+
+        balance_map = {cid: 0.0 for cid in partner_map}
+
+        company_ids = list(set(rec.company_id.id for rec in self if rec.company_id))
+        receivable_accounts = self.env['account.account'].search([
+            ('account_type', '=', 'asset_receivable'),
+            ('company_id', 'in', company_ids),
+        ])
+        if not receivable_accounts:
+            for rec in self:
+                rec.accounting_balance = 0.0
+            return
+
+        partner_ids = list(set(partner_map.values()))
+        groups = MoveLine.sudo().read_group([
+            ('partner_id', 'in', partner_ids),
+            ('account_id', 'in', receivable_accounts.ids),
+            ('parent_state', '=', 'posted'),
+            ('reconciled', '=', False),
+        ], ['amount_residual:sum'], ['partner_id'])
+
+        partner_to_customer_ids = {}
+        for customer_id, partner_id in partner_map.items():
+            partner_to_customer_ids.setdefault(partner_id, []).append(customer_id)
+        for group in groups:
+            partner_id = group['partner_id'][0] if group['partner_id'] else False
+            for customer_id in partner_to_customer_ids.get(partner_id, []):
+                balance_map[customer_id] = group.get('amount_residual', 0.0)
+
         for rec in self:
-            if not rec.partner_id:
-                rec.accounting_balance = 0.0
-                continue
-            receivable_accounts = self.env['account.account'].search([
-                ('account_type', '=', 'asset_receivable'),
-                ('company_id', '=', rec.company_id.id),
-            ])
-            if not receivable_accounts:
-                rec.accounting_balance = 0.0
-                continue
-            domain = [
-                ('partner_id', '=', rec.partner_id.id),
-                ('account_id', 'in', receivable_accounts.ids),
-                ('parent_state', '=', 'posted'),
-                ('reconciled', '=', False),
-            ]
-            lines = MoveLine.read_group(
-                domain,
-                ['amount_residual:sum'],
-                [],
-            )
-            rec.accounting_balance = lines[0]['amount_residual'] if lines else 0.0
+            rec.accounting_balance = balance_map.get(rec.id, 0.0)
 
     @api.depends('partner_id', 'meter_id')
     def _compute_smart_buttons(self):
@@ -250,37 +275,102 @@ class UtilityCustomer(models.Model):
         Move = self.env.get('account.move')
         Replacement = self.env.get('utility.meter.replacement')
         Tamper = self.env.get('utility.tamper.case')
-        for rec in self:
-            invoice_count = 0
-            accounting_invoice_count = 0
-            reading_count = 0
-            payment_count = 0
-            replacement_count = 0
-            tamper_count = 0
-            if So and 'customer_id' in So._fields:
-                invoice_count = So.sudo().search_count([('customer_id', '=', rec.id)])
-            if Reading and 'customer_id' in Reading._fields:
-                reading_count = Reading.sudo().search_count([('customer_id', '=', rec.id)])
-            if Payment:
-                payment_count = Payment.sudo().search_count(
-                    [('utility_sale_order_id.customer_id', '=', rec.id)])
-            if Move:
-                accounting_invoice_count = Move.sudo().search_count([
-                    ('partner_id', '=', rec.partner_id.id),
-                    ('state', '=', 'posted'),
-                    ('move_type', 'in', ('out_invoice', 'out_refund')),
-                ])
-            if Replacement:
-                replacement_count = Replacement.sudo().search_count([('utility_account_id', '=', rec.id)])
-            if Tamper:
-                tamper_count = Tamper.sudo().search_count([('customer_id', '=', rec.id)])
 
-            rec.invoice_count = invoice_count
-            rec.accounting_invoice_count = accounting_invoice_count
-            rec.reading_count = reading_count
-            rec.payment_count = payment_count
-            rec.replacement_count = replacement_count
-            rec.tamper_count = tamper_count
+        customer_ids = self.ids
+        partner_map = {rec.id: rec.partner_id.id for rec in self if rec.partner_id}
+
+        counts = {cid: {'invoice': 0, 'accounting_invoice': 0, 'reading': 0,
+                         'payment': 0, 'replacement': 0, 'tamper': 0} for cid in customer_ids}
+
+        if So is not None and 'customer_id' in So._fields and customer_ids:
+            groups = So.sudo().read_group(
+                [('customer_id', 'in', customer_ids)],
+                ['customer_id'],
+                ['customer_id'],
+            )
+            for group in groups:
+                customer_id = group['customer_id'][0] if group['customer_id'] else False
+                if customer_id in counts:
+                    counts[customer_id]['invoice'] = group['customer_id_count']
+        if Reading is not None and 'account_id' in Reading._fields and customer_ids:
+            groups = Reading.sudo().read_group(
+                [('account_id', 'in', customer_ids)],
+                ['account_id'],
+                ['account_id'],
+            )
+            for g in groups:
+                cid = g['account_id'][0] if g['account_id'] else False
+                if cid in counts:
+                    counts[cid]['reading'] = g['account_id_count']
+
+        if (
+            Payment is not None
+            and 'utility_sale_order_id' in Payment._fields
+            and customer_ids
+        ):
+            sale_order_ids = self.env['sale.order'].sudo().search([
+                ('customer_id', 'in', customer_ids),
+            ]).ids
+            if sale_order_ids:
+                groups = Payment.sudo().read_group(
+                    [('utility_sale_order_id', 'in', sale_order_ids)],
+                    ['utility_sale_order_id'],
+                    ['utility_sale_order_id'],
+                )
+                so_to_customer = {}
+                if sale_order_ids:
+                    so_recs = self.env['sale.order'].sudo().browse(sale_order_ids)
+                    so_to_customer = {so.id: so.customer_id.id for so in so_recs if so.customer_id}
+                for g in groups:
+                    so_id = g['utility_sale_order_id'][0] if g['utility_sale_order_id'] else False
+                    cid = so_to_customer.get(so_id, False)
+                    if cid in counts:
+                        counts[cid]['payment'] += g['utility_sale_order_id_count']
+
+        if Move is not None and partner_map:
+            partner_ids = list(set(partner_map.values()))
+            groups = Move.sudo().read_group([
+                ('partner_id', 'in', partner_ids),
+                ('state', '=', 'posted'),
+                ('move_type', 'in', ('out_invoice', 'out_refund')),
+            ], ['partner_id'], ['partner_id'])
+            partner_to_customer_ids = {}
+            for customer_id, partner_id in partner_map.items():
+                partner_to_customer_ids.setdefault(partner_id, []).append(customer_id)
+            for group in groups:
+                partner_id = group['partner_id'][0] if group['partner_id'] else False
+                for customer_id in partner_to_customer_ids.get(partner_id, []):
+                    counts[customer_id]['accounting_invoice'] = group['partner_id_count']
+
+        if Replacement is not None and customer_ids:
+            groups = Replacement.sudo().read_group(
+                [('utility_account_id', 'in', customer_ids)],
+                ['utility_account_id'],
+                ['utility_account_id'],
+            )
+            for g in groups:
+                cid = g['utility_account_id'][0] if g['utility_account_id'] else False
+                if cid in counts:
+                    counts[cid]['replacement'] = g['utility_account_id_count']
+
+        if Tamper is not None and customer_ids:
+            groups = Tamper.sudo().read_group(
+                [('account_id', 'in', customer_ids)],
+                ['account_id'],
+                ['account_id'],
+            )
+            for group in groups:
+                customer_id = group['account_id'][0] if group['account_id'] else False
+                if customer_id in counts:
+                    counts[customer_id]['tamper'] = group['account_id_count']
+        for rec in self:
+            c = counts.get(rec.id, {})
+            rec.invoice_count = c.get('invoice', 0)
+            rec.accounting_invoice_count = c.get('accounting_invoice', 0)
+            rec.reading_count = c.get('reading', 0)
+            rec.payment_count = c.get('payment', 0)
+            rec.replacement_count = c.get('replacement', 0)
+            rec.tamper_count = c.get('tamper', 0)
 
     def action_view_replacements(self):
         self.ensure_one()

@@ -5,6 +5,7 @@ from odoo.exceptions import ValidationError
 class UtilityFinancialSettlement(models.Model):
     _name = 'utility.financial.settlement'
     _description = 'تسوية مالية'
+    _rec_name = 'name'
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'date desc'
 

@@ -11,7 +11,6 @@
                         <group string="إعدادات التحصيل النقدية">
                             <field name="collection_journal_id" options="{'no_create': True}" placeholder="اختر اليومية النقدية"/>
                             <field name="collector_block_code" placeholder="مثال: A, B, C..."/>
-                            <field name="prevent_installment"/>
                         </group>
                         <group string="بيانات النظام القديم (PEC)">
                             <field name="legacy_user_code" placeholder="معرف النظام السابق"/>

@@ -12,6 +12,7 @@
                 <field name="period_end" optional="show"/>
                 <field name="consumption" optional="show"/>
                 <field name="amount_total" sum="الإجمالي"/>
+                <field name="total_due_amount" string="إجمالي المطلوب سداده" widget="monetary" sum="إجمالي المطلوب سداده" decoration-danger="total_due_amount &gt; 0" optional="show"/>
                 <field name="amount_paid" optional="show"/>
                 <field name="balance_due" optional="show"/>
                 <field name="bill_state" widget="badge" decoration-danger="bill_state in ('overdue','cancelled')" decoration-success="bill_state=='paid'" decoration-warning="bill_state=='draft'"/>
@@ -34,9 +35,6 @@
                 <button name="action_create_reconnection_order" string="إنشاء أمر إعادة خدمة" type="object"
                         class="btn-secondary"
                         attrs="{'invisible': ['|', ('customer_id', '=', False), ('balance_due', '&gt;', 0)]}"/>
-                <button name="action_create_installment_plan" string="إنشاء خطة تقسيط" type="object"
-                        class="btn-secondary"
-                        attrs="{'invisible': ['|', ('customer_id', '=', False), ('balance_due', '&lt;=', 0)]}"/>
             </xpath>
             <xpath expr="//div[@name='button_box']" position="inside">
                 <button name="action_view_reading_components" type="object"
@@ -101,7 +99,6 @@
                                 <field name="is_overdue" widget="boolean_toggle" readonly="1"/>
                                 <field name="disconnection_order_id" readonly="1" attrs="{'invisible': [('disconnection_order_id', '=', False)]}"/>
                                 <field name="reconnection_order_id" readonly="1" attrs="{'invisible': [('reconnection_order_id', '=', False)]}"/>
-                                <field name="installment_plan_count" readonly="1"/>
                             </group>
                         </div>
                     </div>

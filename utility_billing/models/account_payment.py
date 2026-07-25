@@ -8,7 +8,6 @@ class AccountPayment(models.Model):
     _inherit = 'account.payment'
 
     utility_sale_order_id = fields.Many2one('sale.order', string='فاتورة الكهرباء', index=True)
-    service_order_id = fields.Many2one('utility.service.order', string='أمر الخدمة', index=True, copy=False, check_company=True)
     service_charge_id = fields.Many2one('utility.service.charge', string='رسم الخدمة', index=True, copy=False, check_company=True)
     utility_payment_method = fields.Selection([
         ('cash', 'نقدي'),
@@ -17,12 +16,11 @@ class AccountPayment(models.Model):
     ], string='طريقة دفع الكهرباء')
     electronic_doc_no = fields.Char(string='رقم المستند الإلكتروني')
     is_invoice_verified = fields.Boolean(string='تم التحقق من الفاتورة')
-    cashier_shift_id = fields.Many2one('utility.cashier.shift', string='الوردية',
-        default=lambda self: self._default_cashier_shift())
-    collector_shift_id = fields.Many2one('utility.collector.shift', string='يومية التحصيل',
-        default=lambda self: self._default_collector_shift())
-    date_range_id = fields.Many2one('date.range', string='فترة الدفع',
-        default=lambda self: self.env['date.range'].search([('is_current_period', '=', True), ('work_type', '=', 'payment')], limit=1))
+    date_range_id = fields.Many2one(
+        'date.range',
+        string='فترة الدفع',
+        domain="[('work_type', '=', 'payment')]",
+    )
     qr_code_value = fields.Char('بيانات QR', compute='_compute_utility_qr_code', readonly=True)
     qr_code_url = fields.Char('رابط QR', compute='_compute_utility_qr_code', readonly=True)
 
@@ -48,75 +46,39 @@ class AccountPayment(models.Model):
             payment.qr_code_url = '/report/barcode/?barcode_type=QR&value=%s' % quote(payload)
 
     def _get_payment_period_for_order(self, order):
-        billing_period = False
-        if order and order.customer_id:
-            customer = order.customer_id
-            if customer.contract_template_id and customer.contract_template_id.recurring_rule_type:
-                billing_period = customer.contract_template_id.recurring_rule_type
-            elif customer.area_id and customer.area_id.recurring_rule_type:
-                billing_period = customer.area_id.recurring_rule_type
-            elif customer.region_id and customer.region_id.recurring_rule_type:
-                billing_period = customer.region_id.recurring_rule_type
-
-        if not billing_period and order and order.date_range_id:
-            billing_period = order.date_range_id.billing_period
-
-        if order and order.date_range_id:
-            period = self.env['date.range'].search([
-                ('work_type', '=', 'payment'),
-                ('parent_id', '=', order.date_range_id.id),
-                ('is_current_period', '=', True),
-            ], limit=1)
-            if period:
-                return period
-
-            period = self.env['date.range'].search([
-                ('work_type', '=', 'payment'),
-                ('parent_id', '=', order.date_range_id.id),
-            ], limit=1)
-            if period:
-                return period
-
-        if billing_period:
-            period = self.env['date.range'].search([
-                ('work_type', '=', 'payment'),
-                ('billing_period', '=', billing_period),
-                ('is_current_period', '=', True),
-            ], limit=1)
-            if period:
-                return period
-
-            period = self.env['date.range'].search([
-                ('work_type', '=', 'payment'),
-                ('billing_period', '=', billing_period),
-            ], limit=1)
-            if period:
-                return period
+        """Return only the payment period directly linked to the bill period."""
+        if not order or not order.date_range_id:
+            return self.env['date.range']
 
         return self.env['date.range'].search([
             ('work_type', '=', 'payment'),
-            ('is_current_period', '=', True),
-        ], limit=1)
+            ('parent_id', '=', order.date_range_id.id),
+            ('company_id', 'in', [order.company_id.id, False]),
+        ], order='is_current_period desc, date_start desc, id desc', limit=1)
+
+    def _validate_utility_payment_period(self):
+        """Ensure a utility payment belongs to the bill's exact reading period."""
+        for payment in self.filtered('utility_sale_order_id'):
+            order_period = payment.utility_sale_order_id.date_range_id
+            if not order_period:
+                raise ValidationError(_('لا يمكن تسجيل التحصيل لأن الفاتورة غير مرتبطة بفترة قراءة.'))
+            if not payment.date_range_id:
+                raise ValidationError(_('لا توجد فترة دفع مرتبطة بفترة قراءة الفاتورة "%s".') % order_period.display_name)
+            if (
+                payment.date_range_id.work_type != 'payment'
+                or payment.date_range_id.parent_id != order_period
+            ):
+                raise ValidationError(_('فترة التحصيل يجب أن تكون فترة الدفع المرتبطة مباشرة بفترة قراءة الفاتورة "%s".') % order_period.display_name)
 
     @api.onchange('utility_sale_order_id')
     def _onchange_utility_sale_order_id(self):
         if self.utility_sale_order_id:
             payment_period = self._get_payment_period_for_order(self.utility_sale_order_id)
-            if payment_period:
-                self.date_range_id = payment_period.id
+            self.date_range_id = payment_period
 
     @api.constrains('utility_sale_order_id', 'date_range_id')
     def _check_utility_payment_period_matches_bill(self):
-        for payment in self.filtered('utility_sale_order_id'):
-            order_period = payment.utility_sale_order_id.date_range_id
-            if not payment.date_range_id:
-                continue
-            if payment.date_range_id.work_type != 'payment':
-                raise ValidationError(_('فترة التحصيل يجب أن تكون من نوع دفع.'))
-            if order_period and payment.date_range_id.parent_id and payment.date_range_id.parent_id != order_period:
-                if payment.date_range_id.billing_period and order_period.billing_period:
-                    if payment.date_range_id.billing_period != order_period.billing_period:
-                        raise ValidationError(_('فترة التحصيل يجب أن تتوافق مع نوع دورية عقد المشترك (%s).') % payment.date_range_id.billing_period)
+        self._validate_utility_payment_period()
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -125,8 +87,12 @@ class AccountPayment(models.Model):
             if order_id:
                 order = self.env['sale.order'].browse(order_id)
                 payment_period = self._get_payment_period_for_order(order)
-                if payment_period:
-                    vals['date_range_id'] = payment_period.id
+                if not payment_period:
+                    raise ValidationError(
+                        _('لا توجد فترة دفع مرتبطة بفترة قراءة الفاتورة "%s".')
+                        % order.date_range_id.display_name
+                    )
+                vals['date_range_id'] = payment_period.id
         payments = super().create(vals_list)
         for payment, vals in zip(payments, vals_list):
             if vals.get('service_charge_id'):
@@ -137,8 +103,12 @@ class AccountPayment(models.Model):
         if vals.get('utility_sale_order_id'):
             order = self.env['sale.order'].browse(vals['utility_sale_order_id'])
             payment_period = self._get_payment_period_for_order(order)
-            if payment_period:
-                vals['date_range_id'] = payment_period.id
+            if not payment_period:
+                raise ValidationError(
+                    _('لا توجد فترة دفع مرتبطة بفترة قراءة الفاتورة "%s".')
+                    % order.date_range_id.display_name
+                )
+            vals['date_range_id'] = payment_period.id
         res = super().write(vals)
         if vals.get('service_charge_id'):
             for payment in self:
@@ -146,22 +116,14 @@ class AccountPayment(models.Model):
         return res
 
     @api.model
-    def _default_cashier_shift(self):
-        if self.env.context.get('cashier_shift_id'):
-            return self.env.context['cashier_shift_id']
-        shift = self.env['utility.cashier.shift'].search([
-            ('cashier_id', '=', self.env.user.id),
-            ('state', '=', 'open'),
-        ], limit=1)
-        return shift.id if shift else False
-
-    @api.model
-    def _default_collector_shift(self):
-        return False
-
-    @api.model
     def default_get(self, fields_list):
         res = super().default_get(fields_list)
+        order_id = self.env.context.get('default_utility_sale_order_id')
+        if order_id and 'date_range_id' in fields_list:
+            order = self.env['sale.order'].browse(order_id).exists()
+            payment_period = self._get_payment_period_for_order(order)
+            if payment_period:
+                res['date_range_id'] = payment_period.id
         if 'journal_id' in fields_list and not res.get('journal_id'):
             if self.env.user.collection_journal_id:
                 res['journal_id'] = self.env.user.collection_journal_id.id
@@ -191,8 +153,7 @@ class AccountPayment(models.Model):
                     payment.date_range_id = payment_period.id
                 else:
                     raise ValidationError(_('لا توجد فترة دفع مرتبطة بفترة قراءة هذه الفاتورة.'))
-            if payment.date_range_id.work_type != 'payment' or payment.date_range_id.parent_id != order.date_range_id:
-                raise ValidationError(_('فترة التحصيل يجب أن تكون فترة دفع مرتبطة بفترة قراءة الفاتورة.'))
+            payment._validate_utility_payment_period()
             if order.state == 'cancel':
                 raise ValidationError(
                     'لا يمكن تسجيل دفعة على فاتورة ملغاة [%s]. يُرجى التحقق من رقم الفاتورة.' % order.name

@@ -32,16 +32,6 @@ class CashierShiftCloseWizard(models.TransientModel):
         currency_field='currency_id',
         compute='_compute_totals',
     )
-    postpaid_cash = fields.Monetary(
-        'نقدي - دفع آجل',
-        currency_field='currency_id',
-        compute='_compute_totals',
-    )
-    postpaid_bank = fields.Monetary(
-        'بنكي - دفع آجل',
-        currency_field='currency_id',
-        compute='_compute_totals',
-    )
     expected_total = fields.Monetary(
         'الإجمالي المتوقع',
         currency_field='currency_id',
@@ -74,19 +64,14 @@ class CashierShiftCloseWizard(models.TransientModel):
             if rec.shift_id:
                 rec.prepaid_cash = rec.shift_id.prepaid_cash_total
                 rec.prepaid_bank = rec.shift_id.prepaid_bank_total
-                rec.postpaid_cash = rec.shift_id.postpaid_cash_total
-                rec.postpaid_bank = rec.shift_id.postpaid_bank_total
                 rec.expected_total = (
                     (rec.shift_id.opening_balance or 0.0)
                     + (rec.shift_id.prepaid_total or 0.0)
-                    + (rec.shift_id.postpaid_total or 0.0)
                 )
                 rec.difference = (rec.closing_balance or 0.0) - rec.expected_total
             else:
                 rec.prepaid_cash = 0.0
                 rec.prepaid_bank = 0.0
-                rec.postpaid_cash = 0.0
-                rec.postpaid_bank = 0.0
                 rec.expected_total = 0.0
                 rec.difference = 0.0
 
@@ -96,7 +81,6 @@ class CashierShiftCloseWizard(models.TransientModel):
             self.difference = (self.closing_balance or 0.0) - (
                 (self.shift_id.opening_balance or 0.0)
                 + (self.shift_id.prepaid_total or 0.0)
-                + (self.shift_id.postpaid_total or 0.0)
             )
 
     def action_close(self):

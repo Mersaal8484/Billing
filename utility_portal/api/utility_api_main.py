@@ -1,6 +1,9 @@
 from odoo import fields, http
 from odoo.http import request
-from datetime import datetime, date
+import hmac
+import logging
+
+_logger = logging.getLogger(__name__)
 
 
 class UtilityAPI(http.Controller):
@@ -83,52 +86,9 @@ class UtilityAPI(http.Controller):
 
     @http.route('/api/v1/utility/billing/pay', type='json', auth='user', methods=['POST'])
     def billing_pay(self, **kwargs):
-        params = request.jsonrequest
-        order_id = params.get('order_id')
-        amount = params.get('amount')
-        payment_method = params.get('payment_method', 'cash')
-        reference = params.get('reference', '')
-        if not order_id or not amount:
-            return {'error': 'order_id and amount are required'}
-        order = self._authorize_order(order_id)
-        if not order:
-            return {'error': 'Order not found'}
-        try:
-            amount = float(amount)
-        except (TypeError, ValueError):
-            return {'error': 'amount must be a positive number'}
-        if amount <= 0:
-            return {'error': 'amount must be a positive number'}
-        if order.bill_state in ('paid', 'cancelled'):
-            return {'error': 'Bill is not payable'}
-        partner = order.partner_id
-        journal_id = params.get('journal_id', 0) or int(
-            request.env['ir.config_parameter'].sudo().get_param('utility.collection_journal_id', 0))
-        journal = request.env['account.journal'].sudo().browse(journal_id) if journal_id else False
-        if not journal or not journal.inbound_payment_method_line_ids:
-            journal = request.env['account.journal'].sudo().search([
-                ('type', '=', 'bank'), ('company_id', '=', request.env.company.id),
-            ], limit=1)
-        if not journal or not journal.inbound_payment_method_line_ids:
-            return {'error': 'لم يتم العثور على يومية دفع واردة. يرجى ضبط الإعدادات.'}
-        payment_method_line = journal.inbound_payment_method_line_ids[:1]
-        payment = request.env['account.payment'].sudo().create({
-            'partner_id': partner.id if partner else request.env.user.partner_id.id,
-            'amount': amount,
-            'payment_type': 'inbound',
-            'partner_type': 'customer',
-            'journal_id': journal.id,
-            'payment_method_line_id': payment_method_line.id,
-            'utility_sale_order_id': order.id,
-            'utility_payment_method': payment_method,
-            'electronic_doc_no': reference,
-            'date': fields.Date.context_today(request.env.user),
-        })
-        payment.action_post()
+        """تم تعطيل الدفع المباشر من البوابة. استخدم /api/v1/utility/billing/payment_intent بدلاً منه."""
         return {
-            'payment_id': payment.id,
-            'state': payment.state,
-            'success': True,
+            'error': 'Direct payment creation is disabled. Use /api/v1/utility/billing/payment_intent instead.',
         }
 
     @http.route('/api/v1/utility/billing/payment_intent', type='json', auth='user', methods=['POST'])
@@ -148,14 +108,20 @@ class UtilityAPI(http.Controller):
             return {'error': 'amount must be a positive number'}
         if amount <= 0:
             return {'error': 'amount must be a positive number'}
+        if amount > order.balance_due:
+            return {'error': 'amount cannot exceed the outstanding balance'}
         if order.bill_state in ('paid', 'cancelled'):
             return {'error': 'Bill is not payable'}
         Provider = request.env['utility.integration.provider'].sudo()
         provider = Provider.browse(int(provider_id)) if provider_id else Provider.search([
-            ('provider_type', '=', 'payment_gateway'), ('active', '=', True)
+            ('provider_type', '=', 'payment_gateway'),
+            ('active', '=', True),
+            ('company_id', '=', order.company_id.id),
         ], limit=1)
-        if not provider or provider.provider_type != 'payment_gateway':
+        if not provider or provider.provider_type != 'payment_gateway' or not provider.active:
             return {'error': 'No active payment gateway provider configured'}
+        if provider.company_id and provider.company_id != order.company_id:
+            return {'error': 'Payment provider is not available for the bill company'}
         tx = request.env['utility.payment.gateway.transaction'].sudo().create({
             'provider_id': provider.id,
             'sale_order_id': order.id,
@@ -167,7 +133,6 @@ class UtilityAPI(http.Controller):
             'reference': tx.name,
             'state': tx.state,
             'amount': tx.amount,
-            'callback_token': tx.access_token,
         }
 
     @http.route('/api/v1/utility/payment_gateway/webhook/<string:reference>', type='json', auth='public', methods=['POST'], csrf=False)
@@ -178,11 +143,25 @@ class UtilityAPI(http.Controller):
         ], limit=1)
         if not tx:
             return {'error': 'Transaction not found'}
-        token = params.get('token') or params.get('callback_token')
-        if token != tx.access_token:
+        token = params.get('token') or params.get('callback_token') or params.get('signature')
+        if not token or not tx.access_token:
+            _logger.warning('Payment webhook missing token for reference %s', reference)
+            return {'error': 'Missing authentication token'}
+        expected = tx.access_token.encode('utf-8')
+        received = token.encode('utf-8')
+        if len(expected) != len(received) or not hmac.compare_digest(expected, received):
+            _logger.warning('Payment webhook invalid token for reference %s', reference)
             return {'error': 'Invalid token'}
-        status = params.get('status', 'success')
+        status = params.get('status')
+        if not status:
+            return {'error': 'Payment status is required'}
         provider_reference = params.get('provider_reference') or params.get('reference')
+        if tx.state == 'done':
+            return {'success': True, 'state': tx.state, 'payment_id': tx.payment_id.id}
+        if tx.state != 'pending':
+            return {'error': 'Only pending payment transactions can receive callbacks'}
+        if status in ('success', 'done', 'paid') and not provider_reference:
+            return {'error': 'Provider reference is required for successful payments'}
         if status not in ('success', 'done', 'paid'):
             tx.write({
                 'state': 'failed',
@@ -267,16 +246,6 @@ class UtilityAPI(http.Controller):
         start_dt = '%s 00:00:00' % report_date
         end_dt = '%s 23:59:59' % report_date
 
-        pos_domain = [('date_order', '>=', start_dt), ('date_order', '<=', end_dt)]
-        if region_id:
-            pos_domain.append(('account_id.region_id', '=', int(region_id)))
-        if area_id:
-            pos_domain.append(('account_id.area_id', '=', int(area_id)))
-        total_pos_sales = request.env['pos.order'].sudo().search_count(pos_domain)
-        pos_rev_data = request.env['pos.order'].sudo().read_group(
-            pos_domain, ['amount_paid:sum'], [])
-        total_pos_revenue = pos_rev_data[0]['amount_paid'] if pos_rev_data else 0.0
-
         bills_domain = [('date_order', '>=', start_dt), ('date_order', '<=', end_dt)]
         if region_id:
             bills_domain.append(('customer_id.region_id', '=', int(region_id)))
@@ -296,8 +265,6 @@ class UtilityAPI(http.Controller):
         active_alarms = request.env['utility.alarm'].sudo().search_count(alarms_domain)
 
         return {
-            'total_pos_sales': total_pos_sales,
-            'total_pos_revenue': total_pos_revenue,
             'total_bills': total_bills,
             'total_collections': total_collections,
             'active_alarms': active_alarms,

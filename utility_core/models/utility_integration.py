@@ -14,6 +14,10 @@ class UtilityIntegrationProvider(models.Model):
     _order = 'sequence, name'
 
     name = fields.Char('الاسم', required=True)
+    company_id = fields.Many2one(
+        'res.company', string='الشركة', required=True, index=True,
+        default=lambda self: self.env.company,
+    )
     sequence = fields.Integer('الترتيب', default=10)
     active = fields.Boolean('نشط', default=True)
     provider_type = fields.Selection([
@@ -84,6 +88,10 @@ class UtilityIntegrationLog(models.Model):
     _order = 'create_date desc, id desc'
 
     provider_id = fields.Many2one('utility.integration.provider', string='المزود', required=True, ondelete='restrict')
+    company_id = fields.Many2one(
+        'res.company', string='الشركة', related='provider_id.company_id',
+        store=True, readonly=True, index=True,
+    )
     provider_type = fields.Selection(related='provider_id.provider_type', string='نوع المزود', store=True)
     event_type = fields.Char('نوع الحدث', required=True)
     model_name = fields.Char('النموذج')

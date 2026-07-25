@@ -481,7 +481,7 @@ class UtilityMigrationCustomer(models.Model):
                     rec.created_partner_id = partner.id
 
                     if rec.is_active:
-                        rec._create_customer_account(partner)
+                        rec.with_context(skip_service_activation_charge=True)._create_customer_account(partner)
 
                     rec.state = 'imported'
                     rec.error_message = False

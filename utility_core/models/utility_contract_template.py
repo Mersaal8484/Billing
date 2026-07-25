@@ -7,6 +7,8 @@ from odoo.exceptions import ValidationError
 class UtilityContractTemplate(models.Model):
     _name = 'utility.contract.template'
     _description = 'قالب عقد الكهرباء'
+    _rec_name = 'name'
+    _order = 'name'
 
     name = fields.Char('الاسم', required=True, translate=True)
     code = fields.Char('الرمز', required=True)
@@ -415,6 +417,8 @@ class UtilityContractTemplate(models.Model):
 class UtilityContractTemplateLine(models.Model):
     _name = 'utility.contract.template.line'
     _description = 'بند قالب العقد'
+    _rec_name = 'name'
+    _order = 'sequence'
 
     template_id = fields.Many2one('utility.contract.template', 'قالب العقد', required=True, ondelete='cascade')
     sequence = fields.Integer('التسلسل', default=10)

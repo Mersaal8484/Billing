@@ -37,3 +37,6 @@ access_ami_event_user,utility.prepaid.ami.event.user,model_utility_prepaid_ami_e
 access_integration_log_admin,utility.prepaid.integration.log.admin,model_utility_prepaid_integration_log,base.group_system,1,1,1,1
 access_integration_log_user,utility.prepaid.integration.log.user,model_utility_prepaid_integration_log,base.group_user,1,1,0,0
 access_prepaid_dashboard_user,utility.prepaid.dashboard.user,model_utility_prepaid_dashboard,base.group_user,1,1,1,0
+access_cashier_shift_admin,utility.cashier.shift.admin,model_utility_cashier_shift,base.group_system,1,1,1,1
+access_cashier_shift_user,utility.cashier.shift.user,model_utility_cashier_shift,utility_prepaid.group_utility_prepaid_user,1,1,1,0
+access_cashier_shift_close_wizard,utility.cashier.shift.close.wizard,model_utility_cashier_shift_close_wizard,utility_prepaid.group_utility_prepaid_user,1,1,1,0

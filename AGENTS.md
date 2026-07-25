@@ -6,19 +6,22 @@ Odoo 16.0 ERP for electricity distribution companies. 7 addon modules under `uti
 
 ## Module dependency order
 
-1. `utility_core` — master data: customers, accounts, meters, tariffs, 8-level NUTS hierarchy (region→area→zone→office→substation→feeder→transformer→route), subscriber categories, contract templates, formulas, settings
-2. `utility_inventory` — inventory & warehouse management: storage locations, stock items, movements, physical counts, meter serialization & tracking
-3. `utility_prepaid` — prepaid vending: STS tokens, sales, payments, cashier shifts
+1. `date_range` — Odoo standard date_range module (required by utility_core for billing periods)
+2. `utility_core` — master data: customers, accounts, meters, tariffs, 8-level NUTS hierarchy (region→area→zone→office→substation→feeder→transformer→route), subscriber categories, contract templates, formulas, settings, migration staging models, dashboard
+3. `utility_inventory` — inventory bridge: adds `product_id` and `lot_id` to meters (depends on stock & product)
 4. `utility_operations` — field ops: service orders, inspections, tamper cases, meter replacement, reading/financial settlements
-5. `utility_billing` — postpaid billing: meter readings, billing cycles, sale orders, penalties, recurring invoices
-6. `utility_portal` — customer portal + REST API (depends on everything above)
-7. `utility_migration` — staging and importing legacy system data, data mapping, and generating exact Odoo models
+5. `utility_billing` — postpaid billing: meter readings, billing cycles, sale orders, penalties, recurring invoices, reading batches
+6. `utility_prepaid` — prepaid vending: STS tokens, sales, payments, cashier shifts, POS integration
+7. `utility_portal` — customer portal + REST API (depends on core + prepaid + billing)
 
-Install in that order. `utility_core` must always be first.
+Install in that order. `utility_core` must always be first. `utility_migration` does not exist as a standalone module — migration staging models live inside `utility_core`.
 
 ## Test commands
 
-No test infrastructure exists yet. All `tests/` directories are empty. Do not run `odoo-test` or similar — there is nothing to execute.
+Tests exist in `utility_core/tests/` and `utility_billing/tests/`. Run with standard Odoo test runner:
+```bash
+odoo-bin -d <db> -i <module> --test-enable --stop-after-init
+```
 
 ## Key workflows & quirks
 
@@ -37,7 +40,7 @@ No test infrastructure exists yet. All `tests/` directories are empty. Do not ru
 - **Security groups** are flat (all imply `group_utility_admin`). Not a proper hierarchy — a known issue from the gap analysis.
 - **Arabic UI** — model descriptions, field strings, menu labels, and view content are in Arabic (using `translate=True` on many fields).
 - **Config settings** live in `utility_core/models/utility_settings.py` as `res.config.settings` inherit with `config_parameter` keys (`utility.*`).
-- **Communication & Notifications** — NEVER use Odoo's standard `mail` module or email functionality, as there is no mail server. All customer notifications must be routed through SMS or a local WhatsApp provider.
+- **Communication & Notifications** — Do NOT use Odoo's standard email functionality, as there is no mail server configured. All customer notifications must be routed through SMS or a local WhatsApp provider. The `mail` module IS used internally for `mail.thread` chatter and `mail.activity.mixin` tracking on backend models.
 - **Subscriber Terminology & Rules**:
   - `utility.subscriber.category` = **فئات المشتركين الرئيسية** (Subscriber Categories)
   - `utility.subscriber` = **انواع المشتركين** (Subscriber Types)

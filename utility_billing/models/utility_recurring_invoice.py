@@ -1,5 +1,6 @@
 import logging
 from odoo import api, fields, models, _
+from odoo.exceptions import UserError, ValidationError
 
 _logger = logging.getLogger(__name__)
 
@@ -69,41 +70,58 @@ class UtilityContractTemplate(models.Model):
             ('state', '=', 'active'),
             ('contract_template_id', '!=', False),
         ], limit=batch_size)
+        if not accounts:
+            return
+
+        approved_readings = self.env['utility.reading'].search([
+            ('account_id', 'in', accounts.ids),
+            ('state', '=', 'approved'),
+        ])
+        reading_by_account = {}
+        for r in approved_readings:
+            if r.date_range_id:
+                if r.account_id.id not in reading_by_account:
+                    reading_by_account[r.account_id.id] = r
+                elif r.reading_date > reading_by_account[r.account_id.id].reading_date:
+                    reading_by_account[r.account_id.id] = r
+
+        existing_orders = self.env['sale.order'].search([
+            ('reading_id', 'in', approved_readings.ids),
+            ('state', '!=', 'cancel'),
+        ])
+        existing_reading_ids = existing_orders.mapped('reading_id').ids
+
         success = 0
         errors = 0
         for account in accounts:
+            reading = reading_by_account.get(account.id)
+            if not reading:
+                continue
+            if reading.id in existing_reading_ids:
+                continue
             try:
-                reading = self.env['utility.reading'].search([
-                    ('account_id', '=', account.id),
-                    ('state', '=', 'approved'),
-                ], order='reading_date desc', limit=1)
-                if not reading or not reading.date_range_id:
-                    continue
-                existing_order = self.env['sale.order'].search([
-                    ('reading_id', '=', reading.id),
-                    ('state', '!=', 'cancel'),
-                ], limit=1)
-                if existing_order:
-                    continue
-                order = self.env['sale.order'].create(
-                    account.contract_template_id._prepare_sale_order_data(account, reading)
-                )
-                order._calculate_amounts()
-                reading.state = 'billed'
-                account.write({
-                    'last_reading_date': reading.reading_date,
-                    'last_reading_value': reading.reading_value,
-                    'last_invoice_date': fields.Datetime.now(),
-                    'last_invoice_reading': reading.reading_value,
-                })
-                self.env.cr.commit()
+                with self.env.cr.savepoint():
+                    order = self.env['sale.order'].create(
+                        account.contract_template_id._prepare_sale_order_data(account, reading)
+                    )
+                    order._calculate_amounts()
+                    reading.state = 'billed'
+                    account.write({
+                        'last_reading_date': reading.reading_date,
+                        'last_reading_value': reading.reading_value,
+                        'last_invoice_date': fields.Datetime.now(),
+                        'last_invoice_reading': reading.reading_value,
+                    })
                 success += 1
-            except Exception as e:
-                self.env.cr.rollback()
+            except (UserError, ValidationError) as e:
                 _logger.warning(
-                    "Recurring invoice failed for account %s (reading %s): %s",
-                    account.name, reading.id if reading else '—', e)
-                self.env.cr.commit()
+                    "Recurring invoice validation failed for account %s (reading %s): %s",
+                    account.customer_number, reading.id, e)
+                errors += 1
+            except Exception:
+                _logger.error(
+                    "Unexpected error generating invoice for account %s (reading %s)",
+                    account.customer_number, reading.id, exc_info=True)
                 errors += 1
         if errors:
             _logger.info(

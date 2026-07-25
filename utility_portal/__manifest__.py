@@ -20,6 +20,7 @@ Notifications (Email/SMS/Push).
     'depends': ['utility_core', 'utility_prepaid', 'utility_billing', 'portal', 'payment'],
     'data': [
         'security/ir.model.access.csv',
+        'security/utility_portal_security.xml',
         'views/utility_portal_templates.xml',
         'views/utility_payment_gateway_views.xml',
         'data/utility_portal_data.xml',

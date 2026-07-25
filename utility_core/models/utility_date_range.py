@@ -181,6 +181,23 @@ class DateRange(models.Model):
             }
         }
 
+    def action_close_period(self):
+        """إغلاق الفترة النشطة الحالية (إلغاء التفعيل)"""
+        self.ensure_one()
+        if not self.is_current_period:
+            raise ValidationError(_('لا يمكن إغلاق فترة غير نشطة.'))
+        self.is_current_period = False
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('تم الإغلاق'),
+                'message': _('تم إغلاق الفترة "%s".') % self.name,
+                'type': 'warning',
+                'sticky': False,
+            }
+        }
+
     def action_view_children(self):
         """عرض الفترات الفرعية"""
         self.ensure_one()

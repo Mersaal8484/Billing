@@ -10,11 +10,6 @@ class UtilitySaleOrder(models.Model):
     effective_date = fields.Date(string='تاريخ الفعالية', copy=False)
     commitment_date = fields.Datetime(string='تاريخ الالتزام', copy=False)
     expected_date = fields.Datetime(string='التاريخ المتوقع', copy=False)
-    delivery_status = fields.Selection([
-        ('pending', 'معلق'),
-        ('partial', 'جزئي'),
-        ('full', 'تم التسليم'),
-    ], string='حالة التسليم', copy=False)
     picking_policy = fields.Selection([
         ('direct', 'تسليم كل منتج عند توفره'),
         ('one', 'تسليم جميع المنتجات دفعة واحدة'),
@@ -68,8 +63,6 @@ class UtilitySaleOrder(models.Model):
     qr_code_url = fields.Char('رابط QR', compute='_compute_qr_code', readonly=True)
     disconnection_order_id = fields.Many2one('utility.service.order', string='أمر الفصل', readonly=True, copy=False)
     reconnection_order_id = fields.Many2one('utility.service.order', string='أمر إعادة الخدمة', readonly=True, copy=False)
-    installment_plan_ids = fields.One2many('utility.installment.plan', 'sale_order_id', string='خطط التقسيط')
-    installment_plan_count = fields.Integer('عدد خطط التقسيط', compute='_compute_installment_plan_count')
 
 
     amount_paid = fields.Monetary('المدفوع', compute='_compute_payment', store=True, currency_field='currency_id')
@@ -106,25 +99,40 @@ class UtilitySaleOrder(models.Model):
 
     @api.depends('customer_id.contract_template_id.recurring_rule_type', 'customer_id.area_id.recurring_rule_type', 'customer_id.region_id.recurring_rule_type')
     def _compute_available_billing_period_ids(self):
-        for rec in self:
-            account = rec.customer_id
-            billing_period = False
-            if account:
-                if account.contract_template_id and account.contract_template_id.recurring_rule_type:
-                    billing_period = account.contract_template_id.recurring_rule_type
-                elif account.area_id and account.area_id.recurring_rule_type:
-                    billing_period = account.area_id.recurring_rule_type
-                elif account.region_id and account.region_id.recurring_rule_type:
-                    billing_period = account.region_id.recurring_rule_type
-            domain = self._get_open_period_domain(work_type='payment', billing_period=billing_period)
-            rec.available_billing_period_ids = self.env['date.range'].search(domain)
+        for order in self:
+            billing_period = order.customer_id._get_effective_billing_period() if order.customer_id else False
+            domain = self._get_open_period_domain(
+                work_type='readings', billing_period=billing_period)
+            order.available_billing_period_ids = self.env['date.range'].search(domain)
 
     @api.onchange('customer_id')
     def _onchange_customer_id_date_range(self):
         available_periods = self.available_billing_period_ids
         if self.date_range_id and self.date_range_id not in available_periods:
             self.date_range_id = False
+        if not self.date_range_id and len(available_periods) == 1:
+            self.date_range_id = available_periods.id
         return {'domain': {'date_range_id': [('id', 'in', available_periods.ids)]}}
+
+    @api.constrains('customer_id', 'date_range_id', 'reading_id', 'period_start', 'period_end')
+    def _check_billing_period_matches_customer(self):
+        """Reject bills whose reading period conflicts with customer cadence."""
+        for order in self.filtered(lambda item: item.customer_id and item.date_range_id):
+            expected = order.customer_id._get_effective_billing_period()
+            period = order.date_range_id
+            if period.work_type != 'readings':
+                raise ValidationError(_('فترة الفاتورة يجب أن تكون من نوع قراءات، وليست فترة تحصيل.'))
+            if expected and period.billing_period != expected:
+                raise ValidationError(_(
+                    'دورية الفترة المختارة (%s) لا تطابق دورية المشترك (%s).')
+                    % (period.billing_period, expected))
+            if order.reading_id and order.reading_id.date_range_id != period:
+                raise ValidationError(_(
+                    'فترة الفاتورة يجب أن تطابق فترة القراءة المرتبطة حرفياً.'))
+            if order.period_start and order.period_start != period.date_start:
+                raise ValidationError(_('بداية الفاتورة يجب أن تطابق بداية فترة القراءة.'))
+            if order.period_end and order.period_end != period.date_end:
+                raise ValidationError(_('نهاية الفاتورة يجب أن تطابق نهاية فترة القراءة.'))
 
     @api.onchange('date_range_id')
     def _onchange_date_range_id_set_period_dates(self):
@@ -302,69 +310,113 @@ class UtilitySaleOrder(models.Model):
             subject=_('إصدار فاتورة كهرباء'),
         )
 
+    def _get_or_create_collector_cash_account(self, user, company):
+        """Return the user's dedicated cash account without code collisions."""
+        account_model = self.env['account.account']
+        account_name = _('حساب صندوق - %s') % user.name
+        account = account_model.search([
+            ('name', '=', account_name),
+            ('company_id', '=', company.id),
+        ], limit=1)
+        if account:
+            return account
+
+        base_code = '1019%s' % str(user.id).zfill(4)
+        used_codes = set(account_model.search([
+            ('company_id', '=', company.id),
+            ('code', '=like', '%s%%' % base_code),
+        ]).mapped('code'))
+        account_code = base_code
+        suffix = 1
+        while account_code in used_codes:
+            account_code = '%s%s' % (base_code, suffix)
+            suffix += 1
+        return account_model.create({
+            'name': account_name,
+            'code': account_code,
+            'account_type': 'asset_cash',
+            'company_id': company.id,
+        })
+
+    def _get_or_create_outstanding_receipts_account(self, company):
+        """Return a dedicated outstanding receipts account with a safe code."""
+        account_model = self.env['account.account']
+        account_name = _('حساب الإيصالات والدفعات المستحقة')
+        account = account_model.search([
+            ('company_id', '=', company.id),
+            ('name', '=', account_name),
+            ('account_type', 'in', ('asset_current', 'asset_cash')),
+        ], limit=1)
+        if account:
+            return account
+        base_code = '101200'
+        used_codes = set(account_model.search([
+            ('company_id', '=', company.id),
+            ('code', '=like', '%s%%' % base_code),
+        ]).mapped('code'))
+        account_code = base_code
+        suffix = 1
+        while account_code in used_codes:
+            account_code = '%s%s' % (base_code, suffix)
+            suffix += 1
+        return account_model.create({
+            'name': account_name,
+            'code': account_code,
+            'account_type': 'asset_current',
+            'company_id': company.id,
+        })
+
+    def _get_unique_collector_journal_code(self, user, company):
+        """Build a unique five-character journal code for a user-owned journal."""
+        journal_model = self.env['account.journal']
+        base_code = 'U%s' % str(user.id).zfill(3)[-4:]
+        used_codes = set(journal_model.search([
+            ('company_id', '=', company.id),
+            ('code', '=like', 'U%'),
+        ]).mapped('code'))
+        if base_code not in used_codes:
+            return base_code
+        alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+        prefix = base_code[:4]
+        for suffix in alphabet:
+            candidate = '%s%s' % (prefix, suffix)
+            if candidate not in used_codes:
+                return candidate
+        raise ValidationError(_(
+            'تعذر توليد رمز فريد ليومية تحصيل المستخدم %s.') % user.name)
+
     def action_register_utility_payment(self):
         """Open payment creation wizard pre-filled with customer bill details and collector's dedicated cash journal."""
         self.ensure_one()
         current_user = self.env.user
         journal = current_user.collection_journal_id
+        if journal and journal.company_id != self.company_id:
+            journal = False
 
         if not journal:
-            staff = self.env['utility.staff'].search([
-                ('user_id', '=', current_user.id),
-                ('company_id', '=', self.company_id.id)
-            ], limit=1)
-            if staff:
-                staff._auto_create_collector_journal()
-                journal = staff.collection_journal_id
-
-        if not journal:
-            code = ('C%s' % current_user.id)[:5].upper()
-            journal_name = 'يومية تحصيل - %s' % current_user.name
+            journal_name = _('يومية تحصيل - %s') % current_user.name
             journal = self.env['account.journal'].search([
                 ('company_id', '=', self.company_id.id),
                 ('type', '=', 'cash'),
-                '|', ('code', '=', code), ('name', '=', journal_name)
+                ('name', '=', journal_name),
             ], limit=1)
             if not journal:
-                acc_name = 'حساب صندوق - %s' % current_user.name
-                cash_acc = self.env['account.account'].search([
-                    ('name', '=', acc_name),
-                    ('company_id', '=', self.company_id.id)
-                ], limit=1)
-                if not cash_acc:
-                    code_num = str(current_user.id).zfill(3)
-                    cash_acc = self.env['account.account'].create({
-                        'name': acc_name,
-                        'code': '101%s' % code_num[-3:],
-                        'account_type': 'asset_cash',
-                        'company_id': self.company_id.id,
-                    })
+                cash_account = self._get_or_create_collector_cash_account(
+                    current_user, self.company_id)
                 journal = self.env['account.journal'].create({
                     'name': journal_name,
-                    'code': code,
+                    'code': self._get_unique_collector_journal_code(
+                        current_user, self.company_id),
                     'type': 'cash',
                     'company_id': self.company_id.id,
-                    'default_account_id': cash_acc.id,
+                    'default_account_id': cash_account.id,
                 })
             current_user.sudo().write({'collection_journal_id': journal.id})
-
         if journal:
             company = journal.company_id
             if not company.account_journal_payment_debit_account_id or not company.account_journal_payment_credit_account_id:
-                outstanding_acc = self.env['account.account'].search([
-                    ('name', 'ilike', 'مستحق'),
-                    ('company_id', 'in', (company.id, False))
-                ], limit=1) or self.env['account.account'].search([
-                    ('account_type', 'in', ('asset_current', 'asset_cash')),
-                    ('company_id', 'in', (company.id, False))
-                ], limit=1)
-                if not outstanding_acc:
-                    outstanding_acc = self.env['account.account'].create({
-                        'name': 'حساب الإيصالات والدفعات المستحقة',
-                        'code': '101200',
-                        'account_type': 'asset_current',
-                        'company_id': company.id,
-                    })
+                outstanding_acc = self._get_or_create_outstanding_receipts_account(
+                    company)
                 c_vals = {}
                 if not company.account_journal_payment_debit_account_id:
                     c_vals['account_journal_payment_debit_account_id'] = outstanding_acc.id
@@ -374,21 +426,11 @@ class UtilitySaleOrder(models.Model):
                     company.sudo().write(c_vals)
 
             j_vals = {}
-            acc_name = 'حساب صندوق - %s' % current_user.name
             cash_acc = journal.default_account_id
-            if not cash_acc or (current_user.name and current_user.name not in cash_acc.name):
-                cash_acc = self.env['account.account'].search([
-                    ('name', '=', acc_name),
-                    ('company_id', '=', company.id)
-                ], limit=1)
-                if not cash_acc:
-                    code_num = str(current_user.id).zfill(3)
-                    cash_acc = self.env['account.account'].create({
-                        'name': acc_name,
-                        'code': '101%s' % code_num[-3:],
-                        'account_type': 'asset_cash',
-                        'company_id': company.id,
-                    })
+            expected_account_name = _('حساب صندوق - %s') % current_user.name
+            if not cash_acc or cash_acc.name != expected_account_name:
+                cash_acc = self._get_or_create_collector_cash_account(
+                    current_user, company)
                 j_vals['default_account_id'] = cash_acc.id
 
             LineModel = self.env['account.payment.method.line']
@@ -588,48 +630,6 @@ class UtilitySaleOrder(models.Model):
                 r.penalty_ids.filtered(lambda p: p.state == 'applied').mapped('amount')
             )
 
-    def _compute_installment_plan_count(self):
-        for order in self:
-            order.installment_plan_count = len(order.installment_plan_ids)
-
-    def action_create_installment_plan(self):
-        self.ensure_one()
-        if self.env.user.prevent_installment:
-            raise ValidationError(_('هذا المستخدم غير مسموح له بإنشاء خطط تقسيط.'))
-        if not self.customer_id:
-            raise ValidationError(_('لا يمكن إنشاء خطة تقسيط دون حساب كهرباء مرتبط بالفاتورة.'))
-        if self.balance_due <= 0:
-            raise ValidationError(_('لا توجد مبالغ متبقية لتقسيطها.'))
-        active_plan = self.installment_plan_ids.filtered(lambda p: p.state in ('draft', 'active'))[:1]
-        if active_plan:
-            plan = active_plan
-        else:
-            plan = self.env['utility.installment.plan'].create({
-                'sale_order_id': self.id,
-                'amount_total': self.balance_due,
-                'installment_count': 3,
-                'start_date': fields.Date.context_today(self),
-            })
-            plan.action_generate_lines()
-        return {
-            'type': 'ir.actions.act_window',
-            'name': plan.name,
-            'res_model': 'utility.installment.plan',
-            'res_id': plan.id,
-            'view_mode': 'form',
-            'target': 'current',
-        }
-
-    def action_view_installment_plans(self):
-        self.ensure_one()
-        return {
-            'type': 'ir.actions.act_window',
-            'name': _('خطط التقسيط'),
-            'res_model': 'utility.installment.plan',
-            'view_mode': 'tree,form',
-            'domain': [('sale_order_id', '=', self.id)],
-            'context': {'default_sale_order_id': self.id, 'default_amount_total': self.balance_due},
-        }
     def _open_service_order_action(self, service_order):
         self.ensure_one()
         return {

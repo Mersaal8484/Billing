@@ -13,6 +13,7 @@ class UtilityReadingBatch(models.Model):
     _name = 'utility.reading.batch'
     _description = 'دفعة رفع قراءات'
     _inherit = ['mail.thread', 'mail.activity.mixin', 'utility.dropdown.mixin']
+    _rec_name = 'name'
     _order = 'upload_date desc'
 
     name = fields.Char('رقم الدفعة', readonly=True, default=lambda self: _('New'))
@@ -38,6 +39,7 @@ class UtilityReadingBatch(models.Model):
     processed_count = fields.Integer('تمت معالجتها', readonly=True, default=0)
     error_count = fields.Integer('فشلت', readonly=True, default=0)
     processed_offset = fields.Integer('مؤشر التقدم داخل الملف', readonly=True, default=0)
+    progress_percent = fields.Float('نسبة التقدم %', compute='_compute_progress_percent', store=True)
 
     state = fields.Selection([
         ('uploaded', 'تم الرفع'),
@@ -50,6 +52,15 @@ class UtilityReadingBatch(models.Model):
     error_log = fields.Text('سجل الأخطاء', readonly=True)
     reading_ids = fields.One2many('utility.reading', 'batch_id',
                                   string='القراءات المُنشأة')
+
+    @api.depends('processed_count', 'error_count', 'total_readings')
+    def _compute_progress_percent(self):
+        for batch in self:
+            if batch.total_readings > 0:
+                done = batch.processed_count + batch.error_count
+                batch.progress_percent = min(100.0, round(done / batch.total_readings * 100, 1))
+            else:
+                batch.progress_percent = 0.0
 
     @api.depends('region_id.recurring_rule_type')
     def _compute_available_open_reading_period_ids(self):
@@ -133,24 +144,20 @@ class UtilityReadingBatch(models.Model):
                     'state': 'error',
                     'error_log': f'فشل في قراءة ملف JSON: {e}',
                 })
-                self.env.cr.commit()
                 continue
 
             readings_data = json_data.get('readings', [])
             start = batch.processed_offset or 0
-            # معالجة حتى batch_size قراءة فقط من كل دفعة دون إعادة معالجة السابق
             to_process = readings_data[start:start + batch_size]
             if not to_process:
                 batch.write({
                     'state': 'done' if not batch.error_count else 'partial',
                     'total_readings': batch.total_readings or len(readings_data),
                 })
-                self.env.cr.commit()
                 continue
             error_log_lines = []
             processed = 0
 
-            # جلب أسماء صور المرفقة
             image_attachments = {}
             for att in batch.image_ids:
                 image_attachments[att.name] = att
@@ -159,54 +166,49 @@ class UtilityReadingBatch(models.Model):
                 seq = entry.get('seq', '?')
                 meter_number = entry.get('meter_number')
                 try:
-                    if not meter_number:
-                        raise ValueError('رقم العداد مفقود')
+                    with self.env.cr.savepoint():
+                        if not meter_number:
+                            raise ValueError('رقم العداد مفقود')
 
-                    meter = Meter.search([
-                        ('meter_number', '=', meter_number)
-                    ], limit=1)
-                    if not meter:
-                        raise ValueError(
-                            f'العداد "{meter_number}" غير موجود في النظام')
+                        meter = Meter.search([
+                            ('meter_number', '=', meter_number)
+                        ], limit=1)
+                        if not meter:
+                            raise ValueError(
+                                f'العداد "{meter_number}" غير موجود في النظام')
 
-                    reading_date = entry.get('reading_date') or fields.Datetime.now()
-                    existing_reading = Reading.search([
-                        ('batch_id', '=', batch.id),
-                        ('meter_id', '=', meter.id),
-                        ('date_range_id', '=', batch.date_range_id.id),
-                        ('reading_date', '=', reading_date),
-                    ], limit=1)
-                    if existing_reading:
+                        reading_date = entry.get('reading_date') or fields.Datetime.now()
+                        existing_reading = Reading.search([
+                            ('batch_id', '=', batch.id),
+                            ('meter_id', '=', meter.id),
+                            ('date_range_id', '=', batch.date_range_id.id),
+                            ('reading_date', '=', reading_date),
+                        ], limit=1)
+                        if existing_reading:
+                            processed += 1
+                            continue
+
+                        image_filename = entry.get('image_filename', '')
+                        image_data = False
+                        if image_filename and image_filename in image_attachments:
+                            image_data = image_attachments[image_filename].datas
+
+                        Reading.create({
+                            'meter_id': meter.id,
+                            'reading_value': entry.get('reading_value', 0),
+                            'reading_date': reading_date,
+                            'date_range_id': batch.date_range_id.id,
+                            'reading_category': entry.get('reading_category', 'customer'),
+                            'meter_image': image_data,
+                            'remarks': entry.get('remarks', ''),
+                            'reading_source': f'batch_{batch.name}',
+                            'batch_id': batch.id,
+                        })
                         processed += 1
-                        continue
 
-                    # البحث عن صورة مطابقة
-                    image_filename = entry.get('image_filename', '')
-                    image_data = False
-                    if image_filename and image_filename in image_attachments:
-                        image_data = image_attachments[image_filename].datas
-
-                    reading = Reading.create({
-                        'meter_id': meter.id,
-                        'reading_value': entry.get('reading_value', 0),
-                        'reading_date': reading_date,
-                        'date_range_id': batch.date_range_id.id,
-                        'reading_category': entry.get('reading_category', 'customer'),
-                        'meter_image': image_data,
-                        'remarks': entry.get('remarks', ''),
-                        'reading_source': f'batch_{batch.name}',
-                        'batch_id': batch.id,
-                    })
-                    processed += 1
-                    self.env.cr.commit()
-
-                except Exception as e:
-                    self.env.cr.rollback()
+                except Exception as exc:
                     error_log_lines.append(
-                        f'[{seq}] {meter_number}: {str(e)}')
-                    self.env.cr.commit()
-
-            # تحديث حالة الدفعة
+                        f'[{seq}] {meter_number}: {str(exc)}')
             error_count = len(error_log_lines)
             total_processed = batch.processed_count + processed
             total_errors = batch.error_count + error_count
@@ -214,10 +216,9 @@ class UtilityReadingBatch(models.Model):
             total_readings = batch.total_readings or len(readings_data)
 
             if next_offset >= total_readings:
-                # اكتملت المعالجة
                 final_state = 'done' if total_errors == 0 else 'partial'
             else:
-                final_state = 'processing'  # لا تزال هناك قراءات متبقية
+                final_state = 'processing'
 
             previous_log = batch.error_log or ''
             new_log = '\n'.join(error_log_lines)
@@ -229,7 +230,6 @@ class UtilityReadingBatch(models.Model):
                 'state': final_state,
                 'error_log': '\n'.join([l for l in [previous_log, new_log] if l]) or False,
             })
-            self.env.cr.commit()
 
             _logger.info(
                 'Batch %s: processed %d, errors %d, state %s',
@@ -250,7 +250,6 @@ class UtilityReadingBatch(models.Model):
 
         Attachment = self.env['ir.attachment']
         for batch in old_batches:
-            # حذف ملف الـ JSON
             if batch.data_file:
                 json_att = Attachment.search([
                     ('res_model', '=', 'utility.reading.batch'),
@@ -261,13 +260,11 @@ class UtilityReadingBatch(models.Model):
                     json_att.unlink()
                 batch.data_file = False
 
-            # حذف الصور المرفقة
             if batch.image_ids:
                 batch.image_ids.unlink()
 
             batch.message_post(
                 body=f'تم حذف ملفات الدفعة تلقائياً بعد {retention_days} يوماً من الرفع.'
             )
-            self.env.cr.commit()
 
         _logger.info('Batch Cleanup: cleaned %d old batches', len(old_batches))
