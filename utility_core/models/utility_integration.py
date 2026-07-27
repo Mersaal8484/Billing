@@ -7,6 +7,9 @@ from odoo import api, fields, models, _
 
 _logger = logging.getLogger(__name__)
 
+# أنواع المزودين المدعومة لعمليات الدفع
+PAYMENT_PROVIDER_TYPES = {'payment_gateway', 'mobile_money', 'bank_transfer', 'direct_debit'}
+
 
 class UtilityIntegrationProvider(models.Model):
     _name = 'utility.integration.provider'
@@ -23,24 +26,162 @@ class UtilityIntegrationProvider(models.Model):
     provider_type = fields.Selection([
         ('sms', 'رسائل قصيرة (SMS)'),
         ('ami', 'قراءة تلقائية (AMI)'),
-        ('payment_gateway', 'بوابة دفع'),
+        ('payment_gateway', 'بوابة دفع إلكتروني'),
+        ('mobile_money', 'محفظة إلكترونية / Mobile Money'),
+        ('bank_transfer', 'تحويل بنكي'),
+        ('direct_debit', 'خصم مباشر (Direct Debit)'),
     ], string='نوع المزود', required=True, index=True)
+
+    # ── اتجاه الدفع المدعوم ────────────────────────────────────────────────
+    payment_direction = fields.Selection([
+        ('inbound', 'وارد فقط — المشترك يدفع للشركة'),
+        ('outbound', 'صادر فقط — الشركة تدفع للمشترك (استرداد/تعويض)'),
+        ('both', 'كلا الاتجاهين'),
+    ], string='اتجاه الدفع', default='inbound',
+        help='يحدد ما إذا كان المزود يدعم تحصيل مدفوعات من المشتركين، '
+             'أو إرجاع مبالغ لهم، أو كليهما.',
+    )
+
+    # ── وضع التكامل ────────────────────────────────────────────────────────
     mode = fields.Selection([
         ('manual', 'يدوي/تجريبي'),
         ('http_json', 'اتصال HTTP (JSON)'),
     ], string='وضع التكامل', default='manual', required=True)
     endpoint_url = fields.Char('Endpoint URL')
-    api_key = fields.Char('API Key')
-    webhook_secret = fields.Char('Webhook Secret')
     timeout = fields.Integer('مهلة الانتظار (ثواني)', default=15)
+
+    # ── المصادقة ───────────────────────────────────────────────────────────
+    auth_header_style = fields.Selection([
+        ('bearer', 'Bearer Token'),
+        ('basic', 'Basic Auth (user:pass base64)'),
+        ('api_key_header', 'API Key في Header مخصص'),
+        ('hmac', 'HMAC Signature'),
+        ('none', 'بدون مصادقة'),
+    ], string='أسلوب المصادقة', default='bearer')
+    api_key = fields.Char('API Key / Token')
+    api_key_header_name = fields.Char(
+        'اسم Header المفتاح',
+        default='X-API-Key',
+        help='اسم الـ HTTP header الذي يُرسَل فيه المفتاح (عند اختيار api_key_header).',
+    )
+    webhook_secret = fields.Char('Webhook Secret')
+
+    # ── headers مخصصة (JSON) ───────────────────────────────────────────────
+    extra_headers = fields.Text(
+        'Headers إضافية (JSON)',
+        help='JSON object يحتوي headers إضافية ترسل مع كل طلب.\n'
+             'مثال: {"X-Tenant": "utility-main", "Accept-Language": "ar"}',
+    )
+
+    # ── يوميات الدفع المرتبطة ─────────────────────────────────────────────
+    inbound_journal_id = fields.Many2one(
+        'account.journal', string='يومية التحصيل (وارد)',
+        domain="[('type', 'in', ['bank', 'cash']), ('company_id', '=', company_id)]",
+        help='اليومية المحاسبية التي تُسجَّل فيها المدفوعات الواردة عبر هذا المزود. '
+             'إذا تُرك فارغاً، سيستخدم النظام اليومية الافتراضية من الإعدادات.',
+    )
+    outbound_journal_id = fields.Many2one(
+        'account.journal', string='يومية الصرف (صادر)',
+        domain="[('type', 'in', ['bank', 'cash']), ('company_id', '=', company_id)]",
+        help='اليومية المحاسبية التي تُسجَّل فيها المدفوعات الصادرة (الاستردادات) عبر هذا المزود.',
+    )
+
     last_error = fields.Text('آخر خطأ', readonly=True)
 
+    # ── حقل محسوب لتحديد ما إذا كان المزود يدعم الدفع ─────────────────────
+    is_payment_capable = fields.Boolean(
+        'قادر على الدفع',
+        compute='_compute_is_payment_capable',
+        store=True,
+        help='True إذا كان نوع المزود يدعم عمليات الدفع.',
+    )
+
+    @api.depends('provider_type')
+    def _compute_is_payment_capable(self):
+        for rec in self:
+            rec.is_payment_capable = rec.provider_type in PAYMENT_PROVIDER_TYPES
+
+    @api.constrains('extra_headers')
+    def _check_extra_headers_json(self):
+        for rec in self:
+            if rec.extra_headers:
+                try:
+                    parsed = json.loads(rec.extra_headers)
+                    if not isinstance(parsed, dict):
+                        raise ValueError
+                except (ValueError, TypeError):
+                    raise models.ValidationError(
+                        _('حقل "Headers إضافية" يجب أن يكون JSON object صحيح.\n'
+                          'مثال: {"X-Custom-Header": "value"}')
+                    )
+
     def _build_headers(self):
+        """بناء headers HTTP بشكل ديناميكي حسب أسلوب المصادقة."""
         self.ensure_one()
         headers = {'Content-Type': 'application/json'}
-        if self.api_key:
+
+        if self.auth_header_style == 'bearer' and self.api_key:
             headers['Authorization'] = 'Bearer %s' % self.api_key
+        elif self.auth_header_style == 'basic' and self.api_key:
+            headers['Authorization'] = 'Basic %s' % self.api_key
+        elif self.auth_header_style == 'api_key_header' and self.api_key:
+            header_name = self.api_key_header_name or 'X-API-Key'
+            headers[header_name] = self.api_key
+        elif self.auth_header_style == 'hmac' and self.api_key:
+            # HMAC signature سيُحسب لاحقاً عند بناء الـ payload
+            headers['X-HMAC-Key-Id'] = self.api_key[:8] + '...'
+
+        # إضافة headers مخصصة إضافية
+        if self.extra_headers:
+            try:
+                extra = json.loads(self.extra_headers)
+                headers.update({k: str(v) for k, v in extra.items()})
+            except (ValueError, TypeError):
+                pass
+
         return headers
+
+    def _get_payment_journal(self, direction='inbound', company=None):
+        """إرجاع يومية الدفع المناسبة حسب الاتجاه."""
+        self.ensure_one()
+        company = company or self.company_id
+        env = self.with_company(company).env
+
+        if direction == 'inbound':
+            journal = self.inbound_journal_id
+            if not journal or journal.company_id != company:
+                # fallback: يومية التحصيل من الإعدادات
+                journal_id = int(
+                    env['ir.config_parameter'].sudo().get_param(
+                        'utility.collection_journal_id', 0) or 0
+                )
+                journal = env['account.journal'].sudo().browse(journal_id) if journal_id else False
+                if not journal or journal.company_id != company:
+                    journal = env['account.journal'].sudo().search([
+                        ('type', 'in', ['bank', 'cash']),
+                        ('company_id', '=', company.id),
+                    ], limit=1)
+            return journal
+
+        # outbound
+        journal = self.outbound_journal_id
+        if not journal or journal.company_id != company:
+            journal_id = int(
+                env['ir.config_parameter'].sudo().get_param(
+                    'utility.collection_journal_id', 0) or 0
+            )
+            journal = env['account.journal'].sudo().browse(journal_id) if journal_id else False
+            if not journal or journal.company_id != company:
+                journal = env['account.journal'].sudo().search([
+                    ('type', 'in', ['bank', 'cash']),
+                    ('company_id', '=', company.id),
+                ], limit=1)
+        return journal
+
+    def supports_direction(self, direction):
+        """هل يدعم المزود هذا الاتجاه من الدفع؟"""
+        self.ensure_one()
+        return self.payment_direction in (direction, 'both')
 
     def call_json(self, payload, event_type, record=None):
         self.ensure_one()

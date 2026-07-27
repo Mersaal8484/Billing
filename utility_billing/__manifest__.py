@@ -1,6 +1,6 @@
 {
     'name': 'Utility Billing',
-    'version': '16.0.2.2.0',
+    'version': '16.0.2.3.0',
     'category': 'Utility ERP',
     'summary': 'Postpaid Billing & Collections Engine (Sale Order Based)',
     'description': """
@@ -8,12 +8,12 @@ Enterprise Utility Billing Module
 ===================================
 Postpaid billing engine with meter reading management,
 billing cycles, sale order generation, penalty calculation,
-debt management, and collections.
+debt management, collections, and online payment gateway integration.
     """,
     'author': 'Utility ERP Platform',
     'website': 'https://www.utility-erp.com',
     'license': 'LGPL-3',
-    'depends': ['utility_core', 'utility_operations', 'account', 'sale', 'sale_management', 'sale_stock'],
+    'depends': ['utility_core', 'utility_operations', 'account', 'sale', 'sale_management', 'sale_stock', 'portal'],
     'data': [
         'security/ir.model.access.csv',
         'security/utility_billing_security.xml',
@@ -40,6 +40,8 @@ debt management, and collections.
         'views/utility_penalty_views.xml',
         'views/utility_penalty_type_views.xml',
         'views/utility_billing_settings_views.xml',
+        'views/utility_payment_gateway_views.xml',
+        'views/utility_portal_templates.xml',
     ],
     'demo': ['data/utility_demo.xml'],
     'installable': True,

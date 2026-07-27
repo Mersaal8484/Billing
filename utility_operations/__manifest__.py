@@ -22,6 +22,7 @@ Maintenance, Alarm, Work Order.
         'security/ir.model.access.csv',
         'security/utility_operations_security.xml',
         'data/utility_sequence.xml',
+        'data/utility_cron.xml',
         'views/utility_service_order_views.xml',
         'views/utility_installation_views.xml',
         'views/utility_inspection_views.xml',

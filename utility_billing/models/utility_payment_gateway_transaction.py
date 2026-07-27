@@ -16,7 +16,11 @@ class UtilityPaymentGatewayTransaction(models.Model):
     )
     provider_id = fields.Many2one(
         'utility.integration.provider', string='مزود الدفع', required=True,
-        domain=[('provider_type', '=', 'payment_gateway'), ('active', '=', True)])
+        domain=[('is_payment_capable', '=', True), ('active', '=', True)])
+    payment_direction = fields.Selection([
+        ('inbound', 'وارد (تحصيل من المشترك)'),
+        ('outbound', 'صادر (إرجاع/استرداد للمشترك)'),
+    ], string='اتجاه الدفع', default='inbound', required=True, index=True)
     sale_order_id = fields.Many2one('sale.order', string='الفاتورة', required=True, ondelete='restrict')
     customer_id = fields.Many2one('utility.customer', string='الحساب', related='sale_order_id.customer_id', store=True)
     partner_id = fields.Many2one('res.partner', string='المشترك', related='sale_order_id.partner_id', store=True)
@@ -36,6 +40,11 @@ class UtilityPaymentGatewayTransaction(models.Model):
     callback_payload = fields.Text('رد المزود')
     error_message = fields.Text('رسالة الخطأ')
 
+    @api.onchange('provider_id')
+    def _onchange_provider_id(self):
+        if self.provider_id and self.provider_id.payment_direction in ('inbound', 'outbound'):
+            self.payment_direction = self.provider_id.payment_direction
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
@@ -50,16 +59,22 @@ class UtilityPaymentGatewayTransaction(models.Model):
                 raise ValidationError(_('يمكن إرسال المعاملات المسودة فقط إلى مزود الدفع.'))
             if tx.amount <= 0:
                 raise ValidationError(_('مبلغ معاملة الدفع يجب أن يكون أكبر من صفر.'))
-            if tx.sale_order_id.bill_state in ('paid', 'cancelled'):
-                raise ValidationError(_('الفاتورة غير قابلة للدفع.'))
-            if tx.amount > tx.sale_order_id.balance_due:
-                raise ValidationError(_('مبلغ الدفع لا يمكن أن يتجاوز الرصيد المستحق.'))
+            if tx.payment_direction == 'inbound':
+                if tx.sale_order_id.bill_state in ('paid', 'cancelled'):
+                    raise ValidationError(_('الفاتورة غير قابلة للدفع.'))
+                if tx.amount > tx.sale_order_id.balance_due:
+                    raise ValidationError(_('مبلغ الدفع لا يمكن أن يتجاوز الرصيد المستحق.'))
             if tx.provider_id.company_id and tx.provider_id.company_id != tx.company_id:
                 raise ValidationError(_('مزود الدفع والفاتورة يجب أن يتبعا نفس الشركة.'))
+            if not tx.provider_id.supports_direction(tx.payment_direction):
+                raise ValidationError(_('مزود الدفع المختار (%s) لا يدعم اتجاه الدفع (%s).') % (
+                    tx.provider_id.name, tx.payment_direction
+                ))
             payload = {
                 'reference': tx.name,
                 'amount': tx.amount,
                 'currency': tx.currency_id.name,
+                'payment_direction': tx.payment_direction,
                 'bill': tx.sale_order_id.name,
                 'customer': tx.customer_id.customer_number if tx.customer_id else False,
                 'callback_token': tx.access_token,
@@ -72,7 +87,7 @@ class UtilityPaymentGatewayTransaction(models.Model):
             })
 
     def action_confirm_payment(self, provider_reference=False, callback_payload=False):
-        """Confirm a pending gateway transaction exactly once and post its payment."""
+        """Confirm a pending gateway transaction exactly once and post its payment (inbound or outbound)."""
         for tx in self:
             self.env.flush_all()
             self.env.cr.execute(
@@ -91,10 +106,16 @@ class UtilityPaymentGatewayTransaction(models.Model):
                 [order.id],
             )
             order.invalidate_cache(['bill_state', 'balance_due'])
-            if order.bill_state in ('paid', 'cancelled'):
-                raise ValidationError(_('الفاتورة غير قابلة للدفع.'))
-            if tx.amount <= 0 or tx.amount > order.balance_due:
-                raise ValidationError(_('مبلغ الدفع غير صالح أو يتجاوز الرصيد المستحق.'))
+
+            if tx.payment_direction == 'inbound':
+                if order.bill_state in ('paid', 'cancelled'):
+                    raise ValidationError(_('الفاتورة غير قابلة للدفع.'))
+                if tx.amount <= 0 or tx.amount > order.balance_due:
+                    raise ValidationError(_('مبلغ الدفع غير صالح أو يتجاوز الرصيد المستحق.'))
+            else:
+                if tx.amount <= 0:
+                    raise ValidationError(_('مبلغ الصرف يجب أن يكون أكبر من صفر.'))
+
             if tx.provider_id.company_id and tx.provider_id.company_id != tx.company_id:
                 raise ValidationError(_('مزود الدفع والفاتورة يجب أن يتبعا نفس الشركة.'))
 
@@ -110,29 +131,27 @@ class UtilityPaymentGatewayTransaction(models.Model):
 
             company = tx.company_id
             tx_company = tx.with_company(company)
-            journal_id = int(
-                tx_company.env['ir.config_parameter'].sudo().get_param(
-                    'utility.collection_journal_id', 0,
-                ) or 0
-            )
-            journal = tx_company.env['account.journal'].sudo().browse(journal_id) if journal_id else False
-            if journal and journal.company_id != company:
-                journal = False
-            if not journal or not journal.inbound_payment_method_line_ids:
-                journal = tx_company.env['account.journal'].sudo().search([
-                    ('type', '=', 'bank'),
-                    ('company_id', '=', company.id),
-                ], limit=1)
-            if not journal or not journal.inbound_payment_method_line_ids:
-                raise ValidationError(_('لم يتم العثور على يومية دفع واردة.'))
+
+            direction = tx.payment_direction or 'inbound'
+            journal = tx.provider_id._get_payment_journal(direction=direction, company=company)
+            if not journal:
+                raise ValidationError(_('لم يتم العثور على يومية دفع مناسبة للمعاملة.'))
+
+            if direction == 'inbound':
+                method_line = journal.inbound_payment_method_line_ids[:1]
+            else:
+                method_line = journal.outbound_payment_method_line_ids[:1]
+
+            if not method_line:
+                raise ValidationError(_('لم يتم العثور على طريقة دفع معتمدة في اليومية المختارة (%s).') % journal.display_name)
 
             payment = tx_company.env['account.payment'].sudo().create({
                 'partner_id': order.partner_id.id,
                 'amount': tx.amount,
-                'payment_type': 'inbound',
+                'payment_type': direction,  # 'inbound' or 'outbound'
                 'partner_type': 'customer',
                 'journal_id': journal.id,
-                'payment_method_line_id': journal.inbound_payment_method_line_ids[:1].id,
+                'payment_method_line_id': method_line.id,
                 'utility_sale_order_id': order.id,
                 'utility_payment_method': 'electronic',
                 'electronic_doc_no': provider_reference or tx.provider_reference or tx.name,

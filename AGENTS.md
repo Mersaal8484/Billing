@@ -2,7 +2,7 @@
 
 ## Project
 
-Odoo 16.0 ERP for electricity distribution companies. 7 addon modules under `utility_erp/`.
+Odoo 16.0 ERP for electricity distribution companies. 6 addon modules under `utility_erp/`.
 
 ## Module dependency order
 
@@ -10,11 +10,10 @@ Odoo 16.0 ERP for electricity distribution companies. 7 addon modules under `uti
 2. `utility_core` — master data: customers, accounts, meters, tariffs, 8-level NUTS hierarchy (region→area→zone→office→substation→feeder→transformer→route), subscriber categories, contract templates, formulas, settings, migration staging models, dashboard
 3. `utility_inventory` — inventory bridge: adds `product_id` and `lot_id` to meters (depends on stock & product)
 4. `utility_operations` — field ops: service orders, inspections, tamper cases, meter replacement, reading/financial settlements
-5. `utility_billing` — postpaid billing: meter readings, billing cycles, sale orders, penalties, recurring invoices, reading batches
+5. `utility_billing` — postpaid billing: meter readings, billing cycles, sale orders, penalties, recurring invoices, reading batches, payment gateway REST API (`/api/v1/utility/billing/*`), Odoo portal templates, AMI reading callback endpoint
 6. `utility_prepaid` — prepaid vending: STS tokens, sales, payments, cashier shifts, POS integration
-7. `utility_portal` — customer portal + REST API (depends on core + prepaid + billing)
 
-Install in that order. `utility_core` must always be first. `utility_migration` does not exist as a standalone module — migration staging models live inside `utility_core`.
+Install in that order. `utility_core` must always be first. `utility_migration` does not exist as a standalone module — migration staging models live inside `utility_core`. **`utility_portal` was removed** — its contents were merged into `utility_billing` (payment gateway model + REST API controllers + portal templates).
 
 ## Test commands
 

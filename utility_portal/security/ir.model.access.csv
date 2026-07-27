@@ -1,4 +1,0 @@
-id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_utility_portal_user,utility.portal.user,base.model_res_partner,base.group_portal,1,0,0,0
-access_utility_payment_gateway_transaction_admin,utility.payment.gateway.transaction.admin,model_utility_payment_gateway_transaction,utility_core.group_utility_admin,1,1,1,1
-access_utility_payment_gateway_transaction_auditor,utility.payment.gateway.transaction.auditor,model_utility_payment_gateway_transaction,utility_core.group_utility_auditor,1,0,0,0

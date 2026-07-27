@@ -69,6 +69,11 @@
                                 class="oe_stat_button" icon="fa-exclamation-triangle">
                             <field name="tamper_count" string="التلاعب" widget="statinfo"/>
                         </button>
+                        <button name="action_view_child_accounts" type="object"
+                                class="oe_stat_button" icon="fa-sitemap"
+                                attrs="{'invisible': [('is_master_account', '=', False)]}">
+                            <field name="child_account_count" string="الحسابات التابعة" widget="statinfo"/>
+                        </button>
                     </div>
                     <div class="oe_title">
                         <label for="customer_number" string="رقم المشترك / الحساب"/>
@@ -79,6 +84,8 @@
                             <field name="partner_id"/>
                             <field name="category_id" options="{'no_create': True}"/>
                             <field name="subscriber_id" options="{'no_create': True}"/>
+                            <field name="is_master_account"/>
+                            <field name="parent_account_id" attrs="{'invisible': [('is_master_account', '=', True)]}" options="{'no_create': True}"/>
                             <field name="payment_type" widget="badge" decoration-info="payment_type == 'prepaid'" decoration-success="payment_type == 'postpaid'"/>
                             <field name="active"/>
                             <field name="company_id" groups="base.group_multi_company"/>

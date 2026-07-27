@@ -29,5 +29,12 @@
             <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
             <field name="groups" eval="[(4, ref('utility_core.group_utility_billing_manager')), (4, ref('utility_core.group_utility_auditor'))]"/>
         </record>
+
+        <record id="rule_payment_gateway_transaction_company" model="ir.rule">
+            <field name="name">Payment Gateway Transaction Multi-Company Rule</field>
+            <field name="model_id" ref="model_utility_payment_gateway_transaction"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+            <field name="global" eval="True"/>
+        </record>
     </data>
 </odoo>

@@ -231,3 +231,44 @@ class UtilityServiceOrder(models.Model):
             if vals.get('order_number', _('جديد')) == _('جديد'):
                 vals['order_number'] = self.env['ir.sequence'].next_by_code('utility.service.order') or _('جديد')
         return super().create(vals_list)
+
+    @api.model
+    def cron_detect_zero_consumption_meters(self, batch_limit=500):
+        """الكشف التلقائي عن العدادات الخاملة أو المعطلة ذات الاستهلاك الصفري المتكرر.
+        تبحث الدالة عن العدادات النشطة التي كانت قراءتها أو استهلاكها 0 لآخر 3 قراءات
+        أو انقطعت قراءاتها، وتنشئ لها أمر تفتيش ميداني آلي."""
+        Reading = self.env['utility.reading'].sudo()
+        Meter = self.env['utility.meter'].sudo()
+
+        active_meters = Meter.search([
+            ('active', '=', True),
+            ('customer_id', '!=', False),
+            ('customer_id.state', '=', 'active'),
+        ], limit=batch_limit)
+
+        created_orders = self.env['utility.service.order']
+        for meter in active_meters:
+            open_inspection = self.search([
+                ('meter_id', '=', meter.id),
+                ('service_type', 'in', ('inspection', 'meter_test')),
+                ('state', 'in', ('draft', 'approved', 'scheduled', 'in_progress')),
+            ], limit=1)
+            if open_inspection:
+                continue
+
+            readings = Reading.search([
+                ('meter_id', '=', meter.id),
+                ('state', 'in', ('approved', 'billed')),
+            ], order='reading_date desc, id desc', limit=3)
+
+            if len(readings) >= 3 and all(r.consumption == 0.0 for r in readings):
+                order = self.create({
+                    'service_type': 'inspection',
+                    'priority': 'normal',
+                    'customer_id': meter.customer_id.id,
+                    'meter_id': meter.id,
+                    'description': _('تفتيش آلي: العداد يسجل استهلاكاً صفرياً مستمراً لآخر %d قراءات متتالية. يرجى الفحص الميداني للتأكد من سلامة العداد.') % len(readings),
+                    'state': 'draft',
+                })
+                created_orders |= order
+        return len(created_orders)

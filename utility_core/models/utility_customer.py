@@ -55,6 +55,33 @@ class UtilityCustomer(models.Model):
     meter_id = fields.Many2one('utility.meter', 'العداد', tracking=True)
     payment_type = fields.Selection(related='meter_id.payment_type', store=True, string='نظام الدفع (آجل/مسبق)', readonly=True)
 
+    # ── الحساب التجميعي (كبار المشتركين / الجهات الحكومية) ─────────────────
+    is_master_account = fields.Boolean(
+        'حساب تجميعي رئيسي',
+        help='حدد هذا الخيار إذا كان الحساب يجمع مديونيات وفواتير عدة فروع أو المرافق التابعة (مثل الجهات الحكومية أو الشركات الكبيرة).'
+    )
+    parent_account_id = fields.Many2one(
+        'utility.customer', string='الحساب الرئيسي / التجميعي',
+        domain="[('is_master_account', '=', True), ('id', '!=', id)]", index=True,
+    )
+    child_account_ids = fields.One2many('utility.customer', 'parent_account_id', string='الحسابات التابعة')
+    child_account_count = fields.Integer('عدد الحسابات التابعة', compute='_compute_child_account_count')
+
+    @api.depends('child_account_ids')
+    def _compute_child_account_count(self):
+        for rec in self:
+            rec.child_account_count = len(rec.child_account_ids)
+
+    def action_view_child_accounts(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('الحسابات التابعة'),
+            'res_model': 'utility.customer',
+            'domain': [('parent_account_id', '=', self.id)],
+            'views': [(False, 'tree'), (False, 'form')],
+        }
+
     # الرصيد المحاسبي (آجل) — من move lines محاسبية
     accounting_balance = fields.Monetary(
         'الرصيد المحاسبي', compute='_compute_accounting_balance',

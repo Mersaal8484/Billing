@@ -10,10 +10,10 @@ class AccountPayment(models.Model):
     utility_sale_order_id = fields.Many2one('sale.order', string='فاتورة الكهرباء', index=True)
     service_charge_id = fields.Many2one('utility.service.charge', string='رسم الخدمة', index=True, copy=False, check_company=True)
     utility_payment_method = fields.Selection([
-        ('cash', 'نقدي'),
-        ('bank', 'بنكي'),
-        ('electronic', 'إلكتروني'),
-    ], string='طريقة دفع الكهرباء')
+        ('cash', 'نقدي (تحصيل ميداني)'),
+        ('bank', 'بنكي (تحصيل ميداني / تحويل)'),
+        ('electronic', 'إلكتروني (بوابة دفع / محفظة)'),
+    ], string='طريقة دفع الكهرباء', default='cash')
     electronic_doc_no = fields.Char(string='رقم المستند الإلكتروني')
     is_invoice_verified = fields.Boolean(string='تم التحقق من الفاتورة')
     date_range_id = fields.Many2one(
@@ -24,6 +24,21 @@ class AccountPayment(models.Model):
     qr_code_value = fields.Char('بيانات QR', compute='_compute_utility_qr_code', readonly=True)
     qr_code_url = fields.Char('رابط QR', compute='_compute_utility_qr_code', readonly=True)
 
+    @api.onchange('utility_payment_method')
+    def _onchange_utility_payment_method(self):
+        """توجيه الدفع تلقائياً إلى يومية المتحصل الميداني عند التحصيل اليدوي (نقدي/بنكي)،
+        أو إلى اليومية الإلكترونية المعتمدة عند التحصيل عبر بوابات الدفع."""
+        if self.utility_payment_method in ('cash', 'bank'):
+            user_journal = self.env.user.collection_journal_id
+            if user_journal and user_journal.company_id == self.company_id:
+                self.journal_id = user_journal
+        elif self.utility_payment_method == 'electronic':
+            elec_journal = self.env['account.journal'].search([
+                ('company_id', '=', self.company_id.id),
+                ('type', '=', 'bank'),
+            ], limit=1)
+            if elec_journal:
+                self.journal_id = elec_journal
 
     @api.depends('name', 'amount', 'date', 'state', 'utility_sale_order_id', 'utility_sale_order_id.name', 'utility_sale_order_id.customer_id.customer_number', 'utility_sale_order_id.meter_id.meter_number', 'date_range_id.name')
     def _compute_utility_qr_code(self):
@@ -93,6 +108,14 @@ class AccountPayment(models.Model):
                         % order.date_range_id.display_name
                     )
                 vals['date_range_id'] = payment_period.id
+
+            # توجيه اليومية تلقائياً إذا كان الدفع يدوياً ولم تتحدد اليومية
+            payment_method = vals.get('utility_payment_method', 'cash')
+            if payment_method in ('cash', 'bank') and not vals.get('journal_id'):
+                user_journal = self.env.user.collection_journal_id
+                if user_journal:
+                    vals['journal_id'] = user_journal.id
+
         payments = super().create(vals_list)
         for payment, vals in zip(payments, vals_list):
             if vals.get('service_charge_id'):
@@ -124,6 +147,11 @@ class AccountPayment(models.Model):
             payment_period = self._get_payment_period_for_order(order)
             if payment_period:
                 res['date_range_id'] = payment_period.id
+
+        # تعيين طريقة الدفع الافتراضية واليومية الميدانية للمستخدم
+        if 'utility_payment_method' in fields_list and not res.get('utility_payment_method'):
+            res['utility_payment_method'] = 'cash'
+
         if 'journal_id' in fields_list and not res.get('journal_id'):
             if self.env.user.collection_journal_id:
                 res['journal_id'] = self.env.user.collection_journal_id.id

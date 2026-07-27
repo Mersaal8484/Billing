@@ -8,6 +8,7 @@
                 <field name="create_date"/>
                 <field name="name"/>
                 <field name="provider_id"/>
+                <field name="payment_direction" widget="badge" decoration-info="payment_direction == 'inbound'" decoration-warning="payment_direction == 'outbound'"/>
                 <field name="sale_order_id"/>
                 <field name="customer_id"/>
                 <field name="amount"/>
@@ -21,7 +22,7 @@
         <field name="name">utility.payment.gateway.transaction.form</field>
         <field name="model">utility.payment.gateway.transaction</field>
         <field name="arch" type="xml">
-            <form string="معاملة بوابة دفع">
+            <form string="معاملة دفع / استرداد">
                 <header>
                     <button name="action_mark_pending" type="object" string="إرسال للمزود" states="draft" class="btn-primary"/>
                     <button name="action_confirm_payment" type="object" string="تأكيد يدوي" states="pending" class="btn-secondary"/>
@@ -32,6 +33,7 @@
                         <group>
                             <field name="name"/>
                             <field name="provider_id"/>
+                            <field name="payment_direction"/>
                             <field name="sale_order_id"/>
                             <field name="customer_id"/>
                         </group>
@@ -56,10 +58,37 @@
         </field>
     </record>
 
+    <record id="view_utility_payment_gateway_transaction_search" model="ir.ui.view">
+        <field name="name">utility.payment.gateway.transaction.search</field>
+        <field name="model">utility.payment.gateway.transaction</field>
+        <field name="arch" type="xml">
+            <search string="بحث في معاملات الدفع والاصدارات">
+                <field name="name" string="المرجع"/>
+                <field name="customer_id" string="الحساب"/>
+                <field name="sale_order_id" string="الفاتورة"/>
+                <field name="provider_id" string="مزود الدفع"/>
+                <filter string="وارد (تحصيل)" name="inbound" domain="[('payment_direction', '=', 'inbound')]"/>
+                <filter string="صادر (استرداد)" name="outbound" domain="[('payment_direction', '=', 'outbound')]"/>
+                <separator/>
+                <filter string="مسودة" name="draft" domain="[('state', '=', 'draft')]"/>
+                <filter string="بانتظار التأكيد" name="pending" domain="[('state', '=', 'pending')]"/>
+                <filter string="مؤكدة" name="done" domain="[('state', '=', 'done')]"/>
+                <filter string="فاشلة" name="failed" domain="[('state', '=', 'failed')]"/>
+                <group expand="0" string="تجميع حسب">
+                    <filter string="اتجاه الدفع" name="group_direction" context="{'group_by': 'payment_direction'}"/>
+                    <filter string="الحالة" name="group_state" context="{'group_by': 'state'}"/>
+                    <filter string="مزود الدفع" name="group_provider" context="{'group_by': 'provider_id'}"/>
+                    <filter string="تاريخ الإنشاء" name="group_date" context="{'group_by': 'create_date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
     <record id="action_utility_payment_gateway_transaction" model="ir.actions.act_window">
         <field name="name">معاملات بوابة الدفع</field>
         <field name="res_model">utility.payment.gateway.transaction</field>
         <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_utility_payment_gateway_transaction_search"/>
     </record>
 
     <menuitem id="menu_utility_payment_gateway_transaction" name="معاملات بوابة الدفع" parent="utility_core.menu_utility_integrations" sequence="30" action="action_utility_payment_gateway_transaction" groups="utility_core.group_utility_admin"/>

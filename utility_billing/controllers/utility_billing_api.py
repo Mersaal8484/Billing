@@ -6,7 +6,7 @@ import logging
 _logger = logging.getLogger(__name__)
 
 
-class UtilityAPI(http.Controller):
+class UtilityBillingAPI(http.Controller):
 
     def _get_authorized_accounts(self):
         """إرجاع recordset لحسابات الكهرباء المسموح للمستخدم الحالي الوصول إليها.
@@ -97,6 +97,10 @@ class UtilityAPI(http.Controller):
         order_id = params.get('order_id')
         amount = params.get('amount')
         provider_id = params.get('provider_id')
+        direction = params.get('payment_direction', 'inbound')
+        if direction not in ('inbound', 'outbound'):
+            return {'error': 'payment_direction must be "inbound" or "outbound"'}
+
         if not order_id or not amount:
             return {'error': 'order_id and amount are required'}
         order = self._authorize_order(order_id)
@@ -108,22 +112,34 @@ class UtilityAPI(http.Controller):
             return {'error': 'amount must be a positive number'}
         if amount <= 0:
             return {'error': 'amount must be a positive number'}
-        if amount > order.balance_due:
-            return {'error': 'amount cannot exceed the outstanding balance'}
-        if order.bill_state in ('paid', 'cancelled'):
-            return {'error': 'Bill is not payable'}
+
+        if direction == 'inbound':
+            if amount > order.balance_due:
+                return {'error': 'amount cannot exceed the outstanding balance'}
+            if order.bill_state in ('paid', 'cancelled'):
+                return {'error': 'Bill is not payable'}
+
         Provider = request.env['utility.integration.provider'].sudo()
-        provider = Provider.browse(int(provider_id)) if provider_id else Provider.search([
-            ('provider_type', '=', 'payment_gateway'),
-            ('active', '=', True),
-            ('company_id', '=', order.company_id.id),
-        ], limit=1)
-        if not provider or provider.provider_type != 'payment_gateway' or not provider.active:
-            return {'error': 'No active payment gateway provider configured'}
+        if provider_id:
+            provider = Provider.browse(int(provider_id))
+        else:
+            provider = Provider.search([
+                ('is_payment_capable', '=', True),
+                ('payment_direction', 'in', (direction, 'both')),
+                ('active', '=', True),
+                ('company_id', '=', order.company_id.id),
+            ], limit=1)
+
+        if not provider or not provider.active or not provider.is_payment_capable:
+            return {'error': 'No active payment provider configured for the requested operation'}
+        if not provider.supports_direction(direction):
+            return {'error': 'Provider %s does not support payment direction: %s' % (provider.name, direction)}
         if provider.company_id and provider.company_id != order.company_id:
             return {'error': 'Payment provider is not available for the bill company'}
+
         tx = request.env['utility.payment.gateway.transaction'].sudo().create({
             'provider_id': provider.id,
+            'payment_direction': direction,
             'sale_order_id': order.id,
             'amount': amount,
         })
@@ -131,6 +147,7 @@ class UtilityAPI(http.Controller):
         return {
             'transaction_id': tx.id,
             'reference': tx.name,
+            'payment_direction': tx.payment_direction,
             'state': tx.state,
             'amount': tx.amount,
         }
@@ -233,9 +250,10 @@ class UtilityAPI(http.Controller):
             'reading_value': reading_value,
         }, 'ami.reading.callback', record=reading)
         return {'success': True, 'reading_id': reading.id, 'reading_number': reading.reading_id}
+
     @http.route('/api/v1/utility/reports/daily', type='json', auth='user', methods=['POST'])
     def reports_daily(self, **kwargs):
-        from datetime import date, datetime as dt
+        from datetime import date
         params = request.jsonrequest
         report_date = params.get('date', date.today().isoformat())
         region_id = params.get('region_id')

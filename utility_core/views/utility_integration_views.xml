@@ -23,20 +23,39 @@
             <form string="مزود تكامل">
                 <sheet>
                     <group>
-                        <group>
+                        <group string="معلومات المزود">
                             <field name="name"/>
                             <field name="provider_type"/>
+                            <field name="is_payment_capable" invisible="1"/>
+                            <field name="payment_direction" attrs="{'invisible': [('is_payment_capable', '=', False)], 'required': [('is_payment_capable', '=', True)]}"/>
                             <field name="mode"/>
                             <field name="active"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
-                        <group>
+                        <group string="إعدادات الاتصال والمصادقة">
                             <field name="endpoint_url" attrs="{'required': [('mode','=','http_json')]}"/>
-                            <field name="api_key" password="True"/>
+                            <field name="auth_header_style" attrs="{'invisible': [('mode','!=','http_json')]}"/>
+                            <field name="api_key_header_name" attrs="{'invisible': ['|', ('mode','!=','http_json'), ('auth_header_style','!=','api_key_header')]}"/>
+                            <field name="api_key" password="True" attrs="{'invisible': ['|', ('mode','!=','http_json'), ('auth_header_style','=','none')]}"/>
                             <field name="webhook_secret" password="True"/>
                             <field name="timeout"/>
                         </group>
                     </group>
+                    <notebook>
+                        <page string="إعدادات اليوميات الحسابية" attrs="{'invisible': [('is_payment_capable', '=', False)]}">
+                            <group>
+                                <group string="يوميات التحصيل (وارد)">
+                                    <field name="inbound_journal_id" attrs="{'invisible': [('payment_direction', '=', 'outbound')]}"/>
+                                </group>
+                                <group string="يوميات الصرف / الإرجاع (صادر)">
+                                    <field name="outbound_journal_id" attrs="{'invisible': [('payment_direction', '=', 'inbound')]}"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Headers إضافية (JSON)" attrs="{'invisible': [('mode','!=','http_json')]}">
+                            <field name="extra_headers" placeholder='{"X-Custom-Header": "value", "Accept-Language": "ar"}'/>
+                        </page>
+                    </notebook>
                     <group string="آخر خطأ" attrs="{'invisible': [('last_error', '=', False)]}">
                         <field name="last_error" nolabel="1" readonly="1"/>
                     </group>
