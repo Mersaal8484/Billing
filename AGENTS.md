@@ -36,7 +36,20 @@ odoo-bin -d <db> -i <module> --test-enable --stop-after-init
 - **Meter reading state machine**: `draft → under_review → approved → billed` (not Odoo default `draft→validated→billed`). Rejection returns to `draft`.
 - **8-level NUTS hierarchy** — uses flat `parent_id` fields (no `parent_store`/`parent_path` like legacy PEC system did).
 - **Dynamic billing formulas** — `utility.formula` model executes Python via `safe_eval()`. Variables: `consumption`, `previous_reading`, `current_reading`, `tariff`, `account`, `category`, `line`, `result`, `name`.
-- **Security groups** are flat (all imply `group_utility_admin`). Not a proper hierarchy — a known issue from the gap analysis.
+- **Security groups** follow a proper hierarchical implication chain (not flat). The hierarchy is:
+  ```
+  group_utility_readonly
+  ├── group_utility_cashier
+  ├── group_utility_collector
+  ├── group_utility_technician
+  │   └── group_utility_field_inspector
+  ├── group_utility_auditor
+  ├── group_utility_supervisor (implies: cashier, collector, technician)
+  │   └── group_utility_billing_manager
+  │       └── group_utility_revenue_manager
+  └── group_utility_admin (implies: revenue_manager, auditor, field_inspector)
+  ```
+  Additionally, `base.group_system` and `base.group_erp_manager` imply `group_utility_admin`. The `utility_prepaid` module adds 8 more specialized prepaid groups.
 - **Arabic UI** — model descriptions, field strings, menu labels, and view content are in Arabic (using `translate=True` on many fields).
 - **Config settings** live in `utility_core/models/utility_settings.py` as `res.config.settings` inherit with `config_parameter` keys (`utility.*`).
 - **Communication & Notifications** — Do NOT use Odoo's standard email functionality, as there is no mail server configured. All customer notifications must be routed through SMS or a local WhatsApp provider. The `mail` module IS used internally for `mail.thread` chatter and `mail.activity.mixin` tracking on backend models.

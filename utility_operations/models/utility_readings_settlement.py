@@ -14,6 +14,9 @@ class UtilityReadingSettlement(models.Model):
     _order = 'adjustment_date desc'
 
     name = fields.Char('Settlement Number', default=lambda self: _('New'), readonly=True)
+    company_id = fields.Many2one(
+        'res.company', string='الشركة', required=True, index=True,
+        default=lambda self: self.env.company)
     reading_id = fields.Many2one('utility.reading', 'Target Reading', required=True)
     meter_id = fields.Many2one('utility.meter', related='reading_id.meter_id', store=True)
     account_id = fields.Many2one('utility.customer', related='reading_id.account_id', store=True)
@@ -79,6 +82,10 @@ class UtilityReadingSettlement(models.Model):
         for vals in vals_list:
             if vals.get('name', _('New')) == _('New'):
                 vals['name'] = self.env['ir.sequence'].next_by_code('utility.reading.settlement') or _('New')
+            if not vals.get('company_id') and vals.get('reading_id'):
+                reading = self.env['utility.reading'].browse(vals['reading_id'])
+                if reading.meter_id:
+                    vals['company_id'] = reading.meter_id.company_id.id or self.env.company.id
         return super().create(vals_list)
 
     def action_apply_settlement(self):

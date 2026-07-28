@@ -66,11 +66,35 @@ class UtilityCustomer(models.Model):
     )
     child_account_ids = fields.One2many('utility.customer', 'parent_account_id', string='الحسابات التابعة')
     child_account_count = fields.Integer('عدد الحسابات التابعة', compute='_compute_child_account_count')
+    aggregate_balance = fields.Monetary(
+        'إجمالي مديونية الحسابات التابعة', compute='_compute_aggregate_balance',
+        currency_field='company_currency_id',
+        help='إجمالي المديونيات المستحقة لجميع الحسابات التابعة للحساب التجميعي.')
+    aggregate_overdue_count = fields.Integer(
+        'فواتير متأخرة (الحسابات التابعة)', compute='_compute_aggregate_balance',
+        help='عدد الفواتير المتأخرة لجميع الحسابات التابعة.')
 
     @api.depends('child_account_ids')
     def _compute_child_account_count(self):
         for rec in self:
             rec.child_account_count = len(rec.child_account_ids)
+
+    @api.depends('child_account_ids.accounting_balance', 'child_account_ids.invoice_count')
+    def _compute_aggregate_balance(self):
+        for rec in self:
+            if rec.is_master_account and rec.child_account_ids:
+                rec.aggregate_balance = sum(child.accounting_balance for child in rec.child_account_ids)
+                So = self.env.get('sale.order')
+                if So is not None:
+                    rec.aggregate_overdue_count = So.sudo().search_count([
+                        ('customer_id', 'in', rec.child_account_ids.ids),
+                        ('bill_state', '=', 'overdue'),
+                    ])
+                else:
+                    rec.aggregate_overdue_count = 0
+            else:
+                rec.aggregate_balance = 0.0
+                rec.aggregate_overdue_count = 0
 
     def action_view_child_accounts(self):
         self.ensure_one()
@@ -79,6 +103,33 @@ class UtilityCustomer(models.Model):
             'name': _('الحسابات التابعة'),
             'res_model': 'utility.customer',
             'domain': [('parent_account_id', '=', self.id)],
+            'views': [(False, 'tree'), (False, 'form')],
+        }
+
+    def action_view_child_bills(self):
+        """عرض فواتير جميع الحسابات التابعة للحساب التجميعي."""
+        self.ensure_one()
+        child_ids = self.child_account_ids.ids if self.is_master_account else [self.id]
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('فواتير الحسابات التابعة'),
+            'res_model': 'sale.order',
+            'domain': [('customer_id', 'in', child_ids)],
+            'views': [(False, 'tree'), (False, 'form')],
+        }
+
+    def action_view_child_overdue_bills(self):
+        """عرض الفواتير المتأخرة للحسابات التابعة."""
+        self.ensure_one()
+        child_ids = self.child_account_ids.ids if self.is_master_account else [self.id]
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('فواتير متأخرة - الحسابات التابعة'),
+            'res_model': 'sale.order',
+            'domain': [
+                ('customer_id', 'in', child_ids),
+                ('bill_state', '=', 'overdue'),
+            ],
             'views': [(False, 'tree'), (False, 'form')],
         }
 

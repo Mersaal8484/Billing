@@ -74,6 +74,16 @@
                                 attrs="{'invisible': [('is_master_account', '=', False)]}">
                             <field name="child_account_count" string="الحسابات التابعة" widget="statinfo"/>
                         </button>
+                        <button name="action_view_child_bills" type="object"
+                                class="oe_stat_button" icon="fa-file-text-o"
+                                attrs="{'invisible': [('is_master_account', '=', False)]}">
+                            <field name="aggregate_balance" string="إجمالي المديونية" widget="statinfo"/>
+                        </button>
+                        <button name="action_view_child_overdue_bills" type="object"
+                                class="oe_stat_button" icon="fa-exclamation-circle"
+                                attrs="{'invisible': ['|', ('is_master_account', '=', False), ('aggregate_overdue_count', '=', 0)]}">
+                            <field name="aggregate_overdue_count" string="متأخرات" widget="statinfo"/>
+                        </button>
                     </div>
                     <div class="oe_title">
                         <label for="customer_number" string="رقم المشترك / الحساب"/>
