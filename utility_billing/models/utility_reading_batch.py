@@ -1,3 +1,4 @@
+import base64
 import json
 import logging
 import os
@@ -94,7 +95,6 @@ class UtilityReadingBatch(models.Model):
 
             # حساب عدد القراءات من الملف
             try:
-                import base64
                 json_data = json.loads(base64.b64decode(batch.data_file))
                 readings_data = json_data.get('readings', [])
                 batch.write({
@@ -137,7 +137,6 @@ class UtilityReadingBatch(models.Model):
 
         for batch in batches:
             try:
-                import base64
                 json_data = json.loads(base64.b64decode(batch.data_file))
             except Exception as e:
                 batch.write({

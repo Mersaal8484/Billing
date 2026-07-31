@@ -58,9 +58,24 @@ class UtilityFormula(models.Model):
     @api.constrains('code')
     def _validate_formula_syntax(self):
         """تحقق من صحة صياغة كود Python قبل الحفظ."""
+        _DANGEROUS_PATTERNS = (
+            'while True', 'while 1', 'for ever', '__import__', 'exec(', 'eval(',
+            'compile(', 'globals()', 'locals()', 'getattr(', 'setattr(',
+            'delattr(', 'os.', 'sys.', 'subprocess', 'open(', 'import ',
+        )
         for record in self:
             if not record.code or not record.code.strip():
                 raise ValidationError('كود المعادلة لا يمكن أن يكون فارغاً.')
+            if len(record.code) > 5000:
+                raise ValidationError(
+                    'كود المعادلة "%s" يتجاوز الحد المسموح (5000 حرف).' % record.name
+                )
+            code_lower = record.code.lower()
+            for pattern in _DANGEROUS_PATTERNS:
+                if pattern.lower() in code_lower:
+                    raise ValidationError(
+                        'كود المعادلة "%s" يحتوي على نمط محظور: "%s"' % (record.name, pattern)
+                    )
             try:
                 compile(record.code, '<formula:%s>' % record.name, 'exec')
             except SyntaxError as e:

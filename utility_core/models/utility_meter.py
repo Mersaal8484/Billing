@@ -79,9 +79,9 @@ class UtilityMeter(models.Model):
     last_read_date = fields.Datetime('تاريخ آخر قراءة')
     last_reading_value = fields.Float('قيمة آخر قراءة', digits=(12, 3))
     multiplier = fields.Float('معامل الضرب', default=1.0)
-    qr_code_value = fields.Char('بيانات QR', compute='_compute_qr_code', store=True, readonly=True)
-    qr_code_url = fields.Char('رابط QR', compute='_compute_qr_code', store=True, readonly=True)
-    qr_code_image = fields.Binary('صورة QR', compute='_compute_qr_code', store=True, attachment=False)
+    qr_code_value = fields.Char('بيانات QR', compute='_compute_qr_code', readonly=True)
+    qr_code_url = fields.Char('رابط QR', compute='_compute_qr_code', readonly=True)
+    qr_code_image = fields.Binary('صورة QR', compute='_compute_qr_code', readonly=True, attachment=False)
 
     # خصائص الربط
     is_coupling_meter = fields.Boolean('عداد ربط رئيسي', default=False, help='يُشير إذا كان هذا العداد هو عداد ربط يقرأ إجمالي طاقة الفيدر أو المحطة')

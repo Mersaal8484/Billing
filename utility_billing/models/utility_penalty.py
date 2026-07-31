@@ -28,7 +28,6 @@ class UtilityPenalty(models.Model):
     partner_id = fields.Many2one('res.partner', related='customer_id.partner_id', store=True)
     region_id = fields.Many2one(related='partner_id.region_id', store=True, string='المنطقة')
     area_id = fields.Many2one(related='partner_id.area_id', store=True, string='المنطقة الفرعية')
-    account_id = fields.Many2one('utility.customer', 'الحساب', related='customer_id', store=True)
     currency_id = fields.Many2one(
         'res.currency',
         related='sale_order_id.currency_id',
@@ -146,42 +145,59 @@ class UtilityPenalty(models.Model):
             ('balance_due', '>', 0),
         ], limit=batch_size)
 
-        for order in overdue_orders:
-            # منع تكرار الغرامة في نفس اليوم
-            already_today = self.search([
-                ('sale_order_id', '=', order.id),
-                ('calculated_date', '=', fields.Date.today()),
+        if not overdue_orders:
+            return
+
+        order_ids = overdue_orders.ids
+        today = fields.Date.today()
+
+        already_penalized = {
+            p['sale_order_id'][0]
+            for p in self.search_read([
+                ('sale_order_id', 'in', order_ids),
+                ('calculated_date', '=', today),
                 ('penalty_type_id', '=', penalty_type.id),
-            ], limit=1)
-            if already_today:
+            ], fields=['sale_order_id'])
+        }
+
+        existing_penalty_data = self.read_group([
+            ('sale_order_id', 'in', order_ids),
+            ('penalty_type_id', '=', penalty_type.id),
+            ('state', 'in', ['calculated', 'applied']),
+        ], ['sale_order_id'], ['amount:sum'])
+        accumulated_map = {
+            item['sale_order_id'][0]: item['amount_sum']
+            for item in existing_penalty_data
+        }
+
+        order_map = {o.id: o for o in overdue_orders}
+        penalties_to_create = []
+
+        for order_id in order_ids:
+            if order_id in already_penalized:
                 continue
 
-            # FIX-7: التحقق من الحد الأقصى للغرامات المتراكمة
-            existing_penalties = self.search([
-                ('sale_order_id', '=', order.id),
-                ('penalty_type_id', '=', penalty_type.id),
-                ('state', 'in', ['calculated', 'applied']),
-            ])
-            total_accumulated = sum(existing_penalties.mapped('amount'))
-            original_amount = order.amount_total  # مبلغ الفاتورة الأصلي كمرجع
+            order = order_map[order_id]
+            total_accumulated = accumulated_map.get(order_id, 0.0)
+            original_amount = order.amount_total
             max_allowed = original_amount * (max_penalty_pct / 100.0)
 
             if total_accumulated >= max_allowed:
-                # تجاوزنا الحد الأقصى — لا تُنشئ غرامة جديدة
                 continue
 
             amount = order.balance_due * (penalty_percentage / 100.0)
-            # لا تتجاوز المبلغ المتبقي من الحد الأقصى
             amount = min(amount, max_allowed - total_accumulated)
 
             if amount > 0:
-                self.sudo().create({
-                    'sale_order_id': order.id,
+                penalties_to_create.append({
+                    'sale_order_id': order_id,
                     'customer_id': order.customer_id.id,
-                    'account_id': order.customer_id.id,
                     'penalty_type_id': penalty_type.id,
                     'amount': amount,
-                    'calculated_date': fields.Date.today(),
-                    'reason': f'غرامة سداد الفاتورة رقم {order.name}',
+                    'calculated_date': today,
+                    'reason': 'غرامة سداد الفاتورة رقم %s' % order.name,
                     'state': 'calculated',
                 })
+
+        if penalties_to_create:
+            self.sudo().create(penalties_to_create)

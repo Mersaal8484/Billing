@@ -84,10 +84,8 @@ class UtilityContractTemplate(models.Model):
     fixed_charge = fields.Monetary(
         string='رسم ثابت (مرادف)',
         related='service_charge',
-        store=True,
-        readonly=False,
         currency_field='currency_id',
-        help='هذا الحقل مرادف لـ service_charge. تم الاحتفاظ به للتوافق مع الإصدارات السابقة.'
+        help='حقل مرادف لـ service_charge — للقراءة فقط. سيتم إزالته في الإصدارات القادمة.'
     )
     min_charge = fields.Monetary('الحد الأدنى للفوترة', default=0.0, currency_field='currency_id')
     max_charge = fields.Monetary('الحد الأقصى للفوترة', default=0.0, currency_field='currency_id')

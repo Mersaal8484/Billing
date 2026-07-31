@@ -33,7 +33,6 @@
                     <group>
                         <group string="بيانات المشترك">
                             <field name="customer_id"/>
-                            <field name="account_id"/>
                             <field name="sale_order_id"/>
                         </group>
                         <group string="التفاصيل المالية">

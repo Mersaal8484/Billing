@@ -102,6 +102,10 @@ class UtilityReading(models.Model):
         """Backfill stable accounts and legacy opening-reading purposes on upgrade."""
         self.env.flush_all()
         self.env.cr.execute("""
+            CREATE INDEX IF NOT EXISTS utility_reading_meter_date_idx
+            ON utility_reading (meter_id, reading_date DESC)
+        """)
+        self.env.cr.execute("""
             UPDATE utility_reading reading
                SET account_id = meter.customer_id
               FROM utility_meter meter

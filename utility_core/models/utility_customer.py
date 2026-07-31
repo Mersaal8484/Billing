@@ -84,9 +84,9 @@ class UtilityCustomer(models.Model):
         for rec in self:
             if rec.is_master_account and rec.child_account_ids:
                 rec.aggregate_balance = sum(child.accounting_balance for child in rec.child_account_ids)
-                So = self.env.get('sale.order')
-                if So is not None:
-                    rec.aggregate_overdue_count = So.sudo().search_count([
+                SaleOrder = self.env.get('sale.order')
+                if SaleOrder is not None:
+                    rec.aggregate_overdue_count = SaleOrder.sudo().search_count([
                         ('customer_id', 'in', rec.child_account_ids.ids),
                         ('bill_state', '=', 'overdue'),
                     ])

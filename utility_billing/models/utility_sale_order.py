@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date
 from urllib.parse import quote
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
@@ -28,14 +28,12 @@ class UtilitySaleOrder(models.Model):
     reading_component_count = fields.Integer(
         'عدد مقاطع القراءة', compute='_compute_reading_component_count')
     available_billing_period_ids = fields.Many2many('date.range', compute='_compute_available_billing_period_ids')
-    date_range_id = fields.Many2one('date.range', 'فترة الفوترة', index=True, required=True)
+    date_range_id = fields.Many2one('date.range', 'فترة الفاتورة', index=True, required=True)
     route_id = fields.Many2one('utility.route', related='customer_id.route_id', store=True, string='خط السير', index=True)
 
     meter_image = fields.Binary(related='reading_id.meter_image', string='صورة العداد', readonly=False)
     reading_reviewer = fields.Many2one(related='reading_id.reviewer_id', string='مراجع القراءة')
     attachment_id = fields.Many2one('ir.attachment', string='ملف صورة القراءة الرسمي')
-
-
 
     transformer_reading_id = fields.Many2one('utility.reading', string='قراءة المحول/الخلية المرتبطة', compute='_compute_transformer_reading', store=True)
 
@@ -55,7 +53,7 @@ class UtilitySaleOrder(models.Model):
     amount_discount = fields.Monetary('الخصومات', currency_field='currency_id')
     amount_local_fee = fields.Monetary('الرسوم المحلية', currency_field='currency_id')
     amount_penalty = fields.Monetary('الغرامات', compute='_compute_amount_penalty', store=True, currency_field='currency_id')
-    penalty_ids = fields.One2many('utility.penalty', 'sale_order_id', string='الغرامات')
+    penalty_ids = fields.One2many('utility.penalty', 'sale_order_id', string='سجل الغرامات')
     utility_move_ids = fields.One2many(
         'account.move', 'utility_sale_order_id', string='فواتير الكهرباء المحاسبية')
 
@@ -63,7 +61,6 @@ class UtilitySaleOrder(models.Model):
     qr_code_url = fields.Char('رابط QR', compute='_compute_qr_code', readonly=True)
     disconnection_order_id = fields.Many2one('utility.service.order', string='أمر الفصل', readonly=True, copy=False)
     reconnection_order_id = fields.Many2one('utility.service.order', string='أمر إعادة الخدمة', readonly=True, copy=False)
-
 
     amount_paid = fields.Monetary('المدفوع', compute='_compute_payment', store=True, currency_field='currency_id')
     balance_due = fields.Monetary('المتبقي', compute='_compute_payment', store=True, index=True, currency_field='currency_id')
@@ -116,7 +113,6 @@ class UtilitySaleOrder(models.Model):
 
     @api.constrains('customer_id', 'date_range_id', 'reading_id', 'period_start', 'period_end')
     def _check_billing_period_matches_customer(self):
-        """Reject bills whose reading period conflicts with customer cadence."""
         for order in self.filtered(lambda item: item.customer_id and item.date_range_id):
             expected = order.customer_id._get_effective_billing_period()
             period = order.date_range_id
@@ -159,6 +155,7 @@ class UtilitySaleOrder(models.Model):
             ])
             order.qr_code_value = payload
             order.qr_code_url = '/report/barcode/?barcode_type=QR&value=%s' % quote(payload)
+
     @api.model
     def _get_default_type(self):
         return self.env['sale.order.type'].search([], limit=1)
@@ -174,7 +171,6 @@ class UtilitySaleOrder(models.Model):
 
     @api.depends('partner_id')
     def _compute_previous_balance(self):
-        """Snapshot the customer's receivable balance before this bill is issued."""
         for order in self:
             order.previous_balance = order.partner_id.credit if order.partner_id else 0.0
 
@@ -260,7 +256,6 @@ class UtilitySaleOrder(models.Model):
         return super(UtilitySaleOrder, self).create(vals_list)
 
     def action_confirm(self):
-        # 1. Prepare bulk contract creation for lines with is_contract
         contracts_to_create = []
         lines_mapping = []
         for rec in self:
@@ -273,13 +268,10 @@ class UtilitySaleOrder(models.Model):
                 })
                 lines_mapping.append(line)
 
-        # 2. Execute Bulk Operation
         if contracts_to_create:
             contracts = self.env['account.analytic.account'].create(contracts_to_create)
-            # Map created contracts back to their lines
             for line, contract in zip(lines_mapping, contracts):
                 line.contract_id = contract.id
-            # Trigger recurring invoicing if available
             if hasattr(contracts, 'recurring_create_invoice'):
                 contracts.recurring_create_invoice()
 
@@ -310,180 +302,6 @@ class UtilitySaleOrder(models.Model):
             subject=_('إصدار فاتورة كهرباء'),
         )
 
-    def _get_or_create_collector_cash_account(self, user, company):
-        """Return the user's dedicated cash account without code collisions."""
-        account_model = self.env['account.account']
-        account_name = _('حساب صندوق - %s') % user.name
-        account = account_model.search([
-            ('name', '=', account_name),
-            ('company_id', '=', company.id),
-        ], limit=1)
-        if account:
-            return account
-
-        base_code = '1019%s' % str(user.id).zfill(4)
-        used_codes = set(account_model.search([
-            ('company_id', '=', company.id),
-            ('code', '=like', '%s%%' % base_code),
-        ]).mapped('code'))
-        account_code = base_code
-        suffix = 1
-        while account_code in used_codes:
-            account_code = '%s%s' % (base_code, suffix)
-            suffix += 1
-        return account_model.create({
-            'name': account_name,
-            'code': account_code,
-            'account_type': 'asset_cash',
-            'company_id': company.id,
-        })
-
-    def _get_or_create_outstanding_receipts_account(self, company):
-        """Return a dedicated outstanding receipts account with a safe code."""
-        account_model = self.env['account.account']
-        account_name = _('حساب الإيصالات والدفعات المستحقة')
-        account = account_model.search([
-            ('company_id', '=', company.id),
-            ('name', '=', account_name),
-            ('account_type', 'in', ('asset_current', 'asset_cash')),
-        ], limit=1)
-        if account:
-            return account
-        base_code = '101200'
-        used_codes = set(account_model.search([
-            ('company_id', '=', company.id),
-            ('code', '=like', '%s%%' % base_code),
-        ]).mapped('code'))
-        account_code = base_code
-        suffix = 1
-        while account_code in used_codes:
-            account_code = '%s%s' % (base_code, suffix)
-            suffix += 1
-        return account_model.create({
-            'name': account_name,
-            'code': account_code,
-            'account_type': 'asset_current',
-            'company_id': company.id,
-        })
-
-    def _get_unique_collector_journal_code(self, user, company):
-        """Build a unique five-character journal code for a user-owned journal."""
-        journal_model = self.env['account.journal']
-        base_code = 'U%s' % str(user.id).zfill(3)[-4:]
-        used_codes = set(journal_model.search([
-            ('company_id', '=', company.id),
-            ('code', '=like', 'U%'),
-        ]).mapped('code'))
-        if base_code not in used_codes:
-            return base_code
-        alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-        prefix = base_code[:4]
-        for suffix in alphabet:
-            candidate = '%s%s' % (prefix, suffix)
-            if candidate not in used_codes:
-                return candidate
-        raise ValidationError(_(
-            'تعذر توليد رمز فريد ليومية تحصيل المستخدم %s.') % user.name)
-
-    def action_register_utility_payment(self):
-        """Open payment creation wizard pre-filled with customer bill details and collector's dedicated cash journal."""
-        self.ensure_one()
-        current_user = self.env.user
-        journal = current_user.collection_journal_id
-        if journal and journal.company_id != self.company_id:
-            journal = False
-
-        if not journal:
-            journal_name = _('يومية تحصيل - %s') % current_user.name
-            journal = self.env['account.journal'].search([
-                ('company_id', '=', self.company_id.id),
-                ('type', '=', 'cash'),
-                ('name', '=', journal_name),
-            ], limit=1)
-            if not journal:
-                cash_account = self._get_or_create_collector_cash_account(
-                    current_user, self.company_id)
-                journal = self.env['account.journal'].create({
-                    'name': journal_name,
-                    'code': self._get_unique_collector_journal_code(
-                        current_user, self.company_id),
-                    'type': 'cash',
-                    'company_id': self.company_id.id,
-                    'default_account_id': cash_account.id,
-                })
-            current_user.sudo().write({'collection_journal_id': journal.id})
-        if journal:
-            company = journal.company_id
-            if not company.account_journal_payment_debit_account_id or not company.account_journal_payment_credit_account_id:
-                outstanding_acc = self._get_or_create_outstanding_receipts_account(
-                    company)
-                c_vals = {}
-                if not company.account_journal_payment_debit_account_id:
-                    c_vals['account_journal_payment_debit_account_id'] = outstanding_acc.id
-                if not company.account_journal_payment_credit_account_id:
-                    c_vals['account_journal_payment_credit_account_id'] = outstanding_acc.id
-                if c_vals:
-                    company.sudo().write(c_vals)
-
-            j_vals = {}
-            cash_acc = journal.default_account_id
-            expected_account_name = _('حساب صندوق - %s') % current_user.name
-            if not cash_acc or cash_acc.name != expected_account_name:
-                cash_acc = self._get_or_create_collector_cash_account(
-                    current_user, company)
-                j_vals['default_account_id'] = cash_acc.id
-
-            LineModel = self.env['account.payment.method.line']
-            acc_field = 'payment_account_id' if hasattr(LineModel, 'payment_account_id') else ('outstanding_account_id' if hasattr(LineModel, 'outstanding_account_id') else False)
-            target_out_acc = company.account_journal_payment_debit_account_id.id if company.account_journal_payment_debit_account_id else (cash_acc.id if cash_acc else False)
-
-            if not journal.inbound_payment_method_line_ids:
-                manual_inbound = self.env['account.payment.method'].search([
-                    ('payment_type', '=', 'inbound'),
-                    ('code', '=', 'manual')
-                ], limit=1)
-                if manual_inbound:
-                    m_line = {'name': 'يدوي', 'payment_method_id': manual_inbound.id}
-                    if acc_field and target_out_acc: m_line[acc_field] = target_out_acc
-                    j_vals['inbound_payment_method_line_ids'] = [(0, 0, m_line)]
-            elif acc_field and target_out_acc:
-                for line in journal.inbound_payment_method_line_ids:
-                    if not getattr(line, acc_field, False):
-                        line.sudo().write({acc_field: target_out_acc})
-
-            if not journal.outbound_payment_method_line_ids:
-                manual_outbound = self.env['account.payment.method'].search([
-                    ('payment_type', '=', 'outbound'),
-                    ('code', '=', 'manual')
-                ], limit=1)
-                if manual_outbound:
-                    m_line = {'name': 'يدوي', 'payment_method_id': manual_outbound.id}
-                    if acc_field and target_out_acc: m_line[acc_field] = target_out_acc
-                    j_vals['outbound_payment_method_line_ids'] = [(0, 0, m_line)]
-            elif acc_field and target_out_acc:
-                for line in journal.outbound_payment_method_line_ids:
-                    if not getattr(line, acc_field, False):
-                        line.sudo().write({acc_field: target_out_acc})
-
-            if j_vals:
-                journal.sudo().write(j_vals)
-
-        return {
-            'name': _('تسجيل تحصيل الفاتورة'),
-            'type': 'ir.actions.act_window',
-            'res_model': 'account.payment',
-            'view_mode': 'form',
-            'target': 'current',
-            'context': {
-                'default_payment_type': 'inbound',
-                'default_partner_type': 'customer',
-                'default_partner_id': self.partner_id.id,
-                'default_amount': self.balance_due if self.balance_due > 0 else self.amount_total,
-                'default_utility_sale_order_id': self.id,
-                'default_journal_id': journal.id if journal else False,
-            }
-        }
-
     def _create_overdue_notifications(self):
         self._create_notification_logs(
             'bill_overdue',
@@ -493,13 +311,13 @@ class UtilitySaleOrder(models.Model):
             subject=_('تنبيه فاتورة متأخرة'),
         )
 
-    BILL_PROTECTED_FIELDS = {
+    BILL_PROTECTED_FIELDS = frozenset({
         'customer_id', 'meter_id', 'reading_id', 'date_range_id',
         'period_start', 'period_end', 'previous_reading', 'current_reading',
         'consumption', 'contract_template_id', 'order_line',
         'amount_energy', 'amount_service', 'amount_discount',
         'amount_local_fee', 'amount_penalty',
-    }
+    })
 
     def write(self, vals):
         if vals.get('state') == 'cancel':
@@ -520,7 +338,6 @@ class UtilitySaleOrder(models.Model):
                         'included_sale_order_id': False,
                         'billing_error': False,
                     })
-        # Allow system/sudo writes, or specific status/payment updates
         if not self.env.is_superuser() and not self.env.context.get('allow_status_update'):
             for order in self:
                 if order.bill_state != 'draft':
@@ -570,65 +387,6 @@ class UtilitySaleOrder(models.Model):
                 order.transformer_reading_id = tr.id if tr else False
             else:
                 order.transformer_reading_id = False
-
-    def _get_posted_utility_moves(self):
-        self.ensure_one()
-        return (self.invoice_ids | self.utility_move_ids).filtered(
-            lambda move: move.state == 'posted' and move.move_type in ('out_invoice', 'out_refund')
-        )
-
-    @api.depends(
-        'amount_total', 'amount_penalty', 'state', 'date_order',
-        'invoice_ids.state', 'invoice_ids.payment_state',
-        'invoice_ids.amount_total', 'invoice_ids.amount_residual', 'invoice_ids.move_type',
-        'utility_move_ids.state', 'utility_move_ids.payment_state',
-        'utility_move_ids.amount_total', 'utility_move_ids.amount_residual', 'utility_move_ids.move_type')
-    def _compute_payment(self):
-        for r in self:
-            posted_moves = r._get_posted_utility_moves()
-            if posted_moves:
-                signed_total = sum(
-                    -move.amount_total if move.move_type == 'out_refund' else move.amount_total
-                    for move in posted_moves
-                )
-                signed_residual = sum(
-                    -move.amount_residual if move.move_type == 'out_refund' else move.amount_residual
-                    for move in posted_moves
-                )
-                r.amount_paid = signed_total - signed_residual
-                r.balance_due = signed_residual
-            else:
-                r.amount_paid = 0.0
-                r.balance_due = r.amount_total + r.amount_penalty
-            r.is_overdue = r.balance_due > 0 and r.date_order and r.date_order.date() < date.today()
-
-    @api.depends('state', 'is_overdue', 'balance_due', 'invoice_ids.state', 'invoice_ids.payment_state', 'utility_move_ids.state', 'utility_move_ids.payment_state')
-    def _compute_bill_state(self):
-        for r in self:
-            if r.state == 'cancel':
-                r.bill_state = 'cancelled'
-            elif r.state == 'draft':
-                r.bill_state = 'draft'
-            else:
-                posted_invoices = r._get_posted_utility_moves()
-                # If fully paid (or amount is 0 and it is invoiced)
-                if posted_invoices and r.balance_due <= 0:
-                    r.bill_state = 'paid'
-                elif r.is_overdue:
-                    r.bill_state = 'overdue'
-                elif posted_invoices:
-                    r.bill_state = 'sent'
-                elif r.state == 'sale':
-                    r.bill_state = 'confirmed'
-                else:
-                    r.bill_state = 'draft'
-
-    @api.depends('penalty_ids.amount', 'penalty_ids.state')
-    def _compute_amount_penalty(self):
-        for r in self:
-            r.amount_penalty = sum(
-                r.penalty_ids.filtered(lambda p: p.state == 'applied').mapped('amount')
-            )
 
     def _open_service_order_action(self, service_order):
         self.ensure_one()
@@ -692,462 +450,6 @@ class UtilitySaleOrder(models.Model):
         })
         self.reconnection_order_id = order.id
         return self._open_service_order_action(order)
-
-    @api.model
-    def cron_create_disconnection_orders(self):
-        params = self.env['ir.config_parameter'].sudo()
-        days = int(params.get_param('utility.auto_disconnection_days', 90))
-        batch_size = int(params.get_param('utility.disconnection_batch_size', 200))
-        cutoff = fields.Datetime.subtract(fields.Datetime.now(), days=days)
-        orders = self.search([
-            ('customer_id', '!=', False),
-            ('bill_state', '=', 'overdue'),
-            ('balance_due', '>', 0),
-            ('date_order', '<=', cutoff),
-            ('disconnection_order_id', '=', False),
-        ], limit=batch_size, order='date_order asc, id asc')
-        created = self.env['utility.service.order']
-        for order in orders:
-            existing = order._find_open_service_order('disconnection')
-            if existing:
-                order.disconnection_order_id = existing.id
-                continue
-            service_order = self.env['utility.service.order'].create({
-                'service_type': 'disconnection',
-                'priority': 'high',
-                'customer_id': order.customer_id.id,
-                'meter_id': order.meter_id.id,
-                'description': _('فصل خدمة آلي بسبب متأخرات الفاتورة %s بمبلغ %.2f بعد %s يوم.')
-                               % (order.name, order.balance_due, days),
-            })
-            order.disconnection_order_id = service_order.id
-            created |= service_order
-        return len(created)
-    def action_recalculate_bill(self):
-        for order in self:
-            if order.state == 'draft':
-                order._calculate_amounts()
-
-    def _calculate_amounts(self):
-        # FIX-6: guard — لا يُسمح بتعديل بنود فاتورة مؤكدة أو مرحّلة
-        if self.state not in ('draft', 'sent'):
-            raise ValidationError(
-                'لا يمكن إعادة حساب بنود الفاتورة [%s] لأنها في حالة "%s".\nاستخدم إشعار الدائن (Credit Note) لتصحيح المبالغ.' % (self.name, self.state)
-            )
-        """حساب مبالغ الفاتورة وفق قالب العقد.
-        مصدر الحقيقة للتسعير: قالب العقد (utility.contract.template).
-        """
-        self.ensure_one()
-        account = self.customer_id
-        category = account.subscriber_id if account else False
-        consumption = self.consumption or 0.0
-        lines = []
-        template = account.contract_template_id if account else False
-
-        # إعادة ضبط الخانات
-        self.amount_energy = 0.0
-        self.amount_service = 0.0
-        self.amount_discount = 0.0
-        self.amount_local_fee = 0.0
-
-        Product = self.env['product.product']
-        kwh_product = self.env.ref(
-            'utility_core.utility_product_kwh', raise_if_not_found=False
-        ) or Product.search([('type', '=', 'service')], limit=1)
-        fixed_product = self.env.ref(
-            'utility_core.utility_product_fixed_fee', raise_if_not_found=False
-        ) or Product.search([('type', '=', 'service')], limit=1)
-        service_product = self.env.ref(
-            'utility_core.utility_product_service_charge', raise_if_not_found=False
-        ) or Product.search([('type', '=', 'service')], limit=1)
-
-        # ─────────────────────────────────────────────────────────────
-        # المسار الأساسي: حساب المبالغ من خلال قالب العقد
-        # ─────────────────────────────────────────────────────────────
-        if template:
-            for line in template.line_ids.sorted('sequence'):
-                # تجاوز الاستهلاك العادي إذا كان التسعير بالشرائح أو مستوى واحد
-                if template.pricing_mode in ('block', 'tier') and line.meter_line_type == 'consumption':
-                    continue
-
-                # إذا كان الخصم يعتمد على شرائح، نحسب الوحدات هنا ونولد سطوراً مفصلة لكل شريحة خصم
-                if line.meter_line_type == 'discount' and template.discount_block_ids:
-                    discount_units = 0.0
-                    name = line.name or line.product_id.name or ''
-                    if line.qty_formula_id:
-                        discount_units, name = line.qty_formula_id.execute(
-                            consumption=consumption,
-                            previous_reading=self.previous_reading,
-                            current_reading=self.current_reading,
-                            template=template,
-                            account=account,
-                            category=category,
-                            line=line,
-                        )
-                    elif template and template.discount_formula_id:
-                        discount_units, name = template.discount_formula_id.execute(
-                            consumption=consumption,
-                            previous_reading=self.previous_reading,
-                            current_reading=self.current_reading,
-                            template=template,
-                            account=account,
-                            category=category,
-                            line=line,
-                        )
-                    discount_units = max(discount_units or 0.0, 0.0)
-                    if discount_units > 0:
-                        sponsor_id = template.sponsor_id.id if template.sponsor_id else False
-                        product_id = line.product_id.id if line.product_id else False
-                        d_lines, d_amount = self._prepare_block_discount_lines(template, discount_units, name, product_id, sponsor_id)
-                        lines.extend(d_lines)
-                        self._accumulate_amount('discount', d_amount)
-                    continue
-
-                qty, price, name, product_id, sponsor_id = self._compute_line_amounts(
-                    line, consumption, account, category, template
-                )
-                if not qty and not price:
-                    continue
-                amount = qty * price
-                lines.append((0, 0, {
-                    'product_id': product_id or kwh_product.id if kwh_product else False,
-                    'name': name or line.name or line.product_id.name or '',
-                    'product_uom_qty': qty,
-                    'price_unit': price,
-                    'sponsor_id': sponsor_id,
-                    'meter_line_type': line.meter_line_type,
-                    'tax_id': [(5, 0, 0)],
-                }))
-                self._accumulate_amount(line.meter_line_type, amount)
-
-            # ── التسعير بالشرائح (block) أو المستوى (tier) ────────────────────────────────
-            if template.pricing_mode in ('block', 'tier') and consumption > 0:
-                if template.pricing_mode == 'block':
-                    block_lines, block_amount = self._prepare_block_consumption_lines(
-                        template, consumption, kwh_product
-                    )
-                else:
-                    block_lines, block_amount = self._prepare_tier_consumption_lines(
-                        template, consumption, kwh_product
-                    )
-                lines.extend(block_lines)
-                self.amount_energy += block_amount
-
-            # الرسوم المحلية التلقائية (المعلم، النظافة، المحلي) من القالب والإعدادات
-            existing_local_fee_types = [l.meter_line_type for l in template.line_ids if l.meter_line_type in ('mu_allim', 'cleaning', 'municipality')]
-            company = self.company_id or self.env.company
-
-            if 'mu_allim' not in existing_local_fee_types and template.local_fee_mu_allim > 0:
-                prod = company.mu_allim_product_id or service_product
-                amount = consumption * template.local_fee_mu_allim
-                if amount > 0:
-                    lines.append((0, 0, {
-                        'product_id': prod.id,
-                        'name': 'رسم المعلم',
-                        'product_uom_qty': consumption,
-                        'price_unit': template.local_fee_mu_allim,
-                        'meter_line_type': 'mu_allim',
-                        'tax_id': [(5, 0, 0)],
-                    }))
-                    self.amount_local_fee += amount
-
-            if 'cleaning' not in existing_local_fee_types and template.local_fee_cleaning > 0:
-                prod = company.cleaning_product_id or service_product
-                amount = consumption * template.local_fee_cleaning
-                if amount > 0:
-                    lines.append((0, 0, {
-                        'product_id': prod.id,
-                        'name': 'رسم النظافة',
-                        'product_uom_qty': consumption,
-                        'price_unit': template.local_fee_cleaning,
-                        'meter_line_type': 'cleaning',
-                        'tax_id': [(5, 0, 0)],
-                    }))
-                    self.amount_local_fee += amount
-
-            if 'municipality' not in existing_local_fee_types and template.local_fee_per_kwh > 0:
-                prod = company.local_fee_product_id or service_product
-                amount = consumption * template.local_fee_per_kwh
-                if amount > 0:
-                    lines.append((0, 0, {
-                        'product_id': prod.id,
-                        'name': 'رسم محلي (مجالس محلية)',
-                        'product_uom_qty': consumption,
-                        'price_unit': template.local_fee_per_kwh,
-                        'meter_line_type': 'municipality',
-                        'tax_id': [(5, 0, 0)],
-                    }))
-                    self.amount_local_fee += amount
-
-        # ─────────────────────────────────────────────────────────────
-        # حدود الفوترة (min/max) — تُطبَّق على الإجمالي قبل الخصم
-        # ─────────────────────────────────────────────────────────────
-        if template:
-            pre_total = (self.amount_energy + self.amount_service + self.amount_local_fee)
-            if template.min_charge and pre_total < template.min_charge:
-                # إضافة بند فرق للحد الأدنى
-                lines.append((0, 0, {
-                    'product_id': fixed_product.id if fixed_product else False,
-                    'name': f'تسوية إلى الحد الأدنى ({template.min_charge})',
-                    'product_uom_qty': 1,
-                    'price_unit': template.min_charge - pre_total,
-                    'meter_line_type': 'fixed_fee',
-                    'tax_id': [(5, 0, 0)],
-                }))
-                self.amount_service += template.min_charge - pre_total
-            elif template.max_charge and pre_total > template.max_charge:
-                # تخفيض إلى الحد الأقصى كبند خصم
-                lines.append((0, 0, {
-                    'product_id': fixed_product.id if fixed_product else False,
-                    'name': f'تسوية إلى الحد الأقصى ({template.max_charge})',
-                    'product_uom_qty': 1,
-                    'price_unit': template.max_charge - pre_total,
-                    'meter_line_type': 'discount',
-                    'tax_id': [(5, 0, 0)],
-                }))
-                self.amount_discount += pre_total - template.max_charge
-
-        self.order_line = [(5, 0, 0)] + lines
-
-    def _prepare_block_consumption_lines(self, template, consumption, kwh_product):
-        """Build consumption lines for block pricing and reject uncovered kWh."""
-        self.ensure_one()
-        if not template.block_ids:
-            raise ValidationError(
-                _('قالب العقد "%s" مضبوط على التسعير بالشرائح، لكن لا توجد شرائح معرفة.')
-                % template.name
-            )
-
-        lines = []
-        priced_qty = 0.0
-        amount_energy = 0.0
-        for block in template.block_ids.sorted(lambda b: (b.from_kwh, b.sequence, b.id)):
-            block_from = block.from_kwh or 0.0
-            block_to = block.to_kwh if block.to_kwh > 0 else consumption
-            qty_in_block = max(0.0, min(consumption, block_to) - block_from)
-            if qty_in_block <= 0:
-                continue
-
-            amount = qty_in_block * block.price_per_kwh
-            block_to_label = f'{block.to_kwh:.0f}' if block.to_kwh > 0 else _('ما لا نهاية')
-            block_name = block.name or _('الشريحة %s') % block.sequence
-            lines.append((0, 0, {
-                'product_id': kwh_product.id if kwh_product else False,
-                'name': _('%s: %.0f - %s kWh') % (block_name, block.from_kwh or 0.0, block_to_label),
-                'product_uom_qty': qty_in_block,
-                'price_unit': block.price_per_kwh,
-                'meter_line_type': 'consumption',
-                'tax_id': [(5, 0, 0)],
-            }))
-            priced_qty += qty_in_block
-            amount_energy += amount
-
-        if consumption - priced_qty > 0.000001:
-            raise ValidationError(
-                _('قالب العقد "%s" لا يغطي كامل الاستهلاك بالشرائح. الاستهلاك: %.2f kWh، المسعر: %.2f kWh.')
-                % (template.name, consumption, priced_qty)
-            )
-        return lines, amount_energy
-
-    def _prepare_block_discount_lines(self, template, discount_units, base_name, product_id, sponsor_id):
-        """إعداد بنود الخصم بالتفصيل لكل شريحة لتظهر على الفاتورة بشكل واضح"""
-        lines = []
-        amount_discount = 0.0
-        priced_units = 0.0
-        for block in template.discount_block_ids.sorted(lambda b: (b.from_kwh, b.sequence, b.id)):
-            block_from = block.from_kwh or 0.0
-            block_to = block.to_kwh if block.to_kwh > 0 else discount_units
-            qty_in_block = max(0.0, min(discount_units, block_to) - block_from)
-            if qty_in_block <= 0:
-                continue
-
-            price = -abs(block.price_per_kwh)
-            amount = qty_in_block * price
-            block_name = f"{base_name or 'خصم استهلاك مدعوم'} - شريحة الخصم ({(block.from_kwh or 0.0):.0f} إلى {block.to_kwh if block.to_kwh > 0 else 'ما لا نهاية'})"
-            lines.append((0, 0, {
-                'product_id': product_id,
-                'name': block_name,
-                'product_uom_qty': qty_in_block,
-                'price_unit': price,
-                'sponsor_id': sponsor_id,
-                'meter_line_type': 'discount',
-                'tax_id': [(5, 0, 0)],
-            }))
-            amount_discount += amount
-            priced_units += qty_in_block
-
-        if discount_units - priced_units > 0.000001:
-            raise ValidationError(
-                _('قالب العقد "%s" لا يغطي كامل وحدات الخصم بالشرائح. وحدات الخصم: %.2f، المسعر: %.2f.')
-                % (template.name, discount_units, priced_units)
-            )
-        return lines, amount_discount
-
-    def _prepare_tier_consumption_lines(self, template, consumption, kwh_product):
-        """Build consumption line for tier pricing (single level)."""
-        lines = []
-        amount_energy = 0.0
-        applicable_block = None
-
-        for block in template.block_ids.sorted(lambda b: (b.from_kwh, b.sequence, b.id)):
-            if block.from_kwh <= consumption and (block.to_kwh >= consumption or block.to_kwh == 0.0):
-                applicable_block = block
-                break
-
-        if not applicable_block and template.block_ids:
-            applicable_block = template.block_ids.sorted(lambda b: (b.from_kwh, b.sequence, b.id))[-1]
-
-        price = applicable_block.price_per_kwh if applicable_block else (template.price_per_kwh or 0.0)
-        name = applicable_block.name if applicable_block and applicable_block.name else 'استهلاك (مستوى واحد)'
-
-        if price > 0:
-            amount = consumption * price
-            lines.append((0, 0, {
-                'product_id': kwh_product.id if kwh_product else False,
-                'name': name,
-                'product_uom_qty': consumption,
-                'price_unit': price,
-                'meter_line_type': 'consumption',
-                'tax_id': [(5, 0, 0)],
-            }))
-            amount_energy += amount
-
-        return lines, amount_energy
-
-    def _compute_line_amounts(self, line, consumption, account, category, template):
-        """حساب (qty, price, name, product_id, sponsor_id) لبند قالب عقد واحد."""
-        qty = 0.0
-        price = 0.0
-        name = line.name or line.product_id.name or ''
-        product_id = line.product_id.id if line.product_id else False
-        sponsor_id = False
-
-        # السعر من القالب (مصدر الحقيقة) — line.specific_price للـ override
-        template_price = template.price_per_kwh if template else 0.0
-        template_service = template.service_charge if template else 0.0
-
-        if line.meter_line_type == 'consumption':
-            # حساب الكمية — من المعادلة أو مباشرة
-            if line.qty_formula_id:
-                qty, name = line.qty_formula_id.execute(
-                    consumption=consumption,
-                    previous_reading=self.previous_reading,
-                    current_reading=self.current_reading,
-                    template=template,
-                    account=account,
-                    category=category,
-                    line=line,
-                )
-            else:
-                qty = consumption
-            price = line.specific_price or template_price
-
-        elif line.meter_line_type in ('fixed_fee', 'service_charge'):
-            # fixed_fee و service_charge كلاهما يمثلان رسم الخدمة الثابت
-            if line.qty_formula_id:
-                qty, name = line.qty_formula_id.execute(
-                    consumption=consumption,
-                    previous_reading=self.previous_reading,
-                    current_reading=self.current_reading,
-                    template=template,
-                    account=account,
-                    category=category,
-                    line=line,
-                )
-            else:
-                qty = 1.0
-            price = line.specific_price or template_service
-
-        elif line.meter_line_type in ('mu_allim', 'cleaning', 'municipality'):
-            qty = consumption
-            if line.specific_price:
-                price = line.specific_price
-            elif template:
-                if line.meter_line_type == 'mu_allim':
-                    price = template.local_fee_mu_allim
-                elif line.meter_line_type == 'cleaning':
-                    price = template.local_fee_cleaning
-                else:
-                    price = template.local_fee_per_kwh
-            else:
-                price = 0.0
-            if not line.name:
-                type_labels = {
-                    'municipality': 'رسم مجلس محلي',
-                    'mu_allim': 'رسم المعلم',
-                    'cleaning': 'رسم نظافة',
-                }
-                name = type_labels.get(line.meter_line_type, 'رسم محلي')
-
-        elif line.meter_line_type == 'discount':
-            # الخصم: المعادلة تحدد عدد الوحدات، وشرائح الخصم تحدد قيمة الخصم لكل وحدة.
-            discount_units = 0.0
-            if line.qty_formula_id:
-                discount_units, name = line.qty_formula_id.execute(
-                    consumption=consumption,
-                    previous_reading=self.previous_reading,
-                    current_reading=self.current_reading,
-                    template=template,
-                    account=account,
-                    category=category,
-                    line=line,
-                )
-            elif template and template.discount_formula_id:
-                discount_units, name = template.discount_formula_id.execute(
-                    consumption=consumption,
-                    previous_reading=self.previous_reading,
-                    current_reading=self.current_reading,
-                    template=template,
-                    account=account,
-                    category=category,
-                    line=line,
-                )
-
-            discount_units = max(discount_units or 0.0, 0.0)
-            sponsor_id = template.sponsor_id.id if template and template.sponsor_id else False
-            if discount_units > 0 and line.specific_price:
-                qty = discount_units
-                price = -abs(line.specific_price)
-            else:
-                qty = 1.0
-                price = 0.0
-
-        return qty, price, name, product_id, sponsor_id
-
-    def _accumulate_amount(self, meter_line_type, amount):
-        if meter_line_type == 'consumption':
-            self.amount_energy += amount
-        elif meter_line_type in ('fixed_fee', 'service_charge'):
-            self.amount_service += amount
-        elif meter_line_type in ('local_fee', 'mu_allim', 'cleaning', 'municipality'):
-            self.amount_local_fee += amount
-        elif meter_line_type == 'discount':
-            # الخصومات: البند سالب في الفاتورة لكن الحقل يُخزّن القيمة الموجبة
-            self.amount_discount += abs(amount)
-
-    @api.model
-    def cron_update_overdue_orders(self):
-        batch_size = int(self.env['ir.config_parameter'].sudo().get_param(
-            'utility.billing_batch_size', 1000))
-        self.search([
-            ('bill_state', 'not in', ('paid', 'cancelled', 'overdue')),
-            ('date_order', '<', date.today()),
-            ('balance_due', '>', 0),
-        ], limit=batch_size)._compute_bill_state()
-
-    @api.model
-    def cron_send_due_reminders(self):
-        batch_size = int(self.env['ir.config_parameter'].sudo().get_param(
-            'utility.reminder_batch_size', 500))
-        orders = self.search([
-            ('bill_state', '=', 'overdue'),
-            ('balance_due', '>', 0),
-            ('customer_id', '!=', False),
-        ], limit=batch_size, order='date_order asc, id asc')
-        orders._create_overdue_notifications()
-        return len(orders)
-
-
 
 
 class UtilitySaleOrderLine(models.Model):
@@ -1245,7 +547,6 @@ class UtilitySaleOrderLine(models.Model):
         if acc_id:
             res['account_id'] = acc_id
 
-        # Fallback if account_id is missing or False to satisfy database constraint
         if not res.get('account_id'):
             target_prod = self.env['product.product'].browse(res.get('product_id')) if res.get('product_id') else self.product_id
             if target_prod:
@@ -1274,7 +575,6 @@ class UtilitySaleOrderLine(models.Model):
                     res['account_id'] = fallback_acc.id
 
         return res
-
 
 
 class UtilityAccountMove(models.Model):

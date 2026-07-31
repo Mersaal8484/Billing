@@ -5,6 +5,7 @@ from odoo.exceptions import ValidationError
 class UtilityDeposit(models.Model):
     _name = 'utility.deposit'
     _description = 'تأمين'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _rec_name = 'deposit_number'
     _order = 'deposit_date desc'
 

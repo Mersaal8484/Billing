@@ -21,7 +21,7 @@
         <field name="interval_number">30</field>
         <field name="interval_type">minutes</field>
         <field name="numbercall">-1</field>
-        <field name="active">True</field>
+        <field name="active">False</field>
     </record>
 
     <record id="ir_cron_update_overdue_orders" model="ir.cron">
@@ -45,7 +45,7 @@
         <field name="interval_number">30</field>
         <field name="interval_type">minutes</field>
         <field name="numbercall">-1</field>
-        <field name="active">True</field>
+        <field name="active">False</field>
     </record>
 
     <record id="ir_cron_batch_reading_invoicing" model="ir.cron">

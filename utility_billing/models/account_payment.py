@@ -26,19 +26,23 @@ class AccountPayment(models.Model):
 
     @api.onchange('utility_payment_method')
     def _onchange_utility_payment_method(self):
-        """توجيه الدفع تلقائياً إلى يومية المتحصل الميداني عند التحصيل اليدوي (نقدي/بنكي)،
-        أو إلى اليومية الإلكترونية المعتمدة عند التحصيل عبر بوابات الدفع."""
         if self.utility_payment_method in ('cash', 'bank'):
             user_journal = self.env.user.collection_journal_id
             if user_journal and user_journal.company_id == self.company_id:
                 self.journal_id = user_journal
         elif self.utility_payment_method == 'electronic':
-            elec_journal = self.env['account.journal'].search([
+            provider = self.env['utility.integration.provider'].search([
                 ('company_id', '=', self.company_id.id),
-                ('type', '=', 'bank'),
+                ('provider_type', 'in', ('payment_gateway', 'mobile_money')),
+                ('active', '=', True),
             ], limit=1)
-            if elec_journal:
-                self.journal_id = elec_journal
+            if provider and provider.mode != 'manual':
+                elec_journal = self.env['account.journal'].search([
+                    ('company_id', '=', self.company_id.id),
+                    ('type', '=', 'bank'),
+                ], limit=1)
+                if elec_journal:
+                    self.journal_id = elec_journal
 
     @api.depends('name', 'amount', 'date', 'state', 'utility_sale_order_id', 'utility_sale_order_id.name', 'utility_sale_order_id.customer_id.customer_number', 'utility_sale_order_id.meter_id.meter_number', 'date_range_id.name')
     def _compute_utility_qr_code(self):
