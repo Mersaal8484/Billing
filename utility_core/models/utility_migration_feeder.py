@@ -150,6 +150,8 @@ class UtilityMigrationFeeder(models.Model):
                         ('meter_number', '=', meter_num)
                     ], limit=1)
 
+                    status_active = self.env['utility.meter.status'].search([('code', '=', 'ACTIVE')], limit=1)
+
                     meter_vals = {
                         'meter_number': meter_num,
                         'multiplier': multiplier,
@@ -158,8 +160,10 @@ class UtilityMigrationFeeder(models.Model):
                         'company_id': self.env.company.id,
                         'payment_type': 'manual',
                         'is_coupling_meter': True,  # عداد مقارنة ورصد رئيسي
-                        'active': rec.is_active,
+                        'active': True,
                     }
+                    if status_active:
+                        meter_vals['status_id'] = status_active.id
 
                     if meter:
                         meter.write(meter_vals)

@@ -403,12 +403,16 @@ class UtilityMigrationCustomer(models.Model):
         self.created_customer_id = customer.id
 
         # 2. Create / link meter
+        status_active = self.env['utility.meter.status'].search([('code', '=', 'ACTIVE')], limit=1)
         meter_vals = {
             'meter_number': self.meter_number,
             'connection_type': 'subscriber',
             'customer_id': customer.id,
             'phase': self.phase,
+            'active': True,
         }
+        if status_active:
+            meter_vals['status_id'] = status_active.id
         if transformer:
             meter_vals['transformer_id'] = transformer.id
             if transformer.feeder_id:
