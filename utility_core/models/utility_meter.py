@@ -73,7 +73,6 @@ class UtilityMeter(models.Model):
         ('manual', 'يدوي'),
     ], string='نوع الاتصال')
     sim_number = fields.Char('رقم شريحة SIM')
-    sim_number = fields.Char('رقم شريحة SIM')
     reading_ids = fields.One2many('utility.reading', 'meter_id', string='سجل القراءات')
     log_ids = fields.One2many('utility.meter.log', 'meter_id', string='سجل تاريخ العداد')
     reading_count = fields.Integer('عدد القراءات', compute='_compute_reading_count', store=True)
@@ -83,128 +82,7 @@ class UtilityMeter(models.Model):
     qr_code_value = fields.Char('بيانات QR', compute='_compute_qr_code', store=True, readonly=True)
     qr_code_url = fields.Char('رابط QR', compute='_compute_qr_code', store=True, readonly=True)
     qr_code_image = fields.Binary('صورة QR', compute='_compute_qr_code', store=True, attachment=False)
-    # نوع الربط
-    connection_type = fields.Selection([
-        ('not_connected', 'غير مربوط'),
-        ('subscriber', 'مربوط بمشترك'),
-        ('private_transformer', 'محول خاص'),
-        ('transformer', 'محول'),
-        ('feeder', 'فيدر'),
-    ], string='نوع الربط', default='not_connected', required=True, tracking=True)
 
-    linked_transformer_id = fields.Many2one(
-        'utility.transformer', 'المحول', index=True,
-        domain="[('is_private', '=', False)]")
-    linked_private_transformer_id = fields.Many2one(
-        'utility.transformer', 'المحول الخاص', index=True,
-        domain="[('is_private', '=', True)]")
-    linked_feeder_id = fields.Many2one(
-        'utility.feeder', 'Linked Feeder', index=True)
-
-    @api.depends('reading_ids')
-    def _compute_reading_count(self):
-        for m in self:
-            m.reading_count = len(m.reading_ids)
-
-    def _update_last_reading(self):
-        for m in self:
-            last = self.env['utility.reading'].search(
-                [('meter_id', '=', m.id)], order='reading_date desc, id desc', limit=1)
-            if last:
-                m.write({
-                    'last_reading_value': last.reading_value,
-                    'last_read_date': last.reading_date,
-                })
-
-    def action_view_readings(self):
-        self.ensure_one()
-        return {
-            'type': 'ir.actions.act_window',
-            'name': _('سجل القراءات - %s') % self.meter_number,
-            'res_model': 'utility.reading',
-            'view_mode': 'tree,form',
-            'domain': [('meter_id', '=', self.id)],
-            'context': {'default_meter_id': self.id},
-        }
-
-    @api.depends('connection_type',
-                 'customer_id', 'customer_id.region_id', 'customer_id.area_id', 'customer_id.zone_id',
-                 'customer_id.route_id', 'customer_id.transformer_id', 'customer_id.transformer_id.substation_id',
-                 'customer_id.cell_id',
-                 'linked_transformer_id', 'linked_transformer_id.substation_id', 'linked_transformer_id.feeder_id',
-                 'linked_transformer_id.zone_region_id',
-                 'linked_private_transformer_id', 'linked_private_transformer_id.substation_id',
-                 'linked_private_transformer_id.feeder_id', 'linked_private_transformer_id.zone_region_id',
-                 'linked_feeder_id', 'linked_feeder_id.substation_id')
-    def _compute_location_fields(self):
-        for m in self:
-            ct = m.connection_type
-            if ct == 'subscriber' and m.customer_id:
-                m.region_id = m.customer_id.region_id
-                m.area_id = m.customer_id.area_id
-                m.zone_id = m.customer_id.zone_id
-                m.route_id = m.customer_id.route_id
-                m.transformer_id = m.customer_id.transformer_id
-                m.substation_id = m.transformer_id.substation_id if m.transformer_id else False
-                m.feeder_id = m.customer_id.cell_id
-            elif ct == 'private_transformer' and m.linked_private_transformer_id:
-                t = m.linked_private_transformer_id
-                m.region_id = t.region_id
-                m.area_id = t.area_id
-                m.zone_id = t.zone_region_id
-                m.route_id = False
-                m.transformer_id = t
-                m.substation_id = t.substation_id
-                m.feeder_id = t.feeder_id
-            elif ct == 'transformer' and m.linked_transformer_id:
-                t = m.linked_transformer_id
-                m.region_id = t.region_id
-                m.area_id = t.area_id
-                m.zone_id = t.zone_region_id
-                m.route_id = False
-                m.transformer_id = t
-                m.substation_id = t.substation_id
-                m.feeder_id = t.feeder_id
-            elif ct == 'feeder' and m.linked_feeder_id:
-                f = m.linked_feeder_id
-                m.region_id = f.region_id
-                m.area_id = f.area_id
-                m.zone_id = False
-                m.route_id = False
-                m.transformer_id = False
-                m.substation_id = f.substation_id
-                m.feeder_id = f
-            else:
-                m.region_id = False
-                m.area_id = False
-                m.zone_id = False
-                m.route_id = False
-                m.transformer_id = False
-                m.substation_id = False
-                m.feeder_id = False
-
-    @api.depends('meter_number', 'serial_number', 'connection_type',
-                 'customer_id.customer_number', 'customer_id.partner_id.name',
-                 'linked_transformer_id.code', 'linked_private_transformer_id.code',
-                 'linked_feeder_id.code',
-                 'transformer_id.code', 'feeder_id.code')
-    def _compute_qr_code(self):
-        for meter in self:
-            customer_name = ''
-            customer_number = ''
-            if meter.customer_id:
-                customer_number = meter.customer_id.customer_number or ''
-                customer_name = meter.customer_id.partner_id.name or ''
-            payload = '|'.join([
-                'UTILITY-METER',
-                meter.company_id.name or '',
-                meter.meter_number or '',
-                meter.serial_number or '',
-                customer_number,
-                customer_name,
-                meter.transformer_id.code or '',
-                meter.feeder_id.code or '',
-            ])
     # خصائص الربط
     is_coupling_meter = fields.Boolean('عداد ربط رئيسي', default=False, help='يُشير إذا كان هذا العداد هو عداد ربط يقرأ إجمالي طاقة الفيدر أو المحطة')
 
@@ -218,7 +96,7 @@ class UtilityMeter(models.Model):
     ], string='نوع الربط', default='not_connected', required=True, tracking=True)
 
     linked_transformer_id = fields.Many2one(
-        'utility.transformer', 'المحول', index=True,
+        'utility.transformer', 'المحول المرتبط', index=True,
         domain="[('is_private', '=', False)]")
     linked_private_transformer_id = fields.Many2one(
         'utility.transformer', 'المحول الخاص', index=True,
