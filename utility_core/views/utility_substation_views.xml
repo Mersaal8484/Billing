@@ -42,7 +42,7 @@
                     </group>
                     <notebook>
                         <page name="feeders" string="Feeders">
-                            <field name="feeder_ids">
+                            <field name="feeder_ids" readonly="1">
                                 <tree>
                                     <field name="name"/>
                                     <field name="code"/>
@@ -52,7 +52,7 @@
                             </field>
                         </page>
                         <page name="transformers" string="Transformers">
-                            <field name="transformer_ids">
+                            <field name="transformer_ids" readonly="1">
                                 <tree>
                                     <field name="name"/>
                                     <field name="code"/>

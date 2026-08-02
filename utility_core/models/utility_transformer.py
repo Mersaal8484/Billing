@@ -1,4 +1,4 @@
-from odoo import api, fields, models
+from odoo import api, fields, models, _
 
 
 class UtilityTransformer(models.Model):
@@ -119,6 +119,21 @@ class UtilityTransformer(models.Model):
     # ===== ORM Overrides =====
     @api.model_create_multi
     def create(self, vals_list):
+        # Auto-generate the code from dedicated, fully separated sequences:
+        # private transformers (محول خاص) use utility.transformer.private
+        # (PRV/...), regular transformers use utility.transformer (TRF/...).
+        for vals in vals_list:
+            if vals.get('code'):
+                continue
+            sequence_code = (
+                'utility.transformer.private'
+                if vals.get('is_private')
+                else 'utility.transformer'
+            )
+            vals['code'] = (
+                self.env['ir.sequence'].next_by_code(sequence_code) or _('جديد')
+            )
+
         # Extract initial area_id or region_id passed in vals
         passed_parents = []
         for vals in vals_list:

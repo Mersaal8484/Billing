@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <!-- ============= Cron: Batch Generate Bills ============= -->
     <record id="ir_cron_generate_batch_bills" model="ir.cron">
@@ -40,10 +40,12 @@
     </record>
 
     <!-- ============= Sequence: Reading Batch ============= -->
-    <record id="seq_utility_reading_batch" model="ir.sequence">
-        <field name="name">تسلسل دفعات القراءات</field>
-        <field name="code">utility.reading.batch</field>
-        <field name="prefix">BATCH-</field>
-        <field name="padding">5</field>
-    </record>
+    <data noupdate="1">
+        <record id="seq_utility_reading_batch" model="ir.sequence">
+            <field name="name">تسلسل دفعات القراءات</field>
+            <field name="code">utility.reading.batch</field>
+            <field name="prefix">BATCH-</field>
+            <field name="padding">5</field>
+        </record>
+    </data>
 </odoo>

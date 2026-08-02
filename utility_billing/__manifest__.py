@@ -48,6 +48,7 @@ debt management, collections, and online payment gateway integration.
     'application': True,
     'auto_install': False,
     'sequence': 2,
+    'post_init_hook': 'post_init_hook',
 }
 
 
