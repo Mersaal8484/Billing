@@ -43,16 +43,22 @@ class _PhotoCaptureScreenState extends ConsumerState<PhotoCaptureScreen>
     }
     if (state == AppLifecycleState.inactive ||
         state == AppLifecycleState.paused) {
-      cameraController.dispose();
-      _controller = null;
-    } else if (state == AppLifecycleState.resumed) {
+      _disposeCamera();
+    } else if (state == AppLifecycleState.resumed && _capturedPath == null) {
       _initFuture = _initCamera();
     }
   }
 
+  void _disposeCamera() {
+    _controller?.dispose();
+    _controller = null;
+  }
+
   Future<void> _initCamera() async {
+    // Dispose any existing controller first to avoid conflicts
+    _disposeCamera();
+
     try {
-      // 1. Explicitly request camera permission first
       final status = await Permission.camera.request();
       if (status.isDenied || status.isPermanentlyDenied) {
         if (mounted) {
@@ -62,7 +68,6 @@ class _PhotoCaptureScreenState extends ConsumerState<PhotoCaptureScreen>
         return;
       }
 
-      // 2. Fetch cameras
       final cameras = await availableCameras();
       if (cameras.isEmpty) {
         if (mounted) {
@@ -76,17 +81,25 @@ class _PhotoCaptureScreenState extends ConsumerState<PhotoCaptureScreen>
         orElse: () => cameras.first,
       );
 
-      // 3. Initialize controller (fallback to medium resolution if high fails)
-      final newController =
-          CameraController(back, ResolutionPreset.medium, enableAudio: false);
+      // ResolutionPreset.medium is more stable across devices than high
+      final newController = CameraController(
+        back,
+        ResolutionPreset.medium,
+        enableAudio: false,
+      );
       await newController.initialize();
+      // setFocusMode/setExposureMode may not be supported on all devices
+      try { await newController.setFocusMode(FocusMode.auto); } catch (_) {}
+      try { await newController.setExposureMode(ExposureMode.auto); } catch (_) {}
 
-      if (mounted) {
-        setState(() {
-          _controller = newController;
-          _error = null;
-        });
+      if (!mounted) {
+        newController.dispose();
+        return;
       }
+      setState(() {
+        _controller = newController;
+        _error = null;
+      });
     } catch (e) {
       if (mounted) {
         setState(() => _error = 'تعذر تشغيل الكاميرا: $e');
@@ -97,28 +110,41 @@ class _PhotoCaptureScreenState extends ConsumerState<PhotoCaptureScreen>
   Future<void> _capture() async {
     final controller = _controller;
     if (controller == null || !controller.value.isInitialized) return;
+    if (_processing) return;
+
     try {
       setState(() => _processing = true);
+
+      // 1. Take the picture
       final xfile = await controller.takePicture();
 
+      // 2. Process (compress + strip EXIF/GPS)
       final processor = ref.read(imageProcessingServiceProvider);
       final result = await processor.process(File(xfile.path));
 
-      final dir = await getApplicationDocumentsDirectory();
-      final destPath = p.join(
-          dir.path, 'readings', '${DateTime.now().microsecondsSinceEpoch}.jpg');
-      final destFile = File(destPath);
-      await destFile.create(recursive: true);
-      await destFile.writeAsBytes(result.bytes);
+      // 3. Delete the raw temp file
+      try { await File(xfile.path).delete(); } catch (_) {}
 
-      if (mounted) {
-        setState(() {
-          _capturedPath = destPath;
-          _processedSizeBytes = result.sizeBytes;
-          _readabilityWarning = result.belowReadabilityFloor;
-          _processing = false;
-        });
-      }
+      // 4. Save processed JPEG
+      final dir = await getApplicationDocumentsDirectory();
+      final readingsDir = Directory(p.join(dir.path, 'readings'));
+      await readingsDir.create(recursive: true);
+      final destPath = p.join(
+          readingsDir.path, '${DateTime.now().microsecondsSinceEpoch}.jpg');
+      await File(destPath).writeAsBytes(result.bytes);
+
+      if (!mounted) return;
+
+      // 5. Switch to review — _buildReview() does NOT use CameraPreview,
+      //    so _controller can stay alive without causing any UI issue.
+      //    It will be properly disposed when the widget is removed from tree.
+      setState(() {
+        _capturedPath = destPath;
+        _processedSizeBytes = result.sizeBytes;
+        _readabilityWarning = result.belowReadabilityFloor;
+        _processing = false;
+      });
+
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -129,12 +155,21 @@ class _PhotoCaptureScreenState extends ConsumerState<PhotoCaptureScreen>
     }
   }
 
+  Future<void> _disposeControllerSafely(CameraController c) async {
+    try {
+      await c.dispose();
+    } catch (_) {}
+    if (_controller == c) _controller = null;
+  }
+
   void _retake() {
     setState(() {
       _capturedPath = null;
       _processedSizeBytes = null;
       _readabilityWarning = false;
+      _error = null;
     });
+    _initFuture = _initCamera();
   }
 
   @override
@@ -160,6 +195,9 @@ class _PhotoCaptureScreenState extends ConsumerState<PhotoCaptureScreen>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    const Icon(Icons.error_outline,
+                        color: Colors.redAccent, size: 48),
+                    const SizedBox(height: 16),
                     Text(_error!,
                         style: const TextStyle(color: Colors.white),
                         textAlign: TextAlign.center),
@@ -185,32 +223,41 @@ class _PhotoCaptureScreenState extends ConsumerState<PhotoCaptureScreen>
     return FutureBuilder(
       future: _initFuture,
       builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Center(
+              child: CircularProgressIndicator(color: Colors.white));
+        }
+
         final controller = _controller;
         if (controller == null || !controller.value.isInitialized) {
           return const Center(
               child: CircularProgressIndicator(color: Colors.white));
         }
 
-        // Properly constrain the CameraPreview to avoid black screens on some devices
         final size = MediaQuery.of(context).size;
-        final deviceRatio = size.width / size.height;
-        // CameraPreview requires its parent to constrain it.
-        // We use Transform.scale to fill the screen without letterboxing.
+        final camRatio = controller.value.aspectRatio;
+        final screenRatio = size.width / size.height;
+        // Scale to fill the screen without letterboxing
+        final scale = camRatio < screenRatio
+            ? screenRatio / camRatio
+            : camRatio / screenRatio;
+
         return Stack(
           fit: StackFit.expand,
           children: [
-            Center(
+            // Camera preview filling the full screen
+            ClipRect(
               child: Transform.scale(
-                scale: controller.value.aspectRatio / deviceRatio,
+                scale: scale,
                 child: Center(
                   child: AspectRatio(
-                    aspectRatio: controller.value.aspectRatio,
+                    aspectRatio: camRatio,
                     child: CameraPreview(controller),
                   ),
                 ),
               ),
             ),
-            // Framing guide
+            // Framing guide rectangle
             Center(
               child: Container(
                 width: size.width * 0.75,
@@ -221,25 +268,41 @@ class _PhotoCaptureScreenState extends ConsumerState<PhotoCaptureScreen>
                 ),
               ),
             ),
+            // Hint text
             Positioned(
               top: 16,
               left: 16,
               right: 16,
-              child: Text(
-                'ضع أرقام العداد داخل الإطار',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                    color: Colors.white,
-                    backgroundColor: Colors.black.withValues(alpha: 0.4)),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                  'ضع أرقام العداد داخل الإطار',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white, fontSize: 13),
+                ),
               ),
             ),
+            // Shutter button
             Positioned(
-              bottom: 32,
+              bottom: 40,
               left: 0,
               right: 0,
               child: Center(
                 child: _processing
-                    ? const CircularProgressIndicator(color: Colors.white)
+                    ? const Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircularProgressIndicator(color: Colors.white),
+                          SizedBox(height: 12),
+                          Text('جاري معالجة الصورة...',
+                              style: TextStyle(color: Colors.white70)),
+                        ],
+                      )
                     : GestureDetector(
                         onTap: _capture,
                         child: Container(
@@ -247,8 +310,11 @@ class _PhotoCaptureScreenState extends ConsumerState<PhotoCaptureScreen>
                           height: 76,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
+                            color: Colors.white.withOpacity(0.15),
                             border: Border.all(color: Colors.white, width: 4),
                           ),
+                          child: const Icon(Icons.camera_alt,
+                              color: Colors.white, size: 32),
                         ),
                       ),
               ),
@@ -262,20 +328,33 @@ class _PhotoCaptureScreenState extends ConsumerState<PhotoCaptureScreen>
   Widget _buildReview() {
     return Column(
       children: [
-        Expanded(child: Image.file(File(_capturedPath!), fit: BoxFit.contain)),
+        Expanded(
+          child: Container(
+            color: Colors.black,
+            child: Image.file(
+              File(_capturedPath!),
+              fit: BoxFit.contain,
+              errorBuilder: (_, e, __) => const Center(
+                child: Text('تعذر عرض الصورة',
+                    style: TextStyle(color: Colors.white)),
+              ),
+            ),
+          ),
+        ),
         if (_readabilityWarning)
           Container(
             width: double.infinity,
-            color: StatusColors.error.withValues(alpha: 0.15),
+            color: StatusColors.error.withOpacity(0.20),
             padding: const EdgeInsets.all(12),
             child: const Text(
-              'تحذير: قد تكون الصورة غير واضحة بما يكفي لقراءة الأرقام. يُفضّل إعادة التصوير.',
+              'تحذير: قد تكون الصورة غير واضحة. يُفضّل إعادة التصوير.',
               style: TextStyle(color: Colors.white),
               textAlign: TextAlign.center,
             ),
           ),
-        Padding(
-          padding: const EdgeInsets.all(16),
+        Container(
+          color: Colors.black,
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           child: Row(
             children: [
               Text(
