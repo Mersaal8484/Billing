@@ -19,7 +19,8 @@ class SettingsScreen extends ConsumerWidget {
           const ListTile(
             leading: CircleAvatar(child: Icon(Icons.person_outline)),
             title: Text('kasher01'),
-            subtitle: Text('كاشف عدادات كهرباء — المؤسسة العامة للكهرباء — صنعاء'),
+            subtitle:
+                Text('كاشف عدادات كهرباء — المؤسسة العامة للكهرباء — صنعاء'),
           ),
           const _SectionHeader('التحصيل'),
           _ThermalPrinterSettingsTile(
@@ -45,8 +46,7 @@ class SettingsScreen extends ConsumerWidget {
               title: Text('الإصدار'), trailing: Text('0.1.0 (مرحلة الواجهة)')),
           const ListTile(
             title: Text('حالة التكامل مع Odoo'),
-            subtitle:
-                Text('المؤسسة العامة للكهرباء — بيانات محاكاة محلية'),
+            subtitle: Text('المؤسسة العامة للكهرباء — بيانات محاكاة محلية'),
           ),
           const Divider(),
           Padding(
@@ -92,7 +92,8 @@ class _ThermalPrinterSettingsTile extends StatefulWidget {
       _ThermalPrinterSettingsTileState();
 }
 
-class _ThermalPrinterSettingsTileState extends State<_ThermalPrinterSettingsTile> {
+class _ThermalPrinterSettingsTileState
+    extends State<_ThermalPrinterSettingsTile> {
   ThermalPrinterDevice? _saved;
 
   @override

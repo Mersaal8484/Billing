@@ -113,7 +113,8 @@ class _QrScannerScreenState extends ConsumerState<QrScannerScreen> {
               ),
               const SizedBox(height: 10),
               TextButton.icon(
-                onPressed: () => context.go(widget.isReaderMode ? '/customers' : '/collector'),
+                onPressed: () => context
+                    .go(widget.isReaderMode ? '/customers' : '/collector'),
                 icon: const Icon(Icons.keyboard_alt_outlined),
                 label: const Text('إدخال يدوي'),
                 style: TextButton.styleFrom(foregroundColor: Colors.white),

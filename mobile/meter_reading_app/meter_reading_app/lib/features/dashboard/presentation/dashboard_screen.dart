@@ -35,14 +35,10 @@ class DashboardScreen extends ConsumerWidget {
           final pending =
               list.where((a) => a.status == AssignmentStatus.pending).length;
           final offline = sync.value?.connectivity.name == 'offline';
-          final data = sync.value?.dataPipeline;
-          final image = sync.value?.imagePipeline;
-          final pendingSync = (data?.pending ?? 0) +
-              (image?.pending ?? 0) +
-              (data?.inProgress ?? 0) +
-              (image?.inProgress ?? 0);
-          final synced = (data?.succeeded ?? 0) + (image?.succeeded ?? 0);
-          final failed = (data?.failed ?? 0) + (image?.failed ?? 0);
+          final batch = sync.value?.batchPipeline;
+          final pendingSync = (batch?.pending ?? 0) + (batch?.inProgress ?? 0);
+          final synced = (batch?.succeeded ?? 0);
+          final failed = (batch?.failed ?? 0);
 
           return Column(
             children: [

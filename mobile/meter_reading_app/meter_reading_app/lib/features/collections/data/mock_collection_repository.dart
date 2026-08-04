@@ -126,13 +126,17 @@ class MockCollectionRepository implements CollectionRepository {
     final regions = ['صنعاء', 'صنعاء', 'صنعاء', 'صنعاء', 'صنعاء'];
     final areas = ['معين', 'السبعين', 'الثورة', 'التحرير', 'آزال'];
     final phones = [
-      '770123456', '771654321', '733555222', '775888999', '777345678',
+      '770123456',
+      '771654321',
+      '733555222',
+      '775888999',
+      '777345678',
     ];
 
     return List.generate(names.length, (i) {
       final customer = Customer(
         remoteId: 3000 + i,
-        customerNumber: 'YEM-${810000 + i}',   // ← required
+        customerNumber: 'YEM-${810000 + i}', // ← required
         accountNumber: 'ACC-${220000 + i}',
         name: names[i],
         mobile: phones[i],
@@ -144,7 +148,7 @@ class MockCollectionRepository implements CollectionRepository {
       );
       final meter = Meter(
         remoteId: 4100 + i,
-        meterNumber: '${100001 + i}',           // عدادات كهرباء يمنية
+        meterNumber: '${100001 + i}', // عدادات كهرباء يمنية
         serialNumber: 'YE${77000 + i}',
         customerRemoteId: customer.remoteId,
         paymentType: MeterPaymentType.postpaid,

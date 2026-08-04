@@ -60,8 +60,7 @@ class MockAssignmentRepository implements AssignmentRepository {
       final sub = _changeHub.stream.listen(
         (list) {
           try {
-            controller
-                .add(_applyFilters(list, query: query, filter: filter));
+            controller.add(_applyFilters(list, query: query, filter: filter));
           } catch (e, st) {
             controller.addError(e, st);
           }
@@ -152,27 +151,64 @@ class MockAssignmentRepository implements AssignmentRepository {
     ];
 
     final regions = [
-      'صنعاء', 'صنعاء', 'صنعاء', 'صنعاء',
-      'صنعاء', 'صنعاء', 'صنعاء', 'تعز',
-      'الحديدة', 'الحديدة', 'تعز', 'صنعاء',
+      'صنعاء',
+      'صنعاء',
+      'صنعاء',
+      'صنعاء',
+      'صنعاء',
+      'صنعاء',
+      'صنعاء',
+      'تعز',
+      'الحديدة',
+      'الحديدة',
+      'تعز',
+      'صنعاء',
     ];
 
     final areas = [
-      'معين', 'السبعين', 'الثورة', 'التحرير',
-      'آزال', 'الروضة', 'بئر العزب', 'القاهرة',
-      'الميناء', 'الهوك', 'المظفر', 'شعوب',
+      'معين',
+      'السبعين',
+      'الثورة',
+      'التحرير',
+      'آزال',
+      'الروضة',
+      'بئر العزب',
+      'القاهرة',
+      'الميناء',
+      'الهوك',
+      'المظفر',
+      'شعوب',
     ];
 
     final phones = [
-      '770123456', '771654321', '733555222', '775888999',
-      '777345678', '778901234', '776543210', '771234567',
-      '773456789', '770987654', '772345678', '774567890',
+      '770123456',
+      '771654321',
+      '733555222',
+      '775888999',
+      '777345678',
+      '778901234',
+      '776543210',
+      '771234567',
+      '773456789',
+      '770987654',
+      '772345678',
+      '774567890',
     ];
 
     // متوسط استهلاك كهرباء شهري واقعي بـ kWh
     final avgConsumptions = [
-      120.0, 95.0, 210.0, 145.0, 88.0, 175.0,
-      130.0, 200.0, 165.0, 110.0, 155.0, 140.0,
+      120.0,
+      95.0,
+      210.0,
+      145.0,
+      88.0,
+      175.0,
+      130.0,
+      200.0,
+      165.0,
+      110.0,
+      155.0,
+      140.0,
     ];
 
     final rnd = Random(42);
@@ -182,7 +218,7 @@ class MockAssignmentRepository implements AssignmentRepository {
     for (var i = 0; i < names.length; i++) {
       final customer = Customer(
         remoteId: 1000 + i,
-        customerNumber: 'YEM-${810000 + i}',  // ← required
+        customerNumber: 'YEM-${810000 + i}', // ← required
         accountNumber: 'ACC-${100000 + i}',
         name: names[i],
         mobile: phones[i],
@@ -194,7 +230,7 @@ class MockAssignmentRepository implements AssignmentRepository {
       );
       final meter = Meter(
         remoteId: 2000 + i,
-        meterNumber: '${100001 + i}',        // عدادات يمنية
+        meterNumber: '${100001 + i}', // عدادات يمنية
         serialNumber: 'YE${90000 + i}',
         customerRemoteId: customer.remoteId,
         paymentType: MeterPaymentType.postpaid,
@@ -205,7 +241,7 @@ class MockAssignmentRepository implements AssignmentRepository {
         meter: meter,
         customer: customer,
         status: i < 3 ? AssignmentStatus.read : AssignmentStatus.pending,
-        scheduledAt: now,                     // ← required
+        scheduledAt: now, // ← required
         averageConsumption: avgConsumptions[i], // ← required
       ));
     }

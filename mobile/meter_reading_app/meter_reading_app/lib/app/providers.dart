@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/database/app_database.dart';
 import '../core/image/image_processing_service.dart';
 import '../core/printing/thermal_printer_service.dart';
 import '../core/sync/sync_engine.dart';
@@ -11,10 +12,12 @@ import '../features/readings/data/mock_reading_repository.dart';
 import '../features/readings/domain/reading.dart';
 
 /// --- Repository providers -------------------------------------------------
-/// Everything below is declared against an interface. To connect the real
-/// backend later: implement e.g. `OdooAssignmentRepository implements
-/// AssignmentRepository`, then change only the object constructed here.
-/// No feature code outside this file needs to know the difference.
+
+final databaseProvider = Provider<AppDatabase>((ref) {
+  final db = AppDatabase();
+  ref.onDispose(db.close);
+  return db;
+});
 
 final assignmentRepositoryProvider = Provider<AssignmentRepository>((ref) {
   final repo = MockAssignmentRepository();
@@ -43,7 +46,7 @@ final thermalPrinterServiceProvider = Provider<ThermalPrinterService>((ref) {
 });
 
 final syncEngineProvider = Provider<SyncEngine>((ref) {
-  final engine = SyncEngine(ref.watch(readingRepositoryProvider));
+  final engine = SyncEngine(ref.watch(readingRepositoryProvider), ref.watch(databaseProvider));
   engine.start();
   ref.onDispose(engine.dispose);
   return engine;

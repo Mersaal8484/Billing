@@ -89,9 +89,9 @@ class Readings extends Table {
   IntColumn get imageAttachmentRemoteId =>
       integer().nullable()(); // ir.attachment id once uploaded
   TextColumn get syncStatus => text().withDefault(const Constant('draft'))();
-  // draft -> pending_data_sync -> data_synced -> pending_image_sync -> synced -> error
-  IntColumn get dataSyncAttempts => integer().withDefault(const Constant(0))();
-  IntColumn get imageSyncAttempts => integer().withDefault(const Constant(0))();
+  // draft -> pending_sync -> synced -> error
+  IntColumn get syncAttempts => integer().withDefault(const Constant(0))();
+  TextColumn get syncBatchId => text().nullable().references(SyncBatches, #id)();
   TextColumn get lastError => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
@@ -100,37 +100,17 @@ class Readings extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-/// Pipeline A — reading-data sync queue. Independent from image uploads,
-/// highest priority, small payloads, near-immediate flush.
-class SyncQueueItems extends Table {
-  TextColumn get id => text()();
-  TextColumn get readingId => text().references(Readings, #id)();
-  TextColumn get status => text().withDefault(const Constant('pending'))();
-  // pending | in_progress | success | failed
-  IntColumn get retryCount => integer().withDefault(const Constant(0))();
-  TextColumn get lastError => text().nullable()();
-  DateTimeColumn get enqueuedAt => dateTime()();
-  DateTimeColumn get lastAttemptAt => dateTime().nullable()();
-  TextColumn get idempotencyKey => text()(); // stable across retries
-
-  @override
-  Set<Column> get primaryKey => {id};
-}
-
-/// Pipeline B — image upload queue. Resumable, retry-tolerant, never blocks
-/// or is blocked by Pipeline A.
-class ImageUploadQueueItems extends Table {
-  TextColumn get id => text()();
-  TextColumn get readingId => text().references(Readings, #id)();
-  TextColumn get localPath => text()();
-  IntColumn get sizeBytes => integer()();
+/// Unified ZIP-based sync batches tracking.
+class SyncBatches extends Table {
+  TextColumn get id => text()(); // batch_uuid
   TextColumn get status => text().withDefault(const Constant('pending'))();
   // pending | uploading | success | failed
+  TextColumn get archivePath => text().nullable()();
+  IntColumn get readingCount => integer()();
   IntColumn get retryCount => integer().withDefault(const Constant(0))();
   TextColumn get lastError => text().nullable()();
-  DateTimeColumn get enqueuedAt => dateTime()();
+  DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get lastAttemptAt => dateTime().nullable()();
-  TextColumn get idempotencyKey => text()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -142,14 +122,31 @@ class ImageUploadQueueItems extends Table {
   Assignments,
   Periods,
   Readings,
-  SyncQueueItems,
-  ImageUploadQueueItems,
+  SyncBatches,
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration {
+    return MigrationStrategy(
+      onCreate: (Migrator m) async {
+        await m.createAll();
+      },
+      onUpgrade: (Migrator m, int from, int to) async {
+        if (from < 2) {
+          await customStatement('DROP TABLE IF EXISTS sync_queue_items');
+          await customStatement('DROP TABLE IF EXISTS image_upload_queue_items');
+          await m.addColumn(readings, readings.syncAttempts);
+          await m.addColumn(readings, readings.syncBatchId);
+          await m.createTable(syncBatches);
+        }
+      },
+    );
+  }
 }
 
 LazyDatabase _openConnection() {

@@ -25,6 +25,7 @@ class MeterReading {
   final String? remarks;
   final String? imageLocalPath;
   final String? imageSecondaryLocalPath;
+  final String? photoUuid;
   final ReadingSyncStatus syncStatus;
   final String? lastError;
 
@@ -39,6 +40,7 @@ class MeterReading {
     this.remarks,
     this.imageLocalPath,
     this.imageSecondaryLocalPath,
+    this.photoUuid,
     this.syncStatus = ReadingSyncStatus.draft,
     this.lastError,
   });
@@ -47,6 +49,7 @@ class MeterReading {
     double? readingValue,
     String? remarks,
     String? imageLocalPath,
+    String? photoUuid,
     ReadingSyncStatus? syncStatus,
     String? lastError,
   }) {
@@ -61,6 +64,7 @@ class MeterReading {
       remarks: remarks ?? this.remarks,
       imageLocalPath: imageLocalPath ?? this.imageLocalPath,
       imageSecondaryLocalPath: imageSecondaryLocalPath,
+      photoUuid: photoUuid ?? this.photoUuid,
       syncStatus: syncStatus ?? this.syncStatus,
       lastError: lastError,
     );

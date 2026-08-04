@@ -59,8 +59,7 @@ class CollectionReceiptBuilder {
       'المبلغ',
       '${receipt.amount.toStringAsFixed(0)} YER',
     ));
-    bytes.addAll(
-        _row(generator, 'طريقة الدفع', _methodLabel(receipt.method)));
+    bytes.addAll(_row(generator, 'طريقة الدفع', _methodLabel(receipt.method)));
     bytes.addAll(_row(generator, 'التاريخ', _dateTime(receipt.paidAt)));
 
     bytes.addAll(generator.hr());

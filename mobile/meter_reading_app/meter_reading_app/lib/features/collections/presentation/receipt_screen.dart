@@ -28,8 +28,7 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
   }
 
   Future<void> _loadSavedPrinter() async {
-    final saved =
-        await ref.read(thermalPrinterServiceProvider).savedDevice();
+    final saved = await ref.read(thermalPrinterServiceProvider).savedDevice();
     if (mounted && saved != null) {
       setState(() => _connectedPrinter = saved);
     }
@@ -44,6 +43,7 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
 
     try {
       var device = await printer.ensureConnected(device: _connectedPrinter);
+      if (!mounted) return;
       device ??= await showThermalPrinterPickerSheet(
         context,
         printerService: printer,
@@ -69,8 +69,10 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
         );
       }
     } on ThermalPrinterException catch (error) {
+      if (!mounted) return;
       messenger.showSnackBar(SnackBar(content: Text(error.message)));
     } catch (error) {
+      if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(content: Text('فشلت الطباعة: $error')),
       );

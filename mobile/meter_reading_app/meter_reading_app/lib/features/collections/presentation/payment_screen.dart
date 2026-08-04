@@ -136,19 +136,19 @@ class _PaymentScreenState extends ConsumerState<PaymentScreen> {
           ...account.invoices
               .where((invoice) => invoice.status != InvoiceStatus.paid)
               .map(
-                (invoice) {
-                  final isSelected = _selectedInvoiceIds.contains(invoice.id);
-                  return CheckboxListTile(
-                    value: isSelected,
-                    onChanged: (checked) {
-                      _toggleInvoice(account, invoice.id, checked ?? false);
-                    },
-                    title: Text(invoice.invoiceNumber),
-                    subtitle: Text('${invoice.amount.toStringAsFixed(0)} ﷼'),
-                    controlAffinity: ListTileControlAffinity.leading,
-                  );
+            (invoice) {
+              final isSelected = _selectedInvoiceIds.contains(invoice.id);
+              return CheckboxListTile(
+                value: isSelected,
+                onChanged: (checked) {
+                  _toggleInvoice(account, invoice.id, checked ?? false);
                 },
-              ),
+                title: Text(invoice.invoiceNumber),
+                subtitle: Text('${invoice.amount.toStringAsFixed(0)} ﷼'),
+                controlAffinity: ListTileControlAffinity.leading,
+              );
+            },
+          ),
           const SizedBox(height: 24),
           FilledButton.icon(
             onPressed: _saving ? null : () => _collect(account),

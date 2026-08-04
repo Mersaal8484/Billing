@@ -43,6 +43,9 @@ dependencies:
   # Identifiers
   uuid: ^4.4.0
 
+  # Archive creation for batched offline photo synchronization
+  archive: ^3.6.1
+
   # UI
   cupertino_icons: ^1.0.8
   permission_handler: ^12.0.3

@@ -32,7 +32,8 @@ class _ThermalPrinterPickerSheet extends StatefulWidget {
       _ThermalPrinterPickerSheetState();
 }
 
-class _ThermalPrinterPickerSheetState extends State<_ThermalPrinterPickerSheet> {
+class _ThermalPrinterPickerSheetState
+    extends State<_ThermalPrinterPickerSheet> {
   late Future<List<ThermalPrinterDevice>> _devicesFuture;
 
   @override

@@ -36,7 +36,7 @@ class SyncCenterScreen extends ConsumerWidget {
             children: [
               Card(
                 color: offline
-                    ? StatusColors.offline.withOpacity(0.08)
+                    ? StatusColors.offline.withValues(alpha: 0.08)
                     : null,
                 child: Padding(
                   padding: const EdgeInsets.all(16),
@@ -68,21 +68,13 @@ class SyncCenterScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 16),
               _PipelineCard(
-                title: 'بيانات القراءات',
-                subtitle: 'مزامنة فورية — أولوية قصوى',
-                icon: Icons.speed_rounded,
-                stats: snapshot.dataPipeline,
-              ),
-              const SizedBox(height: 12),
-              _PipelineCard(
-                title: 'صور العدادات',
-                subtitle: 'رفع خلفي — قابل للاستئناف تلقائياً',
-                icon: Icons.image_outlined,
-                stats: snapshot.imagePipeline,
+                title: 'طابور المزامنة المجمع (ZIP)',
+                subtitle: 'رفع مجمع للقراءات والصور',
+                icon: Icons.archive_outlined,
+                stats: snapshot.batchPipeline,
               ),
               const SizedBox(height: 20),
-              if (snapshot.dataPipeline.failed > 0 ||
-                  snapshot.imagePipeline.failed > 0)
+              if (snapshot.batchPipeline.failed > 0)
                 FilledButton.tonalIcon(
                   onPressed: engine.retryFailed,
                   icon: const Icon(Icons.refresh_rounded),

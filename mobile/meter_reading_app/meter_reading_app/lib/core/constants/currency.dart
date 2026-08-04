@@ -25,22 +25,22 @@ String formatYer(double amount) {
 }
 
 /// رمز العملة الرسمي.
-const String kCurrencyCode   = 'YER';
+const String kCurrencyCode = 'YER';
 
 /// رمز العملة للعرض.
 const String kCurrencySymbol = '﷼';
 
 /// اسم العملة بالعربية.
-const String kCurrencyName   = 'ريال يمني';
+const String kCurrencyName = 'ريال يمني';
 
 /// بلد التشغيل.
-const String kCountryName    = 'الجمهورية اليمنية';
+const String kCountryName = 'الجمهورية اليمنية';
 
 /// توقيت التشغيل.
-const String kTimezone       = 'Asia/Aden';
+const String kTimezone = 'Asia/Aden';
 
 /// Locale للتطبيق.
-const String kLocale         = 'ar-YE';
+const String kLocale = 'ar-YE';
 
 /// المؤسسة المشغِّلة (يمكن تخصيصها لكل محافظة).
 const String kOrganizationName = 'المؤسسة العامة للكهرباء';

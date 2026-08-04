@@ -185,6 +185,7 @@ class _ReadingEntryScreenState extends ConsumerState<ReadingEntryScreen> {
       category: ReadingCategory.customer,
       remarks: _remarksCtrl.text.isEmpty ? null : _remarksCtrl.text,
       imageLocalPath: _imagePath,
+      photoUuid: _imagePath == null ? null : _uuid.v4(),
       syncStatus: ReadingSyncStatus.draft,
     );
 
@@ -217,7 +218,7 @@ class _InfoBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-          color: color.withOpacity(0.12),
+          color: color.withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(12)),
       child: Row(
         children: [

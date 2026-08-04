@@ -130,7 +130,8 @@ class ThermalPrinterService {
   }
 
   /// Connects to the saved printer when possible, otherwise returns null.
-  Future<ThermalPrinterDevice?> ensureConnected({ThermalPrinterDevice? device}) async {
+  Future<ThermalPrinterDevice?> ensureConnected(
+      {ThermalPrinterDevice? device}) async {
     await ensureReady();
 
     final target = device ?? await savedDevice();
@@ -142,8 +143,7 @@ class ThermalPrinterService {
 
     final connected = await connect(target);
     if (!connected) {
-      throw ThermalPrinterException(
-          'تعذر الاتصال بالطابعة ${target.name}');
+      throw ThermalPrinterException('تعذر الاتصال بالطابعة ${target.name}');
     }
     return target;
   }

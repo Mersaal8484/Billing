@@ -1554,6 +1554,450 @@ class PeriodsCompanion extends UpdateCompanion<Period> {
   }
 }
 
+class $SyncBatchesTable extends SyncBatches
+    with TableInfo<$SyncBatchesTable, SyncBatche> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SyncBatchesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+      'status', aliasedName, false,
+      type: DriftSqlType.string,
+      requiredDuringInsert: false,
+      defaultValue: const Constant('pending'));
+  static const VerificationMeta _archivePathMeta =
+      const VerificationMeta('archivePath');
+  @override
+  late final GeneratedColumn<String> archivePath = GeneratedColumn<String>(
+      'archive_path', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _readingCountMeta =
+      const VerificationMeta('readingCount');
+  @override
+  late final GeneratedColumn<int> readingCount = GeneratedColumn<int>(
+      'reading_count', aliasedName, false,
+      type: DriftSqlType.int, requiredDuringInsert: true);
+  static const VerificationMeta _retryCountMeta =
+      const VerificationMeta('retryCount');
+  @override
+  late final GeneratedColumn<int> retryCount = GeneratedColumn<int>(
+      'retry_count', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(0));
+  static const VerificationMeta _lastErrorMeta =
+      const VerificationMeta('lastError');
+  @override
+  late final GeneratedColumn<String> lastError = GeneratedColumn<String>(
+      'last_error', aliasedName, true,
+      type: DriftSqlType.string, requiredDuringInsert: false);
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  static const VerificationMeta _lastAttemptAtMeta =
+      const VerificationMeta('lastAttemptAt');
+  @override
+  late final GeneratedColumn<DateTime> lastAttemptAt =
+      GeneratedColumn<DateTime>('last_attempt_at', aliasedName, true,
+          type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns => [
+        id,
+        status,
+        archivePath,
+        readingCount,
+        retryCount,
+        lastError,
+        createdAt,
+        lastAttemptAt
+      ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'sync_batches';
+  @override
+  VerificationContext validateIntegrity(Insertable<SyncBatche> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(_statusMeta,
+          status.isAcceptableOrUnknown(data['status']!, _statusMeta));
+    }
+    if (data.containsKey('archive_path')) {
+      context.handle(
+          _archivePathMeta,
+          archivePath.isAcceptableOrUnknown(
+              data['archive_path']!, _archivePathMeta));
+    }
+    if (data.containsKey('reading_count')) {
+      context.handle(
+          _readingCountMeta,
+          readingCount.isAcceptableOrUnknown(
+              data['reading_count']!, _readingCountMeta));
+    } else if (isInserting) {
+      context.missing(_readingCountMeta);
+    }
+    if (data.containsKey('retry_count')) {
+      context.handle(
+          _retryCountMeta,
+          retryCount.isAcceptableOrUnknown(
+              data['retry_count']!, _retryCountMeta));
+    }
+    if (data.containsKey('last_error')) {
+      context.handle(_lastErrorMeta,
+          lastError.isAcceptableOrUnknown(data['last_error']!, _lastErrorMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('last_attempt_at')) {
+      context.handle(
+          _lastAttemptAtMeta,
+          lastAttemptAt.isAcceptableOrUnknown(
+              data['last_attempt_at']!, _lastAttemptAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  SyncBatche map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SyncBatche(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      status: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}status'])!,
+      archivePath: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}archive_path']),
+      readingCount: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}reading_count'])!,
+      retryCount: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}retry_count'])!,
+      lastError: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}last_error']),
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+      lastAttemptAt: attachedDatabase.typeMapping.read(
+          DriftSqlType.dateTime, data['${effectivePrefix}last_attempt_at']),
+    );
+  }
+
+  @override
+  $SyncBatchesTable createAlias(String alias) {
+    return $SyncBatchesTable(attachedDatabase, alias);
+  }
+}
+
+class SyncBatche extends DataClass implements Insertable<SyncBatche> {
+  final String id;
+  final String status;
+  final String? archivePath;
+  final int readingCount;
+  final int retryCount;
+  final String? lastError;
+  final DateTime createdAt;
+  final DateTime? lastAttemptAt;
+  const SyncBatche(
+      {required this.id,
+      required this.status,
+      this.archivePath,
+      required this.readingCount,
+      required this.retryCount,
+      this.lastError,
+      required this.createdAt,
+      this.lastAttemptAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['status'] = Variable<String>(status);
+    if (!nullToAbsent || archivePath != null) {
+      map['archive_path'] = Variable<String>(archivePath);
+    }
+    map['reading_count'] = Variable<int>(readingCount);
+    map['retry_count'] = Variable<int>(retryCount);
+    if (!nullToAbsent || lastError != null) {
+      map['last_error'] = Variable<String>(lastError);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || lastAttemptAt != null) {
+      map['last_attempt_at'] = Variable<DateTime>(lastAttemptAt);
+    }
+    return map;
+  }
+
+  SyncBatchesCompanion toCompanion(bool nullToAbsent) {
+    return SyncBatchesCompanion(
+      id: Value(id),
+      status: Value(status),
+      archivePath: archivePath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(archivePath),
+      readingCount: Value(readingCount),
+      retryCount: Value(retryCount),
+      lastError: lastError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastError),
+      createdAt: Value(createdAt),
+      lastAttemptAt: lastAttemptAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastAttemptAt),
+    );
+  }
+
+  factory SyncBatche.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SyncBatche(
+      id: serializer.fromJson<String>(json['id']),
+      status: serializer.fromJson<String>(json['status']),
+      archivePath: serializer.fromJson<String?>(json['archivePath']),
+      readingCount: serializer.fromJson<int>(json['readingCount']),
+      retryCount: serializer.fromJson<int>(json['retryCount']),
+      lastError: serializer.fromJson<String?>(json['lastError']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      lastAttemptAt: serializer.fromJson<DateTime?>(json['lastAttemptAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'status': serializer.toJson<String>(status),
+      'archivePath': serializer.toJson<String?>(archivePath),
+      'readingCount': serializer.toJson<int>(readingCount),
+      'retryCount': serializer.toJson<int>(retryCount),
+      'lastError': serializer.toJson<String?>(lastError),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'lastAttemptAt': serializer.toJson<DateTime?>(lastAttemptAt),
+    };
+  }
+
+  SyncBatche copyWith(
+          {String? id,
+          String? status,
+          Value<String?> archivePath = const Value.absent(),
+          int? readingCount,
+          int? retryCount,
+          Value<String?> lastError = const Value.absent(),
+          DateTime? createdAt,
+          Value<DateTime?> lastAttemptAt = const Value.absent()}) =>
+      SyncBatche(
+        id: id ?? this.id,
+        status: status ?? this.status,
+        archivePath: archivePath.present ? archivePath.value : this.archivePath,
+        readingCount: readingCount ?? this.readingCount,
+        retryCount: retryCount ?? this.retryCount,
+        lastError: lastError.present ? lastError.value : this.lastError,
+        createdAt: createdAt ?? this.createdAt,
+        lastAttemptAt:
+            lastAttemptAt.present ? lastAttemptAt.value : this.lastAttemptAt,
+      );
+  SyncBatche copyWithCompanion(SyncBatchesCompanion data) {
+    return SyncBatche(
+      id: data.id.present ? data.id.value : this.id,
+      status: data.status.present ? data.status.value : this.status,
+      archivePath:
+          data.archivePath.present ? data.archivePath.value : this.archivePath,
+      readingCount: data.readingCount.present
+          ? data.readingCount.value
+          : this.readingCount,
+      retryCount:
+          data.retryCount.present ? data.retryCount.value : this.retryCount,
+      lastError: data.lastError.present ? data.lastError.value : this.lastError,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      lastAttemptAt: data.lastAttemptAt.present
+          ? data.lastAttemptAt.value
+          : this.lastAttemptAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncBatche(')
+          ..write('id: $id, ')
+          ..write('status: $status, ')
+          ..write('archivePath: $archivePath, ')
+          ..write('readingCount: $readingCount, ')
+          ..write('retryCount: $retryCount, ')
+          ..write('lastError: $lastError, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('lastAttemptAt: $lastAttemptAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, status, archivePath, readingCount,
+      retryCount, lastError, createdAt, lastAttemptAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SyncBatche &&
+          other.id == this.id &&
+          other.status == this.status &&
+          other.archivePath == this.archivePath &&
+          other.readingCount == this.readingCount &&
+          other.retryCount == this.retryCount &&
+          other.lastError == this.lastError &&
+          other.createdAt == this.createdAt &&
+          other.lastAttemptAt == this.lastAttemptAt);
+}
+
+class SyncBatchesCompanion extends UpdateCompanion<SyncBatche> {
+  final Value<String> id;
+  final Value<String> status;
+  final Value<String?> archivePath;
+  final Value<int> readingCount;
+  final Value<int> retryCount;
+  final Value<String?> lastError;
+  final Value<DateTime> createdAt;
+  final Value<DateTime?> lastAttemptAt;
+  final Value<int> rowid;
+  const SyncBatchesCompanion({
+    this.id = const Value.absent(),
+    this.status = const Value.absent(),
+    this.archivePath = const Value.absent(),
+    this.readingCount = const Value.absent(),
+    this.retryCount = const Value.absent(),
+    this.lastError = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.lastAttemptAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SyncBatchesCompanion.insert({
+    required String id,
+    this.status = const Value.absent(),
+    this.archivePath = const Value.absent(),
+    required int readingCount,
+    this.retryCount = const Value.absent(),
+    this.lastError = const Value.absent(),
+    required DateTime createdAt,
+    this.lastAttemptAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        readingCount = Value(readingCount),
+        createdAt = Value(createdAt);
+  static Insertable<SyncBatche> custom({
+    Expression<String>? id,
+    Expression<String>? status,
+    Expression<String>? archivePath,
+    Expression<int>? readingCount,
+    Expression<int>? retryCount,
+    Expression<String>? lastError,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? lastAttemptAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (status != null) 'status': status,
+      if (archivePath != null) 'archive_path': archivePath,
+      if (readingCount != null) 'reading_count': readingCount,
+      if (retryCount != null) 'retry_count': retryCount,
+      if (lastError != null) 'last_error': lastError,
+      if (createdAt != null) 'created_at': createdAt,
+      if (lastAttemptAt != null) 'last_attempt_at': lastAttemptAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SyncBatchesCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? status,
+      Value<String?>? archivePath,
+      Value<int>? readingCount,
+      Value<int>? retryCount,
+      Value<String?>? lastError,
+      Value<DateTime>? createdAt,
+      Value<DateTime?>? lastAttemptAt,
+      Value<int>? rowid}) {
+    return SyncBatchesCompanion(
+      id: id ?? this.id,
+      status: status ?? this.status,
+      archivePath: archivePath ?? this.archivePath,
+      readingCount: readingCount ?? this.readingCount,
+      retryCount: retryCount ?? this.retryCount,
+      lastError: lastError ?? this.lastError,
+      createdAt: createdAt ?? this.createdAt,
+      lastAttemptAt: lastAttemptAt ?? this.lastAttemptAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (archivePath.present) {
+      map['archive_path'] = Variable<String>(archivePath.value);
+    }
+    if (readingCount.present) {
+      map['reading_count'] = Variable<int>(readingCount.value);
+    }
+    if (retryCount.present) {
+      map['retry_count'] = Variable<int>(retryCount.value);
+    }
+    if (lastError.present) {
+      map['last_error'] = Variable<String>(lastError.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (lastAttemptAt.present) {
+      map['last_attempt_at'] = Variable<DateTime>(lastAttemptAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncBatchesCompanion(')
+          ..write('id: $id, ')
+          ..write('status: $status, ')
+          ..write('archivePath: $archivePath, ')
+          ..write('readingCount: $readingCount, ')
+          ..write('retryCount: $retryCount, ')
+          ..write('lastError: $lastError, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('lastAttemptAt: $lastAttemptAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $ReadingsTable extends Readings with TableInfo<$ReadingsTable, Reading> {
   @override
   final GeneratedDatabase attachedDatabase;
@@ -1641,22 +2085,23 @@ class $ReadingsTable extends Readings with TableInfo<$ReadingsTable, Reading> {
       type: DriftSqlType.string,
       requiredDuringInsert: false,
       defaultValue: const Constant('draft'));
-  static const VerificationMeta _dataSyncAttemptsMeta =
-      const VerificationMeta('dataSyncAttempts');
+  static const VerificationMeta _syncAttemptsMeta =
+      const VerificationMeta('syncAttempts');
   @override
-  late final GeneratedColumn<int> dataSyncAttempts = GeneratedColumn<int>(
-      'data_sync_attempts', aliasedName, false,
+  late final GeneratedColumn<int> syncAttempts = GeneratedColumn<int>(
+      'sync_attempts', aliasedName, false,
       type: DriftSqlType.int,
       requiredDuringInsert: false,
       defaultValue: const Constant(0));
-  static const VerificationMeta _imageSyncAttemptsMeta =
-      const VerificationMeta('imageSyncAttempts');
+  static const VerificationMeta _syncBatchIdMeta =
+      const VerificationMeta('syncBatchId');
   @override
-  late final GeneratedColumn<int> imageSyncAttempts = GeneratedColumn<int>(
-      'image_sync_attempts', aliasedName, false,
-      type: DriftSqlType.int,
+  late final GeneratedColumn<String> syncBatchId = GeneratedColumn<String>(
+      'sync_batch_id', aliasedName, true,
+      type: DriftSqlType.string,
       requiredDuringInsert: false,
-      defaultValue: const Constant(0));
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('REFERENCES sync_batches (id)'));
   static const VerificationMeta _lastErrorMeta =
       const VerificationMeta('lastError');
   @override
@@ -1689,8 +2134,8 @@ class $ReadingsTable extends Readings with TableInfo<$ReadingsTable, Reading> {
         imageSecondaryLocalPath,
         imageAttachmentRemoteId,
         syncStatus,
-        dataSyncAttempts,
-        imageSyncAttempts,
+        syncAttempts,
+        syncBatchId,
         lastError,
         createdAt,
         updatedAt
@@ -1780,17 +2225,17 @@ class $ReadingsTable extends Readings with TableInfo<$ReadingsTable, Reading> {
           syncStatus.isAcceptableOrUnknown(
               data['sync_status']!, _syncStatusMeta));
     }
-    if (data.containsKey('data_sync_attempts')) {
+    if (data.containsKey('sync_attempts')) {
       context.handle(
-          _dataSyncAttemptsMeta,
-          dataSyncAttempts.isAcceptableOrUnknown(
-              data['data_sync_attempts']!, _dataSyncAttemptsMeta));
+          _syncAttemptsMeta,
+          syncAttempts.isAcceptableOrUnknown(
+              data['sync_attempts']!, _syncAttemptsMeta));
     }
-    if (data.containsKey('image_sync_attempts')) {
+    if (data.containsKey('sync_batch_id')) {
       context.handle(
-          _imageSyncAttemptsMeta,
-          imageSyncAttempts.isAcceptableOrUnknown(
-              data['image_sync_attempts']!, _imageSyncAttemptsMeta));
+          _syncBatchIdMeta,
+          syncBatchId.isAcceptableOrUnknown(
+              data['sync_batch_id']!, _syncBatchIdMeta));
     }
     if (data.containsKey('last_error')) {
       context.handle(_lastErrorMeta,
@@ -1843,10 +2288,10 @@ class $ReadingsTable extends Readings with TableInfo<$ReadingsTable, Reading> {
           data['${effectivePrefix}image_attachment_remote_id']),
       syncStatus: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}sync_status'])!,
-      dataSyncAttempts: attachedDatabase.typeMapping.read(
-          DriftSqlType.int, data['${effectivePrefix}data_sync_attempts'])!,
-      imageSyncAttempts: attachedDatabase.typeMapping.read(
-          DriftSqlType.int, data['${effectivePrefix}image_sync_attempts'])!,
+      syncAttempts: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}sync_attempts'])!,
+      syncBatchId: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}sync_batch_id']),
       lastError: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}last_error']),
       createdAt: attachedDatabase.typeMapping
@@ -1875,8 +2320,8 @@ class Reading extends DataClass implements Insertable<Reading> {
   final String? imageSecondaryLocalPath;
   final int? imageAttachmentRemoteId;
   final String syncStatus;
-  final int dataSyncAttempts;
-  final int imageSyncAttempts;
+  final int syncAttempts;
+  final String? syncBatchId;
   final String? lastError;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -1893,8 +2338,8 @@ class Reading extends DataClass implements Insertable<Reading> {
       this.imageSecondaryLocalPath,
       this.imageAttachmentRemoteId,
       required this.syncStatus,
-      required this.dataSyncAttempts,
-      required this.imageSyncAttempts,
+      required this.syncAttempts,
+      this.syncBatchId,
       this.lastError,
       required this.createdAt,
       required this.updatedAt});
@@ -1925,8 +2370,10 @@ class Reading extends DataClass implements Insertable<Reading> {
           Variable<int>(imageAttachmentRemoteId);
     }
     map['sync_status'] = Variable<String>(syncStatus);
-    map['data_sync_attempts'] = Variable<int>(dataSyncAttempts);
-    map['image_sync_attempts'] = Variable<int>(imageSyncAttempts);
+    map['sync_attempts'] = Variable<int>(syncAttempts);
+    if (!nullToAbsent || syncBatchId != null) {
+      map['sync_batch_id'] = Variable<String>(syncBatchId);
+    }
     if (!nullToAbsent || lastError != null) {
       map['last_error'] = Variable<String>(lastError);
     }
@@ -1959,8 +2406,10 @@ class Reading extends DataClass implements Insertable<Reading> {
           ? const Value.absent()
           : Value(imageAttachmentRemoteId),
       syncStatus: Value(syncStatus),
-      dataSyncAttempts: Value(dataSyncAttempts),
-      imageSyncAttempts: Value(imageSyncAttempts),
+      syncAttempts: Value(syncAttempts),
+      syncBatchId: syncBatchId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncBatchId),
       lastError: lastError == null && nullToAbsent
           ? const Value.absent()
           : Value(lastError),
@@ -1987,8 +2436,8 @@ class Reading extends DataClass implements Insertable<Reading> {
       imageAttachmentRemoteId:
           serializer.fromJson<int?>(json['imageAttachmentRemoteId']),
       syncStatus: serializer.fromJson<String>(json['syncStatus']),
-      dataSyncAttempts: serializer.fromJson<int>(json['dataSyncAttempts']),
-      imageSyncAttempts: serializer.fromJson<int>(json['imageSyncAttempts']),
+      syncAttempts: serializer.fromJson<int>(json['syncAttempts']),
+      syncBatchId: serializer.fromJson<String?>(json['syncBatchId']),
       lastError: serializer.fromJson<String?>(json['lastError']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -2012,8 +2461,8 @@ class Reading extends DataClass implements Insertable<Reading> {
       'imageAttachmentRemoteId':
           serializer.toJson<int?>(imageAttachmentRemoteId),
       'syncStatus': serializer.toJson<String>(syncStatus),
-      'dataSyncAttempts': serializer.toJson<int>(dataSyncAttempts),
-      'imageSyncAttempts': serializer.toJson<int>(imageSyncAttempts),
+      'syncAttempts': serializer.toJson<int>(syncAttempts),
+      'syncBatchId': serializer.toJson<String?>(syncBatchId),
       'lastError': serializer.toJson<String?>(lastError),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -2033,8 +2482,8 @@ class Reading extends DataClass implements Insertable<Reading> {
           Value<String?> imageSecondaryLocalPath = const Value.absent(),
           Value<int?> imageAttachmentRemoteId = const Value.absent(),
           String? syncStatus,
-          int? dataSyncAttempts,
-          int? imageSyncAttempts,
+          int? syncAttempts,
+          Value<String?> syncBatchId = const Value.absent(),
           Value<String?> lastError = const Value.absent(),
           DateTime? createdAt,
           DateTime? updatedAt}) =>
@@ -2056,8 +2505,8 @@ class Reading extends DataClass implements Insertable<Reading> {
             ? imageAttachmentRemoteId.value
             : this.imageAttachmentRemoteId,
         syncStatus: syncStatus ?? this.syncStatus,
-        dataSyncAttempts: dataSyncAttempts ?? this.dataSyncAttempts,
-        imageSyncAttempts: imageSyncAttempts ?? this.imageSyncAttempts,
+        syncAttempts: syncAttempts ?? this.syncAttempts,
+        syncBatchId: syncBatchId.present ? syncBatchId.value : this.syncBatchId,
         lastError: lastError.present ? lastError.value : this.lastError,
         createdAt: createdAt ?? this.createdAt,
         updatedAt: updatedAt ?? this.updatedAt,
@@ -2091,12 +2540,11 @@ class Reading extends DataClass implements Insertable<Reading> {
           : this.imageAttachmentRemoteId,
       syncStatus:
           data.syncStatus.present ? data.syncStatus.value : this.syncStatus,
-      dataSyncAttempts: data.dataSyncAttempts.present
-          ? data.dataSyncAttempts.value
-          : this.dataSyncAttempts,
-      imageSyncAttempts: data.imageSyncAttempts.present
-          ? data.imageSyncAttempts.value
-          : this.imageSyncAttempts,
+      syncAttempts: data.syncAttempts.present
+          ? data.syncAttempts.value
+          : this.syncAttempts,
+      syncBatchId:
+          data.syncBatchId.present ? data.syncBatchId.value : this.syncBatchId,
       lastError: data.lastError.present ? data.lastError.value : this.lastError,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -2118,8 +2566,8 @@ class Reading extends DataClass implements Insertable<Reading> {
           ..write('imageSecondaryLocalPath: $imageSecondaryLocalPath, ')
           ..write('imageAttachmentRemoteId: $imageAttachmentRemoteId, ')
           ..write('syncStatus: $syncStatus, ')
-          ..write('dataSyncAttempts: $dataSyncAttempts, ')
-          ..write('imageSyncAttempts: $imageSyncAttempts, ')
+          ..write('syncAttempts: $syncAttempts, ')
+          ..write('syncBatchId: $syncBatchId, ')
           ..write('lastError: $lastError, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -2141,8 +2589,8 @@ class Reading extends DataClass implements Insertable<Reading> {
       imageSecondaryLocalPath,
       imageAttachmentRemoteId,
       syncStatus,
-      dataSyncAttempts,
-      imageSyncAttempts,
+      syncAttempts,
+      syncBatchId,
       lastError,
       createdAt,
       updatedAt);
@@ -2162,8 +2610,8 @@ class Reading extends DataClass implements Insertable<Reading> {
           other.imageSecondaryLocalPath == this.imageSecondaryLocalPath &&
           other.imageAttachmentRemoteId == this.imageAttachmentRemoteId &&
           other.syncStatus == this.syncStatus &&
-          other.dataSyncAttempts == this.dataSyncAttempts &&
-          other.imageSyncAttempts == this.imageSyncAttempts &&
+          other.syncAttempts == this.syncAttempts &&
+          other.syncBatchId == this.syncBatchId &&
           other.lastError == this.lastError &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
@@ -2182,8 +2630,8 @@ class ReadingsCompanion extends UpdateCompanion<Reading> {
   final Value<String?> imageSecondaryLocalPath;
   final Value<int?> imageAttachmentRemoteId;
   final Value<String> syncStatus;
-  final Value<int> dataSyncAttempts;
-  final Value<int> imageSyncAttempts;
+  final Value<int> syncAttempts;
+  final Value<String?> syncBatchId;
   final Value<String?> lastError;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
@@ -2201,8 +2649,8 @@ class ReadingsCompanion extends UpdateCompanion<Reading> {
     this.imageSecondaryLocalPath = const Value.absent(),
     this.imageAttachmentRemoteId = const Value.absent(),
     this.syncStatus = const Value.absent(),
-    this.dataSyncAttempts = const Value.absent(),
-    this.imageSyncAttempts = const Value.absent(),
+    this.syncAttempts = const Value.absent(),
+    this.syncBatchId = const Value.absent(),
     this.lastError = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -2221,8 +2669,8 @@ class ReadingsCompanion extends UpdateCompanion<Reading> {
     this.imageSecondaryLocalPath = const Value.absent(),
     this.imageAttachmentRemoteId = const Value.absent(),
     this.syncStatus = const Value.absent(),
-    this.dataSyncAttempts = const Value.absent(),
-    this.imageSyncAttempts = const Value.absent(),
+    this.syncAttempts = const Value.absent(),
+    this.syncBatchId = const Value.absent(),
     this.lastError = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
@@ -2246,8 +2694,8 @@ class ReadingsCompanion extends UpdateCompanion<Reading> {
     Expression<String>? imageSecondaryLocalPath,
     Expression<int>? imageAttachmentRemoteId,
     Expression<String>? syncStatus,
-    Expression<int>? dataSyncAttempts,
-    Expression<int>? imageSyncAttempts,
+    Expression<int>? syncAttempts,
+    Expression<String>? syncBatchId,
     Expression<String>? lastError,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -2268,8 +2716,8 @@ class ReadingsCompanion extends UpdateCompanion<Reading> {
       if (imageAttachmentRemoteId != null)
         'image_attachment_remote_id': imageAttachmentRemoteId,
       if (syncStatus != null) 'sync_status': syncStatus,
-      if (dataSyncAttempts != null) 'data_sync_attempts': dataSyncAttempts,
-      if (imageSyncAttempts != null) 'image_sync_attempts': imageSyncAttempts,
+      if (syncAttempts != null) 'sync_attempts': syncAttempts,
+      if (syncBatchId != null) 'sync_batch_id': syncBatchId,
       if (lastError != null) 'last_error': lastError,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -2290,8 +2738,8 @@ class ReadingsCompanion extends UpdateCompanion<Reading> {
       Value<String?>? imageSecondaryLocalPath,
       Value<int?>? imageAttachmentRemoteId,
       Value<String>? syncStatus,
-      Value<int>? dataSyncAttempts,
-      Value<int>? imageSyncAttempts,
+      Value<int>? syncAttempts,
+      Value<String?>? syncBatchId,
       Value<String?>? lastError,
       Value<DateTime>? createdAt,
       Value<DateTime>? updatedAt,
@@ -2311,8 +2759,8 @@ class ReadingsCompanion extends UpdateCompanion<Reading> {
       imageAttachmentRemoteId:
           imageAttachmentRemoteId ?? this.imageAttachmentRemoteId,
       syncStatus: syncStatus ?? this.syncStatus,
-      dataSyncAttempts: dataSyncAttempts ?? this.dataSyncAttempts,
-      imageSyncAttempts: imageSyncAttempts ?? this.imageSyncAttempts,
+      syncAttempts: syncAttempts ?? this.syncAttempts,
+      syncBatchId: syncBatchId ?? this.syncBatchId,
       lastError: lastError ?? this.lastError,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -2361,11 +2809,11 @@ class ReadingsCompanion extends UpdateCompanion<Reading> {
     if (syncStatus.present) {
       map['sync_status'] = Variable<String>(syncStatus.value);
     }
-    if (dataSyncAttempts.present) {
-      map['data_sync_attempts'] = Variable<int>(dataSyncAttempts.value);
+    if (syncAttempts.present) {
+      map['sync_attempts'] = Variable<int>(syncAttempts.value);
     }
-    if (imageSyncAttempts.present) {
-      map['image_sync_attempts'] = Variable<int>(imageSyncAttempts.value);
+    if (syncBatchId.present) {
+      map['sync_batch_id'] = Variable<String>(syncBatchId.value);
     }
     if (lastError.present) {
       map['last_error'] = Variable<String>(lastError.value);
@@ -2397,982 +2845,11 @@ class ReadingsCompanion extends UpdateCompanion<Reading> {
           ..write('imageSecondaryLocalPath: $imageSecondaryLocalPath, ')
           ..write('imageAttachmentRemoteId: $imageAttachmentRemoteId, ')
           ..write('syncStatus: $syncStatus, ')
-          ..write('dataSyncAttempts: $dataSyncAttempts, ')
-          ..write('imageSyncAttempts: $imageSyncAttempts, ')
+          ..write('syncAttempts: $syncAttempts, ')
+          ..write('syncBatchId: $syncBatchId, ')
           ..write('lastError: $lastError, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
-          ..write('rowid: $rowid')
-          ..write(')'))
-        .toString();
-  }
-}
-
-class $SyncQueueItemsTable extends SyncQueueItems
-    with TableInfo<$SyncQueueItemsTable, SyncQueueItem> {
-  @override
-  final GeneratedDatabase attachedDatabase;
-  final String? _alias;
-  $SyncQueueItemsTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _idMeta = const VerificationMeta('id');
-  @override
-  late final GeneratedColumn<String> id = GeneratedColumn<String>(
-      'id', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _readingIdMeta =
-      const VerificationMeta('readingId');
-  @override
-  late final GeneratedColumn<String> readingId = GeneratedColumn<String>(
-      'reading_id', aliasedName, false,
-      type: DriftSqlType.string,
-      requiredDuringInsert: true,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('REFERENCES readings (id)'));
-  static const VerificationMeta _statusMeta = const VerificationMeta('status');
-  @override
-  late final GeneratedColumn<String> status = GeneratedColumn<String>(
-      'status', aliasedName, false,
-      type: DriftSqlType.string,
-      requiredDuringInsert: false,
-      defaultValue: const Constant('pending'));
-  static const VerificationMeta _retryCountMeta =
-      const VerificationMeta('retryCount');
-  @override
-  late final GeneratedColumn<int> retryCount = GeneratedColumn<int>(
-      'retry_count', aliasedName, false,
-      type: DriftSqlType.int,
-      requiredDuringInsert: false,
-      defaultValue: const Constant(0));
-  static const VerificationMeta _lastErrorMeta =
-      const VerificationMeta('lastError');
-  @override
-  late final GeneratedColumn<String> lastError = GeneratedColumn<String>(
-      'last_error', aliasedName, true,
-      type: DriftSqlType.string, requiredDuringInsert: false);
-  static const VerificationMeta _enqueuedAtMeta =
-      const VerificationMeta('enqueuedAt');
-  @override
-  late final GeneratedColumn<DateTime> enqueuedAt = GeneratedColumn<DateTime>(
-      'enqueued_at', aliasedName, false,
-      type: DriftSqlType.dateTime, requiredDuringInsert: true);
-  static const VerificationMeta _lastAttemptAtMeta =
-      const VerificationMeta('lastAttemptAt');
-  @override
-  late final GeneratedColumn<DateTime> lastAttemptAt =
-      GeneratedColumn<DateTime>('last_attempt_at', aliasedName, true,
-          type: DriftSqlType.dateTime, requiredDuringInsert: false);
-  static const VerificationMeta _idempotencyKeyMeta =
-      const VerificationMeta('idempotencyKey');
-  @override
-  late final GeneratedColumn<String> idempotencyKey = GeneratedColumn<String>(
-      'idempotency_key', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  @override
-  List<GeneratedColumn> get $columns => [
-        id,
-        readingId,
-        status,
-        retryCount,
-        lastError,
-        enqueuedAt,
-        lastAttemptAt,
-        idempotencyKey
-      ];
-  @override
-  String get aliasedName => _alias ?? actualTableName;
-  @override
-  String get actualTableName => $name;
-  static const String $name = 'sync_queue_items';
-  @override
-  VerificationContext validateIntegrity(Insertable<SyncQueueItem> instance,
-      {bool isInserting = false}) {
-    final context = VerificationContext();
-    final data = instance.toColumns(true);
-    if (data.containsKey('id')) {
-      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    } else if (isInserting) {
-      context.missing(_idMeta);
-    }
-    if (data.containsKey('reading_id')) {
-      context.handle(_readingIdMeta,
-          readingId.isAcceptableOrUnknown(data['reading_id']!, _readingIdMeta));
-    } else if (isInserting) {
-      context.missing(_readingIdMeta);
-    }
-    if (data.containsKey('status')) {
-      context.handle(_statusMeta,
-          status.isAcceptableOrUnknown(data['status']!, _statusMeta));
-    }
-    if (data.containsKey('retry_count')) {
-      context.handle(
-          _retryCountMeta,
-          retryCount.isAcceptableOrUnknown(
-              data['retry_count']!, _retryCountMeta));
-    }
-    if (data.containsKey('last_error')) {
-      context.handle(_lastErrorMeta,
-          lastError.isAcceptableOrUnknown(data['last_error']!, _lastErrorMeta));
-    }
-    if (data.containsKey('enqueued_at')) {
-      context.handle(
-          _enqueuedAtMeta,
-          enqueuedAt.isAcceptableOrUnknown(
-              data['enqueued_at']!, _enqueuedAtMeta));
-    } else if (isInserting) {
-      context.missing(_enqueuedAtMeta);
-    }
-    if (data.containsKey('last_attempt_at')) {
-      context.handle(
-          _lastAttemptAtMeta,
-          lastAttemptAt.isAcceptableOrUnknown(
-              data['last_attempt_at']!, _lastAttemptAtMeta));
-    }
-    if (data.containsKey('idempotency_key')) {
-      context.handle(
-          _idempotencyKeyMeta,
-          idempotencyKey.isAcceptableOrUnknown(
-              data['idempotency_key']!, _idempotencyKeyMeta));
-    } else if (isInserting) {
-      context.missing(_idempotencyKeyMeta);
-    }
-    return context;
-  }
-
-  @override
-  Set<GeneratedColumn> get $primaryKey => {id};
-  @override
-  SyncQueueItem map(Map<String, dynamic> data, {String? tablePrefix}) {
-    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return SyncQueueItem(
-      id: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
-      readingId: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}reading_id'])!,
-      status: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}status'])!,
-      retryCount: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}retry_count'])!,
-      lastError: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}last_error']),
-      enqueuedAt: attachedDatabase.typeMapping
-          .read(DriftSqlType.dateTime, data['${effectivePrefix}enqueued_at'])!,
-      lastAttemptAt: attachedDatabase.typeMapping.read(
-          DriftSqlType.dateTime, data['${effectivePrefix}last_attempt_at']),
-      idempotencyKey: attachedDatabase.typeMapping.read(
-          DriftSqlType.string, data['${effectivePrefix}idempotency_key'])!,
-    );
-  }
-
-  @override
-  $SyncQueueItemsTable createAlias(String alias) {
-    return $SyncQueueItemsTable(attachedDatabase, alias);
-  }
-}
-
-class SyncQueueItem extends DataClass implements Insertable<SyncQueueItem> {
-  final String id;
-  final String readingId;
-  final String status;
-  final int retryCount;
-  final String? lastError;
-  final DateTime enqueuedAt;
-  final DateTime? lastAttemptAt;
-  final String idempotencyKey;
-  const SyncQueueItem(
-      {required this.id,
-      required this.readingId,
-      required this.status,
-      required this.retryCount,
-      this.lastError,
-      required this.enqueuedAt,
-      this.lastAttemptAt,
-      required this.idempotencyKey});
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    map['id'] = Variable<String>(id);
-    map['reading_id'] = Variable<String>(readingId);
-    map['status'] = Variable<String>(status);
-    map['retry_count'] = Variable<int>(retryCount);
-    if (!nullToAbsent || lastError != null) {
-      map['last_error'] = Variable<String>(lastError);
-    }
-    map['enqueued_at'] = Variable<DateTime>(enqueuedAt);
-    if (!nullToAbsent || lastAttemptAt != null) {
-      map['last_attempt_at'] = Variable<DateTime>(lastAttemptAt);
-    }
-    map['idempotency_key'] = Variable<String>(idempotencyKey);
-    return map;
-  }
-
-  SyncQueueItemsCompanion toCompanion(bool nullToAbsent) {
-    return SyncQueueItemsCompanion(
-      id: Value(id),
-      readingId: Value(readingId),
-      status: Value(status),
-      retryCount: Value(retryCount),
-      lastError: lastError == null && nullToAbsent
-          ? const Value.absent()
-          : Value(lastError),
-      enqueuedAt: Value(enqueuedAt),
-      lastAttemptAt: lastAttemptAt == null && nullToAbsent
-          ? const Value.absent()
-          : Value(lastAttemptAt),
-      idempotencyKey: Value(idempotencyKey),
-    );
-  }
-
-  factory SyncQueueItem.fromJson(Map<String, dynamic> json,
-      {ValueSerializer? serializer}) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return SyncQueueItem(
-      id: serializer.fromJson<String>(json['id']),
-      readingId: serializer.fromJson<String>(json['readingId']),
-      status: serializer.fromJson<String>(json['status']),
-      retryCount: serializer.fromJson<int>(json['retryCount']),
-      lastError: serializer.fromJson<String?>(json['lastError']),
-      enqueuedAt: serializer.fromJson<DateTime>(json['enqueuedAt']),
-      lastAttemptAt: serializer.fromJson<DateTime?>(json['lastAttemptAt']),
-      idempotencyKey: serializer.fromJson<String>(json['idempotencyKey']),
-    );
-  }
-  @override
-  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return <String, dynamic>{
-      'id': serializer.toJson<String>(id),
-      'readingId': serializer.toJson<String>(readingId),
-      'status': serializer.toJson<String>(status),
-      'retryCount': serializer.toJson<int>(retryCount),
-      'lastError': serializer.toJson<String?>(lastError),
-      'enqueuedAt': serializer.toJson<DateTime>(enqueuedAt),
-      'lastAttemptAt': serializer.toJson<DateTime?>(lastAttemptAt),
-      'idempotencyKey': serializer.toJson<String>(idempotencyKey),
-    };
-  }
-
-  SyncQueueItem copyWith(
-          {String? id,
-          String? readingId,
-          String? status,
-          int? retryCount,
-          Value<String?> lastError = const Value.absent(),
-          DateTime? enqueuedAt,
-          Value<DateTime?> lastAttemptAt = const Value.absent(),
-          String? idempotencyKey}) =>
-      SyncQueueItem(
-        id: id ?? this.id,
-        readingId: readingId ?? this.readingId,
-        status: status ?? this.status,
-        retryCount: retryCount ?? this.retryCount,
-        lastError: lastError.present ? lastError.value : this.lastError,
-        enqueuedAt: enqueuedAt ?? this.enqueuedAt,
-        lastAttemptAt:
-            lastAttemptAt.present ? lastAttemptAt.value : this.lastAttemptAt,
-        idempotencyKey: idempotencyKey ?? this.idempotencyKey,
-      );
-  SyncQueueItem copyWithCompanion(SyncQueueItemsCompanion data) {
-    return SyncQueueItem(
-      id: data.id.present ? data.id.value : this.id,
-      readingId: data.readingId.present ? data.readingId.value : this.readingId,
-      status: data.status.present ? data.status.value : this.status,
-      retryCount:
-          data.retryCount.present ? data.retryCount.value : this.retryCount,
-      lastError: data.lastError.present ? data.lastError.value : this.lastError,
-      enqueuedAt:
-          data.enqueuedAt.present ? data.enqueuedAt.value : this.enqueuedAt,
-      lastAttemptAt: data.lastAttemptAt.present
-          ? data.lastAttemptAt.value
-          : this.lastAttemptAt,
-      idempotencyKey: data.idempotencyKey.present
-          ? data.idempotencyKey.value
-          : this.idempotencyKey,
-    );
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('SyncQueueItem(')
-          ..write('id: $id, ')
-          ..write('readingId: $readingId, ')
-          ..write('status: $status, ')
-          ..write('retryCount: $retryCount, ')
-          ..write('lastError: $lastError, ')
-          ..write('enqueuedAt: $enqueuedAt, ')
-          ..write('lastAttemptAt: $lastAttemptAt, ')
-          ..write('idempotencyKey: $idempotencyKey')
-          ..write(')'))
-        .toString();
-  }
-
-  @override
-  int get hashCode => Object.hash(id, readingId, status, retryCount, lastError,
-      enqueuedAt, lastAttemptAt, idempotencyKey);
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is SyncQueueItem &&
-          other.id == this.id &&
-          other.readingId == this.readingId &&
-          other.status == this.status &&
-          other.retryCount == this.retryCount &&
-          other.lastError == this.lastError &&
-          other.enqueuedAt == this.enqueuedAt &&
-          other.lastAttemptAt == this.lastAttemptAt &&
-          other.idempotencyKey == this.idempotencyKey);
-}
-
-class SyncQueueItemsCompanion extends UpdateCompanion<SyncQueueItem> {
-  final Value<String> id;
-  final Value<String> readingId;
-  final Value<String> status;
-  final Value<int> retryCount;
-  final Value<String?> lastError;
-  final Value<DateTime> enqueuedAt;
-  final Value<DateTime?> lastAttemptAt;
-  final Value<String> idempotencyKey;
-  final Value<int> rowid;
-  const SyncQueueItemsCompanion({
-    this.id = const Value.absent(),
-    this.readingId = const Value.absent(),
-    this.status = const Value.absent(),
-    this.retryCount = const Value.absent(),
-    this.lastError = const Value.absent(),
-    this.enqueuedAt = const Value.absent(),
-    this.lastAttemptAt = const Value.absent(),
-    this.idempotencyKey = const Value.absent(),
-    this.rowid = const Value.absent(),
-  });
-  SyncQueueItemsCompanion.insert({
-    required String id,
-    required String readingId,
-    this.status = const Value.absent(),
-    this.retryCount = const Value.absent(),
-    this.lastError = const Value.absent(),
-    required DateTime enqueuedAt,
-    this.lastAttemptAt = const Value.absent(),
-    required String idempotencyKey,
-    this.rowid = const Value.absent(),
-  })  : id = Value(id),
-        readingId = Value(readingId),
-        enqueuedAt = Value(enqueuedAt),
-        idempotencyKey = Value(idempotencyKey);
-  static Insertable<SyncQueueItem> custom({
-    Expression<String>? id,
-    Expression<String>? readingId,
-    Expression<String>? status,
-    Expression<int>? retryCount,
-    Expression<String>? lastError,
-    Expression<DateTime>? enqueuedAt,
-    Expression<DateTime>? lastAttemptAt,
-    Expression<String>? idempotencyKey,
-    Expression<int>? rowid,
-  }) {
-    return RawValuesInsertable({
-      if (id != null) 'id': id,
-      if (readingId != null) 'reading_id': readingId,
-      if (status != null) 'status': status,
-      if (retryCount != null) 'retry_count': retryCount,
-      if (lastError != null) 'last_error': lastError,
-      if (enqueuedAt != null) 'enqueued_at': enqueuedAt,
-      if (lastAttemptAt != null) 'last_attempt_at': lastAttemptAt,
-      if (idempotencyKey != null) 'idempotency_key': idempotencyKey,
-      if (rowid != null) 'rowid': rowid,
-    });
-  }
-
-  SyncQueueItemsCompanion copyWith(
-      {Value<String>? id,
-      Value<String>? readingId,
-      Value<String>? status,
-      Value<int>? retryCount,
-      Value<String?>? lastError,
-      Value<DateTime>? enqueuedAt,
-      Value<DateTime?>? lastAttemptAt,
-      Value<String>? idempotencyKey,
-      Value<int>? rowid}) {
-    return SyncQueueItemsCompanion(
-      id: id ?? this.id,
-      readingId: readingId ?? this.readingId,
-      status: status ?? this.status,
-      retryCount: retryCount ?? this.retryCount,
-      lastError: lastError ?? this.lastError,
-      enqueuedAt: enqueuedAt ?? this.enqueuedAt,
-      lastAttemptAt: lastAttemptAt ?? this.lastAttemptAt,
-      idempotencyKey: idempotencyKey ?? this.idempotencyKey,
-      rowid: rowid ?? this.rowid,
-    );
-  }
-
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    if (id.present) {
-      map['id'] = Variable<String>(id.value);
-    }
-    if (readingId.present) {
-      map['reading_id'] = Variable<String>(readingId.value);
-    }
-    if (status.present) {
-      map['status'] = Variable<String>(status.value);
-    }
-    if (retryCount.present) {
-      map['retry_count'] = Variable<int>(retryCount.value);
-    }
-    if (lastError.present) {
-      map['last_error'] = Variable<String>(lastError.value);
-    }
-    if (enqueuedAt.present) {
-      map['enqueued_at'] = Variable<DateTime>(enqueuedAt.value);
-    }
-    if (lastAttemptAt.present) {
-      map['last_attempt_at'] = Variable<DateTime>(lastAttemptAt.value);
-    }
-    if (idempotencyKey.present) {
-      map['idempotency_key'] = Variable<String>(idempotencyKey.value);
-    }
-    if (rowid.present) {
-      map['rowid'] = Variable<int>(rowid.value);
-    }
-    return map;
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('SyncQueueItemsCompanion(')
-          ..write('id: $id, ')
-          ..write('readingId: $readingId, ')
-          ..write('status: $status, ')
-          ..write('retryCount: $retryCount, ')
-          ..write('lastError: $lastError, ')
-          ..write('enqueuedAt: $enqueuedAt, ')
-          ..write('lastAttemptAt: $lastAttemptAt, ')
-          ..write('idempotencyKey: $idempotencyKey, ')
-          ..write('rowid: $rowid')
-          ..write(')'))
-        .toString();
-  }
-}
-
-class $ImageUploadQueueItemsTable extends ImageUploadQueueItems
-    with TableInfo<$ImageUploadQueueItemsTable, ImageUploadQueueItem> {
-  @override
-  final GeneratedDatabase attachedDatabase;
-  final String? _alias;
-  $ImageUploadQueueItemsTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _idMeta = const VerificationMeta('id');
-  @override
-  late final GeneratedColumn<String> id = GeneratedColumn<String>(
-      'id', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _readingIdMeta =
-      const VerificationMeta('readingId');
-  @override
-  late final GeneratedColumn<String> readingId = GeneratedColumn<String>(
-      'reading_id', aliasedName, false,
-      type: DriftSqlType.string,
-      requiredDuringInsert: true,
-      defaultConstraints:
-          GeneratedColumn.constraintIsAlways('REFERENCES readings (id)'));
-  static const VerificationMeta _localPathMeta =
-      const VerificationMeta('localPath');
-  @override
-  late final GeneratedColumn<String> localPath = GeneratedColumn<String>(
-      'local_path', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  static const VerificationMeta _sizeBytesMeta =
-      const VerificationMeta('sizeBytes');
-  @override
-  late final GeneratedColumn<int> sizeBytes = GeneratedColumn<int>(
-      'size_bytes', aliasedName, false,
-      type: DriftSqlType.int, requiredDuringInsert: true);
-  static const VerificationMeta _statusMeta = const VerificationMeta('status');
-  @override
-  late final GeneratedColumn<String> status = GeneratedColumn<String>(
-      'status', aliasedName, false,
-      type: DriftSqlType.string,
-      requiredDuringInsert: false,
-      defaultValue: const Constant('pending'));
-  static const VerificationMeta _retryCountMeta =
-      const VerificationMeta('retryCount');
-  @override
-  late final GeneratedColumn<int> retryCount = GeneratedColumn<int>(
-      'retry_count', aliasedName, false,
-      type: DriftSqlType.int,
-      requiredDuringInsert: false,
-      defaultValue: const Constant(0));
-  static const VerificationMeta _lastErrorMeta =
-      const VerificationMeta('lastError');
-  @override
-  late final GeneratedColumn<String> lastError = GeneratedColumn<String>(
-      'last_error', aliasedName, true,
-      type: DriftSqlType.string, requiredDuringInsert: false);
-  static const VerificationMeta _enqueuedAtMeta =
-      const VerificationMeta('enqueuedAt');
-  @override
-  late final GeneratedColumn<DateTime> enqueuedAt = GeneratedColumn<DateTime>(
-      'enqueued_at', aliasedName, false,
-      type: DriftSqlType.dateTime, requiredDuringInsert: true);
-  static const VerificationMeta _lastAttemptAtMeta =
-      const VerificationMeta('lastAttemptAt');
-  @override
-  late final GeneratedColumn<DateTime> lastAttemptAt =
-      GeneratedColumn<DateTime>('last_attempt_at', aliasedName, true,
-          type: DriftSqlType.dateTime, requiredDuringInsert: false);
-  static const VerificationMeta _idempotencyKeyMeta =
-      const VerificationMeta('idempotencyKey');
-  @override
-  late final GeneratedColumn<String> idempotencyKey = GeneratedColumn<String>(
-      'idempotency_key', aliasedName, false,
-      type: DriftSqlType.string, requiredDuringInsert: true);
-  @override
-  List<GeneratedColumn> get $columns => [
-        id,
-        readingId,
-        localPath,
-        sizeBytes,
-        status,
-        retryCount,
-        lastError,
-        enqueuedAt,
-        lastAttemptAt,
-        idempotencyKey
-      ];
-  @override
-  String get aliasedName => _alias ?? actualTableName;
-  @override
-  String get actualTableName => $name;
-  static const String $name = 'image_upload_queue_items';
-  @override
-  VerificationContext validateIntegrity(
-      Insertable<ImageUploadQueueItem> instance,
-      {bool isInserting = false}) {
-    final context = VerificationContext();
-    final data = instance.toColumns(true);
-    if (data.containsKey('id')) {
-      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    } else if (isInserting) {
-      context.missing(_idMeta);
-    }
-    if (data.containsKey('reading_id')) {
-      context.handle(_readingIdMeta,
-          readingId.isAcceptableOrUnknown(data['reading_id']!, _readingIdMeta));
-    } else if (isInserting) {
-      context.missing(_readingIdMeta);
-    }
-    if (data.containsKey('local_path')) {
-      context.handle(_localPathMeta,
-          localPath.isAcceptableOrUnknown(data['local_path']!, _localPathMeta));
-    } else if (isInserting) {
-      context.missing(_localPathMeta);
-    }
-    if (data.containsKey('size_bytes')) {
-      context.handle(_sizeBytesMeta,
-          sizeBytes.isAcceptableOrUnknown(data['size_bytes']!, _sizeBytesMeta));
-    } else if (isInserting) {
-      context.missing(_sizeBytesMeta);
-    }
-    if (data.containsKey('status')) {
-      context.handle(_statusMeta,
-          status.isAcceptableOrUnknown(data['status']!, _statusMeta));
-    }
-    if (data.containsKey('retry_count')) {
-      context.handle(
-          _retryCountMeta,
-          retryCount.isAcceptableOrUnknown(
-              data['retry_count']!, _retryCountMeta));
-    }
-    if (data.containsKey('last_error')) {
-      context.handle(_lastErrorMeta,
-          lastError.isAcceptableOrUnknown(data['last_error']!, _lastErrorMeta));
-    }
-    if (data.containsKey('enqueued_at')) {
-      context.handle(
-          _enqueuedAtMeta,
-          enqueuedAt.isAcceptableOrUnknown(
-              data['enqueued_at']!, _enqueuedAtMeta));
-    } else if (isInserting) {
-      context.missing(_enqueuedAtMeta);
-    }
-    if (data.containsKey('last_attempt_at')) {
-      context.handle(
-          _lastAttemptAtMeta,
-          lastAttemptAt.isAcceptableOrUnknown(
-              data['last_attempt_at']!, _lastAttemptAtMeta));
-    }
-    if (data.containsKey('idempotency_key')) {
-      context.handle(
-          _idempotencyKeyMeta,
-          idempotencyKey.isAcceptableOrUnknown(
-              data['idempotency_key']!, _idempotencyKeyMeta));
-    } else if (isInserting) {
-      context.missing(_idempotencyKeyMeta);
-    }
-    return context;
-  }
-
-  @override
-  Set<GeneratedColumn> get $primaryKey => {id};
-  @override
-  ImageUploadQueueItem map(Map<String, dynamic> data, {String? tablePrefix}) {
-    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return ImageUploadQueueItem(
-      id: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
-      readingId: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}reading_id'])!,
-      localPath: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}local_path'])!,
-      sizeBytes: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}size_bytes'])!,
-      status: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}status'])!,
-      retryCount: attachedDatabase.typeMapping
-          .read(DriftSqlType.int, data['${effectivePrefix}retry_count'])!,
-      lastError: attachedDatabase.typeMapping
-          .read(DriftSqlType.string, data['${effectivePrefix}last_error']),
-      enqueuedAt: attachedDatabase.typeMapping
-          .read(DriftSqlType.dateTime, data['${effectivePrefix}enqueued_at'])!,
-      lastAttemptAt: attachedDatabase.typeMapping.read(
-          DriftSqlType.dateTime, data['${effectivePrefix}last_attempt_at']),
-      idempotencyKey: attachedDatabase.typeMapping.read(
-          DriftSqlType.string, data['${effectivePrefix}idempotency_key'])!,
-    );
-  }
-
-  @override
-  $ImageUploadQueueItemsTable createAlias(String alias) {
-    return $ImageUploadQueueItemsTable(attachedDatabase, alias);
-  }
-}
-
-class ImageUploadQueueItem extends DataClass
-    implements Insertable<ImageUploadQueueItem> {
-  final String id;
-  final String readingId;
-  final String localPath;
-  final int sizeBytes;
-  final String status;
-  final int retryCount;
-  final String? lastError;
-  final DateTime enqueuedAt;
-  final DateTime? lastAttemptAt;
-  final String idempotencyKey;
-  const ImageUploadQueueItem(
-      {required this.id,
-      required this.readingId,
-      required this.localPath,
-      required this.sizeBytes,
-      required this.status,
-      required this.retryCount,
-      this.lastError,
-      required this.enqueuedAt,
-      this.lastAttemptAt,
-      required this.idempotencyKey});
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    map['id'] = Variable<String>(id);
-    map['reading_id'] = Variable<String>(readingId);
-    map['local_path'] = Variable<String>(localPath);
-    map['size_bytes'] = Variable<int>(sizeBytes);
-    map['status'] = Variable<String>(status);
-    map['retry_count'] = Variable<int>(retryCount);
-    if (!nullToAbsent || lastError != null) {
-      map['last_error'] = Variable<String>(lastError);
-    }
-    map['enqueued_at'] = Variable<DateTime>(enqueuedAt);
-    if (!nullToAbsent || lastAttemptAt != null) {
-      map['last_attempt_at'] = Variable<DateTime>(lastAttemptAt);
-    }
-    map['idempotency_key'] = Variable<String>(idempotencyKey);
-    return map;
-  }
-
-  ImageUploadQueueItemsCompanion toCompanion(bool nullToAbsent) {
-    return ImageUploadQueueItemsCompanion(
-      id: Value(id),
-      readingId: Value(readingId),
-      localPath: Value(localPath),
-      sizeBytes: Value(sizeBytes),
-      status: Value(status),
-      retryCount: Value(retryCount),
-      lastError: lastError == null && nullToAbsent
-          ? const Value.absent()
-          : Value(lastError),
-      enqueuedAt: Value(enqueuedAt),
-      lastAttemptAt: lastAttemptAt == null && nullToAbsent
-          ? const Value.absent()
-          : Value(lastAttemptAt),
-      idempotencyKey: Value(idempotencyKey),
-    );
-  }
-
-  factory ImageUploadQueueItem.fromJson(Map<String, dynamic> json,
-      {ValueSerializer? serializer}) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return ImageUploadQueueItem(
-      id: serializer.fromJson<String>(json['id']),
-      readingId: serializer.fromJson<String>(json['readingId']),
-      localPath: serializer.fromJson<String>(json['localPath']),
-      sizeBytes: serializer.fromJson<int>(json['sizeBytes']),
-      status: serializer.fromJson<String>(json['status']),
-      retryCount: serializer.fromJson<int>(json['retryCount']),
-      lastError: serializer.fromJson<String?>(json['lastError']),
-      enqueuedAt: serializer.fromJson<DateTime>(json['enqueuedAt']),
-      lastAttemptAt: serializer.fromJson<DateTime?>(json['lastAttemptAt']),
-      idempotencyKey: serializer.fromJson<String>(json['idempotencyKey']),
-    );
-  }
-  @override
-  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return <String, dynamic>{
-      'id': serializer.toJson<String>(id),
-      'readingId': serializer.toJson<String>(readingId),
-      'localPath': serializer.toJson<String>(localPath),
-      'sizeBytes': serializer.toJson<int>(sizeBytes),
-      'status': serializer.toJson<String>(status),
-      'retryCount': serializer.toJson<int>(retryCount),
-      'lastError': serializer.toJson<String?>(lastError),
-      'enqueuedAt': serializer.toJson<DateTime>(enqueuedAt),
-      'lastAttemptAt': serializer.toJson<DateTime?>(lastAttemptAt),
-      'idempotencyKey': serializer.toJson<String>(idempotencyKey),
-    };
-  }
-
-  ImageUploadQueueItem copyWith(
-          {String? id,
-          String? readingId,
-          String? localPath,
-          int? sizeBytes,
-          String? status,
-          int? retryCount,
-          Value<String?> lastError = const Value.absent(),
-          DateTime? enqueuedAt,
-          Value<DateTime?> lastAttemptAt = const Value.absent(),
-          String? idempotencyKey}) =>
-      ImageUploadQueueItem(
-        id: id ?? this.id,
-        readingId: readingId ?? this.readingId,
-        localPath: localPath ?? this.localPath,
-        sizeBytes: sizeBytes ?? this.sizeBytes,
-        status: status ?? this.status,
-        retryCount: retryCount ?? this.retryCount,
-        lastError: lastError.present ? lastError.value : this.lastError,
-        enqueuedAt: enqueuedAt ?? this.enqueuedAt,
-        lastAttemptAt:
-            lastAttemptAt.present ? lastAttemptAt.value : this.lastAttemptAt,
-        idempotencyKey: idempotencyKey ?? this.idempotencyKey,
-      );
-  ImageUploadQueueItem copyWithCompanion(ImageUploadQueueItemsCompanion data) {
-    return ImageUploadQueueItem(
-      id: data.id.present ? data.id.value : this.id,
-      readingId: data.readingId.present ? data.readingId.value : this.readingId,
-      localPath: data.localPath.present ? data.localPath.value : this.localPath,
-      sizeBytes: data.sizeBytes.present ? data.sizeBytes.value : this.sizeBytes,
-      status: data.status.present ? data.status.value : this.status,
-      retryCount:
-          data.retryCount.present ? data.retryCount.value : this.retryCount,
-      lastError: data.lastError.present ? data.lastError.value : this.lastError,
-      enqueuedAt:
-          data.enqueuedAt.present ? data.enqueuedAt.value : this.enqueuedAt,
-      lastAttemptAt: data.lastAttemptAt.present
-          ? data.lastAttemptAt.value
-          : this.lastAttemptAt,
-      idempotencyKey: data.idempotencyKey.present
-          ? data.idempotencyKey.value
-          : this.idempotencyKey,
-    );
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('ImageUploadQueueItem(')
-          ..write('id: $id, ')
-          ..write('readingId: $readingId, ')
-          ..write('localPath: $localPath, ')
-          ..write('sizeBytes: $sizeBytes, ')
-          ..write('status: $status, ')
-          ..write('retryCount: $retryCount, ')
-          ..write('lastError: $lastError, ')
-          ..write('enqueuedAt: $enqueuedAt, ')
-          ..write('lastAttemptAt: $lastAttemptAt, ')
-          ..write('idempotencyKey: $idempotencyKey')
-          ..write(')'))
-        .toString();
-  }
-
-  @override
-  int get hashCode => Object.hash(id, readingId, localPath, sizeBytes, status,
-      retryCount, lastError, enqueuedAt, lastAttemptAt, idempotencyKey);
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is ImageUploadQueueItem &&
-          other.id == this.id &&
-          other.readingId == this.readingId &&
-          other.localPath == this.localPath &&
-          other.sizeBytes == this.sizeBytes &&
-          other.status == this.status &&
-          other.retryCount == this.retryCount &&
-          other.lastError == this.lastError &&
-          other.enqueuedAt == this.enqueuedAt &&
-          other.lastAttemptAt == this.lastAttemptAt &&
-          other.idempotencyKey == this.idempotencyKey);
-}
-
-class ImageUploadQueueItemsCompanion
-    extends UpdateCompanion<ImageUploadQueueItem> {
-  final Value<String> id;
-  final Value<String> readingId;
-  final Value<String> localPath;
-  final Value<int> sizeBytes;
-  final Value<String> status;
-  final Value<int> retryCount;
-  final Value<String?> lastError;
-  final Value<DateTime> enqueuedAt;
-  final Value<DateTime?> lastAttemptAt;
-  final Value<String> idempotencyKey;
-  final Value<int> rowid;
-  const ImageUploadQueueItemsCompanion({
-    this.id = const Value.absent(),
-    this.readingId = const Value.absent(),
-    this.localPath = const Value.absent(),
-    this.sizeBytes = const Value.absent(),
-    this.status = const Value.absent(),
-    this.retryCount = const Value.absent(),
-    this.lastError = const Value.absent(),
-    this.enqueuedAt = const Value.absent(),
-    this.lastAttemptAt = const Value.absent(),
-    this.idempotencyKey = const Value.absent(),
-    this.rowid = const Value.absent(),
-  });
-  ImageUploadQueueItemsCompanion.insert({
-    required String id,
-    required String readingId,
-    required String localPath,
-    required int sizeBytes,
-    this.status = const Value.absent(),
-    this.retryCount = const Value.absent(),
-    this.lastError = const Value.absent(),
-    required DateTime enqueuedAt,
-    this.lastAttemptAt = const Value.absent(),
-    required String idempotencyKey,
-    this.rowid = const Value.absent(),
-  })  : id = Value(id),
-        readingId = Value(readingId),
-        localPath = Value(localPath),
-        sizeBytes = Value(sizeBytes),
-        enqueuedAt = Value(enqueuedAt),
-        idempotencyKey = Value(idempotencyKey);
-  static Insertable<ImageUploadQueueItem> custom({
-    Expression<String>? id,
-    Expression<String>? readingId,
-    Expression<String>? localPath,
-    Expression<int>? sizeBytes,
-    Expression<String>? status,
-    Expression<int>? retryCount,
-    Expression<String>? lastError,
-    Expression<DateTime>? enqueuedAt,
-    Expression<DateTime>? lastAttemptAt,
-    Expression<String>? idempotencyKey,
-    Expression<int>? rowid,
-  }) {
-    return RawValuesInsertable({
-      if (id != null) 'id': id,
-      if (readingId != null) 'reading_id': readingId,
-      if (localPath != null) 'local_path': localPath,
-      if (sizeBytes != null) 'size_bytes': sizeBytes,
-      if (status != null) 'status': status,
-      if (retryCount != null) 'retry_count': retryCount,
-      if (lastError != null) 'last_error': lastError,
-      if (enqueuedAt != null) 'enqueued_at': enqueuedAt,
-      if (lastAttemptAt != null) 'last_attempt_at': lastAttemptAt,
-      if (idempotencyKey != null) 'idempotency_key': idempotencyKey,
-      if (rowid != null) 'rowid': rowid,
-    });
-  }
-
-  ImageUploadQueueItemsCompanion copyWith(
-      {Value<String>? id,
-      Value<String>? readingId,
-      Value<String>? localPath,
-      Value<int>? sizeBytes,
-      Value<String>? status,
-      Value<int>? retryCount,
-      Value<String?>? lastError,
-      Value<DateTime>? enqueuedAt,
-      Value<DateTime?>? lastAttemptAt,
-      Value<String>? idempotencyKey,
-      Value<int>? rowid}) {
-    return ImageUploadQueueItemsCompanion(
-      id: id ?? this.id,
-      readingId: readingId ?? this.readingId,
-      localPath: localPath ?? this.localPath,
-      sizeBytes: sizeBytes ?? this.sizeBytes,
-      status: status ?? this.status,
-      retryCount: retryCount ?? this.retryCount,
-      lastError: lastError ?? this.lastError,
-      enqueuedAt: enqueuedAt ?? this.enqueuedAt,
-      lastAttemptAt: lastAttemptAt ?? this.lastAttemptAt,
-      idempotencyKey: idempotencyKey ?? this.idempotencyKey,
-      rowid: rowid ?? this.rowid,
-    );
-  }
-
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    if (id.present) {
-      map['id'] = Variable<String>(id.value);
-    }
-    if (readingId.present) {
-      map['reading_id'] = Variable<String>(readingId.value);
-    }
-    if (localPath.present) {
-      map['local_path'] = Variable<String>(localPath.value);
-    }
-    if (sizeBytes.present) {
-      map['size_bytes'] = Variable<int>(sizeBytes.value);
-    }
-    if (status.present) {
-      map['status'] = Variable<String>(status.value);
-    }
-    if (retryCount.present) {
-      map['retry_count'] = Variable<int>(retryCount.value);
-    }
-    if (lastError.present) {
-      map['last_error'] = Variable<String>(lastError.value);
-    }
-    if (enqueuedAt.present) {
-      map['enqueued_at'] = Variable<DateTime>(enqueuedAt.value);
-    }
-    if (lastAttemptAt.present) {
-      map['last_attempt_at'] = Variable<DateTime>(lastAttemptAt.value);
-    }
-    if (idempotencyKey.present) {
-      map['idempotency_key'] = Variable<String>(idempotencyKey.value);
-    }
-    if (rowid.present) {
-      map['rowid'] = Variable<int>(rowid.value);
-    }
-    return map;
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('ImageUploadQueueItemsCompanion(')
-          ..write('id: $id, ')
-          ..write('readingId: $readingId, ')
-          ..write('localPath: $localPath, ')
-          ..write('sizeBytes: $sizeBytes, ')
-          ..write('status: $status, ')
-          ..write('retryCount: $retryCount, ')
-          ..write('lastError: $lastError, ')
-          ..write('enqueuedAt: $enqueuedAt, ')
-          ..write('lastAttemptAt: $lastAttemptAt, ')
-          ..write('idempotencyKey: $idempotencyKey, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -3386,23 +2863,14 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $MetersTable meters = $MetersTable(this);
   late final $AssignmentsTable assignments = $AssignmentsTable(this);
   late final $PeriodsTable periods = $PeriodsTable(this);
+  late final $SyncBatchesTable syncBatches = $SyncBatchesTable(this);
   late final $ReadingsTable readings = $ReadingsTable(this);
-  late final $SyncQueueItemsTable syncQueueItems = $SyncQueueItemsTable(this);
-  late final $ImageUploadQueueItemsTable imageUploadQueueItems =
-      $ImageUploadQueueItemsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
-  List<DatabaseSchemaEntity> get allSchemaEntities => [
-        customers,
-        meters,
-        assignments,
-        periods,
-        readings,
-        syncQueueItems,
-        imageUploadQueueItems
-      ];
+  List<DatabaseSchemaEntity> get allSchemaEntities =>
+      [customers, meters, assignments, periods, syncBatches, readings];
 }
 
 typedef $$CustomersTableCreateCompanionBuilder = CustomersCompanion Function({
@@ -4617,6 +4085,308 @@ typedef $$PeriodsTableProcessedTableManager = ProcessedTableManager<
     (Period, BaseReferences<_$AppDatabase, $PeriodsTable, Period>),
     Period,
     PrefetchHooks Function()>;
+typedef $$SyncBatchesTableCreateCompanionBuilder = SyncBatchesCompanion
+    Function({
+  required String id,
+  Value<String> status,
+  Value<String?> archivePath,
+  required int readingCount,
+  Value<int> retryCount,
+  Value<String?> lastError,
+  required DateTime createdAt,
+  Value<DateTime?> lastAttemptAt,
+  Value<int> rowid,
+});
+typedef $$SyncBatchesTableUpdateCompanionBuilder = SyncBatchesCompanion
+    Function({
+  Value<String> id,
+  Value<String> status,
+  Value<String?> archivePath,
+  Value<int> readingCount,
+  Value<int> retryCount,
+  Value<String?> lastError,
+  Value<DateTime> createdAt,
+  Value<DateTime?> lastAttemptAt,
+  Value<int> rowid,
+});
+
+final class $$SyncBatchesTableReferences
+    extends BaseReferences<_$AppDatabase, $SyncBatchesTable, SyncBatche> {
+  $$SyncBatchesTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$ReadingsTable, List<Reading>> _readingsRefsTable(
+          _$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(db.readings,
+          aliasName:
+              $_aliasNameGenerator(db.syncBatches.id, db.readings.syncBatchId));
+
+  $$ReadingsTableProcessedTableManager get readingsRefs {
+    final manager = $$ReadingsTableTableManager($_db, $_db.readings)
+        .filter((f) => f.syncBatchId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_readingsRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+}
+
+class $$SyncBatchesTableFilterComposer
+    extends Composer<_$AppDatabase, $SyncBatchesTable> {
+  $$SyncBatchesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get archivePath => $composableBuilder(
+      column: $table.archivePath, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get readingCount => $composableBuilder(
+      column: $table.readingCount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get retryCount => $composableBuilder(
+      column: $table.retryCount, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get lastError => $composableBuilder(
+      column: $table.lastError, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get lastAttemptAt => $composableBuilder(
+      column: $table.lastAttemptAt, builder: (column) => ColumnFilters(column));
+
+  Expression<bool> readingsRefs(
+      Expression<bool> Function($$ReadingsTableFilterComposer f) f) {
+    final $$ReadingsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.readings,
+        getReferencedColumn: (t) => t.syncBatchId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$ReadingsTableFilterComposer(
+              $db: $db,
+              $table: $db.readings,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+}
+
+class $$SyncBatchesTableOrderingComposer
+    extends Composer<_$AppDatabase, $SyncBatchesTable> {
+  $$SyncBatchesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get archivePath => $composableBuilder(
+      column: $table.archivePath, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get readingCount => $composableBuilder(
+      column: $table.readingCount,
+      builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get retryCount => $composableBuilder(
+      column: $table.retryCount, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get lastError => $composableBuilder(
+      column: $table.lastError, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get lastAttemptAt => $composableBuilder(
+      column: $table.lastAttemptAt,
+      builder: (column) => ColumnOrderings(column));
+}
+
+class $$SyncBatchesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SyncBatchesTable> {
+  $$SyncBatchesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get archivePath => $composableBuilder(
+      column: $table.archivePath, builder: (column) => column);
+
+  GeneratedColumn<int> get readingCount => $composableBuilder(
+      column: $table.readingCount, builder: (column) => column);
+
+  GeneratedColumn<int> get retryCount => $composableBuilder(
+      column: $table.retryCount, builder: (column) => column);
+
+  GeneratedColumn<String> get lastError =>
+      $composableBuilder(column: $table.lastError, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastAttemptAt => $composableBuilder(
+      column: $table.lastAttemptAt, builder: (column) => column);
+
+  Expression<T> readingsRefs<T extends Object>(
+      Expression<T> Function($$ReadingsTableAnnotationComposer a) f) {
+    final $$ReadingsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.readings,
+        getReferencedColumn: (t) => t.syncBatchId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$ReadingsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.readings,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+}
+
+class $$SyncBatchesTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $SyncBatchesTable,
+    SyncBatche,
+    $$SyncBatchesTableFilterComposer,
+    $$SyncBatchesTableOrderingComposer,
+    $$SyncBatchesTableAnnotationComposer,
+    $$SyncBatchesTableCreateCompanionBuilder,
+    $$SyncBatchesTableUpdateCompanionBuilder,
+    (SyncBatche, $$SyncBatchesTableReferences),
+    SyncBatche,
+    PrefetchHooks Function({bool readingsRefs})> {
+  $$SyncBatchesTableTableManager(_$AppDatabase db, $SyncBatchesTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SyncBatchesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SyncBatchesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SyncBatchesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> status = const Value.absent(),
+            Value<String?> archivePath = const Value.absent(),
+            Value<int> readingCount = const Value.absent(),
+            Value<int> retryCount = const Value.absent(),
+            Value<String?> lastError = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<DateTime?> lastAttemptAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              SyncBatchesCompanion(
+            id: id,
+            status: status,
+            archivePath: archivePath,
+            readingCount: readingCount,
+            retryCount: retryCount,
+            lastError: lastError,
+            createdAt: createdAt,
+            lastAttemptAt: lastAttemptAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            Value<String> status = const Value.absent(),
+            Value<String?> archivePath = const Value.absent(),
+            required int readingCount,
+            Value<int> retryCount = const Value.absent(),
+            Value<String?> lastError = const Value.absent(),
+            required DateTime createdAt,
+            Value<DateTime?> lastAttemptAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              SyncBatchesCompanion.insert(
+            id: id,
+            status: status,
+            archivePath: archivePath,
+            readingCount: readingCount,
+            retryCount: retryCount,
+            lastError: lastError,
+            createdAt: createdAt,
+            lastAttemptAt: lastAttemptAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable(table),
+                    $$SyncBatchesTableReferences(db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: ({readingsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [if (readingsRefs) db.readings],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (readingsRefs)
+                    await $_getPrefetchedData<SyncBatche, $SyncBatchesTable,
+                            Reading>(
+                        currentTable: table,
+                        referencedTable:
+                            $$SyncBatchesTableReferences._readingsRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$SyncBatchesTableReferences(db, table, p0)
+                                .readingsRefs,
+                        referencedItemsForCurrentItem:
+                            (item, referencedItems) => referencedItems
+                                .where((e) => e.syncBatchId == item.id),
+                        typedResults: items)
+                ];
+              },
+            );
+          },
+        ));
+}
+
+typedef $$SyncBatchesTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $SyncBatchesTable,
+    SyncBatche,
+    $$SyncBatchesTableFilterComposer,
+    $$SyncBatchesTableOrderingComposer,
+    $$SyncBatchesTableAnnotationComposer,
+    $$SyncBatchesTableCreateCompanionBuilder,
+    $$SyncBatchesTableUpdateCompanionBuilder,
+    (SyncBatche, $$SyncBatchesTableReferences),
+    SyncBatche,
+    PrefetchHooks Function({bool readingsRefs})>;
 typedef $$ReadingsTableCreateCompanionBuilder = ReadingsCompanion Function({
   required String id,
   Value<int?> remoteId,
@@ -4630,8 +4400,8 @@ typedef $$ReadingsTableCreateCompanionBuilder = ReadingsCompanion Function({
   Value<String?> imageSecondaryLocalPath,
   Value<int?> imageAttachmentRemoteId,
   Value<String> syncStatus,
-  Value<int> dataSyncAttempts,
-  Value<int> imageSyncAttempts,
+  Value<int> syncAttempts,
+  Value<String?> syncBatchId,
   Value<String?> lastError,
   required DateTime createdAt,
   required DateTime updatedAt,
@@ -4650,8 +4420,8 @@ typedef $$ReadingsTableUpdateCompanionBuilder = ReadingsCompanion Function({
   Value<String?> imageSecondaryLocalPath,
   Value<int?> imageAttachmentRemoteId,
   Value<String> syncStatus,
-  Value<int> dataSyncAttempts,
-  Value<int> imageSyncAttempts,
+  Value<int> syncAttempts,
+  Value<String?> syncBatchId,
   Value<String?> lastError,
   Value<DateTime> createdAt,
   Value<DateTime> updatedAt,
@@ -4677,38 +4447,19 @@ final class $$ReadingsTableReferences
         manager.$state.copyWith(prefetchedData: [item]));
   }
 
-  static MultiTypedResultKey<$SyncQueueItemsTable, List<SyncQueueItem>>
-      _syncQueueItemsRefsTable(_$AppDatabase db) =>
-          MultiTypedResultKey.fromTable(db.syncQueueItems,
-              aliasName: $_aliasNameGenerator(
-                  db.readings.id, db.syncQueueItems.readingId));
+  static $SyncBatchesTable _syncBatchIdTable(_$AppDatabase db) =>
+      db.syncBatches.createAlias(
+          $_aliasNameGenerator(db.readings.syncBatchId, db.syncBatches.id));
 
-  $$SyncQueueItemsTableProcessedTableManager get syncQueueItemsRefs {
-    final manager = $$SyncQueueItemsTableTableManager($_db, $_db.syncQueueItems)
-        .filter((f) => f.readingId.id.sqlEquals($_itemColumn<String>('id')!));
-
-    final cache = $_typedResult.readTableOrNull(_syncQueueItemsRefsTable($_db));
+  $$SyncBatchesTableProcessedTableManager? get syncBatchId {
+    final $_column = $_itemColumn<String>('sync_batch_id');
+    if ($_column == null) return null;
+    final manager = $$SyncBatchesTableTableManager($_db, $_db.syncBatches)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_syncBatchIdTable($_db));
+    if (item == null) return manager;
     return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: cache));
-  }
-
-  static MultiTypedResultKey<$ImageUploadQueueItemsTable,
-      List<ImageUploadQueueItem>> _imageUploadQueueItemsRefsTable(
-          _$AppDatabase db) =>
-      MultiTypedResultKey.fromTable(db.imageUploadQueueItems,
-          aliasName: $_aliasNameGenerator(
-              db.readings.id, db.imageUploadQueueItems.readingId));
-
-  $$ImageUploadQueueItemsTableProcessedTableManager
-      get imageUploadQueueItemsRefs {
-    final manager = $$ImageUploadQueueItemsTableTableManager(
-            $_db, $_db.imageUploadQueueItems)
-        .filter((f) => f.readingId.id.sqlEquals($_itemColumn<String>('id')!));
-
-    final cache =
-        $_typedResult.readTableOrNull(_imageUploadQueueItemsRefsTable($_db));
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: cache));
+        manager.$state.copyWith(prefetchedData: [item]));
   }
 }
 
@@ -4758,13 +4509,8 @@ class $$ReadingsTableFilterComposer
   ColumnFilters<String> get syncStatus => $composableBuilder(
       column: $table.syncStatus, builder: (column) => ColumnFilters(column));
 
-  ColumnFilters<int> get dataSyncAttempts => $composableBuilder(
-      column: $table.dataSyncAttempts,
-      builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<int> get imageSyncAttempts => $composableBuilder(
-      column: $table.imageSyncAttempts,
-      builder: (column) => ColumnFilters(column));
+  ColumnFilters<int> get syncAttempts => $composableBuilder(
+      column: $table.syncAttempts, builder: (column) => ColumnFilters(column));
 
   ColumnFilters<String> get lastError => $composableBuilder(
       column: $table.lastError, builder: (column) => ColumnFilters(column));
@@ -4795,48 +4541,24 @@ class $$ReadingsTableFilterComposer
     return composer;
   }
 
-  Expression<bool> syncQueueItemsRefs(
-      Expression<bool> Function($$SyncQueueItemsTableFilterComposer f) f) {
-    final $$SyncQueueItemsTableFilterComposer composer = $composerBuilder(
+  $$SyncBatchesTableFilterComposer get syncBatchId {
+    final $$SyncBatchesTableFilterComposer composer = $composerBuilder(
         composer: this,
-        getCurrentColumn: (t) => t.id,
-        referencedTable: $db.syncQueueItems,
-        getReferencedColumn: (t) => t.readingId,
+        getCurrentColumn: (t) => t.syncBatchId,
+        referencedTable: $db.syncBatches,
+        getReferencedColumn: (t) => t.id,
         builder: (joinBuilder,
                 {$addJoinBuilderToRootComposer,
                 $removeJoinBuilderFromRootComposer}) =>
-            $$SyncQueueItemsTableFilterComposer(
+            $$SyncBatchesTableFilterComposer(
               $db: $db,
-              $table: $db.syncQueueItems,
+              $table: $db.syncBatches,
               $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
               joinBuilder: joinBuilder,
               $removeJoinBuilderFromRootComposer:
                   $removeJoinBuilderFromRootComposer,
             ));
-    return f(composer);
-  }
-
-  Expression<bool> imageUploadQueueItemsRefs(
-      Expression<bool> Function($$ImageUploadQueueItemsTableFilterComposer f)
-          f) {
-    final $$ImageUploadQueueItemsTableFilterComposer composer =
-        $composerBuilder(
-            composer: this,
-            getCurrentColumn: (t) => t.id,
-            referencedTable: $db.imageUploadQueueItems,
-            getReferencedColumn: (t) => t.readingId,
-            builder: (joinBuilder,
-                    {$addJoinBuilderToRootComposer,
-                    $removeJoinBuilderFromRootComposer}) =>
-                $$ImageUploadQueueItemsTableFilterComposer(
-                  $db: $db,
-                  $table: $db.imageUploadQueueItems,
-                  $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-                  joinBuilder: joinBuilder,
-                  $removeJoinBuilderFromRootComposer:
-                      $removeJoinBuilderFromRootComposer,
-                ));
-    return f(composer);
+    return composer;
   }
 }
 
@@ -4887,12 +4609,8 @@ class $$ReadingsTableOrderingComposer
   ColumnOrderings<String> get syncStatus => $composableBuilder(
       column: $table.syncStatus, builder: (column) => ColumnOrderings(column));
 
-  ColumnOrderings<int> get dataSyncAttempts => $composableBuilder(
-      column: $table.dataSyncAttempts,
-      builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<int> get imageSyncAttempts => $composableBuilder(
-      column: $table.imageSyncAttempts,
+  ColumnOrderings<int> get syncAttempts => $composableBuilder(
+      column: $table.syncAttempts,
       builder: (column) => ColumnOrderings(column));
 
   ColumnOrderings<String> get lastError => $composableBuilder(
@@ -4916,6 +4634,26 @@ class $$ReadingsTableOrderingComposer
             $$MetersTableOrderingComposer(
               $db: $db,
               $table: $db.meters,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  $$SyncBatchesTableOrderingComposer get syncBatchId {
+    final $$SyncBatchesTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.syncBatchId,
+        referencedTable: $db.syncBatches,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SyncBatchesTableOrderingComposer(
+              $db: $db,
+              $table: $db.syncBatches,
               $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
               joinBuilder: joinBuilder,
               $removeJoinBuilderFromRootComposer:
@@ -4967,11 +4705,8 @@ class $$ReadingsTableAnnotationComposer
   GeneratedColumn<String> get syncStatus => $composableBuilder(
       column: $table.syncStatus, builder: (column) => column);
 
-  GeneratedColumn<int> get dataSyncAttempts => $composableBuilder(
-      column: $table.dataSyncAttempts, builder: (column) => column);
-
-  GeneratedColumn<int> get imageSyncAttempts => $composableBuilder(
-      column: $table.imageSyncAttempts, builder: (column) => column);
+  GeneratedColumn<int> get syncAttempts => $composableBuilder(
+      column: $table.syncAttempts, builder: (column) => column);
 
   GeneratedColumn<String> get lastError =>
       $composableBuilder(column: $table.lastError, builder: (column) => column);
@@ -5002,48 +4737,24 @@ class $$ReadingsTableAnnotationComposer
     return composer;
   }
 
-  Expression<T> syncQueueItemsRefs<T extends Object>(
-      Expression<T> Function($$SyncQueueItemsTableAnnotationComposer a) f) {
-    final $$SyncQueueItemsTableAnnotationComposer composer = $composerBuilder(
+  $$SyncBatchesTableAnnotationComposer get syncBatchId {
+    final $$SyncBatchesTableAnnotationComposer composer = $composerBuilder(
         composer: this,
-        getCurrentColumn: (t) => t.id,
-        referencedTable: $db.syncQueueItems,
-        getReferencedColumn: (t) => t.readingId,
+        getCurrentColumn: (t) => t.syncBatchId,
+        referencedTable: $db.syncBatches,
+        getReferencedColumn: (t) => t.id,
         builder: (joinBuilder,
                 {$addJoinBuilderToRootComposer,
                 $removeJoinBuilderFromRootComposer}) =>
-            $$SyncQueueItemsTableAnnotationComposer(
+            $$SyncBatchesTableAnnotationComposer(
               $db: $db,
-              $table: $db.syncQueueItems,
+              $table: $db.syncBatches,
               $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
               joinBuilder: joinBuilder,
               $removeJoinBuilderFromRootComposer:
                   $removeJoinBuilderFromRootComposer,
             ));
-    return f(composer);
-  }
-
-  Expression<T> imageUploadQueueItemsRefs<T extends Object>(
-      Expression<T> Function($$ImageUploadQueueItemsTableAnnotationComposer a)
-          f) {
-    final $$ImageUploadQueueItemsTableAnnotationComposer composer =
-        $composerBuilder(
-            composer: this,
-            getCurrentColumn: (t) => t.id,
-            referencedTable: $db.imageUploadQueueItems,
-            getReferencedColumn: (t) => t.readingId,
-            builder: (joinBuilder,
-                    {$addJoinBuilderToRootComposer,
-                    $removeJoinBuilderFromRootComposer}) =>
-                $$ImageUploadQueueItemsTableAnnotationComposer(
-                  $db: $db,
-                  $table: $db.imageUploadQueueItems,
-                  $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-                  joinBuilder: joinBuilder,
-                  $removeJoinBuilderFromRootComposer:
-                      $removeJoinBuilderFromRootComposer,
-                ));
-    return f(composer);
+    return composer;
   }
 }
 
@@ -5058,10 +4769,7 @@ class $$ReadingsTableTableManager extends RootTableManager<
     $$ReadingsTableUpdateCompanionBuilder,
     (Reading, $$ReadingsTableReferences),
     Reading,
-    PrefetchHooks Function(
-        {bool meterRemoteId,
-        bool syncQueueItemsRefs,
-        bool imageUploadQueueItemsRefs})> {
+    PrefetchHooks Function({bool meterRemoteId, bool syncBatchId})> {
   $$ReadingsTableTableManager(_$AppDatabase db, $ReadingsTable table)
       : super(TableManagerState(
           db: db,
@@ -5085,8 +4793,8 @@ class $$ReadingsTableTableManager extends RootTableManager<
             Value<String?> imageSecondaryLocalPath = const Value.absent(),
             Value<int?> imageAttachmentRemoteId = const Value.absent(),
             Value<String> syncStatus = const Value.absent(),
-            Value<int> dataSyncAttempts = const Value.absent(),
-            Value<int> imageSyncAttempts = const Value.absent(),
+            Value<int> syncAttempts = const Value.absent(),
+            Value<String?> syncBatchId = const Value.absent(),
             Value<String?> lastError = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<DateTime> updatedAt = const Value.absent(),
@@ -5105,8 +4813,8 @@ class $$ReadingsTableTableManager extends RootTableManager<
             imageSecondaryLocalPath: imageSecondaryLocalPath,
             imageAttachmentRemoteId: imageAttachmentRemoteId,
             syncStatus: syncStatus,
-            dataSyncAttempts: dataSyncAttempts,
-            imageSyncAttempts: imageSyncAttempts,
+            syncAttempts: syncAttempts,
+            syncBatchId: syncBatchId,
             lastError: lastError,
             createdAt: createdAt,
             updatedAt: updatedAt,
@@ -5125,8 +4833,8 @@ class $$ReadingsTableTableManager extends RootTableManager<
             Value<String?> imageSecondaryLocalPath = const Value.absent(),
             Value<int?> imageAttachmentRemoteId = const Value.absent(),
             Value<String> syncStatus = const Value.absent(),
-            Value<int> dataSyncAttempts = const Value.absent(),
-            Value<int> imageSyncAttempts = const Value.absent(),
+            Value<int> syncAttempts = const Value.absent(),
+            Value<String?> syncBatchId = const Value.absent(),
             Value<String?> lastError = const Value.absent(),
             required DateTime createdAt,
             required DateTime updatedAt,
@@ -5145,8 +4853,8 @@ class $$ReadingsTableTableManager extends RootTableManager<
             imageSecondaryLocalPath: imageSecondaryLocalPath,
             imageAttachmentRemoteId: imageAttachmentRemoteId,
             syncStatus: syncStatus,
-            dataSyncAttempts: dataSyncAttempts,
-            imageSyncAttempts: imageSyncAttempts,
+            syncAttempts: syncAttempts,
+            syncBatchId: syncBatchId,
             lastError: lastError,
             createdAt: createdAt,
             updatedAt: updatedAt,
@@ -5157,15 +4865,10 @@ class $$ReadingsTableTableManager extends RootTableManager<
                   (e.readTable(table), $$ReadingsTableReferences(db, table, e)))
               .toList(),
           prefetchHooksCallback: (
-              {meterRemoteId = false,
-              syncQueueItemsRefs = false,
-              imageUploadQueueItemsRefs = false}) {
+              {meterRemoteId = false, syncBatchId = false}) {
             return PrefetchHooks(
               db: db,
-              explicitlyWatchedTables: [
-                if (syncQueueItemsRefs) db.syncQueueItems,
-                if (imageUploadQueueItemsRefs) db.imageUploadQueueItems
-              ],
+              explicitlyWatchedTables: [],
               addJoins: <
                   T extends TableManagerState<
                       dynamic,
@@ -5190,38 +4893,21 @@ class $$ReadingsTableTableManager extends RootTableManager<
                         .remoteId,
                   ) as T;
                 }
+                if (syncBatchId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.syncBatchId,
+                    referencedTable:
+                        $$ReadingsTableReferences._syncBatchIdTable(db),
+                    referencedColumn:
+                        $$ReadingsTableReferences._syncBatchIdTable(db).id,
+                  ) as T;
+                }
 
                 return state;
               },
               getPrefetchedDataCallback: (items) async {
-                return [
-                  if (syncQueueItemsRefs)
-                    await $_getPrefetchedData<Reading, $ReadingsTable,
-                            SyncQueueItem>(
-                        currentTable: table,
-                        referencedTable: $$ReadingsTableReferences
-                            ._syncQueueItemsRefsTable(db),
-                        managerFromTypedResult: (p0) =>
-                            $$ReadingsTableReferences(db, table, p0)
-                                .syncQueueItemsRefs,
-                        referencedItemsForCurrentItem:
-                            (item, referencedItems) => referencedItems
-                                .where((e) => e.readingId == item.id),
-                        typedResults: items),
-                  if (imageUploadQueueItemsRefs)
-                    await $_getPrefetchedData<Reading, $ReadingsTable,
-                            ImageUploadQueueItem>(
-                        currentTable: table,
-                        referencedTable: $$ReadingsTableReferences
-                            ._imageUploadQueueItemsRefsTable(db),
-                        managerFromTypedResult: (p0) =>
-                            $$ReadingsTableReferences(db, table, p0)
-                                .imageUploadQueueItemsRefs,
-                        referencedItemsForCurrentItem:
-                            (item, referencedItems) => referencedItems
-                                .where((e) => e.readingId == item.id),
-                        typedResults: items)
-                ];
+                return [];
               },
             );
           },
@@ -5239,695 +4925,7 @@ typedef $$ReadingsTableProcessedTableManager = ProcessedTableManager<
     $$ReadingsTableUpdateCompanionBuilder,
     (Reading, $$ReadingsTableReferences),
     Reading,
-    PrefetchHooks Function(
-        {bool meterRemoteId,
-        bool syncQueueItemsRefs,
-        bool imageUploadQueueItemsRefs})>;
-typedef $$SyncQueueItemsTableCreateCompanionBuilder = SyncQueueItemsCompanion
-    Function({
-  required String id,
-  required String readingId,
-  Value<String> status,
-  Value<int> retryCount,
-  Value<String?> lastError,
-  required DateTime enqueuedAt,
-  Value<DateTime?> lastAttemptAt,
-  required String idempotencyKey,
-  Value<int> rowid,
-});
-typedef $$SyncQueueItemsTableUpdateCompanionBuilder = SyncQueueItemsCompanion
-    Function({
-  Value<String> id,
-  Value<String> readingId,
-  Value<String> status,
-  Value<int> retryCount,
-  Value<String?> lastError,
-  Value<DateTime> enqueuedAt,
-  Value<DateTime?> lastAttemptAt,
-  Value<String> idempotencyKey,
-  Value<int> rowid,
-});
-
-final class $$SyncQueueItemsTableReferences
-    extends BaseReferences<_$AppDatabase, $SyncQueueItemsTable, SyncQueueItem> {
-  $$SyncQueueItemsTableReferences(
-      super.$_db, super.$_table, super.$_typedResult);
-
-  static $ReadingsTable _readingIdTable(_$AppDatabase db) =>
-      db.readings.createAlias(
-          $_aliasNameGenerator(db.syncQueueItems.readingId, db.readings.id));
-
-  $$ReadingsTableProcessedTableManager get readingId {
-    final $_column = $_itemColumn<String>('reading_id')!;
-
-    final manager = $$ReadingsTableTableManager($_db, $_db.readings)
-        .filter((f) => f.id.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_readingIdTable($_db));
-    if (item == null) return manager;
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: [item]));
-  }
-}
-
-class $$SyncQueueItemsTableFilterComposer
-    extends Composer<_$AppDatabase, $SyncQueueItemsTable> {
-  $$SyncQueueItemsTableFilterComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnFilters<String> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get status => $composableBuilder(
-      column: $table.status, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<int> get retryCount => $composableBuilder(
-      column: $table.retryCount, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get lastError => $composableBuilder(
-      column: $table.lastError, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<DateTime> get enqueuedAt => $composableBuilder(
-      column: $table.enqueuedAt, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<DateTime> get lastAttemptAt => $composableBuilder(
-      column: $table.lastAttemptAt, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get idempotencyKey => $composableBuilder(
-      column: $table.idempotencyKey,
-      builder: (column) => ColumnFilters(column));
-
-  $$ReadingsTableFilterComposer get readingId {
-    final $$ReadingsTableFilterComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.readingId,
-        referencedTable: $db.readings,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$ReadingsTableFilterComposer(
-              $db: $db,
-              $table: $db.readings,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-}
-
-class $$SyncQueueItemsTableOrderingComposer
-    extends Composer<_$AppDatabase, $SyncQueueItemsTable> {
-  $$SyncQueueItemsTableOrderingComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnOrderings<String> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get status => $composableBuilder(
-      column: $table.status, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<int> get retryCount => $composableBuilder(
-      column: $table.retryCount, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get lastError => $composableBuilder(
-      column: $table.lastError, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<DateTime> get enqueuedAt => $composableBuilder(
-      column: $table.enqueuedAt, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<DateTime> get lastAttemptAt => $composableBuilder(
-      column: $table.lastAttemptAt,
-      builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get idempotencyKey => $composableBuilder(
-      column: $table.idempotencyKey,
-      builder: (column) => ColumnOrderings(column));
-
-  $$ReadingsTableOrderingComposer get readingId {
-    final $$ReadingsTableOrderingComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.readingId,
-        referencedTable: $db.readings,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$ReadingsTableOrderingComposer(
-              $db: $db,
-              $table: $db.readings,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-}
-
-class $$SyncQueueItemsTableAnnotationComposer
-    extends Composer<_$AppDatabase, $SyncQueueItemsTable> {
-  $$SyncQueueItemsTableAnnotationComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  GeneratedColumn<String> get id =>
-      $composableBuilder(column: $table.id, builder: (column) => column);
-
-  GeneratedColumn<String> get status =>
-      $composableBuilder(column: $table.status, builder: (column) => column);
-
-  GeneratedColumn<int> get retryCount => $composableBuilder(
-      column: $table.retryCount, builder: (column) => column);
-
-  GeneratedColumn<String> get lastError =>
-      $composableBuilder(column: $table.lastError, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get enqueuedAt => $composableBuilder(
-      column: $table.enqueuedAt, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get lastAttemptAt => $composableBuilder(
-      column: $table.lastAttemptAt, builder: (column) => column);
-
-  GeneratedColumn<String> get idempotencyKey => $composableBuilder(
-      column: $table.idempotencyKey, builder: (column) => column);
-
-  $$ReadingsTableAnnotationComposer get readingId {
-    final $$ReadingsTableAnnotationComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.readingId,
-        referencedTable: $db.readings,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$ReadingsTableAnnotationComposer(
-              $db: $db,
-              $table: $db.readings,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-}
-
-class $$SyncQueueItemsTableTableManager extends RootTableManager<
-    _$AppDatabase,
-    $SyncQueueItemsTable,
-    SyncQueueItem,
-    $$SyncQueueItemsTableFilterComposer,
-    $$SyncQueueItemsTableOrderingComposer,
-    $$SyncQueueItemsTableAnnotationComposer,
-    $$SyncQueueItemsTableCreateCompanionBuilder,
-    $$SyncQueueItemsTableUpdateCompanionBuilder,
-    (SyncQueueItem, $$SyncQueueItemsTableReferences),
-    SyncQueueItem,
-    PrefetchHooks Function({bool readingId})> {
-  $$SyncQueueItemsTableTableManager(
-      _$AppDatabase db, $SyncQueueItemsTable table)
-      : super(TableManagerState(
-          db: db,
-          table: table,
-          createFilteringComposer: () =>
-              $$SyncQueueItemsTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$SyncQueueItemsTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$SyncQueueItemsTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback: ({
-            Value<String> id = const Value.absent(),
-            Value<String> readingId = const Value.absent(),
-            Value<String> status = const Value.absent(),
-            Value<int> retryCount = const Value.absent(),
-            Value<String?> lastError = const Value.absent(),
-            Value<DateTime> enqueuedAt = const Value.absent(),
-            Value<DateTime?> lastAttemptAt = const Value.absent(),
-            Value<String> idempotencyKey = const Value.absent(),
-            Value<int> rowid = const Value.absent(),
-          }) =>
-              SyncQueueItemsCompanion(
-            id: id,
-            readingId: readingId,
-            status: status,
-            retryCount: retryCount,
-            lastError: lastError,
-            enqueuedAt: enqueuedAt,
-            lastAttemptAt: lastAttemptAt,
-            idempotencyKey: idempotencyKey,
-            rowid: rowid,
-          ),
-          createCompanionCallback: ({
-            required String id,
-            required String readingId,
-            Value<String> status = const Value.absent(),
-            Value<int> retryCount = const Value.absent(),
-            Value<String?> lastError = const Value.absent(),
-            required DateTime enqueuedAt,
-            Value<DateTime?> lastAttemptAt = const Value.absent(),
-            required String idempotencyKey,
-            Value<int> rowid = const Value.absent(),
-          }) =>
-              SyncQueueItemsCompanion.insert(
-            id: id,
-            readingId: readingId,
-            status: status,
-            retryCount: retryCount,
-            lastError: lastError,
-            enqueuedAt: enqueuedAt,
-            lastAttemptAt: lastAttemptAt,
-            idempotencyKey: idempotencyKey,
-            rowid: rowid,
-          ),
-          withReferenceMapper: (p0) => p0
-              .map((e) => (
-                    e.readTable(table),
-                    $$SyncQueueItemsTableReferences(db, table, e)
-                  ))
-              .toList(),
-          prefetchHooksCallback: ({readingId = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [],
-              addJoins: <
-                  T extends TableManagerState<
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic>>(state) {
-                if (readingId) {
-                  state = state.withJoin(
-                    currentTable: table,
-                    currentColumn: table.readingId,
-                    referencedTable:
-                        $$SyncQueueItemsTableReferences._readingIdTable(db),
-                    referencedColumn:
-                        $$SyncQueueItemsTableReferences._readingIdTable(db).id,
-                  ) as T;
-                }
-
-                return state;
-              },
-              getPrefetchedDataCallback: (items) async {
-                return [];
-              },
-            );
-          },
-        ));
-}
-
-typedef $$SyncQueueItemsTableProcessedTableManager = ProcessedTableManager<
-    _$AppDatabase,
-    $SyncQueueItemsTable,
-    SyncQueueItem,
-    $$SyncQueueItemsTableFilterComposer,
-    $$SyncQueueItemsTableOrderingComposer,
-    $$SyncQueueItemsTableAnnotationComposer,
-    $$SyncQueueItemsTableCreateCompanionBuilder,
-    $$SyncQueueItemsTableUpdateCompanionBuilder,
-    (SyncQueueItem, $$SyncQueueItemsTableReferences),
-    SyncQueueItem,
-    PrefetchHooks Function({bool readingId})>;
-typedef $$ImageUploadQueueItemsTableCreateCompanionBuilder
-    = ImageUploadQueueItemsCompanion Function({
-  required String id,
-  required String readingId,
-  required String localPath,
-  required int sizeBytes,
-  Value<String> status,
-  Value<int> retryCount,
-  Value<String?> lastError,
-  required DateTime enqueuedAt,
-  Value<DateTime?> lastAttemptAt,
-  required String idempotencyKey,
-  Value<int> rowid,
-});
-typedef $$ImageUploadQueueItemsTableUpdateCompanionBuilder
-    = ImageUploadQueueItemsCompanion Function({
-  Value<String> id,
-  Value<String> readingId,
-  Value<String> localPath,
-  Value<int> sizeBytes,
-  Value<String> status,
-  Value<int> retryCount,
-  Value<String?> lastError,
-  Value<DateTime> enqueuedAt,
-  Value<DateTime?> lastAttemptAt,
-  Value<String> idempotencyKey,
-  Value<int> rowid,
-});
-
-final class $$ImageUploadQueueItemsTableReferences extends BaseReferences<
-    _$AppDatabase, $ImageUploadQueueItemsTable, ImageUploadQueueItem> {
-  $$ImageUploadQueueItemsTableReferences(
-      super.$_db, super.$_table, super.$_typedResult);
-
-  static $ReadingsTable _readingIdTable(_$AppDatabase db) =>
-      db.readings.createAlias($_aliasNameGenerator(
-          db.imageUploadQueueItems.readingId, db.readings.id));
-
-  $$ReadingsTableProcessedTableManager get readingId {
-    final $_column = $_itemColumn<String>('reading_id')!;
-
-    final manager = $$ReadingsTableTableManager($_db, $_db.readings)
-        .filter((f) => f.id.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_readingIdTable($_db));
-    if (item == null) return manager;
-    return ProcessedTableManager(
-        manager.$state.copyWith(prefetchedData: [item]));
-  }
-}
-
-class $$ImageUploadQueueItemsTableFilterComposer
-    extends Composer<_$AppDatabase, $ImageUploadQueueItemsTable> {
-  $$ImageUploadQueueItemsTableFilterComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnFilters<String> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get localPath => $composableBuilder(
-      column: $table.localPath, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<int> get sizeBytes => $composableBuilder(
-      column: $table.sizeBytes, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get status => $composableBuilder(
-      column: $table.status, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<int> get retryCount => $composableBuilder(
-      column: $table.retryCount, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get lastError => $composableBuilder(
-      column: $table.lastError, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<DateTime> get enqueuedAt => $composableBuilder(
-      column: $table.enqueuedAt, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<DateTime> get lastAttemptAt => $composableBuilder(
-      column: $table.lastAttemptAt, builder: (column) => ColumnFilters(column));
-
-  ColumnFilters<String> get idempotencyKey => $composableBuilder(
-      column: $table.idempotencyKey,
-      builder: (column) => ColumnFilters(column));
-
-  $$ReadingsTableFilterComposer get readingId {
-    final $$ReadingsTableFilterComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.readingId,
-        referencedTable: $db.readings,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$ReadingsTableFilterComposer(
-              $db: $db,
-              $table: $db.readings,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-}
-
-class $$ImageUploadQueueItemsTableOrderingComposer
-    extends Composer<_$AppDatabase, $ImageUploadQueueItemsTable> {
-  $$ImageUploadQueueItemsTableOrderingComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnOrderings<String> get id => $composableBuilder(
-      column: $table.id, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get localPath => $composableBuilder(
-      column: $table.localPath, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<int> get sizeBytes => $composableBuilder(
-      column: $table.sizeBytes, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get status => $composableBuilder(
-      column: $table.status, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<int> get retryCount => $composableBuilder(
-      column: $table.retryCount, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get lastError => $composableBuilder(
-      column: $table.lastError, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<DateTime> get enqueuedAt => $composableBuilder(
-      column: $table.enqueuedAt, builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<DateTime> get lastAttemptAt => $composableBuilder(
-      column: $table.lastAttemptAt,
-      builder: (column) => ColumnOrderings(column));
-
-  ColumnOrderings<String> get idempotencyKey => $composableBuilder(
-      column: $table.idempotencyKey,
-      builder: (column) => ColumnOrderings(column));
-
-  $$ReadingsTableOrderingComposer get readingId {
-    final $$ReadingsTableOrderingComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.readingId,
-        referencedTable: $db.readings,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$ReadingsTableOrderingComposer(
-              $db: $db,
-              $table: $db.readings,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-}
-
-class $$ImageUploadQueueItemsTableAnnotationComposer
-    extends Composer<_$AppDatabase, $ImageUploadQueueItemsTable> {
-  $$ImageUploadQueueItemsTableAnnotationComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  GeneratedColumn<String> get id =>
-      $composableBuilder(column: $table.id, builder: (column) => column);
-
-  GeneratedColumn<String> get localPath =>
-      $composableBuilder(column: $table.localPath, builder: (column) => column);
-
-  GeneratedColumn<int> get sizeBytes =>
-      $composableBuilder(column: $table.sizeBytes, builder: (column) => column);
-
-  GeneratedColumn<String> get status =>
-      $composableBuilder(column: $table.status, builder: (column) => column);
-
-  GeneratedColumn<int> get retryCount => $composableBuilder(
-      column: $table.retryCount, builder: (column) => column);
-
-  GeneratedColumn<String> get lastError =>
-      $composableBuilder(column: $table.lastError, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get enqueuedAt => $composableBuilder(
-      column: $table.enqueuedAt, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get lastAttemptAt => $composableBuilder(
-      column: $table.lastAttemptAt, builder: (column) => column);
-
-  GeneratedColumn<String> get idempotencyKey => $composableBuilder(
-      column: $table.idempotencyKey, builder: (column) => column);
-
-  $$ReadingsTableAnnotationComposer get readingId {
-    final $$ReadingsTableAnnotationComposer composer = $composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.readingId,
-        referencedTable: $db.readings,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder,
-                {$addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer}) =>
-            $$ReadingsTableAnnotationComposer(
-              $db: $db,
-              $table: $db.readings,
-              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-              joinBuilder: joinBuilder,
-              $removeJoinBuilderFromRootComposer:
-                  $removeJoinBuilderFromRootComposer,
-            ));
-    return composer;
-  }
-}
-
-class $$ImageUploadQueueItemsTableTableManager extends RootTableManager<
-    _$AppDatabase,
-    $ImageUploadQueueItemsTable,
-    ImageUploadQueueItem,
-    $$ImageUploadQueueItemsTableFilterComposer,
-    $$ImageUploadQueueItemsTableOrderingComposer,
-    $$ImageUploadQueueItemsTableAnnotationComposer,
-    $$ImageUploadQueueItemsTableCreateCompanionBuilder,
-    $$ImageUploadQueueItemsTableUpdateCompanionBuilder,
-    (ImageUploadQueueItem, $$ImageUploadQueueItemsTableReferences),
-    ImageUploadQueueItem,
-    PrefetchHooks Function({bool readingId})> {
-  $$ImageUploadQueueItemsTableTableManager(
-      _$AppDatabase db, $ImageUploadQueueItemsTable table)
-      : super(TableManagerState(
-          db: db,
-          table: table,
-          createFilteringComposer: () =>
-              $$ImageUploadQueueItemsTableFilterComposer(
-                  $db: db, $table: table),
-          createOrderingComposer: () =>
-              $$ImageUploadQueueItemsTableOrderingComposer(
-                  $db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$ImageUploadQueueItemsTableAnnotationComposer(
-                  $db: db, $table: table),
-          updateCompanionCallback: ({
-            Value<String> id = const Value.absent(),
-            Value<String> readingId = const Value.absent(),
-            Value<String> localPath = const Value.absent(),
-            Value<int> sizeBytes = const Value.absent(),
-            Value<String> status = const Value.absent(),
-            Value<int> retryCount = const Value.absent(),
-            Value<String?> lastError = const Value.absent(),
-            Value<DateTime> enqueuedAt = const Value.absent(),
-            Value<DateTime?> lastAttemptAt = const Value.absent(),
-            Value<String> idempotencyKey = const Value.absent(),
-            Value<int> rowid = const Value.absent(),
-          }) =>
-              ImageUploadQueueItemsCompanion(
-            id: id,
-            readingId: readingId,
-            localPath: localPath,
-            sizeBytes: sizeBytes,
-            status: status,
-            retryCount: retryCount,
-            lastError: lastError,
-            enqueuedAt: enqueuedAt,
-            lastAttemptAt: lastAttemptAt,
-            idempotencyKey: idempotencyKey,
-            rowid: rowid,
-          ),
-          createCompanionCallback: ({
-            required String id,
-            required String readingId,
-            required String localPath,
-            required int sizeBytes,
-            Value<String> status = const Value.absent(),
-            Value<int> retryCount = const Value.absent(),
-            Value<String?> lastError = const Value.absent(),
-            required DateTime enqueuedAt,
-            Value<DateTime?> lastAttemptAt = const Value.absent(),
-            required String idempotencyKey,
-            Value<int> rowid = const Value.absent(),
-          }) =>
-              ImageUploadQueueItemsCompanion.insert(
-            id: id,
-            readingId: readingId,
-            localPath: localPath,
-            sizeBytes: sizeBytes,
-            status: status,
-            retryCount: retryCount,
-            lastError: lastError,
-            enqueuedAt: enqueuedAt,
-            lastAttemptAt: lastAttemptAt,
-            idempotencyKey: idempotencyKey,
-            rowid: rowid,
-          ),
-          withReferenceMapper: (p0) => p0
-              .map((e) => (
-                    e.readTable(table),
-                    $$ImageUploadQueueItemsTableReferences(db, table, e)
-                  ))
-              .toList(),
-          prefetchHooksCallback: ({readingId = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [],
-              addJoins: <
-                  T extends TableManagerState<
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic>>(state) {
-                if (readingId) {
-                  state = state.withJoin(
-                    currentTable: table,
-                    currentColumn: table.readingId,
-                    referencedTable: $$ImageUploadQueueItemsTableReferences
-                        ._readingIdTable(db),
-                    referencedColumn: $$ImageUploadQueueItemsTableReferences
-                        ._readingIdTable(db)
-                        .id,
-                  ) as T;
-                }
-
-                return state;
-              },
-              getPrefetchedDataCallback: (items) async {
-                return [];
-              },
-            );
-          },
-        ));
-}
-
-typedef $$ImageUploadQueueItemsTableProcessedTableManager
-    = ProcessedTableManager<
-        _$AppDatabase,
-        $ImageUploadQueueItemsTable,
-        ImageUploadQueueItem,
-        $$ImageUploadQueueItemsTableFilterComposer,
-        $$ImageUploadQueueItemsTableOrderingComposer,
-        $$ImageUploadQueueItemsTableAnnotationComposer,
-        $$ImageUploadQueueItemsTableCreateCompanionBuilder,
-        $$ImageUploadQueueItemsTableUpdateCompanionBuilder,
-        (ImageUploadQueueItem, $$ImageUploadQueueItemsTableReferences),
-        ImageUploadQueueItem,
-        PrefetchHooks Function({bool readingId})>;
+    PrefetchHooks Function({bool meterRemoteId, bool syncBatchId})>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -5940,10 +4938,8 @@ class $AppDatabaseManager {
       $$AssignmentsTableTableManager(_db, _db.assignments);
   $$PeriodsTableTableManager get periods =>
       $$PeriodsTableTableManager(_db, _db.periods);
+  $$SyncBatchesTableTableManager get syncBatches =>
+      $$SyncBatchesTableTableManager(_db, _db.syncBatches);
   $$ReadingsTableTableManager get readings =>
       $$ReadingsTableTableManager(_db, _db.readings);
-  $$SyncQueueItemsTableTableManager get syncQueueItems =>
-      $$SyncQueueItemsTableTableManager(_db, _db.syncQueueItems);
-  $$ImageUploadQueueItemsTableTableManager get imageUploadQueueItems =>
-      $$ImageUploadQueueItemsTableTableManager(_db, _db.imageUploadQueueItems);
 }
