@@ -113,19 +113,25 @@ class _PhotoCaptureScreenState extends ConsumerState<PhotoCaptureScreen>
     if (_processing) return;
 
     try {
+      // Show spinner IMMEDIATELY — setState + ensure frame renders before any
+      // heavy work, so the user sees feedback even if processing is very fast.
       setState(() => _processing = true);
+      // Yield to the frame scheduler so the spinner actually paints before
+      // we hand off to compute().
+      await Future<void>.delayed(Duration.zero);
 
       // 1. Take the picture
       final xfile = await controller.takePicture();
 
-      // 2. Process (compress + strip EXIF/GPS)
+      // 2. Process in a separate Isolate (no UI jank).
+      //    compute() calls _processInIsolate on a worker Isolate.
       final processor = ref.read(imageProcessingServiceProvider);
       final result = await processor.process(File(xfile.path));
 
-      // 3. Delete the raw temp file
+      // 3. Delete the raw temp file from the camera plugin's cache dir
       try { await File(xfile.path).delete(); } catch (_) {}
 
-      // 4. Save processed JPEG
+      // 4. Save the processed JPEG to the app's documents directory
       final dir = await getApplicationDocumentsDirectory();
       final readingsDir = Directory(p.join(dir.path, 'readings'));
       await readingsDir.create(recursive: true);
@@ -135,9 +141,7 @@ class _PhotoCaptureScreenState extends ConsumerState<PhotoCaptureScreen>
 
       if (!mounted) return;
 
-      // 5. Switch to review — _buildReview() does NOT use CameraPreview,
-      //    so _controller can stay alive without causing any UI issue.
-      //    It will be properly disposed when the widget is removed from tree.
+      // 5. Switch to review screen (CameraPreview is no longer rendered)
       setState(() {
         _capturedPath = destPath;
         _processedSizeBytes = result.sizeBytes;
