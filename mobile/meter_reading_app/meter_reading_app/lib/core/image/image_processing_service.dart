@@ -95,6 +95,14 @@ _ProcessResult _processInIsolate(_ProcessArgs args) {
     );
   }
 
+  // --- 3.5. Enhance Clarity (Sharpen / Contrast) ---
+  // Normalize stretches the contrast so the darkest pixel becomes black
+  // and the lightest becomes white. This dramatically improves legibility
+  // of digits in poor lighting conditions.
+  working = img.normalize(working, min: 0, max: 255);
+  // Slightly boost contrast (1.3x) to make edges (digits) stand out more.
+  working = img.adjustColor(working, contrast: 1.3);
+
   // --- 4. Draw Date/Time Watermark ---
   final now = DateTime.now();
   final timestamp = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')} '
