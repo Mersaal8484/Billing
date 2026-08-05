@@ -369,12 +369,14 @@ class _PhotoCaptureScreenState extends ConsumerState<PhotoCaptureScreen>
                 onPressed: _retake,
                 style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.white,
-                    side: const BorderSide(color: Colors.white54)),
+                    side: const BorderSide(color: Colors.white54),
+                    minimumSize: const Size(80, 40)),
                 child: const Text('إعادة التصوير'),
               ),
               const SizedBox(width: 12),
               FilledButton(
                 onPressed: () => Navigator.of(context).pop(_capturedPath),
+                style: FilledButton.styleFrom(minimumSize: const Size(80, 40)),
                 child: const Text('استخدام الصورة'),
               ),
             ],
