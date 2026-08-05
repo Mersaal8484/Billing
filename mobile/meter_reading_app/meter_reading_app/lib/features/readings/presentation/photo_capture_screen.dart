@@ -9,6 +9,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../../../app/providers.dart';
 import '../../../app/theme/app_theme.dart';
+import '../../../core/image/image_processing_service.dart';
 
 /// Captures a meter photo, then runs it through [ImageProcessingService]
 /// before handing a *local* file path back to the caller.
@@ -123,12 +124,37 @@ class _PhotoCaptureScreenState extends ConsumerState<PhotoCaptureScreen>
       // 1. Take the picture
       final xfile = await controller.takePicture();
 
-      // 2. Process in a separate Isolate (no UI jank).
-      //    compute() calls _processInIsolate on a worker Isolate.
-      final processor = ref.read(imageProcessingServiceProvider);
-      final result = await processor.process(File(xfile.path));
+      // 2. Calculate crop ratio based on the screen frame
+      final size = MediaQuery.of(context).size;
+      final camRatio = controller.value.aspectRatio;
+      final screenRatio = size.width / size.height;
+      final scale = camRatio < screenRatio ? screenRatio / camRatio : camRatio / screenRatio;
+      
+      double scaledPreviewWidth;
+      double scaledPreviewHeight;
+      if (camRatio < screenRatio) {
+        scaledPreviewWidth = size.width;
+        scaledPreviewHeight = size.height * scale;
+      } else {
+        scaledPreviewWidth = size.width * scale;
+        scaledPreviewHeight = size.height;
+      }
+      
+      final frameWidth = size.width * 0.75;
+      final frameHeight = 140.0;
+      
+      final cropRatio = CropRatio(
+        left: 0.5 - (frameWidth / scaledPreviewWidth / 2),
+        top: 0.5 - (frameHeight / scaledPreviewHeight / 2),
+        width: frameWidth / scaledPreviewWidth,
+        height: frameHeight / scaledPreviewHeight,
+      );
 
-      // 3. Delete the raw temp file from the camera plugin's cache dir
+      // 3. Process in a separate Isolate (no UI jank).
+      final processor = ref.read(imageProcessingServiceProvider);
+      final result = await processor.process(File(xfile.path), cropRatio: cropRatio);
+
+      // 4. Delete the raw temp file from the camera plugin's cache dir
       try { await File(xfile.path).delete(); } catch (_) {}
 
       // 4. Save the processed JPEG to the app's documents directory

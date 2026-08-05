@@ -7,9 +7,23 @@ import 'package:image/image.dart' as img;
 // ---------------------------------------------------------------------------
 // Transfer object for compute() — must be serialisable across Isolate boundary
 // ---------------------------------------------------------------------------
+class CropRatio {
+  final double left;
+  final double top;
+  final double width;
+  final double height;
+  const CropRatio({
+    required this.left,
+    required this.top,
+    required this.width,
+    required this.height,
+  });
+}
+
 class _ProcessArgs {
   final Uint8List bytes;
-  const _ProcessArgs(this.bytes);
+  final CropRatio? cropRatio;
+  const _ProcessArgs(this.bytes, {this.cropRatio});
 }
 
 class _ProcessResult {
@@ -43,21 +57,62 @@ _ProcessResult _processInIsolate(_ProcessArgs args) {
   const int initialWidth = ImageProcessingService.initialMaxWidth;
   const int minWidth     = ImageProcessingService.minWidth;
 
-  // --- 2. Pre-shrink: if original is far larger than initialWidth, shrink
+  // --- 2. Crop (if requested) ---
+  img.Image working = decoded;
+  if (args.cropRatio != null) {
+    // Inflate the crop area slightly (e.g., 10%) to provide a tiny bit of context
+    // and ensure digits exactly on the edge aren't clipped.
+    final ratio = args.cropRatio!;
+    final inflateW = ratio.width * 0.1;
+    final inflateH = ratio.height * 0.1;
+
+    final left = (ratio.left - inflateW / 2).clamp(0.0, 1.0);
+    final top = (ratio.top - inflateH / 2).clamp(0.0, 1.0);
+    final width = (ratio.width + inflateW).clamp(0.0, 1.0 - left);
+    final height = (ratio.height + inflateH).clamp(0.0, 1.0 - top);
+
+    int x = (working.width * left).round();
+    int y = (working.height * top).round();
+    int w = (working.width * width).round();
+    int h = (working.height * height).round();
+
+    x = x.clamp(0, working.width - 1);
+    y = y.clamp(0, working.height - 1);
+    w = w.clamp(1, working.width - x);
+    h = h.clamp(1, working.height - y);
+
+    working = img.copyCrop(working, x: x, y: y, width: w, height: h);
+  }
+
+  // --- 3. Pre-shrink: if original is far larger than initialWidth, shrink
   //        first with linear interpolation (faster than average) to reduce
   //        the cost of every subsequent encodeJpg call. ---
-  img.Image working;
-  if (decoded.width > initialWidth) {
+  if (working.width > initialWidth) {
     working = img.copyResize(
-      decoded,
+      working,
       width: initialWidth,
       interpolation: img.Interpolation.linear, // faster than average; fine for digits
     );
-  } else {
-    working = decoded;
   }
 
-  // --- 3. Adaptive compression: ≤ 3 encodeJpg calls in the normal path ---
+  // --- 4. Draw Date/Time Watermark ---
+  final now = DateTime.now();
+  final timestamp = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')} '
+      '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
+  
+  // Use arial_48 for larger images, arial_24 for smaller cropped images
+  final font = working.width > 800 ? img.arial48 : img.arial24;
+  
+  img.drawString(
+    working,
+    timestamp,
+    font: font,
+    x: 10,
+    y: working.height - font.lineHeight - 10,
+    color: img.ColorRgb8(255, 0, 0), // Red color
+  );
+
+  // --- 5. Adaptive compression: ≤ 3 encodeJpg calls in the normal path ---
   //
   // Probe at quality=75 on the pre-shrunk image. Use the ratio
   //   r = probeSize / maxBytes
@@ -139,12 +194,12 @@ class ImageProcessingService {
   static const int initialMaxWidth = 1600;
   static const int minWidth      = 640;
 
-  Future<ProcessedImage> process(File sourceFile) async {
+  Future<ProcessedImage> process(File sourceFile, {CropRatio? cropRatio}) async {
     // Read bytes on this isolate (fast I/O, no decoding yet).
     final rawBytes = await sourceFile.readAsBytes();
 
     // Run all CPU-intensive work in a separate Dart Isolate.
-    final result = await compute(_processInIsolate, _ProcessArgs(rawBytes));
+    final result = await compute(_processInIsolate, _ProcessArgs(rawBytes, cropRatio: cropRatio));
 
     // Debug output (visible in flutter logs; harmless in release builds).
     assert(() {
