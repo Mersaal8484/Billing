@@ -40,6 +40,8 @@ desktop.ini
 utility_*/static/src/**/*.js
 !utility_*/static/src/js/lib/**
 !utility_*/static/src/js/*.js
+!utility_*/static/src/reading_review/**/*.js
+!utility_*/static/src/reading_review/components/*.js
 *.min.js
 *.min.css
 
