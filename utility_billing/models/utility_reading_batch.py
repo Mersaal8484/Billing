@@ -140,29 +140,55 @@ class UtilityReadingBatch(models.Model):
             )
 
     def action_reset_to_uploaded(self):
-        """إعادة الدفعة إلى حالة تم الرفع لمحاولة المعالجة مرة أخرى"""
+        """إعادة الدفعة إلى حالة تم الرفع لمحاولة المعالجة مرة أخرى مع زيادة retry_count"""
         for batch in self:
             if batch.state not in ('error', 'partial'):
                 raise ValidationError(_('يمكن إعادة المحاولة فقط للدفعات بحالة خطأ أو مكتمل جزئياً!'))
+            new_retry = batch.retry_count + 1
             batch.write({
                 'state': 'processing',
                 'processed_count': 0,
                 'error_count': 0,
                 'processed_offset': 0,
                 'error_log': False,
+                'retry_count': new_retry,
             })
             self.env['utility.workflow.service'].sudo().dispatch_batch_command(
                 batch,
-                lambda: self.env['utility.reading.batch.service'].sudo().process_batch(batch.id)
+                lambda: self.env['utility.reading.batch.service'].sudo().process_batch(batch.id),
+                is_retry=True
             )
 
     @api.model
     def _cron_process_readings(self):
-        """مهمة مجدولة: موزّع أوامر تخطيطي (Infrastructure Command Dispatcher) ينادي ReadingBatchService"""
+        """مهمة مجدولة: موزّع أوامر تخطيطي (Infrastructure Command Dispatcher) ينادي Workflow Commands"""
+        # 1. المعالجة عبر طابور الأوامر المعلقة (pending workflow commands)
+        pending_cmds = self.env['utility.workflow.command'].sudo().search([
+            ('res_model', '=', 'utility.reading.batch'),
+            ('state', '=', 'pending'),
+        ], limit=5)
+
+        for cmd in pending_cmds:
+            batch = self.sudo().browse(cmd.res_id)
+            if batch.exists():
+                try:
+                    self.env['utility.workflow.service'].sudo().dispatch_batch_command(
+                        batch,
+                        lambda: self.env['utility.reading.batch.service'].sudo().process_batch(batch.id),
+                        is_retry=(batch.retry_count > 0)
+                    )
+                except Exception as e:
+                    _logger.error("Cron batch processing error for command %s: %s", cmd.name, str(e))
+
+        # 2. التوافق مع دفعات المعالجة القائمة
         batches = self.search([('state', '=', 'processing')], limit=5)
         for batch in batches:
             try:
-                self.env['utility.reading.batch.service'].sudo().process_batch(batch.id)
+                self.env['utility.workflow.service'].sudo().dispatch_batch_command(
+                    batch,
+                    lambda: self.env['utility.reading.batch.service'].sudo().process_batch(batch.id),
+                    is_retry=(batch.retry_count > 0)
+                )
             except Exception as e:
                 _logger.error("Cron batch processing error for batch %s: %s", batch.name, str(e))
 

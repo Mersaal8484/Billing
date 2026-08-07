@@ -180,3 +180,60 @@ class TestUtilityMediaAsset(TransactionCase):
             mimetype="image/png"
         )
         self.assertTrue(asset.check_user_access_security(self.env.user))
+
+    def test_06_duplicate_confirm_idempotency_and_explicit_retry(self):
+        """6. اختبار منع تكرار التأكيد (Duplicate Confirm Idempotency) والتفريق عن إعادة المحاولة الصريحة (Explicit Retry)"""
+        period = self.DateRange.create({
+            'name': 'فترة التكرار A1++++',
+            'period_code': 'R-MEDIA-A1PPPP-01',
+            'period_role': 'reading',
+            'billing_cadence': 'monthly',
+            'region_ids': [(6, 0, [self.region.id])],
+        })
+
+        customer = self.Customer.create({
+            'name': 'مشترك التكرار',
+            'customer_number': 'CUST-DUP-01',
+            'region_id': self.region.id,
+        })
+        meter = self.Meter.create({
+            'meter_number': 'MTR-DUP-01',
+            'customer_id': customer.id,
+        })
+
+        payload = {
+            'readings': [
+                {'seq': 1, 'meter_number': 'MTR-DUP-01', 'reading_value': 120.0}
+            ]
+        }
+        json_b64 = base64.b64encode(bytes(str(payload).replace("'", '"'), 'utf-8')).decode('utf-8')
+
+        batch = self.Batch.create({
+            'name': 'دفعة التكرار الحتمي',
+            'region_id': self.region.id,
+            'date_range_id': period.id,
+            'data_file': json_b64,
+            'state': 'uploaded',
+        })
+
+        # التأكيد الأول
+        batch.action_confirm()
+        cmd_key = f"READING-BATCH:{batch.batch_uuid}"
+        cmd1 = self.env['utility.workflow.command'].search([('idempotency_key', '=', cmd_key)], limit=1)
+        self.assertTrue(cmd1)
+        self.assertEqual(cmd1.state, 'executed')
+
+        # النقر المزدوج على التأكيد مرة ثانية يرجع النتيجة السابقة من الكاش الحتمي دون تكرار التنفيذ
+        batch.action_confirm()
+        cmds = self.env['utility.workflow.command'].search([('idempotency_key', '=', cmd_key)])
+        self.assertEqual(len(cmds), 1)
+
+        # زر إعادة المحاولة الصريحة ينشئ أمر retry مستقل بزائدة RETRY:1
+        batch.write({'state': 'partial'})
+        batch.action_reset_to_uploaded()
+        self.assertEqual(batch.retry_count, 1)
+
+        retry_key = f"READING-BATCH:{batch.batch_uuid}:RETRY:1"
+        retry_cmd = self.env['utility.workflow.command'].search([('idempotency_key', '=', retry_key)], limit=1)
+        self.assertTrue(retry_cmd)
+        self.assertEqual(retry_cmd.state, 'executed')

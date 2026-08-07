@@ -53,8 +53,8 @@ class UtilityReading(models.Model):
     carried_consumption = fields.Float('استهلاك مرحل', compute='_compute_billing_consumption', store=True)
     billing_consumption = fields.Float('استهلاك الفاتورة', compute='_compute_billing_consumption', store=True)
     image_asset_id = fields.Many2one('utility.media.asset', string='Meter Image Asset', ondelete='set null', index=True)
-    meter_image = fields.Binary('صورة العداد (توافقي)', compute='_compute_meter_image', inverse='_inverse_meter_image', store=True, attachment=True,
-                                help='حقل توافقي مع الواجهات والتقارير القديمة — المرصد الفعلي للتخزين هو image_asset_id')
+    meter_image = fields.Binary('صورة العداد (توافقي)', compute='_compute_meter_image', inverse='_inverse_meter_image', store=False,
+                                help='حقل توافقي غير مخزن — التخزين الأصيل ممركز في image_asset_id')
     meter_image_secondary = fields.Binary('صورة إضافية', attachment=True)
     image_state = fields.Selection([
         ('clear', 'واضحة'),

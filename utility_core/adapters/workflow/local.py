@@ -174,9 +174,12 @@ class LocalWorkflowAdapter(AbstractWorkflowAdapter):
         idempotency_key = f"READING-BATCH:{batch.batch_uuid}{retry_suffix}"
         cmd_model = self.env['utility.workflow.command'].sudo()
         existing = cmd_model.search([('idempotency_key', '=', idempotency_key)], limit=1)
-        if existing and existing.state == 'executed':
-            _logger.info("Batch Command already executed for key %s (UUID: %s)", idempotency_key, existing.command_uuid)
-            return existing.result_summary
+        if existing:
+            if existing.state == 'executed':
+                _logger.info("Batch Command already executed for key %s (UUID: %s)", idempotency_key, existing.command_uuid)
+                return existing.result_summary
+            elif existing.state == 'failed' and existing.attempt_count >= existing.max_attempts:
+                raise ValidationError(_("تجاوز أمر الدفعة الحد الأقصى للمحاولات المسموحة (%d).") % existing.max_attempts)
 
         cmd = existing or cmd_model.create({
             'name': f"CMD-BATCH-{batch.name}" + (f"-R{batch.retry_count}" if retry_suffix else ""),
