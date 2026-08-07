@@ -67,7 +67,8 @@ class UtilityReadingBatch(models.Model):
     def _compute_available_open_reading_period_ids(self):
         for rec in self:
             billing_period = rec.region_id.recurring_rule_type if rec.region_id else False
-            domain = self._get_open_period_domain(work_type='readings', billing_period=billing_period)
+            region_id = rec.region_id.id if rec.region_id else False
+            domain = self._get_open_period_domain(work_type='readings', billing_period=billing_period, region_id=region_id)
             rec.available_open_reading_period_ids = self.env['date.range'].search(domain)
 
     @api.onchange('region_id')
@@ -76,6 +77,31 @@ class UtilityReadingBatch(models.Model):
         if self.date_range_id and self.date_range_id not in available_periods:
             self.date_range_id = False
         return {'domain': {'date_range_id': [('id', 'in', available_periods.ids)]}}
+
+    @api.constrains('date_range_id', 'region_id', 'upload_date')
+    def _check_batch_period_rules(self):
+        for batch in self:
+            if not batch.date_range_id:
+                continue
+            period = batch.date_range_id
+            if period.period_role != 'reading':
+                raise ValidationError(_('دفعة الرفع يجب أن تُربط بفترة قراءة وفوترة.'))
+
+            if batch.region_id:
+                cadence = 'semi_monthly' if batch.region_id.recurring_rule_type == 'biweekly' else batch.region_id.recurring_rule_type
+                if period.billing_cadence != cadence:
+                    raise ValidationError(_(
+                        'دورية المنطقة (%s) لا تطابق دورية الفترة المختارة (%s).'
+                    ) % (batch.region_id.recurring_rule_type, period.billing_cadence))
+                if period.region_ids and batch.region_id not in period.region_ids:
+                    raise ValidationError(_(
+                        'المنطقة المحدد للدفعة (%s) غير مشمولة في نطاق مناطق هذه الفترة.'
+                    ) % batch.region_id.name)
+
+            if period.reading_window_end and batch.upload_date and batch.upload_date > period.reading_window_end:
+                raise ValidationError(_(
+                    'تاريخ رفع الدفعة (%s) يتجاوز نافذة القراءة المسموحة للفترة (%s).'
+                ) % (batch.upload_date, period.reading_window_end))
 
     @api.model_create_multi
     def create(self, vals_list):

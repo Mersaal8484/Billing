@@ -98,8 +98,9 @@ class UtilitySaleOrder(models.Model):
     def _compute_available_billing_period_ids(self):
         for order in self:
             billing_period = order.customer_id._get_effective_billing_period() if order.customer_id else False
+            region_id = order.customer_id.region_id.id if order.customer_id and order.customer_id.region_id else False
             domain = self._get_open_period_domain(
-                work_type='readings', billing_period=billing_period)
+                work_type='readings', billing_period=billing_period, region_id=region_id)
             order.available_billing_period_ids = self.env['date.range'].search(domain)
 
     @api.onchange('customer_id')
@@ -115,20 +116,31 @@ class UtilitySaleOrder(models.Model):
     def _check_billing_period_matches_customer(self):
         for order in self.filtered(lambda item: item.customer_id and item.date_range_id):
             expected = order.customer_id._get_effective_billing_period()
+            if expected == 'biweekly':
+                expected = 'semi_monthly'
+
             period = order.date_range_id
-            if period.work_type != 'readings':
+            if period.period_role != 'reading':
                 raise ValidationError(_('فترة الفاتورة يجب أن تكون من نوع قراءات، وليست فترة تحصيل.'))
-            if expected and period.billing_period != expected:
+            if expected and period.billing_cadence != expected:
                 raise ValidationError(_(
                     'دورية الفترة المختارة (%s) لا تطابق دورية المشترك (%s).')
-                    % (period.billing_period, expected))
+                    % (period.billing_cadence, expected))
             if order.reading_id and order.reading_id.date_range_id != period:
                 raise ValidationError(_(
                     'فترة الفاتورة يجب أن تطابق فترة القراءة المرتبطة حرفياً.'))
-            if order.period_start and order.period_start != period.date_start:
-                raise ValidationError(_('بداية الفاتورة يجب أن تطابق بداية فترة القراءة.'))
-            if order.period_end and order.period_end != period.date_end:
-                raise ValidationError(_('نهاية الفاتورة يجب أن تطابق نهاية فترة القراءة.'))
+
+            # التحقق من منع الفواتير المكررة لنفس المشترك والفترة
+            duplicate = self.search([
+                ('customer_id', '=', order.customer_id.id),
+                ('date_range_id', '=', order.date_range_id.id),
+                ('state', '!=', 'cancel'),
+                ('id', '!=', order.id)
+            ], limit=1)
+            if duplicate:
+                raise ValidationError(_(
+                    'توجد فاتورة أخرى منشأة بالفعل للمشترك [%s] في الفترة [%s] (رقم الفاتورة: %s).'
+                ) % (order.customer_id.display_name, period.name, duplicate.name))
 
     @api.onchange('date_range_id')
     def _onchange_date_range_id_set_period_dates(self):

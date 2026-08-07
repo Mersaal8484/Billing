@@ -111,4 +111,8 @@ access_utility_migration_feeder,utility.migration.feeder,model_utility_migration
 access_utility_migration_transformer,utility.migration.transformer,model_utility_migration_transformer,group_utility_admin,1,1,1,1
 access_utility_migration_mapping,utility.migration.mapping,model_utility_migration_mapping,group_utility_admin,1,1,1,1
 access_utility_migration_import_wizard,utility.migration.import.wizard,model_utility_migration_import_wizard,group_utility_admin,1,1,1,1
+access_date_range_log_admin,date.range.log.admin,model_date_range_log,group_utility_admin,1,1,1,1
+access_date_range_log_readonly,date.range.log.readonly,model_date_range_log,group_utility_readonly,1,0,0,0
+access_utility_period_generator_admin,utility.period.generator.admin,model_utility_period_generator,group_utility_admin,1,1,1,1
+access_utility_period_generator_billing,utility.period.generator.billing,model_utility_period_generator,group_utility_billing_manager,1,1,1,1
 

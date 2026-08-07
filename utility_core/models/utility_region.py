@@ -1,4 +1,5 @@
-from odoo import api, fields, models
+from odoo import api, fields, models, _
+from odoo.exceptions import ValidationError
 from .utility_date_range import BILLING_PERIOD_TYPES
 
 
@@ -62,3 +63,20 @@ class UtilityRegion(models.Model):
     def _compute_zone_count(self):
         for r in self:
             r.zone_count = len(r.zone_ids)
+
+    @api.onchange('parent_id')
+    def _onchange_parent_id_inherit_cadence(self):
+        if self.parent_id and self.parent_id.recurring_rule_type:
+            self.recurring_rule_type = self.parent_id.recurring_rule_type
+
+    @api.constrains('parent_id', 'recurring_rule_type')
+    def _check_parent_cadence_consistency(self):
+        for r in self:
+            if r.parent_id:
+                root = r
+                while root.parent_id:
+                    root = root.parent_id
+                if root.recurring_rule_type != r.recurring_rule_type:
+                    raise ValidationError(_(
+                        "دورية الفوترة للمنطقة الفرعية '%s' (%s) يجب أن تطابق دورية المنطقة الرئيسية '%s' (%s)."
+                    ) % (r.name, r.recurring_rule_type, root.name, root.recurring_rule_type))

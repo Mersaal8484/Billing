@@ -68,6 +68,7 @@ User Role.
         'wizards/transformer_balance_wizard_views.xml',
         'wizards/formula_test_wizard_views.xml',
         'wizards/utility_meter_wizard_views.xml',
+        'wizards/utility_period_generator_views.xml',
         'views/utility_migration_mapping_views.xml',
         'wizards/utility_migration_import_wizard_views.xml',
         'views/utility_migration_customer_views.xml',

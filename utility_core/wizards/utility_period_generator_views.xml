@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Form View: معالج إنشاء الفترات التلقائي -->
+    <record id="view_utility_period_generator_form" model="ir.ui.view">
+        <field name="name">utility.period.generator.form</field>
+        <field name="model">utility.period.generator</field>
+        <field name="arch" type="xml">
+            <form string="معالج إنشاء الفترات الفوترة والتحصيل">
+                <sheet>
+                    <div class="oe_title">
+                        <h2>توليد الفترات الزمنية لنواقد القراءة والتحصيل</h2>
+                        <p class="text-muted">يقوم المعالج بتوليد فترات الاستهلاك والقراءة والسداد المحددة مع الرموز الفرعية والنواقد التلقائية.</p>
+                    </div>
+
+                    <div class="row">
+                        <!-- Card 1: النطاق الزمني والتكرار -->
+                        <div class="col-12 col-lg-6">
+                            <div class="card o_settings_card mb-3">
+                                <div class="card-header">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fa fa-calendar fa-2x text-primary me-3"/>
+                                        <div>
+                                            <h4 class="mb-0">النطاق والدورية</h4>
+                                            <small class="text-muted">تحديد السنة والشهر ونوع دورة الفوترة</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label for="year" class="o_light_label"/>
+                                        <field name="year"/>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="month" class="o_light_label"/>
+                                        <field name="month"/>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="billing_cadence" class="o_light_label"/>
+                                        <field name="billing_cadence"/>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="region_ids" class="o_light_label"/>
+                                        <field name="region_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card 2: قواعد النوافذ الزمنية -->
+                        <div class="col-12 col-lg-6">
+                            <div class="card o_settings_card mb-3">
+                                <div class="card-header">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fa fa-clock-o fa-2x text-success me-3"/>
+                                        <div>
+                                            <h4 class="mb-0">إعدادات النوافذ التشغيلية</h4>
+                                            <small class="text-muted">تحديد تواريخ فتح وإغلاق القراءة والسداد</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label for="reading_window_open_days_before" class="o_light_label"/>
+                                        <field name="reading_window_open_days_before"/>
+                                        <small class="text-muted d-block">عدد الأيام قبل نهاية الاستهلاك لفتح القراءة</small>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="reading_window_close_days_after" class="o_light_label"/>
+                                        <field name="reading_window_close_days_after"/>
+                                        <small class="text-muted d-block">عدد الأيام بعد نهاية الاستهلاك لإغلاق القراءة</small>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="payment_window_open_days_after" class="o_light_label"/>
+                                        <field name="payment_window_open_days_after"/>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="payment_window_duration_days" class="o_light_label"/>
+                                        <field name="payment_window_duration_days"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <footer>
+                        <button string="توليد الفترات الآن" name="action_generate_periods" type="object" class="btn-primary"/>
+                        <button string="إلغاء" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Action: معالج إنشاء الفترات -->
+    <record id="action_utility_period_generator_wizard" model="ir.ui.view">
+        <field name="name">توليد الفترات التلقائي</field>
+    </record>
+
+    <record id="action_utility_period_generator" model="ir.actions.act_window">
+        <field name="name">توليد الفترات التلقائي</field>
+        <field name="res_model">utility.period.generator</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>

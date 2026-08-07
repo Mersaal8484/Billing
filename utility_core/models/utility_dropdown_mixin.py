@@ -40,7 +40,6 @@ class UtilityDropdownMixin(models.AbstractModel):
 
     @api.model
     def _get_meter_product_domain(self):
-        # returns product that has meter models
         models = self.env['utility.meter.model'].search([('product_id', '!=', False)])
         product_ids = models.mapped('product_id.id')
         return [('id', 'in', product_ids)]
@@ -50,8 +49,17 @@ class UtilityDropdownMixin(models.AbstractModel):
         return [('customer_id', '=', False), ('active', '=', True)]
 
     @api.model
-    def _get_open_period_domain(self, work_type='readings', billing_period=False):
-        domain = [('work_type', '=', work_type), ('is_current_period', '=', True)]
-        if billing_period:
-            domain.append(('billing_period', '=', billing_period))
+    def _get_open_period_domain(self, work_type='readings', billing_period=False, region_id=False):
+        period_role = 'reading' if work_type == 'readings' else 'payment'
+        allowed_states = ['reading_open', 'planned', 'reading_closed', 'reviewing'] if period_role == 'reading' else ['open', 'planned']
+        cadence = 'semi_monthly' if billing_period == 'biweekly' else billing_period
+        
+        domain = [
+            ('period_role', '=', period_role),
+            ('state', 'in', allowed_states),
+        ]
+        if cadence:
+            domain.append(('billing_cadence', '=', cadence))
+        if region_id:
+            domain.extend(['|', ('region_ids', '=', False), ('region_ids', 'in', [region_id])])
         return domain

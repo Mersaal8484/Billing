@@ -19,8 +19,14 @@ class AccountPayment(models.Model):
     date_range_id = fields.Many2one(
         'date.range',
         string='فترة الدفع',
-        domain="[('work_type', '=', 'payment')]",
+        domain="[('period_role', '=', 'payment')]",
     )
+    timing_classification = fields.Selection([
+        ('on_time', 'في الموعد المحدد'),
+        ('late', 'متأخر'),
+        ('exceptional', 'استثنائي'),
+        ('outside_window', 'خارج نافذة التحصيل الميداني'),
+    ], string='تصنيف توقيت السداد', default='on_time', index=True)
     qr_code_value = fields.Char('بيانات QR', compute='_compute_utility_qr_code', readonly=True)
     qr_code_url = fields.Char('رابط QR', compute='_compute_utility_qr_code', readonly=True)
 
@@ -65,15 +71,26 @@ class AccountPayment(models.Model):
             payment.qr_code_url = '/report/barcode/?barcode_type=QR&value=%s' % quote(payload)
 
     def _get_payment_period_for_order(self, order):
-        """Return only the payment period directly linked to the bill period."""
+        """Return only the payment period directly linked to the bill period via reading_period_id."""
         if not order or not order.date_range_id:
             return self.env['date.range']
 
-        return self.env['date.range'].search([
-            ('work_type', '=', 'payment'),
-            ('parent_id', '=', order.date_range_id.id),
+        # 1. البحث باستخدام الرابط المباشر الصريح reading_period_id
+        period = self.env['date.range'].search([
+            ('period_role', '=', 'payment'),
+            ('reading_period_id', '=', order.date_range_id.id),
             ('company_id', 'in', [order.company_id.id, False]),
         ], order='is_current_period desc, date_start desc, id desc', limit=1)
+
+        # 2. التوافق العكسي: البحث بـ parent_id إذا لم يتوفر reading_period_id
+        if not period:
+            period = self.env['date.range'].search([
+                ('period_role', '=', 'payment'),
+                ('parent_id', '=', order.date_range_id.id),
+                ('company_id', 'in', [order.company_id.id, False]),
+            ], order='is_current_period desc, date_start desc, id desc', limit=1)
+
+        return period
 
     def _validate_utility_payment_period(self):
         """Ensure a utility payment belongs to the bill's exact reading period."""
@@ -83,10 +100,10 @@ class AccountPayment(models.Model):
                 raise ValidationError(_('لا يمكن تسجيل التحصيل لأن الفاتورة غير مرتبطة بفترة قراءة.'))
             if not payment.date_range_id:
                 raise ValidationError(_('لا توجد فترة دفع مرتبطة بفترة قراءة الفاتورة "%s".') % order_period.display_name)
-            if (
-                payment.date_range_id.work_type != 'payment'
-                or payment.date_range_id.parent_id != order_period
-            ):
+            if payment.date_range_id.period_role != 'payment':
+                raise ValidationError(_('فترة التحصيل يجب أن تكون من نوع سداد وتحصيل.'))
+            linked_reading_period = payment.date_range_id.reading_period_id or payment.date_range_id.parent_id
+            if linked_reading_period != order_period:
                 raise ValidationError(_('فترة التحصيل يجب أن تكون فترة الدفع المرتبطة مباشرة بفترة قراءة الفاتورة "%s".') % order_period.display_name)
 
     @api.onchange('utility_sale_order_id')
@@ -194,6 +211,18 @@ class AccountPayment(models.Model):
                 raise ValidationError(
                     'الفاتورة [%s] مدفوعة بالكامل بالفعل. لا حاجة لتسجيل دفعة إضافية.' % order.name
                 )
+            # تحديد تصنيف توقيت السداد
+            period = payment.date_range_id
+            pay_datetime = fields.Datetime.to_datetime(payment.date) or fields.Datetime.now()
+            if period and period.payment_window_start and period.payment_window_end:
+                if period.payment_window_start <= pay_datetime <= period.payment_window_end:
+                    payment.timing_classification = 'on_time'
+                else:
+                    payment.timing_classification = 'late' if pay_datetime > period.payment_window_end else 'outside_window'
+            elif period and period.state == 'open':
+                payment.timing_classification = 'on_time'
+            else:
+                payment.timing_classification = 'late'
         res = super().action_post()
         self.filtered('service_charge_id').mapped('service_charge_id').action_mark_paid_from_payment()
         for payment in self:

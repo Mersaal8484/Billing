@@ -94,6 +94,10 @@ class UtilityReading(models.Model):
             if not period:
                 raise ValidationError(_('يجب تحديد فترة القراءة الدورية قبل الفوترة.'))
             self.with_context(_bypass_reading_protection=True).write({'date_range_id': period.id})
+        
+        if self.date_range_id.state in ('closed', 'locked'):
+            raise ValidationError(_('فترة القراءة (%s) في حالة (%s) وتمنع إنشاء فواتير جديدة.') % (self.date_range_id.name, self.date_range_id.state))
+
         existing = self.env['sale.order'].search([
             ('reading_id', '=', self.id), ('state', '!=', 'cancel')], limit=1)
         if existing:
