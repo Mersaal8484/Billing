@@ -27,8 +27,12 @@ class FilesystemMediaAdapter(AbstractMediaStorageAdapter):
         if not file_data:
             raise ValidationError(_("محتوى الملف فارغ."))
 
+        sub_folder = metadata.get('asset_uuid') if metadata and metadata.get('asset_uuid') else (str(metadata.get('res_id')) if metadata and metadata.get('res_id') else 'shared')
+        target_dir = os.path.join(self.storage_path, sub_folder)
+        os.makedirs(target_dir, exist_ok=True)
+
         file_bytes = file_data if isinstance(file_data, bytes) else file_data.encode('utf-8')
-        file_path = os.path.join(self.storage_path, filename)
+        file_path = os.path.join(target_dir, filename)
         with open(file_path, 'wb') as f:
             f.write(file_bytes)
 

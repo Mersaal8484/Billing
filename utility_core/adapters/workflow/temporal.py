@@ -7,7 +7,10 @@ _logger = logging.getLogger(__name__)
 
 
 class TemporalWorkflowAdapter(AbstractWorkflowAdapter):
-    """محول مسارات العمل لبيئة الإنتاج عبر خدمة Temporal (Temporal Workflow Adapter)"""
+    """
+    محول مسارات العمل لبيئة الإنتاج عبر خدمة Temporal (Temporal Workflow Adapter - V1 Placeholder Contract).
+    ملاحظة: هذا المحول حالياً يُجسّد هيكلية العقد المتبادل (Interface Contract) وفي انتظار ربط مكتبة Temporal SDK الرسمية.
+    """
 
     def __init__(self, env):
         self.env = env
@@ -28,11 +31,11 @@ class TemporalWorkflowAdapter(AbstractWorkflowAdapter):
 
     def execute_open_reading_window(self, period):
         _logger.info("Executing Temporal Workflow open reading window for period %s", period.name)
-        return period.action_open_reading_window()
+        return period.action_open_reading()
 
     def execute_close_reading_window(self, period):
         _logger.info("Executing Temporal Workflow close reading window for period %s", period.name)
-        return period.action_close_reading_window()
+        return period.action_close_reading()
 
     def execute_start_billing(self, period):
         _logger.info("Executing Temporal Workflow start billing for period %s", period.name)

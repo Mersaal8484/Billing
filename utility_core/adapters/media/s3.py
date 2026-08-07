@@ -1,3 +1,4 @@
+import os
 import logging
 from odoo import _
 from odoo.exceptions import UserError, ValidationError
@@ -7,14 +8,17 @@ _logger = logging.getLogger(__name__)
 
 
 class S3MediaAdapter(AbstractMediaStorageAdapter):
-    """محول تخزين الوسائط والصور على الخوادم السحابية المتوافقة مع S3 (S3 Compatible Storage Adapter)"""
+    """
+    محول تخزين الوسائط والصور على الخوادم السحابية المتوافقة مع S3 (S3 Compatible Storage Adapter - V1 Placeholder Contract).
+    ملاحظة: يدعم قراءة مفاتيح الوصول والسرية من متغيرات البيئة OS Environment Variables (S3_ACCESS_KEY, S3_SECRET_KEY) لحماية الأسرار.
+    """
 
     def __init__(self, env):
         self.env = env
         self.endpoint_url = env['ir.config_parameter'].sudo().get_param('utility.s3_endpoint_url', '')
         self.bucket_name = env['ir.config_parameter'].sudo().get_param('utility.s3_bucket_name', '')
-        self.access_key = env['ir.config_parameter'].sudo().get_param('utility.s3_access_key', '')
-        self.secret_key = env['ir.config_parameter'].sudo().get_param('utility.s3_secret_key', '')
+        self.access_key = os.environ.get('S3_ACCESS_KEY') or env['ir.config_parameter'].sudo().get_param('utility.s3_access_key', '')
+        self.secret_key = os.environ.get('S3_SECRET_KEY') or env['ir.config_parameter'].sudo().get_param('utility.s3_secret_key', '')
         self.region_name = env['ir.config_parameter'].sudo().get_param('utility.s3_region_name', 'us-east-1')
 
         # فحص كفاية إعدادات الاتصال بالسحابة ومنع silent fallback

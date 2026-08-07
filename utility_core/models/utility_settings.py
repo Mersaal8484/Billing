@@ -1,4 +1,5 @@
-from odoo import api, fields, models
+from odoo import api, fields, models, _
+from odoo.exceptions import ValidationError
 
 
 class ResConfigSettings(models.TransientModel):
@@ -245,21 +246,11 @@ class ResConfigSettings(models.TransientModel):
     @api.constrains('workflow_backend', 'temporal_target_host', 'media_backend', 'filesystem_storage_path', 's3_endpoint_url', 's3_bucket_name', 's3_access_key', 's3_secret_key')
     def _check_infrastructure_backend_config(self):
         for rec in self:
-            if rec.workflow_backend == 'temporal' and not rec.temporal_target_host:
-                raise ValidationError(_("عند اختيار Temporal يجب تحديد عنوان خادم Temporal Host."))
+            if rec.workflow_backend == 'temporal':
+                raise ValidationError(_("مُحَوِّل Temporal Workflow حاليًا في مرحلة العقد الأولي (Placeholder Contract) وغير جاهز للإنتاج. يُرجى اختيار Local Odoo (In-Process Outbox)."))
+
+            if rec.media_backend == 's3':
+                raise ValidationError(_("مُحَوِّل S3 Cloud Storage حاليًا في مرحلة العقد الأولي (Placeholder Contract) وغير جاهز للإنتاج. يُرجى اختيار Odoo Attachments أو Local Shared Filesystem."))
 
             if rec.media_backend == 'filesystem' and not rec.filesystem_storage_path:
                 raise ValidationError(_("عند اختيار Filesystem يجب تحديد مسار تخزين الملفات."))
-
-            if rec.media_backend == 's3':
-                missing = []
-                if not rec.s3_endpoint_url:
-                    missing.append('S3 Endpoint URL')
-                if not rec.s3_bucket_name:
-                    missing.append('S3 Bucket Name')
-                if not rec.s3_access_key:
-                    missing.append('S3 Access Key')
-                if not rec.s3_secret_key:
-                    missing.append('S3 Secret Key')
-                if missing:
-                    raise ValidationError(_("عند اختيار S3 يجب إدخال كافّة البيانات المطلوبة: %s") % ", ".join(missing))

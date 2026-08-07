@@ -96,6 +96,8 @@ class UtilityMediaService(models.AbstractModel):
             ('state', '=', 'ready'),
         ], limit=1)
 
+        active_backend = self.env['ir.config_parameter'].sudo().get_param('utility.media_backend', 'attachment')
+
         if existing_asset and existing_asset.original_attachment_id:
             _logger.info("Reusing binary attachments from SHA256 match asset %s for new evidence record", existing_asset.asset_uuid)
             new_asset = self.env['utility.media.asset'].sudo().create({
@@ -107,7 +109,7 @@ class UtilityMediaService(models.AbstractModel):
                 'reading_id': reading_id,
                 'batch_id': batch_id,
                 'state': 'ready',
-                'storage_backend': 'attachment',
+                'storage_backend': existing_asset.storage_backend or active_backend,
                 'original_attachment_id': existing_asset.original_attachment_id.id,
                 'review_attachment_id': existing_asset.review_attachment_id.id if existing_asset.review_attachment_id else existing_asset.original_attachment_id.id,
                 'thumbnail_attachment_id': existing_asset.thumbnail_attachment_id.id if existing_asset.thumbnail_attachment_id else existing_asset.original_attachment_id.id,
@@ -125,7 +127,7 @@ class UtilityMediaService(models.AbstractModel):
             'reading_id': reading_id,
             'batch_id': batch_id,
             'state': 'processing',
-            'storage_backend': 'attachment',
+            'storage_backend': active_backend,
         })
 
         try:
@@ -137,7 +139,7 @@ class UtilityMediaService(models.AbstractModel):
                 file_data=variants['original'],
                 filename=f"orig_{filename}",
                 mimetype=mimetype,
-                metadata={'res_model': 'utility.media.asset', 'res_id': asset.id}
+                metadata={'res_model': 'utility.media.asset', 'res_id': asset.id, 'asset_uuid': asset.asset_uuid}
             )
 
             # تخزين نسخة المعاينة المكبرة
@@ -145,7 +147,7 @@ class UtilityMediaService(models.AbstractModel):
                 file_data=variants['review'],
                 filename=f"rev_{filename}",
                 mimetype=mimetype,
-                metadata={'res_model': 'utility.media.asset', 'res_id': asset.id}
+                metadata={'res_model': 'utility.media.asset', 'res_id': asset.id, 'asset_uuid': asset.asset_uuid}
             )
 
             # تخزين النسخة المصغرة
@@ -153,7 +155,7 @@ class UtilityMediaService(models.AbstractModel):
                 file_data=variants['thumbnail'],
                 filename=f"thumb_{filename}",
                 mimetype=mimetype,
-                metadata={'res_model': 'utility.media.asset', 'res_id': asset.id}
+                metadata={'res_model': 'utility.media.asset', 'res_id': asset.id, 'asset_uuid': asset.asset_uuid}
             )
 
             asset.write({
