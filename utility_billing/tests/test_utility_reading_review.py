@@ -1,6 +1,7 @@
 from odoo.tests.common import TransactionCase
 from odoo.exceptions import UserError, ValidationError, AccessError
 from odoo import fields
+from datetime import timedelta
 
 
 class TestUtilityReadingReview(TransactionCase):
@@ -138,6 +139,35 @@ class TestUtilityReadingReview(TransactionCase):
         self.assertEqual(len(res_p2['items']), 5)
         self.assertEqual(res_p2['pagination']['page'], 2)
         self.assertEqual(res_p2['stats'], {})
+
+    def test_01b_get_review_queue_includes_stats_and_clamps_limit(self):
+        """1b. Queue stats are returned on demand and limit is clamped to 40."""
+        approved_customer, approved_meter = self._create_unique_customer_meter('STAT-APP')
+        reading = self.Reading.create({
+            'meter_id': self.test_meter.id,
+            'account_id': self.test_customer.id,
+            'reading_date': fields.Datetime.now(),
+            'reading_value': 2100,
+            'state': 'under_review',
+            'date_range_id': self.test_period.id,
+        })
+        approved = self.Reading.create({
+            'meter_id': approved_meter.id,
+            'account_id': approved_customer.id,
+            'reading_date': fields.Datetime.now() + timedelta(days=1),
+            'reading_value': 2200,
+            'state': 'approved',
+            'date_range_id': self.test_period.id,
+        })
+        res_stats = self.ReadingReviewService.get_review_queue(
+            period_id=self.test_period.id, status='all', offset=0, limit=1000, include_stats=True)
+        self.assertIn('stats', res_stats)
+        self.assertEqual(res_stats['pagination']['page_size'], 40)
+        self.assertGreaterEqual(res_stats['stats']['pending'], 1)
+        self.assertGreaterEqual(res_stats['stats']['approved'], 1)
+        self.assertIn(reading.id, [item['id'] for item in res_stats['items']])
+        self.assertIn(approved.id, [item['id'] for item in self.ReadingReviewService.get_review_queue(
+            period_id=self.test_period.id, status='all', offset=0, limit=40, include_stats=True)['items']])
 
     def test_02_action_approve_review(self):
         """2. Approve a reading via Review Service."""
@@ -298,6 +328,38 @@ class TestUtilityReadingReview(TransactionCase):
         ids_in_queue = [item['id'] for item in res['items']]
         self.assertIn(r_net.id, ids_in_queue)
 
+    def test_08b_status_does_not_zero_other_stats(self):
+        """8b. Status filter on queue does not wipe unrelated stats counts."""
+        approved_customer, approved_meter = self._create_unique_customer_meter('STAT-APP-2')
+        reading_under_review = self.Reading.create({
+            'meter_id': self.test_meter.id,
+            'account_id': self.test_customer.id,
+            'reading_date': fields.Datetime.now(),
+            'reading_value': 2600,
+            'reading_category': 'customer',
+            'reading_purpose': 'periodic',
+            'reading_event': 'normal',
+            'state': 'under_review',
+            'date_range_id': self.test_period.id,
+        })
+        reading_approved = self.Reading.create({
+            'meter_id': approved_meter.id,
+            'account_id': approved_customer.id,
+            'reading_date': fields.Datetime.now() + timedelta(days=1),
+            'reading_value': 2700,
+            'reading_category': 'customer',
+            'reading_purpose': 'periodic',
+            'reading_event': 'normal',
+            'state': 'approved',
+            'date_range_id': self.test_period.id,
+        })
+        res = self.ReadingReviewService.get_review_queue(
+            period_id=self.test_period.id, status='under_review', include_stats=True)
+        self.assertGreaterEqual(res['stats']['pending'], 1)
+        self.assertGreaterEqual(res['stats']['approved'], 1)
+        self.assertIn(reading_under_review.id, [item['id'] for item in res['items']])
+        self.assertNotIn(reading_approved.id, [item['id'] for item in res['items']])
+
     def test_09_dto_has_reading_context_fields(self):
         """9. DTO has reading context fields, NOT billing_behavior."""
         reading = self.Reading.create({
@@ -363,6 +425,52 @@ class TestUtilityReadingReview(TransactionCase):
             review_tab='exceptions', status='all')
         exc_ids = [item['id'] for item in res_exc['items']]
         self.assertNotIn(r_open.id, exc_ids)
+
+    def test_11b_replacement_queue_scope_respects_assigned_regions(self):
+        """11b. Replacement queue should honor the user's assigned_region_ids scope."""
+        other_region = self.Region.create({
+            'name': 'منطقة مراجعة أخرى',
+            'code': 'REV-REG-02',
+            'type': 'region',
+        })
+        other_customer = self.Customer.create({
+            'name': 'مشترك استبدال آخر',
+            'subscriber_code': 'CUST-REV-OTHER',
+            'region_id': other_region.id,
+        })
+        old_meter = self.Meter.create({
+            'meter_number': 'MTR-REP-OTHER-OLD',
+            'customer_id': other_customer.id,
+            'multiplier': 1.0,
+        })
+        new_meter = self.Meter.create({
+            'meter_number': 'MTR-REP-OTHER-NEW',
+            'customer_id': other_customer.id,
+            'multiplier': 1.0,
+        })
+        replacement = self.Replacement.create({
+            'utility_account_id': other_customer.id,
+            'target_type': 'subscriber',
+            'old_meter_id': old_meter.id,
+            'old_meter_number': old_meter.meter_number,
+            'old_closing_reading': 10.0,
+            'old_last_invo_reading': 0.0,
+            'new_meter_id': new_meter.id,
+            'new_meter_number': new_meter.meter_number,
+            'new_opening_reading': 0.0,
+            'new_meter_val': 1.0,
+            'reason': 'fault',
+        })
+        scoped_user = self.env['res.users'].with_context(no_reset_password=True).create({
+            'name': 'مراجع استبدال مقيد',
+            'login': 'replacement.scope.11b@example.com',
+            'email': 'replacement.scope.11b@example.com',
+            'groups_id': [(6, 0, [self.env.ref('utility_core.group_utility_auditor').id])],
+            'assigned_region_ids': [(6, 0, [self.test_region.id])],
+        })
+        res = self.ReadingReviewService.with_user(scoped_user).get_review_queue(
+            review_tab='replacements', include_stats=False)
+        self.assertNotIn(replacement.id, [item['id'] for item in res['items']])
 
     def test_12_billing_regression_periodic_only(self):
         """12. Billing regression: periodic only → total = periodic consumption."""

@@ -120,7 +120,6 @@
                         <select class="form-select form-select-sm" style="width: 90px;" t-model="state.filters.page_size" t-on-change="onFilterChange">
                             <option value="20">20 صف</option>
                             <option value="40">40 صف</option>
-                            <option value="80">80 صف</option>
                         </select>
 
                         <!-- Bulk Approve Button -->

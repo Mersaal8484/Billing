@@ -266,7 +266,7 @@ export class ReadingReviewWorkspaceAction extends Component {
 
             if (res.status === "success") {
                 this.notification.add(_t("تم الاعتماد الجملي بنجاح لـ ") + res.count + _t(" قراءة."), { type: "success" });
-                await this.loadQueue(this.state.pagination.offset, false);
+                await this.loadQueue(this.state.pagination.offset, true);
             } else {
                 this.notification.add(res.message || _t("تعذر الاعتماد الجملي"), { type: "warning" });
             }

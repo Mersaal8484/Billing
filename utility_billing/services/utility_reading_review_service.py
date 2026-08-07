@@ -112,6 +112,19 @@ class UtilityReadingReviewService(models.AbstractModel):
             'exceptions': exceptions_count,
         }
 
+    def _build_review_stats_domain(self, user, period_id=False, region_id=False, batch_id=False, anomaly_filter='all', review_tab='commercial', search=''):
+        """Build the shared stats domain without the current status filter."""
+        domain = []
+        geo_domain = self._build_geographic_domain(user)
+        if geo_domain:
+            domain = expression.AND([domain, geo_domain])
+        domain = expression.AND([domain, self._build_review_scope_domain(period_id, region_id, batch_id, review_tab)])
+        domain = expression.AND([domain, self._build_review_anomaly_domain(anomaly_filter)])
+        if search and search.strip():
+            term = search.strip()
+            domain = expression.AND([domain, ['|', '|', ('meter_id.meter_number', 'ilike', term), ('account_id.name', 'ilike', term), ('account_id.subscriber_code', 'ilike', term)]])
+        return domain
+
 
     def _build_context_aware_vee_flags(self, reading):
         """Context-aware VEE flags that respect reading purpose and event semantics."""
@@ -229,32 +242,31 @@ class UtilityReadingReviewService(models.AbstractModel):
         """
         user = self.env.user
         Reading = self.env['utility.reading'].sudo()
-        domain = self._build_reading_review_domain(
+        limit_val = max(1, min(int(limit or 40), 40))
+        stats_domain = self._build_review_stats_domain(
             user,
             period_id=period_id,
             region_id=region_id,
             batch_id=batch_id,
-            status=status,
             anomaly_filter=anomaly_filter,
             review_tab=review_tab,
             search=search,
         )
+        domain = expression.AND([stats_domain, self._build_review_status_domain(status)])
 
         # معالجة خاصة لتبويب الاستبدال (Meter Replacement Pair View)
         if review_tab == 'replacements':
-            return self._get_replacements_queue(region_id, offset)
+            return self._get_replacements_queue(user, region_id, offset, include_stats=include_stats)
 
         # 7. جلب عدد السجلات الإجمالي والمجموعة الحالية المفهرسة
         total_count = Reading.search_count(domain)
-        readings = Reading.search(domain, offset=offset, limit=limit, order='reading_date desc, id desc')
+        readings = Reading.search(domain, offset=offset, limit=limit_val, order='reading_date desc, id desc')
 
         items = [self._build_reading_item(r) for r in readings]
 
-        limit_val = limit if limit > 0 else 40
         pages_count = (total_count + limit_val - 1) // limit_val if total_count > 0 else 1
         current_page = (offset // limit_val) + 1 if limit_val > 0 else 1
-
-        return {
+        res = {
             'items': items,
             'pagination': {
                 'page': current_page,
@@ -265,16 +277,18 @@ class UtilityReadingReviewService(models.AbstractModel):
             },
         }
         if include_stats:
-            res['stats'] = self._compute_review_stats(domain)
+            res['stats'] = self._compute_review_stats(stats_domain)
         else:
             res['stats'] = {}
         return res
 
-    def _get_replacements_queue(self, region_id=False, offset=0):
+    def _get_replacements_queue(self, user, region_id=False, offset=0, include_stats=True):
         """Build replacement pair review queue with 20 operations/page."""
-        Reading = self.env['utility.reading'].sudo()
         Replacement = self.env['utility.meter.replacement'].sudo()
         repl_domain = []
+        geo_domain = self._build_geographic_domain(user)
+        if geo_domain:
+            repl_domain = expression.AND([repl_domain, geo_domain])
         if region_id:
             repl_domain.append(('utility_account_id.region_id', '=', int(region_id)))
 
@@ -322,7 +336,7 @@ class UtilityReadingReviewService(models.AbstractModel):
         pages_count = (total_repls + 19) // 20 if total_repls > 0 else 1
         current_page = (offset // 20) + 1 if total_repls > 0 else 1
 
-        return {
+        res = {
             'items': repl_items,
             'is_replacement_tab': True,
             'pagination': {
@@ -332,8 +346,15 @@ class UtilityReadingReviewService(models.AbstractModel):
                 'pages': pages_count,
                 'offset': offset,
             },
-            'stats': self._compute_review_stats([]),
         }
+        if include_stats:
+            stats_domain = self._build_geographic_domain(user)
+            if region_id:
+                stats_domain = expression.AND([stats_domain, [('account_id.region_id', '=', int(region_id))]])
+            res['stats'] = self._compute_review_stats(stats_domain)
+        else:
+            res['stats'] = {}
+        return res
 
     def _check_geographic_access(self, readings, user):
         """Validate user has geographic scope for given readings.
