@@ -104,34 +104,38 @@ class UtilityMediaAsset(models.Model):
         return ''
 
     def check_user_access_security(self, user=None):
-        """التحقق من صلاحية الوصول للأصل الرقمي وفق النطاق التشغيلي للمستخدم.
-        Supports geographic access resolution through:
-        - reading.account_id.region_id (subscriber readings)
-        - reading.meter_id.transformer_id region (transformer readings)
-        - reading.meter_id.feeder_id region (feeder readings)
+        """التحقق من صلاحية الوصول للأصل الرقمي وفق النطاق الجغرافي للمستخدم.
+
+        Admin فقط unrestricted. كل الأدوار الأخرى تخضع لـ assigned_region_ids.
+        Default-Deny: مستخدم بدون مناطق لا يصل لوسائط القراءات المرتبطة.
+        يدعم: قراءة مشترك → account_id.region_id
+               قراءة شبكية  → meter_id.transformer_id.region_id / feeder_id.region_id
         """
         self.ensure_one()
         user = user or self.env.user
-        if user.has_group('utility_core.group_utility_admin') or user.has_group('utility_core.group_utility_auditor'):
-            return True
-        if not (hasattr(user, 'utility_region_ids') and user.utility_region_ids):
+        # Admin فقط unrestricted
+        if user.has_group('utility_core.group_utility_admin'):
             return True
 
+        regions = user.assigned_region_ids
         reading = self.reading_id
         if not reading:
             return True
 
+        if not regions:
+            raise AccessError(_("عذراً، ليس لديك مناطق جغرافية محددة للوصول لوسائط القراءات."))
+
+        # تحديد المنطقة: مشترك → شبكي
         region = False
-        # Primary: subscriber geographic scope
         if reading.account_id and reading.account_id.region_id:
             region = reading.account_id.region_id
-        # Fallback: resolve through meter's network entity
         elif reading.meter_id:
             if reading.meter_id.transformer_id and hasattr(reading.meter_id.transformer_id, 'region_id'):
                 region = reading.meter_id.transformer_id.region_id
             elif reading.meter_id.feeder_id and hasattr(reading.meter_id.feeder_id, 'region_id'):
                 region = reading.meter_id.feeder_id.region_id
 
-        if region and region not in user.utility_region_ids:
+        if region and region not in regions:
             raise AccessError(_("عذراً، ليس لديك صلاحية للوصول لوسائط المنطقة التشغيلية المحددة."))
         return True
+

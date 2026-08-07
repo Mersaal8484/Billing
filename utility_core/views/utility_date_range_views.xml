@@ -127,6 +127,12 @@
                             attrs="{'invisible': ['|', ('period_role', '!=', 'reading'), ('state', 'not in', ('accounting', 'closing'))]}"/>
                     <button name="action_lock_period" type="object" string="إقفال تاريخي" class="btn-outline-dark"
                             attrs="{'invisible': [('state', '!=', 'closed')]}"/>
+                    <button name="action_sync_regions_by_cadence" type="object"
+                            string="مزامنة المناطق حسب الدورية"
+                            class="btn-info"
+                            icon="fa-refresh"
+                            attrs="{'invisible': [('state', '!=', 'planned')]}"
+                            confirm="سيتم تحديث المناطق المشتركة في هذه الفترة بناءً على دوريتها. هل تريد المتابعة؟"/>
 
                     <!-- إجراءات فترات التحصيل -->
                     <button name="action_open_payment" type="object" string="فتح التحصيل" class="oe_highlight"
@@ -200,7 +206,11 @@
                                     </div>
                                     <div class="mb-3">
                                         <label for="billing_cadence" class="o_light_label"/>
-                                        <field name="billing_cadence"/>
+                                        <field name="billing_cadence"
+                                               attrs="{'readonly': [('period_role', '=', 'payment')]}"/>
+                                        <small class="text-muted"
+                                               attrs="{'invisible': [('period_role', '!=', 'payment')]}"
+                                        >مشتقة من فترة القراءة المرتبطة</small>
                                     </div>
                                     <div class="mb-3">
                                         <label for="type_id" class="o_light_label"/>
@@ -263,7 +273,13 @@
 
                     <notebook>
                         <page string="المناطق المشتركة">
-                            <field name="region_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                            <field name="region_ids" widget="many2many_tags" options="{'no_create': True}"
+                                   attrs="{'readonly': [('period_role', '=', 'payment')]}"/>
+                            <div class="text-muted mt-2"
+                                 attrs="{'invisible': [('period_role', '!=', 'payment')]}"
+                            >
+                                <i class="fa fa-info-circle"/> المناطق snapshot من فترة القراءة المرتبطة — تعديلها يدوياً غير مسموح.
+                            </div>
                         </page>
 
                         <page string="فترات التحصيل المرتبطة" attrs="{'invisible': [('period_role', '!=', 'reading')]}">

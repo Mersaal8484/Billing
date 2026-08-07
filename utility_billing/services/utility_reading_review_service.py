@@ -10,16 +10,25 @@ class UtilityReadingReviewService(models.AbstractModel):
     _description = 'مخدم مراجعة وتدقيق قراءات العدادات الرقمية'
 
     def _build_geographic_domain(self, user):
-        """Build geographic scope domain for the current user."""
-        if user.has_group('utility_core.group_utility_admin') or user.has_group('utility_core.group_utility_auditor'):
+        """Build geographic scope domain — Admin only is unrestricted.
+
+        مصدر الحقيقة: user.assigned_region_ids (موحد لكل الأدوار).
+        Default-Deny: بدون مناطق → لا قراءات.
+        الشبكي: account_id = False → تحح عبر meter_id.region_id.
+        """
+        if user.has_group('utility_core.group_utility_admin'):
             return []
-        if hasattr(user, 'utility_region_ids') and user.utility_region_ids:
-            return ['|',
-                    ('account_id.region_id', 'in', user.utility_region_ids.ids),
-                    '&',
-                    ('account_id', '=', False),
-                    ('meter_id.region_id', 'in', user.utility_region_ids.ids)]
-        return [('id', '=', False)]
+        regions = user.assigned_region_ids
+        if not regions:
+            return [('id', '=', False)]
+        return [
+            '|',
+            ('account_id.region_id', 'in', regions.ids),
+            '&',
+            ('account_id', '=', False),
+            ('meter_id.region_id', 'in', regions.ids),
+        ]
+
 
     def _build_context_aware_vee_flags(self, reading):
         """Context-aware VEE flags that respect reading purpose and event semantics."""
@@ -311,21 +320,39 @@ class UtilityReadingReviewService(models.AbstractModel):
         }
 
     def _check_geographic_access(self, readings, user):
-        """Validate user has geographic scope for given readings."""
-        if user.has_group('utility_core.group_utility_admin') or user.has_group('utility_core.group_utility_auditor'):
+        """Validate user has geographic scope for given readings.
+
+        Admin فقط unrestricted. كل الأدوار الأخرى (بما فيها Auditor)
+        تخضع لمنطق assigned_region_ids.
+        يشمل القراءات الشبكية (بدون account) عبر meter_id.region_id.
+        """
+        if user.has_group('utility_core.group_utility_admin'):
             return
-        if hasattr(user, 'utility_region_ids') and user.utility_region_ids:
-            unauthorized = readings.filtered(
-                lambda r: r.account_id and r.account_id.region_id
-                and r.account_id.region_id not in user.utility_region_ids
-            )
-            if unauthorized:
-                raise AccessError(
-                    _("ليس لديك صلاحية مراجعة قراءات المنطقة: %s")
-                    % ", ".join(unauthorized.mapped('account_id.region_id.name'))
-                )
-        else:
+        regions = user.assigned_region_ids
+        if not regions:
             raise AccessError(_("ليس لديك مناطق جغرافية محددة. يرجى التواصل مع المسؤول."))
+
+        def _reading_region(r):
+            if r.account_id and r.account_id.region_id:
+                return r.account_id.region_id
+            if r.meter_id and r.meter_id.region_id:
+                return r.meter_id.region_id
+            return False
+
+        unauthorized = readings.filtered(
+            lambda r: (lambda reg: reg and reg not in regions)(_reading_region(r))
+        )
+        if unauthorized:
+            region_names = set()
+            for r in unauthorized:
+                reg = _reading_region(r)
+                if reg:
+                    region_names.add(reg.name)
+            raise AccessError(
+                _("ليس لديك صلاحية مراجعة قراءات المنطقة: %s")
+                % ", ".join(sorted(region_names))
+            )
+
 
     @api.model
     def action_approve_review(self, reading_ids):

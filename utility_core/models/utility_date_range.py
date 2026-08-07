@@ -366,7 +366,141 @@ class DateRange(models.Model):
                         "دورية المناطق التابعة (%s) لا تطابق دورية الفترة (%s)."
                     ) % (names, rec.billing_cadence))
 
+    # ===== Region Scope Auto-Population =====
+
+    @api.model
+    def _get_regions_for_billing_cadence(self, cadence):
+        """إرجاع جميع المناطق الرئيسية النشطة التي تطابق الدورية المحدّدة.
+
+        يستخدم SQL domain مباشرة — بدون تحميل كل المناطق للذاكرة.
+        semi_monthly يشمل biweekly القديم (مترادفان فعلياً).
+        """
+        cadence = normalize_billing_cadence(cadence)
+        if not cadence:
+            return self.env['utility.region']
+        domain = [('type', '=', 'region'), ('active', '=', True)]
+        if cadence == 'semi_monthly':
+            # biweekly مرادف قديم لـ semi_monthly — نجمعهما في نفس الاستعلام
+            domain.append(('recurring_rule_type', 'in', ['semi_monthly', 'biweekly']))
+        else:
+            domain.append(('recurring_rule_type', '=', cadence))
+        return self.env['utility.region'].search(domain)
+
+
+    @api.onchange('billing_cadence', 'period_role')
+    def _onchange_billing_cadence_regions(self):
+        """ملء region_ids تلقائياً عند تغيير الدورية — للقراءة فقط.
+
+        Payment Period: مناطقه مشتقة حصراً من reading_period_id.
+        لا نحسب مناطقه من billing_cadence لأن ذلك يكسر الـ Snapshot.
+        """
+        for rec in self:
+            # Payment يرث فقط من reading_period_id — لا تُعيد الحساب هنا
+            if rec.period_role == 'payment':
+                continue
+            # نحمي الفترات التاريخية: planned أو سجل جديد فقط
+            if rec.state and rec.state != 'planned':
+                continue
+            rec.region_ids = rec._get_regions_for_billing_cadence(rec.billing_cadence)
+
+
+    @api.onchange('reading_period_id')
+    def _onchange_reading_period_scope(self):
+        """فترة السداد ترث نطاق المناطق والدورية من فترة القراءة المرتبطة.
+
+        لا نُعيد البحث عن المناطق — نأخذ Snapshot كاملاً من فترة القراءة."""
+        for rec in self:
+            if rec.period_role != 'payment':
+                continue
+            if rec.reading_period_id:
+                rec.billing_cadence = rec.reading_period_id.billing_cadence
+                rec.region_ids = rec.reading_period_id.region_ids
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        """عند إنشاء فترة قراءة بدون region_ids صريحة، تملأ تلقائياً حسب الدورية.
+
+        لا يؤثر على الفترات التاريخية — يعمل فقط عند إنشاء سجلات جديدة.
+        Payment Period: يرث النطاق من reading_period_id إذا لم تُحدَّد مناطق."""
+        for vals in vals_list:
+            role = vals.get('period_role', 'reading')
+            if role == 'reading' and not vals.get('region_ids'):
+                cadence = vals.get('billing_cadence', 'monthly')
+                regions = self._get_regions_for_billing_cadence(cadence)
+                if regions:
+                    vals['region_ids'] = [(6, 0, regions.ids)]
+            elif role == 'payment' and not vals.get('region_ids'):
+                reading_period_id = vals.get('reading_period_id')
+                if reading_period_id:
+                    reading_period = self.browse(reading_period_id).exists()
+                    if reading_period and reading_period.region_ids:
+                        vals['region_ids'] = [(6, 0, reading_period.region_ids.ids)]
+                        if not vals.get('billing_cadence') and reading_period.billing_cadence:
+                            vals['billing_cadence'] = reading_period.billing_cadence
+        return super().create(vals_list)
+
+    def action_sync_regions_by_cadence(self):
+        """مزامنة يدوية لنطاق المناطق للسجلات المخطّطة (planned) فقط.
+
+        يستخدمه المدير لإصلاح سجلات موجودة بدون تعيين المناطق الصحيح.
+        القيد: يرفض أي فترة ليست في حالة 'مخطط'."""
+        for rec in self:
+            if rec.state != 'planned':
+                raise ValidationError(_(
+                    "يمكن مزامنة نطاق المناطق فقط عندما تكون الفترة في حالة مخطط.\n"
+                    "الفترة '%s' حالتها الحالية: '%s'."
+                ) % (rec.name or rec.period_code, dict(PERIOD_STATE_SELECTION).get(rec.state, rec.state)))
+
+            if rec.period_role == 'payment':
+                if not rec.reading_period_id:
+                    raise ValidationError(_(
+                        "فترة السداد '%s' يجب أن تكون مرتبطة بفترة قراءة قبل مزامنة النطاق."
+                    ) % (rec.name or rec.period_code))
+                rec.write({
+                    'billing_cadence': rec.reading_period_id.billing_cadence,
+                    'region_ids': [(6, 0, rec.reading_period_id.region_ids.ids)],
+                })
+            else:
+                regions = rec._get_regions_for_billing_cadence(rec.billing_cadence)
+                rec.write({
+                    'region_ids': [(6, 0, regions.ids)],
+                })
+        return True
+
+    # ===== Historical Scope Protection =====
+
+    # حقول النطاق محمية بعد مرحلة التخطيط — لا تعديل على فترات تاريخية
+    _SCOPE_PROTECTED_FIELDS = frozenset({
+        'region_ids', 'billing_cadence', 'period_role', 'reading_period_id',
+    })
+    # الحالة الوحيدة التي يُسمح فيها بتعديل النطاق
+    _SCOPE_MUTABLE_STATES = frozenset({'planned'})
+
+    def write(self, vals):
+        """Model Guard: يحمي حقول النطاق الجغرافي بعد مرحلة التخطيط.
+
+        القاعدة: region_ids / billing_cadence / period_role / reading_period_id
+        لا تُعدَّل بعد state != planned — حتى عبر API أو RPC.
+        Context bypass: _bypass_period_scope_protection يُستخدم داخلياً فقط
+        من action_open_reading() للـ Final Sync قبل التجميد.
+        """
+        scope_changed = set(vals.keys()) & self._SCOPE_PROTECTED_FIELDS
+        if scope_changed and not self.env.context.get('_bypass_period_scope_protection'):
+            for rec in self:
+                if rec.state not in self._SCOPE_MUTABLE_STATES:
+                    raise ValidationError(_(
+                        "لا يمكن تعديل نطاق الفترة [%s] بعد مرحلة التخطيط.\n"
+                        "الحقول المحمية: %s\n"
+                        "الحالة الحالية: %s"
+                    ) % (
+                        rec.name or rec.period_code,
+                        ', '.join(sorted(scope_changed)),
+                        dict(PERIOD_STATE_SELECTION).get(rec.state, rec.state),
+                    ))
+        return super().write(vals)
+
     # ===== Audit Helper =====
+
     def _log_state_transition(self, old_state, new_state, reason=False):
         for rec in self:
             self.env['date.range.log'].sudo().create({
@@ -400,11 +534,17 @@ class DateRange(models.Model):
                 raise ValidationError(_("هذا الإجراء ينطبق فقط على فترات القراءة."))
             rec._validate_state_transition(['planned', 'reopened'], _('فتح القراءة'))
             old_s = rec.state
-            rec.write({
+            # Final Scope Sync: يضمن شمول أي مناطق أُضيفت بعد إنشاء الفترة
+            # يستخدم bypass لأن write() guard يحمي حقول النطاق
+            final_regions = rec._get_regions_for_billing_cadence(rec.billing_cadence)
+            rec.with_context(_bypass_period_scope_protection=True).write({
                 'state': 'reading_open',
                 'opened_at': fields.Datetime.now(),
+                'region_ids': [(6, 0, final_regions.ids)],
             })
             rec._log_state_transition(old_s, 'reading_open', _("فتح نافذة القراءة والرفع"))
+
+
 
     def action_close_reading(self):
         for rec in self:

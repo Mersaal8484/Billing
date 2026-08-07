@@ -661,3 +661,205 @@ class TestUtilityPeriodManagement(TransactionCase):
         self.assertGreater(cmd.attempt_count, 0)
         self.assertTrue(cmd.started_at)
         self.assertTrue(cmd.completed_at)
+
+    def test_28_monthly_reading_period_auto_populates_regions(self):
+        """28. فترة قراءة شهرية تُنشأ بدون region_ids → تملأ تلقائياً بجميع المناطق الشهرية."""
+        period = self.DateRange.create({
+            'name': 'قراءة شهرية اختبار auto-populate',
+            'period_code': 'R-AUTO-M-01',
+            'period_role': 'reading',
+            'billing_cadence': 'monthly',
+            # لا region_ids صريحة → يجب أن تُملأ من _get_regions_for_billing_cadence
+        })
+        # يجب أن تُملأ تلقائياً بالمنطقة الشهرية
+        self.assertIn(self.region_monthly, period.region_ids)
+        # لا يجب أن تحتوي على المنطقة نصف الشهرية
+        self.assertNotIn(self.region_semi, period.region_ids)
+
+    def test_29_semi_monthly_period_auto_populates_multiple_regions(self):
+        """29. فترة نصف شهرية مع عدة مناطق → جميع المناطق نصف الشهرية تُملأ تلقائياً."""
+        # إنشاء منطقة نصف شهرية ثانية
+        region_semi_2 = self.Region.create({
+            'name': 'منطقة تعز الثانية (نصف شهري)',
+            'code': 'TAIZ_S2',
+            'type': 'region',
+            'recurring_rule_type': 'semi_monthly',
+        })
+        period = self.DateRange.create({
+            'name': 'قراءة نصف شهرية اختبار multi-region',
+            'period_code': 'R-AUTO-S-02',
+            'period_role': 'reading',
+            'billing_cadence': 'semi_monthly',
+        })
+        # يجب أن تحتوي على كلتا المنطقتين نصف الشهريتين
+        self.assertIn(self.region_semi, period.region_ids)
+        self.assertIn(region_semi_2, period.region_ids)
+        # لا يجب أن تحتوي على المنطقة الشهرية
+        self.assertNotIn(self.region_monthly, period.region_ids)
+
+    def test_30_biweekly_legacy_region_normalized_to_semi_monthly(self):
+        """30. منطقة بدورية biweekly القديمة تُطبَّع إلى semi_monthly وتُضاف لفترات نصف الشهرية."""
+        region_bw = self.Region.create({
+            'name': 'منطقة biweekly قديمة',
+            'code': 'REG-BW-30',
+            'type': 'region',
+            'recurring_rule_type': 'biweekly',
+        })
+        period = self.DateRange.create({
+            'name': 'قراءة نصف شهرية مع biweekly',
+            'period_code': 'R-AUTO-BW-01',
+            'period_role': 'reading',
+            'billing_cadence': 'semi_monthly',
+        })
+        # المنطقة ذات biweekly يجب أن تُطبَّع وتُضاف تلقائياً (semi_monthly == biweekly بعد normalize)
+        self.assertIn(region_bw, period.region_ids)
+
+    def test_31_payment_period_inherits_regions_from_reading_period(self):
+        """31. فترة السداد ترث billing_cadence + region_ids من فترة القراءة المرتبطة."""
+        r_period = self.DateRange.create({
+            'name': 'فترة قراءة مع مناطق',
+            'period_code': 'R-INHERIT-01',
+            'period_role': 'reading',
+            'billing_cadence': 'monthly',
+            'region_ids': [(6, 0, [self.region_monthly.id])],
+        })
+        p_period = self.DateRange.create({
+            'name': 'فترة سداد ترث النطاق',
+            'period_code': 'PAY-INHERIT-01',
+            'period_role': 'payment',
+            'reading_period_id': r_period.id,
+            # لا region_ids صريحة → يرث من r_period
+        })
+        # يجب أن يرث دورية وناطق فترة القراءة
+        self.assertEqual(p_period.billing_cadence, 'monthly')
+        self.assertIn(self.region_monthly, p_period.region_ids)
+
+    def test_32_historical_period_regions_not_changed_by_sync_non_planned(self):
+        """32. فترة تاريخية (closed/locked) يرفضها زر المزامنة — لا تتأثر بإضافة مناطق جديدة."""
+        period = self.DateRange.create({
+            'name': 'فترة تاريخية محمية',
+            'period_code': 'R-HIST-PROT-01',
+            'period_role': 'reading',
+            'billing_cadence': 'monthly',
+            'region_ids': [(6, 0, [self.region_monthly.id])],
+            'state': 'closed',
+        })
+        # إنشاء منطقة شهرية جديدة بعد إنشاء الفترة
+        new_region = self.Region.create({
+            'name': 'منطقة شهرية جديدة (بعد الإغلاق)',
+            'code': 'NEW-M-HIST',
+            'type': 'region',
+            'recurring_rule_type': 'monthly',
+        })
+        # محاولة مزامنة الفترة التاريخية يجب أن تُرفض
+        with self.assertRaises(Exception):
+            period.action_sync_regions_by_cadence()
+        # المناطق الأصلية يجب أن تبقى كما هي
+        self.assertEqual(period.region_ids.ids, [self.region_monthly.id])
+        # المنطقة الجديدة يجب ألا تُضاف تلقائياً للفترة التاريخية
+        self.assertNotIn(new_region, period.region_ids)
+
+    def test_33_sync_button_updates_planned_period_regions(self):
+        """33. زر المزامنة يُحدّث مناطق الفترة المخطّطة بصورة صحيحة."""
+        # إنشاء فترة بمنطقة خاطئة
+        wrong_region = self.Region.create({
+            'name': 'منطقة شهرية للاختبار 33',
+            'code': 'WRONG-M-33',
+            'type': 'region',
+            'recurring_rule_type': 'monthly',
+        })
+        period = self.DateRange.create({
+            'name': 'فترة نصف شهرية بمنطقة خاطئة',
+            'period_code': 'R-SYNC-01',
+            'period_role': 'reading',
+            'billing_cadence': 'semi_monthly',
+            'region_ids': [(6, 0, [wrong_region.id])],  # منطقة شهرية مضافة بالخطأ
+            'state': 'planned',
+        })
+        # تشغيل المزامنة
+        period.action_sync_regions_by_cadence()
+        # يجب أن تُزال المنطقة الشهرية الخاطئة وتُضاف المنطقة نصف الشهرية الصحيحة
+        self.assertIn(self.region_semi, period.region_ids)
+        self.assertNotIn(wrong_region, period.region_ids)
+
+    def test_34_write_guard_rejects_region_change_on_reading_open(self):
+        """34. write() Guard يرفض تعديل region_ids على فترة reading_open — حماية التاريخية."""
+        period = self.DateRange.create({
+            'name': 'فترة مفتوحة للاختبار 34',
+            'period_code': 'R-WG-34',
+            'period_role': 'reading',
+            'billing_cadence': 'monthly',
+            'region_ids': [(6, 0, [self.region_monthly.id])],
+            'state': 'reading_open',
+        })
+        new_region = self.Region.create({
+            'name': 'منطقة لإضافتها بالقوة',
+            'code': 'FORCE-34',
+            'type': 'region',
+            'recurring_rule_type': 'monthly',
+        })
+        with self.assertRaises(Exception):
+            # يجب أن يُرفض التعديل لأن state = reading_open
+            period.write({'region_ids': [(4, new_region.id)]})
+        # المناطق الأصلية يجب أن تبقى دون تغيير
+        self.assertNotIn(new_region, period.region_ids)
+
+    def test_35_write_guard_rejects_cadence_change_on_locked(self):
+        """35. write() Guard يرفض تعديل billing_cadence على فترة locked."""
+        period = self.DateRange.create({
+            'name': 'فترة مقفلة للاختبار 35',
+            'period_code': 'R-WG-35',
+            'period_role': 'reading',
+            'billing_cadence': 'monthly',
+            'region_ids': [(6, 0, [self.region_monthly.id])],
+            'state': 'locked',
+        })
+        with self.assertRaises(Exception):
+            period.write({'billing_cadence': 'semi_monthly'})
+        # الدورية يجب أن تبقى monthly
+        self.assertEqual(period.billing_cadence, 'monthly')
+
+    def test_36_action_open_reading_performs_final_sync_with_new_region(self):
+        """36. action_open_reading() يُشغّل Final Sync — يشمل منطقة أُضيفت بعد create()."""
+        period = self.DateRange.create({
+            'name': 'فترة للاختبار 36 — Final Sync',
+            'period_code': 'R-FS-36',
+            'period_role': 'reading',
+            'billing_cadence': 'monthly',
+            'region_ids': [(6, 0, [self.region_monthly.id])],
+            'state': 'planned',
+        })
+        # إضافة منطقة شهرية جديدة بعد إنشاء الفترة
+        late_region = self.Region.create({
+            'name': 'منطقة شهرية أُضيفت متأخرة',
+            'code': 'LATE-M-36',
+            'type': 'region',
+            'recurring_rule_type': 'monthly',
+        })
+        # يجب ألا تكون في region_ids بعد
+        self.assertNotIn(late_region, period.region_ids)
+        # فتح الفترة → Final Sync
+        period.action_open_reading()
+        self.assertEqual(period.state, 'reading_open')
+        # المنطقة المتأخرة يجب أن تُضاف تلقائياً بالـ Final Sync
+        self.assertIn(late_region, period.region_ids)
+        # المنطقة الأصلية يجب أن تبقى أيضاً
+        self.assertIn(self.region_monthly, period.region_ids)
+
+    def test_37_scope_frozen_after_opening(self):
+        """37. النطاق مجمّد بعد الفتح — لا يمكن تغيير billing_cadence بعد reading_open."""
+        period = self.DateRange.create({
+            'name': 'فترة للاختبار 37 — Frozen',
+            'period_code': 'R-FRZ-37',
+            'period_role': 'reading',
+            'billing_cadence': 'monthly',
+            'region_ids': [(6, 0, [self.region_monthly.id])],
+            'state': 'planned',
+        })
+        period.action_open_reading()
+        self.assertEqual(period.state, 'reading_open')
+        # محاولة تغيير billing_cadence بعد الفتح
+        with self.assertRaises(Exception):
+            period.write({'billing_cadence': 'semi_monthly'})
+        # الدورية يجب أن تبقى monthly
+        self.assertEqual(period.billing_cadence, 'monthly')

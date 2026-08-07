@@ -58,15 +58,22 @@ class UtilityPeriodGenerator(models.TransientModel):
         _, last_day = calendar.monthrange(year, month)
 
         DateRange = self.env['date.range'].sudo()
-        Region = self.env['utility.region'].sudo()
 
         generated_periods = DateRange
 
         cadences = ['monthly', 'semi_monthly'] if self.billing_cadence == 'all' else [self.billing_cadence]
 
         for cadence in cadences:
-            all_regions = self.region_ids if self.region_ids else Region.search([('type', '=', 'region')])
-            target_regions = all_regions.filtered(lambda r: normalize_billing_cadence(r.recurring_rule_type) == cadence)
+            # مصدر حقيقة واحد: _get_regions_for_billing_cadence هو الـ Authority
+            if self.region_ids:
+                # المستخدم حدد مناطق يدوياً → نُضيّق فقط ما يطابق الدورية منها
+                target_regions = self.region_ids.filtered(
+                    lambda r: normalize_billing_cadence(r.recurring_rule_type) == cadence
+                )
+            else:
+                # لا تحديد يدوي → نستخدم الـ Helper كمصدر حقيقة وحيد
+                target_regions = DateRange._get_regions_for_billing_cadence(cadence)
+
 
             if cadence == 'monthly':
                 c_start = date(year, month, 1)
