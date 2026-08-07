@@ -340,7 +340,7 @@ class UtilityReadingReviewService(models.AbstractModel):
             return False
 
         unauthorized = readings.filtered(
-            lambda r: (lambda reg: reg and reg not in regions)(_reading_region(r))
+            lambda r: not _reading_region(r) or _reading_region(r) not in regions
         )
         if unauthorized:
             region_names = set()

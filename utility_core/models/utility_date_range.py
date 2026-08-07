@@ -424,19 +424,18 @@ class DateRange(models.Model):
         Payment Period: يرث النطاق من reading_period_id إذا لم تُحدَّد مناطق."""
         for vals in vals_list:
             role = vals.get('period_role', 'reading')
-            if role == 'reading' and not vals.get('region_ids'):
+            if role == 'reading':
                 cadence = vals.get('billing_cadence', 'monthly')
                 regions = self._get_regions_for_billing_cadence(cadence)
                 if regions:
                     vals['region_ids'] = [(6, 0, regions.ids)]
-            elif role == 'payment' and not vals.get('region_ids'):
+            elif role == 'payment':
                 reading_period_id = vals.get('reading_period_id')
                 if reading_period_id:
                     reading_period = self.browse(reading_period_id).exists()
                     if reading_period and reading_period.region_ids:
                         vals['region_ids'] = [(6, 0, reading_period.region_ids.ids)]
-                        if not vals.get('billing_cadence') and reading_period.billing_cadence:
-                            vals['billing_cadence'] = reading_period.billing_cadence
+                        vals['billing_cadence'] = reading_period.billing_cadence
         return super().create(vals_list)
 
     def action_sync_regions_by_cadence(self):
@@ -497,6 +496,16 @@ class DateRange(models.Model):
                         ', '.join(sorted(scope_changed)),
                         dict(PERIOD_STATE_SELECTION).get(rec.state, rec.state),
                     ))
+        # Auto-sync region_ids when billing_cadence changes on planned reading periods
+        if 'billing_cadence' in vals:
+            planned_readings = self.filtered(
+                lambda r: r.state == 'planned' and r.period_role == 'reading'
+            )
+            if planned_readings:
+                new_cadence = vals['billing_cadence']
+                regions = planned_readings[0]._get_regions_for_billing_cadence(new_cadence)
+                if regions:
+                    vals['region_ids'] = [(6, 0, regions.ids)]
         return super().write(vals)
 
     # ===== Audit Helper =====
@@ -534,14 +543,16 @@ class DateRange(models.Model):
                 raise ValidationError(_("هذا الإجراء ينطبق فقط على فترات القراءة."))
             rec._validate_state_transition(['planned', 'reopened'], _('فتح القراءة'))
             old_s = rec.state
-            # Final Scope Sync: يضمن شمول أي مناطق أُضيفت بعد إنشاء الفترة
-            # يستخدم bypass لأن write() guard يحمي حقول النطاق
-            final_regions = rec._get_regions_for_billing_cadence(rec.billing_cadence)
-            rec.with_context(_bypass_period_scope_protection=True).write({
+            write_vals = {
                 'state': 'reading_open',
                 'opened_at': fields.Datetime.now(),
-                'region_ids': [(6, 0, final_regions.ids)],
-            })
+            }
+            if rec.state == 'planned':
+                # Final Scope Sync on first open: include any regions added since creation
+                final_regions = rec._get_regions_for_billing_cadence(rec.billing_cadence)
+                write_vals['region_ids'] = [(6, 0, final_regions.ids)]
+            # reopened: preserve existing region_ids (historical snapshot)
+            rec.with_context(_bypass_period_scope_protection=True).write(write_vals)
             rec._log_state_transition(old_s, 'reading_open', _("فتح نافذة القراءة والرفع"))
 
 
@@ -689,7 +700,7 @@ class DateRange(models.Model):
         for rec in self:
             rec._validate_state_transition(['closed', 'reconciled', 'locked', 'payment_closing', 'reading_closed'], _('إعادة فتح'))
             old_s = rec.state
-            new_s = 'reading_open' if rec.period_role == 'reading' else 'payment_open'
+            new_s = 'reopened'
             rec.write({'state': new_s})
             rec._log_state_transition(old_s, new_s, reason)
 
