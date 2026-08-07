@@ -168,9 +168,10 @@ class LocalWorkflowAdapter(AbstractWorkflowAdapter):
             _("تمت المطابقة والإغلاق النهائي للفترة بنجاح.")
         )
 
-    def dispatch_batch_command(self, batch, payload_func):
+    def dispatch_batch_command(self, batch, payload_func, is_retry=False):
         """تنفيذ أمر معالجة دفعة القراءات عبر مفتاح عدم التكرار (Idempotency Key) READING-BATCH:{batch_uuid}"""
-        idempotency_key = f"READING-BATCH:{batch.batch_uuid}"
+        retry_suffix = f":RETRY:{batch.retry_count}" if (is_retry or getattr(batch, 'retry_count', 0) > 0) else ""
+        idempotency_key = f"READING-BATCH:{batch.batch_uuid}{retry_suffix}"
         cmd_model = self.env['utility.workflow.command'].sudo()
         existing = cmd_model.search([('idempotency_key', '=', idempotency_key)], limit=1)
         if existing and existing.state == 'executed':
@@ -178,10 +179,14 @@ class LocalWorkflowAdapter(AbstractWorkflowAdapter):
             return existing.result_summary
 
         cmd = existing or cmd_model.create({
-            'name': f"CMD-BATCH-{batch.name}",
+            'name': f"CMD-BATCH-{batch.name}" + (f"-R{batch.retry_count}" if retry_suffix else ""),
             'idempotency_key': idempotency_key,
+            'action_type': 'reading_batch',
+            'period_id': batch.date_range_id.id if batch.date_range_id else False,
+            'res_model': 'utility.reading.batch',
+            'res_id': batch.id,
             'state': 'pending',
-            'payload_json': json.dumps({'batch_id': batch.id, 'batch_uuid': batch.batch_uuid}, ensure_ascii=False),
+            'payload_json': json.dumps({'batch_id': batch.id, 'batch_uuid': batch.batch_uuid, 'retry_count': getattr(batch, 'retry_count', 0)}, ensure_ascii=False),
         })
 
         cmd.write({

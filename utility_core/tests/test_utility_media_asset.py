@@ -24,8 +24,8 @@ class TestUtilityMediaAsset(TransactionCase):
         self.sample_bytes = base64.b64decode(self.sample_base64)
 
         self.region = self.Region.create({
-            'name': 'منطقة وسائط A1++',
-            'code': 'REG-MEDIA-A1PP',
+            'name': 'منطقة وسائط A1+++',
+            'code': 'REG-MEDIA-A1PPP',
             'type': 'region',
             'recurring_rule_type': 'monthly',
         })
@@ -52,8 +52,8 @@ class TestUtilityMediaAsset(TransactionCase):
         retrieved_orig = self.MediaService.retrieve_media(asset, variant='original')
         self.assertEqual(retrieved_orig, self.sample_bytes)
 
-    def test_02_duplicate_media_asset_prevention(self):
-        """2. اختبار منع تكرار التخزين الثنائي لنفس البصمة SHA256 وإعادة استخدام الأصل"""
+    def test_02_duplicate_media_binary_deduplication(self):
+        """2. اختبار إعادة استخدام المرفق الثنائي دون إنشاء سجلات مرفقات متكررة مع إنشاء أصل مستقل لكل إثبات"""
         asset1 = self.MediaService.store_media(
             file_data=self.sample_bytes,
             filename="meter_read_dup1.jpg",
@@ -66,11 +66,12 @@ class TestUtilityMediaAsset(TransactionCase):
             mimetype="image/png"
         )
 
-        # عدم تكرار الإنشاء الثنائي وإعادة استخدام الأصل الأول
-        self.assertEqual(asset1.id, asset2.id)
+        # إنشاء سجل أصل إثبات منفصل لكل قراءة مع إعادة استخدام المرفق الثنائي الأصلي لعدم تكرار التخزين
+        self.assertNotEqual(asset1.id, asset2.id)
+        self.assertEqual(asset1.original_attachment_id.id, asset2.original_attachment_id.id)
 
-    def test_03_canonical_image_asset_id_and_meter_image_fallback(self):
-        """3. اختبار الحقل الأصيل image_asset_id مع توافقية meter_image بدون تكرار الثنائي"""
+    def test_03_canonical_image_asset_id_and_meter_image_non_stored_facade(self):
+        """3. اختبار الحقل الأصيل image_asset_id والتوافقية غير المخزنة meter_image بدون تكرار الثنائي"""
         asset = self.MediaService.store_media(
             file_data=self.sample_bytes,
             filename="meter_read_canonical.jpg",
@@ -78,12 +79,12 @@ class TestUtilityMediaAsset(TransactionCase):
         )
 
         customer = self.Customer.create({
-            'name': 'مشترك الوسائط Canonical',
-            'customer_number': 'CUST-CANON-01',
+            'name': 'مشترك الوسائط Canonical A1+++',
+            'customer_number': 'CUST-CANON-03',
             'region_id': self.region.id,
         })
         meter = self.Meter.create({
-            'meter_number': 'MTR-CANON-01',
+            'meter_number': 'MTR-CANON-03',
             'customer_id': customer.id,
         })
 
@@ -98,24 +99,24 @@ class TestUtilityMediaAsset(TransactionCase):
         # التحقق من أن meter_image يقرأ تلقائياً عبر compute من الأصل الرقمي
         self.assertTrue(reading.meter_image)
 
-    def test_04_decoupled_batch_processing_and_workflow_command(self):
-        """4. اختبار معالجة الدفعة عبر READING-BATCH:{batch_uuid} وحالات الدفعة (done / partial / error)"""
+    def test_04_decoupled_batch_processing_retry_and_under_review_state(self):
+        """4. اختبار معالجة الدفعة وحماية التكرار والصور المصحوبة تحت المراجعة (under_review)"""
         period = self.DateRange.create({
-            'name': 'فترة الوسائط A1++',
-            'period_code': 'R-MEDIA-A1PP-01',
+            'name': 'فترة الوسائط A1+++',
+            'period_code': 'R-MEDIA-A1PPP-01',
             'period_role': 'reading',
             'billing_cadence': 'monthly',
             'region_ids': [(6, 0, [self.region.id])],
         })
 
         customer = self.Customer.create({
-            'name': 'مشترك الدفعة A1++',
-            'customer_number': 'CUST-BATCH-A1PP',
+            'name': 'مشترك الدفعة A1+++',
+            'customer_number': 'CUST-BATCH-A1PPP',
             'region_id': self.region.id,
         })
 
         meter = self.Meter.create({
-            'meter_number': 'MTR-BATCH-A1PP',
+            'meter_number': 'MTR-BATCH-A1PPP',
             'customer_id': customer.id,
         })
 
@@ -123,7 +124,7 @@ class TestUtilityMediaAsset(TransactionCase):
             'readings': [
                 {
                     'seq': 1,
-                    'meter_number': 'MTR-BATCH-A1PP',
+                    'meter_number': 'MTR-BATCH-A1PPP',
                     'reading_value': 250.0,
                     'image_filename': 'img1.png',
                 },
@@ -138,7 +139,7 @@ class TestUtilityMediaAsset(TransactionCase):
         json_b64 = base64.b64encode(bytes(str(payload).replace("'", '"'), 'utf-8')).decode('utf-8')
 
         batch = self.Batch.create({
-            'name': 'دفعة A1++ عازلة للأخطاء',
+            'name': 'دفعة A1+++ عازلة للأخطاء',
             'region_id': self.region.id,
             'date_range_id': period.id,
             'data_file': json_b64,
@@ -159,21 +160,17 @@ class TestUtilityMediaAsset(TransactionCase):
         # تأكيد الدفعة وتفويض الأمر عبر Workflow Command
         batch.action_confirm()
 
-        # التحقق من إنشاء أمر outbox بمفتاح حتمي READING-BATCH:{batch_uuid}
-        cmd_key = f"READING-BATCH:{batch.batch_uuid}"
-        cmd = self.env['utility.workflow.command'].search([('idempotency_key', '=', cmd_key)], limit=1)
-        self.assertTrue(cmd)
-        self.assertEqual(cmd.state, 'executed')
-
-        # التحقق من أن حالة الدفعة أصبحت 'partial' لوجود سجل ناجح وسجل فاشل
-        self.assertEqual(batch.state, 'partial')
-        self.assertEqual(batch.processed_count, 1)
-        self.assertEqual(batch.error_count, 1)
-
-        # التحقق من إسناد الأصل الرقمي للقراءة مباشرة
+        # التحقق من أن حالة القراءة المصحوبة بصورة أصبحت under_review لمراجعة الصورة
         reading = self.env['utility.reading'].search([('batch_id', '=', batch.id)], limit=1)
         self.assertTrue(reading)
-        self.assertEqual(reading.image_asset_id.id, asset.id)
+        self.assertEqual(reading.state, 'under_review')
+
+        # التحقق من أن إعادة المحاولة action_reset_to_uploaded تنشئ command ببادئة RETRY:1
+        batch.action_reset_to_uploaded()
+        retry_key = f"READING-BATCH:{batch.batch_uuid}:RETRY:1"
+        retry_cmd = self.env['utility.workflow.command'].search([('idempotency_key', '=', retry_key)], limit=1)
+        self.assertTrue(retry_cmd)
+        self.assertEqual(retry_cmd.state, 'executed')
 
     def test_05_user_media_access_security(self):
         """5. اختبار فحص الأمن والتحقق من صلاحية الوصول الرقمي للأصل"""

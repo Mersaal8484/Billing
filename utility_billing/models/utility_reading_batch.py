@@ -41,8 +41,13 @@ class UtilityReadingBatch(models.Model):
     total_readings = fields.Integer('إجمالي القراءات', readonly=True)
     processed_count = fields.Integer('تمت معالجتها', readonly=True, default=0)
     error_count = fields.Integer('فشلت', readonly=True, default=0)
+    retry_count = fields.Integer('عدد محاولات الإعادة', default=0, readonly=True)
     processed_offset = fields.Integer('مؤشر التقدم داخل الملف', readonly=True, default=0)
     progress_percent = fields.Float('نسبة التقدم %', compute='_compute_progress_percent', store=True)
+
+    error_log = fields.Text('سجل الأخطاء', readonly=True)
+    reading_ids = fields.One2many('utility.reading', 'batch_id',
+                                  string='القراءات المُنشأة')
 
     state = fields.Selection([
         ('uploaded', 'تم الرفع'),
@@ -52,10 +57,6 @@ class UtilityReadingBatch(models.Model):
         ('error', 'خطأ'),
     ], default='uploaded', string='الحالة', tracking=True)
 
-    error_log = fields.Text('سجل الأخطاء', readonly=True)
-    reading_ids = fields.One2many('utility.reading', 'batch_id',
-                                  string='القراءات المُنشأة')
-
     @api.depends('processed_count', 'error_count', 'total_readings')
     def _compute_progress_percent(self):
         for batch in self:
@@ -64,6 +65,18 @@ class UtilityReadingBatch(models.Model):
                 batch.progress_percent = min(100.0, round(done / batch.total_readings * 100, 1))
             else:
                 batch.progress_percent = 0.0
+
+    def _get_parsed_json_data(self):
+        """تحليل ملف JSON الخاص بالدفعة بأمان دون الاعتماد على كود معالجة قديم"""
+        self.ensure_one()
+        if not self.data_file:
+            return {}
+        try:
+            raw_data = base64.b64decode(self.data_file)
+            return json.loads(raw_data.decode('utf-8'))
+        except Exception as e:
+            _logger.error("Error parsing JSON data for batch %s: %s", self.name, str(e))
+            return {}
 
     @api.depends('region_id.recurring_rule_type')
     def _compute_available_open_reading_period_ids(self):

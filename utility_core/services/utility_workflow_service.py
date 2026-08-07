@@ -68,7 +68,7 @@ class UtilityWorkflowService(models.AbstractModel):
         return adapter.execute_reconcile_and_close(period)
 
     @api.model
-    def dispatch_batch_command(self, batch, payload_func):
+    def dispatch_batch_command(self, batch, payload_func, is_retry=False):
         """توجيه أمر معالجة الدفعة عبر المحول النشط بطريقة غير مكررة (Idempotent Batch Command)"""
         adapter = self._get_workflow_adapter()
-        return adapter.dispatch_batch_command(batch, payload_func)
+        return adapter.dispatch_batch_command(batch, payload_func, is_retry=is_retry)

@@ -132,7 +132,7 @@ class UtilityReadingBatchService(models.AbstractModel):
                 except Exception as e:
                     _logger.warning("Could not store media asset for %s: %s", image_filename, str(e))
 
-        # إنشاء سجل القراءة المعتمد
+        reading_state = 'under_review' if (media_asset or item.get('has_anomaly')) else 'approved'
         reading_vals = {
             'meter_id': meter.id,
             'account_id': customer.id,
@@ -140,7 +140,7 @@ class UtilityReadingBatchService(models.AbstractModel):
             'reading_value': reading_value,
             'reading_date': reading_date,
             'reading_purpose': 'periodic',
-            'state': 'approved' if not item.get('has_anomaly') else 'under_review',
+            'state': reading_state,
         }
 
         if media_asset:

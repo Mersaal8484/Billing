@@ -82,20 +82,31 @@ class UtilityMediaService(models.AbstractModel):
         sha256_hash = self.calculate_sha256(raw_bytes)
         file_size = len(raw_bytes)
 
-        # فحص إمكانية وجود أصل مطابق بالبصمة (منع تكرار التخزين الثنائي)
+        # فحص وجود أصل سابق بنفس البصمة لإعادة استخدام الـ Attachment الثنائي دون تكرار تخزين الملف
         existing_asset = self.env['utility.media.asset'].sudo().search([
             ('sha256', '=', sha256_hash),
             ('file_size', '=', file_size),
             ('state', '=', 'ready'),
         ], limit=1)
 
-        if existing_asset:
-            _logger.info("Reusing existing media asset %s (SHA256 match)", existing_asset.asset_uuid)
-            if reading_id and not existing_asset.reading_id:
-                existing_asset.write({'reading_id': reading_id})
-            if batch_id and not existing_asset.batch_id:
-                existing_asset.write({'batch_id': batch_id})
-            return existing_asset
+        if existing_asset and existing_asset.original_attachment_id:
+            _logger.info("Reusing binary attachments from SHA256 match asset %s for new evidence record", existing_asset.asset_uuid)
+            new_asset = self.env['utility.media.asset'].sudo().create({
+                'original_filename': filename,
+                'mime_type': mimetype,
+                'file_size': file_size,
+                'sha256': sha256_hash,
+                'asset_type': asset_type,
+                'reading_id': reading_id,
+                'batch_id': batch_id,
+                'state': 'ready',
+                'storage_backend': 'attachment',
+                'original_attachment_id': existing_asset.original_attachment_id.id,
+                'review_attachment_id': existing_asset.review_attachment_id.id if existing_asset.review_attachment_id else existing_asset.original_attachment_id.id,
+                'thumbnail_attachment_id': existing_asset.thumbnail_attachment_id.id if existing_asset.thumbnail_attachment_id else existing_asset.original_attachment_id.id,
+                'processed_at': fields.Datetime.now(),
+            })
+            return new_asset
 
         # إنشاء سجل الأصل الرقمي
         asset = self.env['utility.media.asset'].sudo().create({

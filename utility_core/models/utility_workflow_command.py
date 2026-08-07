@@ -21,26 +21,30 @@ class UtilityWorkflowCommand(models.Model):
         copy=False,
         index=True
     )
-    period_id = fields.Many2one('date.range', string='الفترة', required=True, ondelete='cascade', index=True)
-    action_type = fields.Char('نوع الإجراء', required=True, index=True)
-    
+    period_id = fields.Many2one('date.range', string='الفترة', required=False, ondelete='cascade', index=True)
+    action_type = fields.Char('نوع الإجراء', required=True, default='general', index=True)
+
+    # ===== مراجع مرنة لربط أي نموذج (Generic Model Reference) =====
+    res_model = fields.Char('الموديل المرتبط (Model Name)', index=True)
+    res_id = fields.Many2oneReference('معرف السجل المرتبط (Record ID)', model_field='res_model', index=True)
+
     state = fields.Selection([
         ('pending', 'قيد الانتظار'),
         ('processing', 'قيد المعالجة'),
         ('executed', 'تم التنفيذ'),
         ('failed', 'فشل'),
     ], default='pending', required=True, index=True)
-    
+
     attempt_count = fields.Integer('عدد المحاولات', default=0, required=True)
     max_attempts = fields.Integer('الحد الأقصى للمحاولات', default=3, required=True)
-    
+
     scheduled_at = fields.Datetime('تاريخ التجدول', default=fields.Datetime.now, required=True)
     started_at = fields.Datetime('تاريخ بدء التنفيذ')
     completed_at = fields.Datetime('تاريخ إكمال التنفيذ')
-    
+
     result_summary = fields.Text('ملخص النتيجة')
     error_message = fields.Text('رسالة الخطأ')
-    
+
     workflow_id = fields.Char('مرجع مسار العمل (Workflow Ref)')
     workflow_run_id = fields.Char('مرجع تشغيل مسار العمل (Workflow Run Ref)')
     payload_json = fields.Text('بيانات الطلب (Payload JSON)')
