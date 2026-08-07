@@ -427,8 +427,11 @@ class DateRange(models.Model):
             if role == 'reading':
                 cadence = vals.get('billing_cadence', 'monthly')
                 regions = self._get_regions_for_billing_cadence(cadence)
-                if regions:
-                    vals['region_ids'] = [(6, 0, regions.ids)]
+                if not regions:
+                    raise ValidationError(_(
+                        "لا توجد مناطق نشطة مرتبطة بدورية الفوترة المحددة (%s)."
+                    ) % cadence)
+                vals['region_ids'] = [(6, 0, regions.ids)]
             elif role == 'payment':
                 reading_period_id = vals.get('reading_period_id')
                 if reading_period_id:

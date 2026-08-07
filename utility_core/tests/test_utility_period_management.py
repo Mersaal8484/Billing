@@ -761,7 +761,10 @@ class TestUtilityPeriodManagement(TransactionCase):
         with self.assertRaises(Exception):
             period.action_sync_regions_by_cadence()
         # المناطق الأصلية يجب أن تبقى كما هي
-        self.assertEqual(period.region_ids.ids, [self.region_monthly.id])
+        self.assertEqual(
+            set(period.region_ids.ids),
+            {self.region_monthly.id, self.region_monthly_2.id}
+        )
         # المنطقة الجديدة يجب ألا تُضاف تلقائياً للفترة التاريخية
         self.assertNotIn(new_region, period.region_ids)
 
@@ -951,11 +954,41 @@ class TestUtilityPeriodManagement(TransactionCase):
         self.assertIn(self.region_monthly, payment.region_ids)
         self.assertNotIn(self.region_semi, payment.region_ids)
 
-    def test_42_reopen_preserves_existing_regions(self):
+    def test_42_payment_write_rederives_scope_from_reading_period(self):
+        """42. Payment write with new reading_period_id → billing_cadence and region_ids are rederived."""
+        reading_period_1 = self.DateRange.create({
+            'name': 'قراءة 42-1',
+            'period_code': 'R-PAY-W-42-1',
+            'period_role': 'reading',
+            'billing_cadence': 'monthly',
+            'state': 'planned',
+        })
+        reading_period_2 = self.DateRange.create({
+            'name': 'قراءة 42-2',
+            'period_code': 'R-PAY-W-42-2',
+            'period_role': 'reading',
+            'billing_cadence': 'semi_monthly',
+            'state': 'planned',
+        })
+        payment = self.DateRange.create({
+            'name': 'تحصيل 42',
+            'period_code': 'P-PAY-W-42',
+            'period_role': 'payment',
+            'reading_period_id': reading_period_1.id,
+            'state': 'planned',
+        })
+        self.assertEqual(payment.billing_cadence, 'monthly')
+        self.assertEqual(set(payment.region_ids.ids), set(reading_period_1.region_ids.ids))
+
+        payment.write({'reading_period_id': reading_period_2.id})
+        self.assertEqual(payment.billing_cadence, 'semi_monthly')
+        self.assertEqual(set(payment.region_ids.ids), set(reading_period_2.region_ids.ids))
+
+    def test_43_reopen_preserves_existing_regions(self):
         """42. Reopened period → action_open_reading preserves existing region_ids."""
         period = self.DateRange.create({
-            'name': 'فترة للاختبار 42 — Reopen Preserve',
-            'period_code': 'R-REOP-42',
+            'name': 'فترة للاختبار 43 — Reopen Preserve',
+            'period_code': 'R-REOP-43',
             'period_role': 'reading',
             'billing_cadence': 'monthly',
             'region_ids': [(6, 0, [self.region_monthly.id])],
@@ -974,15 +1007,15 @@ class TestUtilityPeriodManagement(TransactionCase):
         # Region IDs must be preserved (not recalculated)
         self.assertEqual(sorted(period.region_ids.ids), sorted(original_regions))
 
-    def test_43_unresolved_region_default_deny(self):
-        """43. Reading with no resolvable region → AccessError for scoped reviewer."""
+    def test_44_unresolved_region_default_deny(self):
+        """44. Reading with no resolvable region → AccessError for scoped reviewer."""
         from odoo.exceptions import AccessError
         customer = self.Customer.create({
             'name': 'مشترك بدون منطقة',
-            'subscriber_code': 'NO-REG-43',
+            'subscriber_code': 'NO-REG-44',
         })
         meter = self.Meter.create({
-            'meter_number': 'MTR-NO-REG-43',
+            'meter_number': 'MTR-NO-REG-44',
             'customer_id': customer.id,
             'multiplier': 1.0,
         })
@@ -996,8 +1029,8 @@ class TestUtilityPeriodManagement(TransactionCase):
         ReviewService = self.env['utility.reading.review.service']
         auditor = self.env['res.users'].with_context(no_reset_password=True).create({
             'name': 'مراجع جغرافي',
-            'login': 'auditor.scope.43@example.com',
-            'email': 'auditor.scope.43@example.com',
+            'login': 'auditor.scope.44@example.com',
+            'email': 'auditor.scope.44@example.com',
             'groups_id': [(6, 0, [self.env.ref('utility_core.group_utility_auditor').id])],
             'assigned_region_ids': [(6, 0, [self.region_monthly.id])],
         })
