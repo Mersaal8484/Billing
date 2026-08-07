@@ -342,8 +342,10 @@ class TestUtilityReadingReview(TransactionCase):
         })
         meter_net = self.Meter.create({
             'meter_number': 'MTR-NET-REG-01',
-            'feeder_id': feeder.id,
+            'connection_type': 'feeder',
+            'linked_feeder_id': feeder.id,
         })
+        self.assertEqual(meter_net.region_id.id, network_region.id)
         reading = self.Reading.create({
             'meter_id': meter_net.id,
             'feeder_id': feeder.id,
@@ -393,43 +395,118 @@ class TestUtilityReadingReview(TransactionCase):
 
     def test_08d_replacement_scope_supports_subscriber_and_network_regions(self):
         """8d. Replacement scope should resolve subscriber, feeder, and transformer regions."""
-        region_sub = self.Region.create({
-            'name': 'منطقة استبدال مشترك',
-            'code': 'REP-SUB-01',
+        region_a = self.Region.create({
+            'name': 'منطقة استبدال A',
+            'code': 'REP-A',
             'type': 'region',
         })
-        region_feed = self.Region.create({
-            'name': 'منطقة استبدال فيدر',
-            'code': 'REP-FEED-01',
+        region_b = self.Region.create({
+            'name': 'منطقة استبدال B',
+            'code': 'REP-B',
             'type': 'region',
         })
-        region_trans = self.Region.create({
-            'name': 'منطقة استبدال محول',
-            'code': 'REP-TR-01',
-            'type': 'region',
+        customer_a = self.Customer.create({
+            'name': 'مشترك استبدال A',
+            'subscriber_code': 'CUST-REP-A',
+            'region_id': region_a.id,
         })
-        subscriber_customer = self.Customer.create({
-            'name': 'مشترك استبدال scope',
-            'subscriber_code': 'CUST-REP-SUB',
-            'region_id': region_sub.id,
+        customer_b = self.Customer.create({
+            'name': 'مشترك استبدال B',
+            'subscriber_code': 'CUST-REP-B',
+            'region_id': region_b.id,
         })
-        feeder = self.env['utility.feeder'].create({
-            'name': 'فيدر استبدال scope',
-            'code': 'FEED-REP-01',
-            'region_id': region_feed.id,
+        feeder_a = self.env['utility.feeder'].create({
+            'name': 'فيدر استبدال A',
+            'code': 'FEED-REP-A',
+            'region_id': region_a.id,
         })
-        transformer = self.env['utility.transformer'].create({
-            'name': 'محول استبدال scope',
-            'code': 'TR-REP-01',
-            'region_id': region_trans.id,
+        feeder_b = self.env['utility.feeder'].create({
+            'name': 'فيدر استبدال B',
+            'code': 'FEED-REP-B',
+            'region_id': region_b.id,
         })
-        dom_sub = self.ReadingReviewService._build_replacement_geographic_domain(
-            self.env['res.users'].browse(self.env.uid)
-        )
-        self.assertIsInstance(dom_sub, list)
-        self.assertTrue(self.ReadingReviewService._build_replacement_region_domain(region_sub.id))
-        self.assertTrue(self.ReadingReviewService._build_replacement_region_domain(region_feed.id))
-        self.assertTrue(self.ReadingReviewService._build_replacement_region_domain(region_trans.id))
+        transformer_a = self.env['utility.transformer'].create({
+            'name': 'محول استبدال A',
+            'code': 'TR-REP-A',
+            'region_id': region_a.id,
+        })
+        transformer_b = self.env['utility.transformer'].create({
+            'name': 'محول استبدال B',
+            'code': 'TR-REP-B',
+            'region_id': region_b.id,
+        })
+        self.Replacement.create([
+            {
+                'utility_account_id': customer_a.id,
+                'target_type': 'subscriber',
+                'old_closing_reading': 10.0,
+                'old_last_invo_reading': 0.0,
+                'new_opening_reading': 0.0,
+                'new_meter_val': 1.0,
+                'reason': 'fault',
+            },
+            {
+                'feeder_id': feeder_a.id,
+                'target_type': 'feeder',
+                'old_closing_reading': 10.0,
+                'old_last_invo_reading': 0.0,
+                'new_opening_reading': 0.0,
+                'new_meter_val': 1.0,
+                'reason': 'fault',
+            },
+            {
+                'transformer_id': transformer_a.id,
+                'target_type': 'transformer',
+                'old_closing_reading': 10.0,
+                'old_last_invo_reading': 0.0,
+                'new_opening_reading': 0.0,
+                'new_meter_val': 1.0,
+                'reason': 'fault',
+            },
+            {
+                'utility_account_id': customer_b.id,
+                'target_type': 'subscriber',
+                'old_closing_reading': 10.0,
+                'old_last_invo_reading': 0.0,
+                'new_opening_reading': 0.0,
+                'new_meter_val': 1.0,
+                'reason': 'fault',
+            },
+            {
+                'feeder_id': feeder_b.id,
+                'target_type': 'feeder',
+                'old_closing_reading': 10.0,
+                'old_last_invo_reading': 0.0,
+                'new_opening_reading': 0.0,
+                'new_meter_val': 1.0,
+                'reason': 'fault',
+            },
+            {
+                'transformer_id': transformer_b.id,
+                'target_type': 'transformer',
+                'old_closing_reading': 10.0,
+                'old_last_invo_reading': 0.0,
+                'new_opening_reading': 0.0,
+                'new_meter_val': 1.0,
+                'reason': 'fault',
+            },
+        ])
+        scoped_user = self.env['res.users'].with_context(no_reset_password=True).create({
+            'name': 'مراجع استبدال مقيد A',
+            'login': 'replacement.scope.08d@example.com',
+            'email': 'replacement.scope.08d@example.com',
+            'groups_id': [(6, 0, [self.env.ref('utility_core.group_utility_auditor').id])],
+            'assigned_region_ids': [(6, 0, [region_a.id])],
+        })
+        res = self.ReadingReviewService.with_user(scoped_user).get_review_queue(
+            review_tab='replacements', include_stats=False)
+        visible_names = [item['name'] for item in res['items']]
+        self.assertIn('استبدال عداد مشترك: مشترك استبدال A', visible_names)
+        self.assertIn('استبدال عداد فيدر: فيدر استبدال A', visible_names)
+        self.assertIn('استبدال عداد محول: محول استبدال A', visible_names)
+        self.assertNotIn('استبدال عداد مشترك: مشترك استبدال B', visible_names)
+        self.assertNotIn('استبدال عداد فيدر: فيدر استبدال B', visible_names)
+        self.assertNotIn('استبدال عداد محول: محول استبدال B', visible_names)
 
     def test_09_dto_has_reading_context_fields(self):
         """9. DTO has reading context fields, NOT billing_behavior."""

@@ -295,6 +295,8 @@ class UtilityReadingReviewService(models.AbstractModel):
             review_tab=review_tab,
             search=search,
         )
+        if region_id:
+            stats_domain = expression.AND([stats_domain, self._build_reading_region_domain(region_id)])
         domain = expression.AND([stats_domain, self._build_review_status_domain(status)])
         if region_id:
             domain = expression.AND([domain, self._build_reading_region_domain(region_id)])
@@ -393,7 +395,7 @@ class UtilityReadingReviewService(models.AbstractModel):
         if include_stats:
             stats_domain = self._build_geographic_domain(user)
             if region_id:
-                stats_domain = expression.AND([stats_domain, self._build_reading_region_domain(region_id)])
+                stats_domain = expression.AND([stats_domain, self._build_replacement_region_domain(region_id)])
             res['stats'] = self._compute_review_stats(stats_domain)
         else:
             res['stats'] = {}
