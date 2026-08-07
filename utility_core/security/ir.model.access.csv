@@ -119,4 +119,6 @@ access_utility_media_asset_admin,utility.media.asset.admin,model_utility_media_a
 access_utility_media_asset_readonly,utility.media.asset.readonly,model_utility_media_asset,group_utility_readonly,1,0,0,0
 access_utility_period_generator_admin,utility.period.generator.admin,model_utility_period_generator,group_utility_admin,1,1,1,1
 access_utility_period_generator_billing,utility.period.generator.billing,model_utility_period_generator,group_utility_billing_manager,1,1,1,1
+access_utility_period_adjust_wizard_admin,utility.period.adjust.wizard.admin,model_utility_period_adjust_wizard,group_utility_admin,1,1,1,1
+access_utility_period_adjust_wizard_billing,utility.period.adjust.wizard.billing,model_utility_period_adjust_wizard,group_utility_billing_manager,1,1,1,1
 

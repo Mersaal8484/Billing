@@ -6,11 +6,11 @@
         <field name="name">utility.period.generator.form</field>
         <field name="model">utility.period.generator</field>
         <field name="arch" type="xml">
-            <form string="معالج إنشاء الفترات الفوترة والتحصيل">
+            <form string="معالج إنشاء فترات الفوترة والتحصيل">
                 <sheet>
                     <div class="oe_title">
-                        <h2>توليد الفترات الزمنية لنواقد القراءة والتحصيل</h2>
-                        <p class="text-muted">يقوم المعالج بتوليد فترات الاستهلاك والقراءة والسداد المحددة مع الرموز الفرعية والنواقد التلقائية.</p>
+                        <h2>توليد الدورات التشغيلية المزدوجة (Reading &amp; Review + Payment)</h2>
+                        <p class="text-muted">يقوم المعالج بتوليد فترات القراءة والسداد المرتبطة في Transaction واحدة بمرجعية cycle_key موحدة.</p>
                     </div>
 
                     <div class="row">
@@ -39,15 +39,11 @@
                                         <label for="billing_cadence" class="o_light_label"/>
                                         <field name="billing_cadence"/>
                                     </div>
-                                    <div class="mb-3">
-                                        <label for="region_ids" class="o_light_label"/>
-                                        <field name="region_ids" widget="many2many_tags" options="{'no_create': True}"/>
-                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Card 2: قواعد النوافذ الزمنية -->
+                        <!-- Card 2: قواعد الإزاحة والنوافذ التشغيلية -->
                         <div class="col-12 col-lg-6">
                             <div class="card o_settings_card mb-3">
                                 <div class="card-header">
@@ -55,28 +51,35 @@
                                         <i class="fa fa-clock-o fa-2x text-success me-3" title="النوافذ التشغيلية"/>
                                         <div>
                                             <h4 class="mb-0">إعدادات النوافذ التشغيلية</h4>
-                                            <small class="text-muted">تحديد تواريخ فتح وإغلاق القراءة والسداد</small>
+                                            <small class="text-muted">إزاحات بداية ونهاية القراءة والتحصيل بالنسبة لنهاية الاستهلاك</small>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="card-body">
                                     <div class="mb-3">
-                                        <label for="reading_window_open_days_before" class="o_light_label"/>
-                                        <field name="reading_window_open_days_before"/>
-                                        <small class="text-muted d-block">عدد الأيام قبل نهاية الاستهلاك لفتح القراءة</small>
+                                        <field name="override_offsets"/>
+                                        <label for="override_offsets" class="ms-2"/>
                                     </div>
-                                    <div class="mb-3">
-                                        <label for="reading_window_close_days_after" class="o_light_label"/>
-                                        <field name="reading_window_close_days_after"/>
-                                        <small class="text-muted d-block">عدد الأيام بعد نهاية الاستهلاك لإغلاق القراءة</small>
+                                    <div attrs="{'invisible': [('override_offsets', '=', False)]}">
+                                        <div class="mb-3">
+                                            <label for="reading_start_offset_days" class="o_light_label"/>
+                                            <field name="reading_start_offset_days"/>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="reading_end_offset_days" class="o_light_label"/>
+                                            <field name="reading_end_offset_days"/>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="payment_start_offset_days" class="o_light_label"/>
+                                            <field name="payment_start_offset_days"/>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="payment_end_offset_days" class="o_light_label"/>
+                                            <field name="payment_end_offset_days"/>
+                                        </div>
                                     </div>
-                                    <div class="mb-3">
-                                        <label for="payment_window_open_days_after" class="o_light_label"/>
-                                        <field name="payment_window_open_days_after"/>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="payment_window_duration_days" class="o_light_label"/>
-                                        <field name="payment_window_duration_days"/>
+                                    <div class="text-muted" attrs="{'invisible': [('override_offsets', '=', True)]}">
+                                        <i class="fa fa-info-circle"/> يتم اعتماد إزاحات النوافذ التشغيلية الافتراضية المحددة على أنواع الفترات الزمنيّة.
                                     </div>
                                 </div>
                             </div>
@@ -84,7 +87,7 @@
                     </div>
 
                     <footer>
-                        <button string="توليد الفترات الآن" name="action_generate_periods" type="object" class="btn-primary"/>
+                        <button string="توليد الدورات التشغيلية الآن" name="action_generate_periods" type="object" class="btn-primary"/>
                         <button string="إلغاء" class="btn-secondary" special="cancel"/>
                     </footer>
                 </sheet>

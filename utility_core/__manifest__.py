@@ -54,6 +54,7 @@ User Role.
         'views/utility_subscriber_category_views.xml',
         'views/utility_subscriber_views.xml',
         'wizards/utility_period_generator_views.xml',
+        'wizards/utility_period_adjust_wizard_views.xml',
         'views/utility_date_range_views.xml',
         'views/utility_contract_template_views.xml',
         'views/utility_contract_template_block_views.xml',

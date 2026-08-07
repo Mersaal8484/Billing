@@ -1,6 +1,7 @@
 from datetime import timedelta
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
+from .utility_date_range import normalize_billing_cadence
 
 
 class UtilityReading(models.Model):
@@ -350,13 +351,14 @@ class UtilityReading(models.Model):
                 if period.period_role and period.period_role != 'reading':
                     raise ValidationError(_('فترة القراءة الدورية يجب أن تكون من نوع قراءات.'))
                 cadence = period.billing_cadence or getattr(period, 'billing_period', False)
-                if expected and cadence and cadence != expected:
+                if expected and cadence and normalize_billing_cadence(cadence) != normalize_billing_cadence(expected):
                     raise ValidationError(_(
                         'دورية الفترة المختارة (%s) لا تطابق دورية المشترك (%s).')
                         % (cadence, expected))
-                if not period.is_current_period:
-                    raise ValidationError(_(
-                        'الفترة الصحيحة لهذه القراءة غير مفعلة حالياً: %s.') % period.name)
+                if period.reading_window_start and reading.reading_date and reading.reading_date < period.reading_window_start:
+                    raise ValidationError(_('تاريخ القراءة (%s) قبل بداية نافذة القراءة المسموحة (%s).') % (reading.reading_date, period.reading_window_start))
+                if period.reading_window_end and reading.reading_date and reading.reading_date > period.reading_window_end:
+                    raise ValidationError(_('تاريخ القراءة (%s) تجاوز نهاية نافذة القراءة المسموحة (%s).') % (reading.reading_date, period.reading_window_end))
             if reading.reading_purpose != 'periodic' and reading.date_range_id:
                 raise ValidationError(_('الفترة مسموحة للقراءة الدورية فقط.'))
             if reading.reading_purpose == 'replacement_closing' and not reading.replacement_id:

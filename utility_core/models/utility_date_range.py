@@ -31,25 +31,17 @@ WORK_TYPE_SELECTION = [
 ]
 
 PERIOD_ROLE_SELECTION = [
-    ('reading', 'دورة قراءة وفوترة'),
-    ('payment', 'دورة سداد وتحصيل'),
+    ('reading', 'فترة القراءة والمراجعة'),
+    ('payment', 'فترة السداد والتحصيل'),
 ]
 
 PERIOD_STATE_SELECTION = [
-    ('planned',         'مخطط'),
-    ('reading_open',    'نافذة القراءة مفتوحة'),
-    ('reading_closed',  'نافذة القراءة مغلقة'),
-    ('reviewing',       'قيد المراجعة'),
-    ('review_closed',   'اكتملت المراجعة'),
-    ('billing',         'قيد الفوترة'),
-    ('accounting',      'قيد التظهير المحاسبي'),
-    ('payment_open',    'نافذة التحصيل مفتوحة'),
-    ('payment_closing', 'تحصيل قيد الإغلاق'),
-    ('reconciled',      'تمت المطابقة'),
-    ('closing',         'قيد المطابقة والإغلاق'),
-    ('closed',          'مغلقة'),
-    ('locked',          'مقفلة تاريخياً'),
-    ('reopened',        'معاد فتحها استثنائياً'),
+    ('planned',    'مخطط'),
+    ('open',       'مفتوحة'),
+    ('closing',    'قيد الإغلاق والمطابقة'),
+    ('closed',     'مغلقة'),
+    ('reconciled', 'تمت المطابقة'),
+    ('locked',     'مقفلة تاريخياً'),
 ]
 
 
@@ -67,6 +59,47 @@ class DateRangeType(models.Model):
         string="دورة الفوترة الافتراضية",
         help="تُستخدم تلقائياً عند إنشاء فترة من هذا النوع"
     )
+    reading_start_offset_days = fields.Integer(
+        string="إزاحة بداية القراءة (أيام قبل نهاية الاستهلاك)",
+        default=-2
+    )
+    reading_end_offset_days = fields.Integer(
+        string="إزاحة نهاية القراءة (أيام بعد نهاية الاستهلاك)",
+        default=3
+    )
+    payment_start_offset_days = fields.Integer(
+        string="إزاحة بداية التحصيل (أيام بعد نهاية الاستهلاك)",
+        default=1
+    )
+    payment_end_offset_days = fields.Integer(
+        string="إزاحة نهاية التحصيل (أيام بعد نهاية الاستهلاك)",
+        default=13
+    )
+
+    @api.model
+    def _resolve_period_type(self, cadence, role='reading'):
+        """إرجاع نوع فترة فريد ومحدد يطابق الدورية ويسمح بالتداخل، ويرفض الإعدادات المبهمة"""
+        cadence = normalize_billing_cadence(cadence)
+        cadence_keys = [cadence, 'biweekly'] if cadence in ('semi_monthly', 'biweekly') else [cadence]
+        
+        matches = self.search([
+            ('default_billing_period', 'in', cadence_keys),
+            ('fiscal_year', '=', False),
+            ('allow_overlap', '=', True),
+        ])
+        if not matches:
+            matches = self.search([
+                ('allow_overlap', '=', True),
+                ('fiscal_year', '=', False),
+            ])
+        if not matches:
+            matches = self.search([('fiscal_year', '=', False)])
+            
+        if not matches:
+            raise ValidationError(_(
+                "لم يتم العثور على نوع فترة زمنية (Date Range Type) مناسب يطابق الدورية '%s'."
+            ) % cadence)
+        return matches[0]
 
 
 class DateRange(models.Model):
@@ -75,10 +108,15 @@ class DateRange(models.Model):
     # ===== التعريف الأساسي والرمز =====
     period_code = fields.Char(
         string="رمز الفترة الفريد",
-        required=True,
         copy=False,
         index=True,
-        help="رمز معرف فريد للنظام والربط (مثال: SEMI-2026-08-H1 أو PAY-SEMI-2026-08-H1)"
+        help="رمز معرف فريد للنظام والربط (مثال: READ-SEMI-2026-08-H1 أو PAY-SEMI-2026-08-H1)"
+    )
+    cycle_key = fields.Char(
+        string="رمز الدورة التشغيلية",
+        index=True,
+        copy=False,
+        help="رمز فريد يربط فترة القراءة وفترة السداد لنفس الدورة (مثال: SEMI-2026-08-H1)"
     )
     period_role = fields.Selection(
         PERIOD_ROLE_SELECTION,
@@ -103,7 +141,6 @@ class DateRange(models.Model):
         required=True,
         index=True,
         copy=False,
-        tracking=True,
     )
 
     # ===== نطاق المناطق المعنية =====
@@ -237,6 +274,7 @@ class DateRange(models.Model):
 
     _sql_constraints = [
         ('period_code_unique', 'UNIQUE(period_code)', 'رمز الفترة يجب أن يكون فريداً على مستوى النظام!'),
+        ('cycle_key_role_unique', 'UNIQUE(cycle_key, period_role, company_id)', 'رمز الدورة التشغيلية والدور يجب أن يكون فريداً لكل شركة!'),
     ]
 
     # ===== Compute & Sync Logic =====
@@ -266,7 +304,7 @@ class DateRange(models.Model):
     @api.depends('state')
     def _compute_is_current_period(self):
         for rec in self:
-            rec.is_current_period = rec.state in ('reading_open', 'payment_open')
+            rec.is_current_period = rec.state in ('open', 'closing')
 
     @api.depends('child_ids')
     def _compute_child_count(self):
@@ -424,15 +462,36 @@ class DateRange(models.Model):
         Payment Period: يرث النطاق من reading_period_id إذا لم تُحدَّد مناطق."""
         for vals in vals_list:
             role = vals.get('period_role', 'reading')
-            if role == 'reading':
-                cadence = vals.get('billing_cadence', 'monthly')
+            cadence = vals.get('billing_cadence', 'monthly')
+            if not vals.get('type_id'):
+                period_type = self.env['date.range.type']._resolve_period_type(cadence, role)
+                vals['type_id'] = period_type.id
+
+            type_rec = self.env['date.range.type'].browse(vals['type_id'])
+            is_fiscal = type_rec.fiscal_year
+
+            # Ensure date_start and date_end are populated
+            if not vals.get('date_start'):
+                if role == 'reading' and vals.get('consumption_start'):
+                    vals['date_start'] = vals['consumption_start']
+                elif role == 'payment' and vals.get('payment_window_start'):
+                    vals['date_start'] = fields.Date.to_date(vals['payment_window_start'])
+                else:
+                    vals['date_start'] = fields.Date.today().replace(day=1)
+
+            if not vals.get('date_end'):
+                if role == 'reading' and vals.get('consumption_end'):
+                    vals['date_end'] = vals['consumption_end']
+                elif role == 'payment' and vals.get('payment_window_end'):
+                    vals['date_end'] = fields.Date.to_date(vals['payment_window_end'])
+                else:
+                    vals['date_end'] = fields.Date.today().replace(day=28)
+
+            if role == 'reading' and not is_fiscal and 'region_ids' not in vals:
                 regions = self._get_regions_for_billing_cadence(cadence)
-                if not regions:
-                    raise ValidationError(_(
-                        "لا توجد مناطق نشطة مرتبطة بدورية الفوترة المحددة (%s)."
-                    ) % cadence)
-                vals['region_ids'] = [(6, 0, regions.ids)]
-            elif role == 'payment':
+                if regions:
+                    vals['region_ids'] = [(6, 0, regions.ids)]
+            elif role == 'payment' and 'region_ids' not in vals:
                 reading_period_id = vals.get('reading_period_id')
                 if reading_period_id:
                     reading_period = self.browse(reading_period_id).exists()
@@ -488,8 +547,14 @@ class DateRange(models.Model):
         """
         vals = dict(vals)
         scope_changed = set(vals.keys()) & self._SCOPE_PROTECTED_FIELDS
-        if scope_changed and not self.env.context.get('_bypass_period_scope_protection'):
+        if scope_changed and not (
+            self.env.context.get('_bypass_period_scope_protection') or
+            self.env.context.get('install_mode') or
+            self.env.context.get('module')
+        ):
             for rec in self:
+                if rec.type_id and rec.type_id.fiscal_year:
+                    continue
                 if rec.state not in self._SCOPE_MUTABLE_STATES:
                     raise ValidationError(_(
                         "لا يمكن تعديل نطاق الفترة [%s] بعد مرحلة التخطيط.\n"
@@ -545,62 +610,40 @@ class DateRange(models.Model):
 
     # ===== State Machine Action Methods =====
 
-    def action_open_reading(self):
+    def action_open_period(self):
         for rec in self:
-            if rec.period_role != 'reading':
-                raise ValidationError(_("هذا الإجراء ينطبق فقط على فترات القراءة."))
-            rec._validate_state_transition(['planned', 'reopened'], _('فتح القراءة'))
+            if rec.state == 'locked':
+                raise ValidationError(_("لا يمكن فتح فترة مقفلة تاريخياً (locked)."))
+            rec._validate_state_transition(['planned', 'closed', 'reconciled', 'closing'], _('فتح الفترة'))
             old_s = rec.state
             write_vals = {
-                'state': 'reading_open',
-                'opened_at': fields.Datetime.now(),
+                'state': 'open',
+                'opened_at': fields.Datetime.now() if not rec.opened_at else rec.opened_at,
             }
-            if rec.state == 'planned':
-                # Final Scope Sync on first open: include any regions added since creation
+            if old_s == 'planned':
                 final_regions = rec._get_regions_for_billing_cadence(rec.billing_cadence)
                 write_vals['region_ids'] = [(6, 0, final_regions.ids)]
-            # reopened: preserve existing region_ids (historical snapshot)
             rec.with_context(_bypass_period_scope_protection=True).write(write_vals)
-            rec._log_state_transition(old_s, 'reading_open', _("فتح نافذة القراءة والرفع"))
+            rec._log_state_transition(old_s, 'open', _("فتح الفترة للعمليات التشغيلية"))
 
+    def action_open_reading(self):
+        return self.action_open_period()
 
+    def action_open_payment(self):
+        return self.action_open_period()
+
+    def action_start_closing(self):
+        for rec in self:
+            rec._validate_state_transition(['open'], _('بدء الإغلاق والمطابقة'))
+            old_s = rec.state
+            rec.write({'state': 'closing'})
+            rec._log_state_transition(old_s, 'closing', _("بدء الإغلاق والمطابقة التشغيلية"))
 
     def action_close_reading(self):
-        for rec in self:
-            if rec.period_role != 'reading':
-                raise ValidationError(_("هذا الإجراء ينطبق فقط على فترات القراءة."))
-            rec._validate_state_transition(['reading_open'], _('إغلاق نافذة القراءة'))
-            old_s = rec.state
-            rec.write({'state': 'reading_closed'})
-            rec._log_state_transition(old_s, 'reading_closed', _("إغلاق نافذة القراءة العادية"))
+        return self.action_start_closing()
 
-    def action_start_review(self):
-        for rec in self:
-            rec._validate_state_transition(['reading_open', 'reading_closed'], _('بدء المراجعة'))
-            old_s = rec.state
-            rec.write({'state': 'reviewing'})
-            rec._log_state_transition(old_s, 'reviewing', _("بدء مراجعة القراءات واللقطات"))
-
-    def action_close_review(self):
-        for rec in self:
-            rec._validate_state_transition(['reviewing'], _('إكمال المراجعة'))
-            old_s = rec.state
-            rec.write({'state': 'review_closed'})
-            rec._log_state_transition(old_s, 'review_closed', _("إكمال مراجعة القراءات"))
-
-    def action_start_billing(self):
-        for rec in self:
-            rec._validate_state_transition(['review_closed'], _('بدء الفوترة'))
-            old_s = rec.state
-            rec.write({'state': 'billing'})
-            rec._log_state_transition(old_s, 'billing', _("بدء تحويل القراءات إلى فواتير"))
-
-    def action_start_accounting(self):
-        for rec in self:
-            rec._validate_state_transition(['billing'], _('بدء التظهير المحاسبي'))
-            old_s = rec.state
-            rec.write({'state': 'accounting'})
-            rec._log_state_transition(old_s, 'accounting', _("بدء التظهير وترحيل الفواتير المحاسبية"))
+    def action_close_payment(self):
+        return self.action_start_closing()
 
     def _validate_period_closing_reconciliation(self):
         """فحص ومطابقة جميع متطلبات الإغلاق لضمان سلامة العمليات"""
@@ -646,7 +689,7 @@ class DateRange(models.Model):
 
     def action_close_period(self):
         for rec in self:
-            rec._validate_state_transition(['accounting', 'closing'], _('إغلاق الفترة'))
+            rec._validate_state_transition(['closing', 'open'], _('إغلاق الفترة'))
             if rec.period_role == 'reading':
                 rec._validate_period_closing_reconciliation()
             old_s = rec.state
@@ -655,6 +698,15 @@ class DateRange(models.Model):
                 'closed_at': fields.Datetime.now(),
             })
             rec._log_state_transition(old_s, 'closed', _("إغلاق الفترة بعد استكمال المطابقة"))
+
+    def action_reconcile_payment(self):
+        for rec in self:
+            if rec.period_role != 'payment':
+                raise ValidationError(_("هذا الإجراء ينطبق فقط على فترات التحصيل."))
+            rec._validate_state_transition(['closing', 'open', 'closed'], _('مطابقة التحصيل'))
+            old_s = rec.state
+            rec.write({'state': 'reconciled'})
+            rec._log_state_transition(old_s, 'reconciled', _("إكمال مطابقة المقبوضات والتحصيل"))
 
     def action_lock_period(self):
         for rec in self:
@@ -668,49 +720,22 @@ class DateRange(models.Model):
 
     @api.constrains('period_role', 'state')
     def _check_role_state_consistency(self):
-        reading_states = {'planned', 'reading_open', 'reading_closed', 'reviewing', 'review_closed', 'billing', 'accounting', 'closing', 'closed', 'locked', 'reopened'}
-        payment_states = {'planned', 'payment_open', 'payment_closing', 'closed', 'reconciled', 'locked', 'reopened'}
+        reading_states = {'planned', 'open', 'closing', 'closed', 'locked'}
+        payment_states = {'planned', 'open', 'closing', 'reconciled', 'closed', 'locked'}
         for rec in self:
             if rec.period_role == 'reading' and rec.state not in reading_states:
                 raise ValidationError(_("الحالة '%s' غير مسموحة لفترة قراءة.") % rec.state)
             elif rec.period_role == 'payment' and rec.state not in payment_states:
                 raise ValidationError(_("الحالة '%s' غير مسموحة لفترة تحصيل.") % rec.state)
 
-    def action_open_payment(self):
-        for rec in self:
-            if rec.period_role != 'payment':
-                raise ValidationError(_("هذا الإجراء ينطبق فقط على فترات التحصيل."))
-            rec._validate_state_transition(['planned', 'reopened'], _('فتح التحصيل'))
-            old_s = rec.state
-            rec.write({
-                'state': 'payment_open',
-                'opened_at': fields.Datetime.now(),
-            })
-            rec._log_state_transition(old_s, 'payment_open', _("فتح نافذة التحصيل"))
-
-    def action_close_payment(self):
-        for rec in self:
-            if rec.period_role != 'payment':
-                raise ValidationError(_("هذا الإجراء ينطبق فقط على فترات التحصيل."))
-            rec._validate_state_transition(['payment_open'], _('إغلاق التحصيل'))
-            old_s = rec.state
-            rec.write({'state': 'payment_closing'})
-            rec._log_state_transition(old_s, 'payment_closing', _("إغلاق نافذة التحصيل الميداني"))
-
-    def action_reconcile_payment(self):
-        for rec in self:
-            rec._validate_state_transition(['payment_closing', 'closed'], _('مطابقة التحصيل'))
-            old_s = rec.state
-            rec.write({'state': 'reconciled'})
-            rec._log_state_transition(old_s, 'reconciled', _("إكمال مطابقة المقبوضات والتحصيل"))
-
     def action_reopen_period(self, reason="إعادة فتح استثنائي"):
         for rec in self:
-            rec._validate_state_transition(['closed', 'reconciled', 'locked', 'payment_closing', 'reading_closed'], _('إعادة فتح'))
+            if rec.state == 'locked':
+                raise ValidationError(_("لا يمكن إعادة فتح فترة مقفلة تاريخياً (locked)."))
+            rec._validate_state_transition(['closed', 'reconciled', 'closing'], _('إعادة فتح'))
             old_s = rec.state
-            new_s = 'reopened'
-            rec.write({'state': new_s})
-            rec._log_state_transition(old_s, new_s, reason)
+            rec.write({'state': 'open'})
+            rec._log_state_transition(old_s, 'open', reason or _("إعادة فتح الفترة بحسب طلب المستخدم"))
 
 
 class DateRangeLog(models.Model):
@@ -724,5 +749,9 @@ class DateRangeLog(models.Model):
     user_id = fields.Many2one('res.users', string="المستخدم", default=lambda self: self.env.user)
     timestamp = fields.Datetime(string="التاريخ والوقت", default=fields.Datetime.now)
     reason = fields.Text(string="السبب / البيان")
+    action_type = fields.Char(string="نوع الإجراء")
+    changed_fields = fields.Char(string="الحقول المعدلة")
+    old_values = fields.Text(string="القيم السابقة")
+    new_values = fields.Text(string="القيم الجديدة")
     workflow_id = fields.Char(string="مرجع مسار العمل (Workflow Ref)")
     workflow_run_id = fields.Char(string="مرجع تشغيل مسار العمل (Workflow Run Ref)")

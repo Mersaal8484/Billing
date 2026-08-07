@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_period_adjust_wizard_form" model="ir.ui.view">
+        <field name="name">utility.period.adjust.wizard.form</field>
+        <field name="model">utility.period.adjust.wizard</field>
+        <field name="arch" type="xml">
+            <form string="معالج التعديل المنضبط للفترة">
+                <sheet>
+                    <group>
+                        <group string="بيانات الفترة الحالية">
+                            <field name="period_id" options="{'no_create': True}"/>
+                            <field name="period_role"/>
+                            <field name="state" widget="badge"/>
+                        </group>
+                        <group string="إجراء التعديل">
+                            <field name="operation_type" widget="radio"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="التواريخ والنوافذ الجديدة" name="new_dates">
+                            <group attrs="{'invisible': [('operation_type', '!=', 'extend_reading_window')]}">
+                                <group string="القيم الحالية">
+                                    <field name="current_reading_window_end"/>
+                                </group>
+                                <group string="القيمة الجديدة">
+                                    <field name="new_reading_window_end" attrs="{'required': [('operation_type', '=', 'extend_reading_window')]}"/>
+                                </group>
+                            </group>
+
+                            <group attrs="{'invisible': [('operation_type', '!=', 'extend_payment_window')]}">
+                                <group string="القيم الحالية">
+                                    <field name="current_payment_window_end"/>
+                                </group>
+                                <group string="القيمة الجديدة">
+                                    <field name="new_payment_window_end" attrs="{'required': [('operation_type', '=', 'extend_payment_window')]}"/>
+                                </group>
+                            </group>
+
+                            <group attrs="{'invisible': [('operation_type', '!=', 'change_reading_window')]}">
+                                <group string="القيم الحالية">
+                                    <field name="current_reading_window_start"/>
+                                    <field name="current_reading_window_end"/>
+                                </group>
+                                <group string="القيم الجديدة">
+                                    <field name="new_reading_window_start" attrs="{'required': [('operation_type', '=', 'change_reading_window')]}"/>
+                                    <field name="new_reading_window_end" attrs="{'required': [('operation_type', '=', 'change_reading_window')]}"/>
+                                </group>
+                            </group>
+
+                            <group attrs="{'invisible': [('operation_type', '!=', 'change_consumption_bounds')]}">
+                                <group string="القيم الحالية">
+                                    <field name="current_consumption_start"/>
+                                    <field name="current_consumption_end"/>
+                                </group>
+                                <group string="القيم الجديدة">
+                                    <field name="new_consumption_start" attrs="{'required': [('operation_type', '=', 'change_consumption_bounds')]}"/>
+                                    <field name="new_consumption_end" attrs="{'required': [('operation_type', '=', 'change_consumption_bounds')]}"/>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+
+                    <group string="سبب التعديل والتوثيق (إجباري)">
+                        <field name="reason" placeholder="اكتب بياناً وتوضيحاً لسبب التعديل التشغيلي هنا..." nolabel="1"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button string="تطبيق التعديل والتوثيق" name="action_apply_adjustment" type="object" class="btn-primary"/>
+                    <button string="إلغاء" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_utility_period_adjust_wizard" model="ir.actions.act_window">
+        <field name="name">تعديل وتمديد الفترة</field>
+        <field name="res_model">utility.period.adjust.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

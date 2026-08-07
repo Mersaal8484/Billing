@@ -2,7 +2,7 @@
 
 ## Project
 
-Odoo 16.0 ERP for electricity distribution companies. 6 addon modules under `utility_erp/`.
+Odoo 16.0 ERP for electricity distribution companies. 7 addon modules under `utility_erp/` (with `utility_migration` implemented as staging models inside `utility_core`, not as a standalone module).
 
 ## Module dependency order
 
