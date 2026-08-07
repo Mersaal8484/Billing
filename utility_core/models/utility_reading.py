@@ -28,9 +28,19 @@ class UtilityReading(models.Model):
     consumption = fields.Float('الاستهلاك', compute='_compute_consumption', store=True)
     meter_multiplier = fields.Float('معامل الضرب وقت القراءة', default=1.0, required=True)
     reading_purpose = fields.Selection([
-        ('opening', 'افتتاحية'), ('periodic', 'دورية'),
-        ('replacement_closing', 'ختامية استبدال'),
+        ('opening', 'افتتاحية'),
+        ('periodic', 'دورية'),
+        ('closing', 'ختامية'),
+        ('replacement_closing', 'ختامية استبدال (توافقي)'),
     ], string='غرض القراءة', default='periodic', required=True, index=True, tracking=True)
+    reading_event = fields.Selection([
+        ('normal', 'عادية / دورية'),
+        ('installation', 'تركيب عداد جديد'),
+        ('replacement', 'استبدال عداد'),
+        ('disconnection', 'فصل الخدمة'),
+        ('removal', 'إزالة عداد'),
+        ('contract_closure', 'إنهاء عقد / اشتراك'),
+    ], string='حدث القراءة', default='normal', required=True, index=True, tracking=True)
     reading_category = fields.Selection([
         ('customer', 'مشترك'),
         ('transformer', 'محول / خلية'),
@@ -39,6 +49,53 @@ class UtilityReading(models.Model):
     transformer_id = fields.Many2one('utility.transformer', 'المحول', related='meter_id.transformer_id', store=True)
     is_private_transformer = fields.Boolean('محول خاص', related='transformer_id.is_private', store=True)
     feeder_id = fields.Many2one('utility.feeder', 'الفيدر', related='meter_id.feeder_id', store=True)
+
+    is_billable = fields.Boolean(
+        string='قراءة قابلة للفوترة',
+        compute='_compute_is_billable',
+        store=True,
+        index=True
+    )
+
+    def _is_commercial_subject(self):
+        self.ensure_one()
+        return (
+            self.reading_category == 'customer'
+            or (
+                self.reading_category == 'transformer'
+                and self.is_private_transformer
+            )
+        )
+
+    def _canonical_reading_purpose(self):
+        self.ensure_one()
+        if self.reading_purpose == 'replacement_closing':
+            return 'closing'
+        return self.reading_purpose
+
+    def _is_replacement_reading(self):
+        self.ensure_one()
+        return (
+            self.reading_event == 'replacement'
+            or self.reading_purpose == 'replacement_closing'
+        )
+
+    def _is_billable_reading(self):
+        self.ensure_one()
+        if not self._is_commercial_subject():
+            return False
+
+        purpose = self._canonical_reading_purpose()
+        if purpose == 'periodic':
+            return True
+        if purpose == 'closing' and self.reading_event == 'contract_closure':
+            return True
+        return False
+
+    @api.depends('reading_category', 'reading_purpose', 'reading_event', 'is_private_transformer')
+    def _compute_is_billable(self):
+        for reading in self:
+            reading.is_billable = reading._is_billable_reading()
     reading_type = fields.Selection([
         ('manual', 'يدوي'),
         ('estimated', 'تقديري'),

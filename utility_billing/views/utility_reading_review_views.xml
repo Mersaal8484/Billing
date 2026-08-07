@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Client Action for Reading Review Workspace (OWL 2.4) -->
+    <record id="action_utility_reading_review_workspace" model="ir.actions.client">
+        <field name="name">مراجعة القراءات والصور الرقمية</field>
+        <field name="tag">utility_reading_review_workspace</field>
+        <field name="target">main</field>
+    </record>
+
+    <!-- Menu Item under Readings Menu -->
+    <menuitem id="menu_utility_reading_review_workspace"
+              name="مراجعة وتدقيق القراءات"
+              parent="utility_billing.menu_utility_readings"
+              sequence="5"
+              action="action_utility_reading_review_workspace"/>
+</odoo>

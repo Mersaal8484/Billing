@@ -48,6 +48,19 @@ class UtilityReadingBatch(models.Model):
     error_log = fields.Text('سجل الأخطاء', readonly=True)
     reading_ids = fields.One2many('utility.reading', 'batch_id',
                                   string='القراءات المُنشأة')
+
+    def action_open_review_workspace(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'utility_reading_review_workspace',
+            'name': _('مراجعة وتدقيق قراءات الدفعة %s') % self.name,
+            'context': {
+                'default_batch_id': self.id,
+                'default_period_id': self.date_range_id.id if self.date_range_id else False,
+                'default_region_id': self.region_id.id if self.region_id else False,
+            }
+        }
     line_ids = fields.One2many('utility.reading.batch.line', 'batch_id',
                                string='أسطر الدفعة التفصيلية')
 

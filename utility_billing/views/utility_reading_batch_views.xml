@@ -44,6 +44,14 @@
                            statusbar_visible="uploaded,processing,done"/>
                 </header>
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_review_workspace" type="object"
+                                class="oe_stat_button" icon="fa-th-list">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">المراجعة الرقمية</span>
+                            </div>
+                        </button>
+                    </div>
                     <div class="oe_title">
                         <h1><field name="name"/></h1>
                     </div>
