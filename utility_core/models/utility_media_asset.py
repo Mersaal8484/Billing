@@ -104,14 +104,34 @@ class UtilityMediaAsset(models.Model):
         return ''
 
     def check_user_access_security(self, user=None):
-        """التحقق من صلاحية الوصول للأصل الرقمي وفق النطاق التشغيلي للمستخدم"""
+        """التحقق من صلاحية الوصول للأصل الرقمي وفق النطاق التشغيلي للمستخدم.
+        Supports geographic access resolution through:
+        - reading.account_id.region_id (subscriber readings)
+        - reading.meter_id.transformer_id region (transformer readings)
+        - reading.meter_id.feeder_id region (feeder readings)
+        """
         self.ensure_one()
         user = user or self.env.user
         if user.has_group('utility_core.group_utility_admin') or user.has_group('utility_core.group_utility_auditor'):
             return True
-        if self.reading_id and self.reading_id.account_id:
-            customer = self.reading_id.account_id
-            if customer.region_id and hasattr(user, 'utility_region_ids') and user.utility_region_ids:
-                if customer.region_id not in user.utility_region_ids:
-                    raise AccessError(_("عذراً، ليس لديك صلاحية للوصول لوسائط المنطقة التشغيلية المحددة."))
+        if not (hasattr(user, 'utility_region_ids') and user.utility_region_ids):
+            return True
+
+        reading = self.reading_id
+        if not reading:
+            return True
+
+        region = False
+        # Primary: subscriber geographic scope
+        if reading.account_id and reading.account_id.region_id:
+            region = reading.account_id.region_id
+        # Fallback: resolve through meter's network entity
+        elif reading.meter_id:
+            if reading.meter_id.transformer_id and hasattr(reading.meter_id.transformer_id, 'region_id'):
+                region = reading.meter_id.transformer_id.region_id
+            elif reading.meter_id.feeder_id and hasattr(reading.meter_id.feeder_id, 'region_id'):
+                region = reading.meter_id.feeder_id.region_id
+
+        if region and region not in user.utility_region_ids:
+            raise AccessError(_("عذراً، ليس لديك صلاحية للوصول لوسائط المنطقة التشغيلية المحددة."))
         return True

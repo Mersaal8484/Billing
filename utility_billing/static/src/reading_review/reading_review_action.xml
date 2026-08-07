@@ -236,7 +236,7 @@
                                     <th style="width: 110px;" class="text-end">القراءة الحالية</th>
                                     <th style="width: 110px;" class="text-end">الاستهلاك</th>
                                     <th style="width: 140px;">تاريخ القراءة</th>
-                                    <th style="width: 120px;" class="text-center">السلوك والفوترة</th>
+                                    <th style="width: 180px;" class="text-center">السياق</th>
                                     <th style="width: 150px;">التنبيهات الفنية VEE</th>
                                     <th style="width: 100px;" class="text-center">الحالة</th>
                                     <th style="width: 160px;" class="text-center">إجراءات المراجعة</th>
@@ -303,13 +303,15 @@
                                             <small class="text-muted"><t t-esc="item.reading_date"/></small>
                                         </td>
 
-                                        <!-- Billing Impact Badge -->
+                                        <!-- Reading Context Badge -->
                                         <td class="text-center">
-                                            <span t-if="item.billing_behavior === 'period_bill'" class="badge bg-primary">فاتورة دورية</span>
-                                            <span t-if="item.billing_behavior === 'final_bill'" class="badge bg-danger">فاتورة ختامية</span>
-                                            <span t-if="item.billing_behavior === 'carry_forward'" class="badge bg-info">ترحيل استهلاك</span>
-                                            <span t-if="item.billing_behavior === 'baseline'" class="badge bg-secondary">مرجعية (Baseline)</span>
-                                            <span t-if="item.billing_behavior === 'technical_only'" class="badge bg-dark">تشغيلي</span>
+                                            <span t-if="item.reading_purpose === 'periodic'" class="badge bg-primary">دورية</span>
+                                            <span t-elif="item.reading_purpose === 'opening'" class="badge bg-info">افتتاحية</span>
+                                            <span t-elif="item.reading_purpose === 'replacement_closing'" class="badge bg-warning text-dark">إغلاق استبدال</span>
+                                            <span t-elif="item.reading_purpose === 'closing'" class="badge bg-danger">ختامية</span>
+                                            <span t-if="item.reading_event === 'replacement'" class="badge bg-secondary ms-1">استبدال</span>
+                                            <span t-elif="item.reading_event === 'installation'" class="badge bg-secondary ms-1">تركيب</span>
+                                            <span t-if="!item.is_billable" class="badge bg-dark ms-1">شبكي</span>
                                         </td>
 
                                         <!-- VEE Anomaly Badges -->

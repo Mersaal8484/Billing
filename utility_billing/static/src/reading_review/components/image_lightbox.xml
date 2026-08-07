@@ -88,6 +88,25 @@
                                         <td class="text-muted">الاستهلاك المفلتر:</td>
                                         <td class="font-weight-bold text-info"><t t-esc="props.reading.consumption"/> kWh</td>
                                     </tr>
+                                    <tr class="border-top border-secondary">
+                                        <td class="text-muted">غرض القراءة:</td>
+                                        <td class="font-weight-bold"><t t-esc="props.reading.reading_purpose_label || props.reading.reading_purpose"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted">حدث القراءة:</td>
+                                        <td><t t-esc="props.reading.reading_event_label || props.reading.reading_event"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted">قابلة للفوترة:</td>
+                                        <td>
+                                            <t t-if="props.reading.is_billable">
+                                                <span class="badge bg-success">نعم</span>
+                                            </t>
+                                            <t t-else="">
+                                                <span class="badge bg-secondary">شبكي / غير فوتر</span>
+                                            </t>
+                                        </td>
+                                    </tr>
                                 </tbody>
                             </table>
 

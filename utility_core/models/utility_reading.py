@@ -287,7 +287,7 @@ class UtilityReading(models.Model):
 
     STATE_EDITABLE = {
         'draft': {'meter_id', 'reading_date', 'reading_value', 'reading_category',
-                  'reading_type', 'reading_purpose', 'account_id', 'meter_multiplier',
+                  'reading_type', 'reading_purpose', 'reading_event', 'account_id', 'meter_multiplier',
                   'is_estimated', 'is_initial_reading', 'replacement_id', 'meter_image', 'meter_image_secondary',
                   'image_state', 'rejection_reason', 'remarks', 'date_range_id',
                   'reading_source', 'active', 'is_validated', 'validator_id',
@@ -466,18 +466,8 @@ class UtilityReading(models.Model):
 
             r.write({
                 'reading_source': r.reading_source or f'manual_{fields.Datetime.now()}',
+                'state': 'under_review',
             })
-
-            if is_billable:
-                r.state = 'under_review'
-            else:
-                r.write({
-                    'state': 'approved',
-                    'is_validated': True,
-                    'validator_id': self.env.user.id,
-                    'reviewer_id': self.env.user.id,
-                    'review_date': fields.Datetime.now(),
-                })
 
     def action_approve(self):
         for r in self:

@@ -52,7 +52,7 @@ class UtilityMediaController(http.Controller):
         # 3. إعداد ترويسات التخزين المؤقت وحماية الأداء (ETag Caching Header)
         etag = f'"{asset.asset_uuid}-{variant}-v{asset.revision}"'
         if request.httprequest.headers.get('If-None-Match') == etag:
-            return Response(status=340)
+            return Response(status=304)
 
         headers = [
             ('Content-Type', asset.mime_type or 'image/jpeg'),
