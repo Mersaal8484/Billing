@@ -115,6 +115,8 @@ access_date_range_log_admin,date.range.log.admin,model_date_range_log,group_util
 access_date_range_log_readonly,date.range.log.readonly,model_date_range_log,group_utility_readonly,1,0,0,0
 access_utility_workflow_command_admin,utility.workflow.command.admin,model_utility_workflow_command,group_utility_admin,1,1,1,1
 access_utility_workflow_command_readonly,utility.workflow.command.readonly,model_utility_workflow_command,group_utility_readonly,1,0,0,0
+access_utility_media_asset_admin,utility.media.asset.admin,model_utility_media_asset,group_utility_admin,1,1,1,1
+access_utility_media_asset_readonly,utility.media.asset.readonly,model_utility_media_asset,group_utility_readonly,1,0,0,0
 access_utility_period_generator_admin,utility.period.generator.admin,model_utility_period_generator,group_utility_admin,1,1,1,1
 access_utility_period_generator_billing,utility.period.generator.billing,model_utility_period_generator,group_utility_billing_manager,1,1,1,1
 

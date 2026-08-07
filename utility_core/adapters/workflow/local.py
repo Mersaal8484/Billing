@@ -23,7 +23,7 @@ class LocalWorkflowAdapter(AbstractWorkflowAdapter):
         5. عند النجاح: تحويل الحالة إلى executed وتسجيل وقت الإكمال والنتيجة.
         6. عند الفشل: تحويل الحالة إلى failed وتسجيل رسالة الخطأ ثم إعادة رفع الاستثناء.
         """
-        idempotency_key = f"cmd-{action_type}-{period.period_code}-{period.state}"
+        idempotency_key = f"{action_type.upper()}:{period.period_code}"
         cmd_model = self.env['utility.workflow.command'].sudo()
         
         existing = cmd_model.search([('idempotency_key', '=', idempotency_key)], limit=1)

@@ -112,34 +112,21 @@ class UtilityReadingBatch(models.Model):
         return super().create(vals_list)
 
     def action_confirm(self):
-        """تأكيد اكتمال الرفع — بدء المعالجة عبر الـ Cron"""
+        """تأكيد اكتمال الرفع — تفويض المعالجة لمخدم ReadingBatchService عبر Adapter"""
         for batch in self:
             if batch.state != 'uploaded':
-                raise ValidationError('يمكن تأكيد الدفعات التي بحالة "تم الرفع" فقط!')
+                raise ValidationError(_('يمكن تأكيد الدفعات التي بحالة "تم الرفع" فقط!'))
             if not batch.data_file:
-                raise ValidationError('لم يتم رفع ملف البيانات (JSON)!')
+                raise ValidationError(_('لم يتم رفع ملف البيانات (JSON)!'))
 
-            # حساب عدد القراءات من الملف
-            try:
-                json_data = json.loads(base64.b64decode(batch.data_file))
-                readings_data = json_data.get('readings', [])
-                batch.write({
-                    'total_readings': len(readings_data),
-                    'processed_count': 0,
-                    'error_count': 0,
-                    'processed_offset': 0,
-                    'error_log': False,
-                })
-            except Exception as e:
-                raise ValidationError(f'خطأ في قراءة ملف JSON: {e}')
-
-            batch.state = 'processing'
+            # معالجة الدفعة عبر الخدمة المستقلة ReadingBatchService
+            self.env['utility.reading.batch.service'].sudo().process_batch(batch.id)
 
     def action_reset_to_uploaded(self):
         """إعادة الدفعة إلى حالة تم الرفع لمحاولة المعالجة مرة أخرى"""
         for batch in self:
             if batch.state not in ('error', 'partial'):
-                raise ValidationError('يمكن إعادة المحاولة فقط للدفعات بحالة خطأ أو مكتمل جزئياً!')
+                raise ValidationError(_('يمكن إعادة المحاولة فقط للدفعات بحالة خطأ أو مكتمل جزئياً!'))
             batch.write({
                 'state': 'processing',
                 'processed_count': 0,
@@ -147,119 +134,17 @@ class UtilityReadingBatch(models.Model):
                 'processed_offset': 0,
                 'error_log': False,
             })
+            self.env['utility.reading.batch.service'].sudo().process_batch(batch.id)
 
     @api.model
     def _cron_process_readings(self):
-        """مهمة مجدولة: معالجة دفعات القراءات المرفوعة"""
-        batch_size = int(self.env['ir.config_parameter'].sudo().get_param(
-            'utility.reading_upload_batch_size', 100))
-
+        """مهمة مجدولة: موزّع أوامر تخطيطي (Infrastructure Command Dispatcher) ينادي ReadingBatchService"""
         batches = self.search([('state', '=', 'processing')], limit=5)
-        if not batches:
-            return
-
-        Meter = self.env['utility.meter']
-        Reading = self.env['utility.reading']
-
         for batch in batches:
             try:
-                json_data = json.loads(base64.b64decode(batch.data_file))
+                self.env['utility.reading.batch.service'].sudo().process_batch(batch.id)
             except Exception as e:
-                batch.write({
-                    'state': 'error',
-                    'error_log': f'فشل في قراءة ملف JSON: {e}',
-                })
-                continue
-
-            readings_data = json_data.get('readings', [])
-            start = batch.processed_offset or 0
-            to_process = readings_data[start:start + batch_size]
-            if not to_process:
-                batch.write({
-                    'state': 'done' if not batch.error_count else 'partial',
-                    'total_readings': batch.total_readings or len(readings_data),
-                })
-                continue
-            error_log_lines = []
-            processed = 0
-
-            image_attachments = {}
-            for att in batch.image_ids:
-                image_attachments[att.name] = att
-
-            for entry in to_process:
-                seq = entry.get('seq', '?')
-                meter_number = entry.get('meter_number')
-                try:
-                    with self.env.cr.savepoint():
-                        if not meter_number:
-                            raise ValueError('رقم العداد مفقود')
-
-                        meter = Meter.search([
-                            ('meter_number', '=', meter_number)
-                        ], limit=1)
-                        if not meter:
-                            raise ValueError(
-                                f'العداد "{meter_number}" غير موجود في النظام')
-
-                        reading_date = entry.get('reading_date') or fields.Datetime.now()
-                        existing_reading = Reading.search([
-                            ('batch_id', '=', batch.id),
-                            ('meter_id', '=', meter.id),
-                            ('date_range_id', '=', batch.date_range_id.id),
-                            ('reading_date', '=', reading_date),
-                        ], limit=1)
-                        if existing_reading:
-                            processed += 1
-                            continue
-
-                        image_filename = entry.get('image_filename', '')
-                        image_data = False
-                        if image_filename and image_filename in image_attachments:
-                            image_data = image_attachments[image_filename].datas
-
-                        Reading.create({
-                            'meter_id': meter.id,
-                            'reading_value': entry.get('reading_value', 0),
-                            'reading_date': reading_date,
-                            'date_range_id': batch.date_range_id.id,
-                            'reading_category': entry.get('reading_category', 'customer'),
-                            'meter_image': image_data,
-                            'remarks': entry.get('remarks', ''),
-                            'reading_source': f'batch_{batch.name}',
-                            'batch_id': batch.id,
-                        })
-                        processed += 1
-
-                except Exception as exc:
-                    error_log_lines.append(
-                        f'[{seq}] {meter_number}: {str(exc)}')
-            error_count = len(error_log_lines)
-            total_processed = batch.processed_count + processed
-            total_errors = batch.error_count + error_count
-            next_offset = start + len(to_process)
-            total_readings = batch.total_readings or len(readings_data)
-
-            if next_offset >= total_readings:
-                final_state = 'done' if total_errors == 0 else 'partial'
-            else:
-                final_state = 'processing'
-
-            previous_log = batch.error_log or ''
-            new_log = '\n'.join(error_log_lines)
-            batch.write({
-                'processed_count': total_processed,
-                'error_count': total_errors,
-                'processed_offset': next_offset,
-                'total_readings': total_readings,
-                'state': final_state,
-                'error_log': '\n'.join([l for l in [previous_log, new_log] if l]) or False,
-            })
-
-            _logger.info(
-                'Batch %s: processed %d, errors %d, state %s',
-                batch.name, processed, error_count, final_state
-            )
+                _logger.error("Cron batch processing error for batch %s: %s", batch.name, str(e))
 
     @api.model
     def _cron_cleanup_old_batches(self):

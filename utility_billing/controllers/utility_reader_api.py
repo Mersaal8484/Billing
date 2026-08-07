@@ -149,17 +149,18 @@ class UtilityReaderAPI(http.Controller):
         except Exception as e:
             return {'success': False, 'error': f'بيانات الصورة غير صالحة: {e}'}
 
-        attachment = request.env['ir.attachment'].create({
-            'name': filename,
-            'datas': image_data,
-            'res_model': 'utility.reading.batch',
-            'res_id': batch.id,
-            'mimetype': 'image/jpeg',
-        })
+        media_asset = request.env['utility.media.service'].sudo().store_media(
+            file_data=image_data,
+            filename=filename,
+            mimetype='image/jpeg',
+            batch_id=batch.id,
+            asset_type='meter_reading'
+        )
 
         return {
             'success': True,
-            'attachment_id': attachment.id,
+            'asset_uuid': media_asset.asset_uuid,
+            'attachment_id': media_asset.original_attachment_id.id if media_asset.original_attachment_id else False,
             'filename': filename,
         }
 
