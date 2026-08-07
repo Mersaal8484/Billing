@@ -27,7 +27,7 @@ class TestUtilityInfrastructureSettings(TransactionCase):
         self.assertIsInstance(media_adapter, AttachmentMediaAdapter)
 
     def test_02_temporal_workflow_adapter_validation_and_no_silent_fallback(self):
-        """2. اختبار فحص إعدادات Temporal ومنع silent fallback إلى Local"""
+        """2. اختبار فحص إعدادات Temporal ومنع silent fallback وحظر تفعيل الـ Placeholder"""
         self.ConfigParam.set_param('utility.workflow_adapter', 'temporal')
         self.ConfigParam.set_param('utility.temporal_target_host', '')
 
@@ -35,10 +35,10 @@ class TestUtilityInfrastructureSettings(TransactionCase):
         with self.assertRaises(UserError):
             self.WorkflowService._get_workflow_adapter()
 
-        # إدخال عنوان خادم Temporal
+        # إدخال عنوان خادم Temporal - يرفع UserError أيضاً لأن المحول في مرحلة Placeholder وغير جاهز للإنتاج
         self.ConfigParam.set_param('utility.temporal_target_host', 'localhost:7233')
-        wf_adapter = self.WorkflowService._get_workflow_adapter()
-        self.assertIsInstance(wf_adapter, TemporalWorkflowAdapter)
+        with self.assertRaises(UserError):
+            self.WorkflowService._get_workflow_adapter()
 
     def test_03_filesystem_media_adapter_validation(self):
         """3. اختبار فحص إعدادات التخزين على القرص Filesystem"""
@@ -53,7 +53,7 @@ class TestUtilityInfrastructureSettings(TransactionCase):
         self.assertIsInstance(media_adapter, FilesystemMediaAdapter)
 
     def test_04_s3_media_adapter_validation(self):
-        """4. اختبار فحص إعدادات التخزين السحابي S3"""
+        """4. اختبار فحص إعدادات التخزين السحابي S3 وحظر تفعيل الـ Placeholder"""
         self.ConfigParam.set_param('utility.media_backend', 's3')
         self.ConfigParam.set_param('utility.s3_endpoint_url', '')
 
@@ -65,10 +65,11 @@ class TestUtilityInfrastructureSettings(TransactionCase):
         self.ConfigParam.set_param('utility.s3_access_key', 'AKIAIOSFODNN7EXAMPLE')
         self.ConfigParam.set_param('utility.s3_secret_key', 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY')
 
-        media_adapter = self.MediaService.get_media_adapter()
-        self.assertIsInstance(media_adapter, S3MediaAdapter)
+        # الـ Resolver يرفع UserError لأن المحول في مرحلة Placeholder وغير جاهز للإنتاج
+        with self.assertRaises(UserError):
+            self.MediaService.get_media_adapter()
 
-        # اختبار أسبقية متغيرات البيئة OS Environment Variables على إعدادات القاعدة
+        # اختبار أسبقية متغيرات البيئة OS Environment Variables مباشرة على فئة المحول (دون المرور بالـ Resolver الحاظر)
         import os
         os.environ['S3_ACCESS_KEY'] = 'ENV_ACCESS_KEY'
         os.environ['S3_SECRET_KEY'] = 'ENV_SECRET_KEY'
