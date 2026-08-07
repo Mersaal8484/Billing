@@ -19,7 +19,7 @@ class UtilityReadingReviewService(models.AbstractModel):
                     '&',
                     ('account_id', '=', False),
                     ('meter_id.region_id', 'in', user.utility_region_ids.ids)]
-        return []
+        return [('id', '=', False)]
 
     def _build_context_aware_vee_flags(self, reading):
         """Context-aware VEE flags that respect reading purpose and event semantics."""
@@ -107,6 +107,7 @@ class UtilityReadingReviewService(models.AbstractModel):
             'reading_event': reading.reading_event,
             'reading_event_label': event_labels.get(reading.reading_event, reading.reading_event),
             'is_billable': reading.is_billable,
+            'is_private_transformer': reading.is_private_transformer if hasattr(reading, 'is_private_transformer') else False,
             'meter_multiplier': reading.meter_multiplier or 1.0,
             'reading_type': reading.reading_type or 'manual',
             'state': reading.state,
@@ -323,6 +324,8 @@ class UtilityReadingReviewService(models.AbstractModel):
                     _("ليس لديك صلاحية مراجعة قراءات المنطقة: %s")
                     % ", ".join(unauthorized.mapped('account_id.region_id.name'))
                 )
+        else:
+            raise AccessError(_("ليس لديك مناطق جغرافية محددة. يرجى التواصل مع المسؤول."))
 
     @api.model
     def action_approve_review(self, reading_ids):
@@ -421,5 +424,6 @@ class UtilityReadingReviewService(models.AbstractModel):
             return {'status': 'error', 'message': _('لا توجد قراءات مراجعة مسجلة لهذه العملية.')}
 
         res = self.action_approve_review(reading_ids)
-        repl.write({'state': 'done'})
+        if res.get('status') == 'success':
+            repl.write({'state': 'done'})
         return res

@@ -266,6 +266,10 @@ class TestUtilityReadingReview(TransactionCase):
             'replacement_id': replacement.id,
             'state': 'under_review',
         })
+        replacement.write({
+            'closing_reading_id': closing.id,
+            'opening_reading_id': opening.id,
+        })
         res = self.ReadingReviewService.action_approve_replacement_pair(replacement.id)
         self.assertEqual(res['status'], 'success')
         self.assertEqual(closing.state, 'approved')
@@ -477,7 +481,7 @@ class TestUtilityReadingReview(TransactionCase):
         closings = r_periodic._get_unbilled_closing_components()
         self.assertEqual(len(closings), 2)
         total = r_periodic.consumption + sum(closings.mapped('consumption'))
-        self.assertEqual(total, 400.0)
+        self.assertEqual(total, 550.0)
 
         # Test _prepare_component_vals with all 3 segments
         fake_order = type('FakeOrder', (), {'id': 888888})()

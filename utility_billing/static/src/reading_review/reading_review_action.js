@@ -62,7 +62,7 @@ export class ReadingReviewWorkspaceAction extends Component {
 
     async loadMasterData() {
         try {
-            const periods = await this.orm.searchRead("date.range", [["type_id.work_type", "=", "readings"]], ["id", "name"], { limit: 50, order: "date_start desc" });
+            const periods = await this.orm.searchRead("date.range", [["work_type", "=", "readings"]], ["id", "name"], { limit: 50, order: "date_start desc" });
             const regions = await this.orm.searchRead("utility.region", [], ["id", "name"], { limit: 100 });
             const batches = await this.orm.searchRead("utility.reading.batch", [["state", "!=", "draft"]], ["id", "name"], { limit: 100, order: "id desc" });
 
