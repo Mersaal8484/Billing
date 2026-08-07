@@ -18,6 +18,8 @@ class UtilityWorkflowService(models.AbstractModel):
             return LocalWorkflowAdapter(self.env)
         elif adapter_type == 'temporal':
             from ..adapters.workflow.temporal import TemporalWorkflowAdapter
+            if not getattr(TemporalWorkflowAdapter, 'PRODUCTION_READY', False):
+                raise UserError(_("محول Temporal Workflow غير جاهز للإنتاج حالياً (Placeholder Contract). يُرجى استخدام Local Odoo."))
             return TemporalWorkflowAdapter(self.env)
         else:
             raise UserError(_("نوع محول مسارات العمل غير معروف: %s") % adapter_type)

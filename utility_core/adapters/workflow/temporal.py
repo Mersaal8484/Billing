@@ -11,6 +11,7 @@ class TemporalWorkflowAdapter(AbstractWorkflowAdapter):
     محول مسارات العمل لبيئة الإنتاج عبر خدمة Temporal (Temporal Workflow Adapter - V1 Placeholder Contract).
     ملاحظة: هذا المحول حالياً يُجسّد هيكلية العقد المتبادل (Interface Contract) وفي انتظار ربط مكتبة Temporal SDK الرسمية.
     """
+    PRODUCTION_READY = False
 
     def __init__(self, env):
         self.env = env

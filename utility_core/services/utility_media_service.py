@@ -27,6 +27,8 @@ class UtilityMediaService(models.AbstractModel):
             return FilesystemMediaAdapter(self.env)
         elif backend == 's3':
             from ..adapters.media.s3 import S3MediaAdapter
+            if not getattr(S3MediaAdapter, 'PRODUCTION_READY', False):
+                raise UserError(_("محول S3 Storage غير جاهز للإنتاج حالياً (Placeholder Contract). يُرجى استخدام Odoo Attachments أو Local Filesystem."))
             return S3MediaAdapter(self.env)
         else:
             raise UserError(_("نوع محول تخزين الوسائط غير معروف: %s") % backend)

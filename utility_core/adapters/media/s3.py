@@ -12,6 +12,7 @@ class S3MediaAdapter(AbstractMediaStorageAdapter):
     محول تخزين الوسائط والصور على الخوادم السحابية المتوافقة مع S3 (S3 Compatible Storage Adapter - V1 Placeholder Contract).
     ملاحظة: يدعم قراءة مفاتيح الوصول والسرية من متغيرات البيئة OS Environment Variables (S3_ACCESS_KEY, S3_SECRET_KEY) لحماية الأسرار.
     """
+    PRODUCTION_READY = False
 
     def __init__(self, env):
         self.env = env

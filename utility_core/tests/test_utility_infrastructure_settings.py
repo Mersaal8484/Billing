@@ -80,22 +80,20 @@ class TestUtilityInfrastructureSettings(TransactionCase):
 
     def test_05_res_config_settings_v1_stabilization_constraints(self):
         """5. اختبار قيود شاشة الإعدادات لمنع تفعيل الأنظمة التي في مرحلة Placeholder (Temporal / S3)"""
-        settings = self.env['res.config.settings'].create({
-            'workflow_backend': 'temporal',
-            'temporal_target_host': 'localhost:7233',
-        })
         with self.assertRaises(ValidationError):
-            settings._check_infrastructure_backend_config()
+            self.env['res.config.settings'].create({
+                'workflow_backend': 'temporal',
+                'temporal_target_host': 'localhost:7233',
+            })
 
-        settings_s3 = self.env['res.config.settings'].create({
-            'media_backend': 's3',
-            's3_endpoint_url': 'https://s3.example.com',
-            's3_bucket_name': 'test-bucket',
-            's3_access_key': 'key',
-            's3_secret_key': 'secret',
-        })
         with self.assertRaises(ValidationError):
-            settings_s3._check_infrastructure_backend_config()
+            self.env['res.config.settings'].create({
+                'media_backend': 's3',
+                's3_endpoint_url': 'https://s3.example.com',
+                's3_bucket_name': 'test-bucket',
+                's3_access_key': 'key',
+                's3_secret_key': 'secret',
+            })
 
     def test_06_filesystem_adapter_partitioning(self):
         """6. اختبار تقسيم مسار التخزين على القرص باستخدام UUID للأصل"""
@@ -126,3 +124,22 @@ class TestUtilityInfrastructureSettings(TransactionCase):
             mimetype='image/jpeg'
         )
         self.assertEqual(asset.storage_backend, 'attachment')
+
+    def test_08_resolver_defense_in_depth_protection(self):
+        """8. اختبار حماية التعديل المباشر لمعلمات القاعدة لمنع تشغيل Placeholder Adapters"""
+        self.ConfigParam.set_param('utility.workflow_adapter', 'temporal')
+        self.ConfigParam.set_param('utility.temporal_target_host', 'localhost:7233')
+        with self.assertRaises(UserError):
+            self.WorkflowService._get_workflow_adapter()
+
+        self.ConfigParam.set_param('utility.media_backend', 's3')
+        self.ConfigParam.set_param('utility.s3_endpoint_url', 'https://s3.example.com')
+        self.ConfigParam.set_param('utility.s3_bucket_name', 'test-bucket')
+        self.ConfigParam.set_param('utility.s3_access_key', 'key')
+        self.ConfigParam.set_param('utility.s3_secret_key', 'secret')
+        with self.assertRaises(UserError):
+            self.MediaService.get_media_adapter()
+
+        # إعادة الإعدادات الافتراضية
+        self.ConfigParam.set_param('utility.workflow_adapter', 'local')
+        self.ConfigParam.set_param('utility.media_backend', 'attachment')

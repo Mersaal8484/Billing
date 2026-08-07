@@ -5,6 +5,10 @@ from odoo.exceptions import ValidationError
 class ResConfigSettings(models.TransientModel):
     _inherit = 'res.config.settings'
 
+    pos_epson_printer_ip = fields.Char(
+        string='عنوان IP طابعة Epson',
+    )
+
     currency_id = fields.Many2one(
         'res.currency',
         related='company_id.currency_id',
