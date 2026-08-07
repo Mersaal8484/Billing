@@ -102,8 +102,6 @@ class _ReadingEntryScreenState extends ConsumerState<ReadingEntryScreen> {
                 _PhotoPicker(
                   imagePath: _imagePath,
                   onCapture: () => _openCamera(),
-                  onMockCapture: () =>
-                      setState(() => _imagePath = 'mock://meter-photo'),
                   onClear: () => setState(() => _imagePath = null),
                 ),
                 const SizedBox(height: 16),
@@ -169,9 +167,7 @@ class _ReadingEntryScreenState extends ConsumerState<ReadingEntryScreen> {
     }
     if (_imagePath == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content:
-                Text('يجب تصوير العداد أو استخدام صورة تجريبية قبل الحفظ')),
+        const SnackBar(content: Text('يجب تصوير العداد قبل الحفظ')),
       );
       return;
     }
@@ -191,7 +187,7 @@ class _ReadingEntryScreenState extends ConsumerState<ReadingEntryScreen> {
 
     final repo = ref.read(readingRepositoryProvider);
     await repo.saveDraft(reading);
-    await repo.enqueueForSync(reading.id);
+    await ref.read(syncEngineProvider).enqueue(reading);
     await ref
         .read(assignmentRepositoryProvider)
         .markStatus(assignment.id, AssignmentStatus.read);
@@ -236,58 +232,30 @@ class _InfoBanner extends StatelessWidget {
 class _PhotoPicker extends StatelessWidget {
   final String? imagePath;
   final VoidCallback onCapture;
-  final VoidCallback onMockCapture;
   final VoidCallback onClear;
 
   const _PhotoPicker({
     required this.imagePath,
     required this.onCapture,
-    required this.onMockCapture,
     required this.onClear,
   });
 
   @override
   Widget build(BuildContext context) {
     if (imagePath == null) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          OutlinedButton.icon(
-            onPressed: onCapture,
-            icon: const Icon(Icons.camera_alt_outlined),
-            label: const Text('تصوير العداد (مطلوب)'),
-          ),
-          const SizedBox(height: 8),
-          TextButton.icon(
-            onPressed: onMockCapture,
-            icon: const Icon(Icons.image_outlined),
-            label: const Text('استخدام صورة تجريبية للمعاينة'),
-          ),
-        ],
+      return OutlinedButton.icon(
+        onPressed: onCapture,
+        icon: const Icon(Icons.camera_alt_outlined),
+        label: const Text('تصوير العداد (مطلوب)'),
       );
     }
 
-    final mock = imagePath!.startsWith('mock://');
     return Stack(
       children: [
         ClipRRect(
           borderRadius: BorderRadius.circular(12),
-          child: mock
-              ? Container(
-                  height: 180,
-                  width: double.infinity,
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  child: const Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.speed_rounded, size: 48),
-                      SizedBox(height: 8),
-                      Text('صورة عداد تجريبية'),
-                    ],
-                  ),
-                )
-              : Image.file(File(imagePath!),
-                  height: 180, width: double.infinity, fit: BoxFit.cover),
+          child: Image.file(File(imagePath!),
+              height: 180, width: double.infinity, fit: BoxFit.cover),
         ),
         Positioned(
           top: 8,

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/providers.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/sync/sync_engine.dart';
+import '../../../core/sync/sync_settings_service.dart';
 import '../../../shared/widgets/state_widgets.dart';
 
 class SyncCenterScreen extends ConsumerWidget {
@@ -13,6 +14,8 @@ class SyncCenterScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final snapshotAsync = ref.watch(syncSnapshotProvider);
+    final modeAsync = ref.watch(syncModeProvider);
+    final batchSizeAsync = ref.watch(syncBatchSizeProvider);
     final engine = ref.read(syncEngineProvider);
 
     return Scaffold(
@@ -31,6 +34,14 @@ class SyncCenterScreen extends ConsumerWidget {
         error: (e, _) => ErrorState(message: '$e'),
         data: (snapshot) {
           final offline = snapshot.connectivity == ConnectivityState.offline;
+          final mode = modeAsync.maybeWhen(
+            data: (value) => value,
+            orElse: () => SyncMode.batch,
+          );
+          final batchSize = batchSizeAsync.maybeWhen(
+            data: (value) => value,
+            orElse: () => 50,
+          );
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
@@ -67,13 +78,27 @@ class SyncCenterScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 16),
+              _ModeCard(mode: mode, batchSize: batchSize),
+              const SizedBox(height: 16),
               _PipelineCard(
-                title: 'طابور المزامنة المجمع (ZIP)',
-                subtitle: 'رفع مجمع للقراءات والصور',
-                icon: Icons.archive_outlined,
+                title: mode == SyncMode.immediate
+                    ? 'طابور المزامنة الفردية'
+                    : 'طابور المزامنة المجمع (ZIP)',
+                subtitle: mode == SyncMode.immediate
+                    ? 'رفع كل قراءة وصورتها كطلب مستقل'
+                    : 'رفع مجمع للقراءات والصور حتى $batchSize لكل حزمة',
+                icon: mode == SyncMode.immediate
+                    ? Icons.flash_on_outlined
+                    : Icons.archive_outlined,
                 stats: snapshot.batchPipeline,
               ),
               const SizedBox(height: 20),
+              FilledButton.icon(
+                onPressed: offline ? null : () => engine.syncNow(),
+                icon: const Icon(Icons.sync_rounded),
+                label: const Text('مزامنة الآن'),
+              ),
+              const SizedBox(height: 12),
               if (snapshot.batchPipeline.failed > 0)
                 FilledButton.tonalIcon(
                   onPressed: engine.retryFailed,
@@ -97,6 +122,37 @@ class SyncCenterScreen extends ConsumerWidget {
 
   String _formatTime(DateTime t) =>
       '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}:${t.second.toString().padLeft(2, '0')}';
+}
+
+class _ModeCard extends StatelessWidget {
+  final SyncMode mode;
+  final int batchSize;
+
+  const _ModeCard({required this.mode, required this.batchSize});
+
+  @override
+  Widget build(BuildContext context) {
+    final immediate = mode == SyncMode.immediate;
+    return Card(
+      child: ListTile(
+        leading: Icon(
+          immediate ? Icons.flash_on_outlined : Icons.archive_outlined,
+          color: Theme.of(context).colorScheme.primary,
+        ),
+        title: Text(
+          immediate
+              ? 'الوضع الحالي: مزامنة فردية مباشرة'
+              : 'الوضع الحالي: حزم مضغوطة ($batchSize/حزمة)',
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+        subtitle: Text(
+          immediate
+              ? 'يرفع كل عنصر فور توفر الاتصال دون انتظار حزمة.'
+              : 'يرفع تلقائياً عند اكتمال الحزمة أو يدوياً من زر مزامنة الآن.',
+        ),
+      ),
+    );
+  }
 }
 
 class _PipelineCard extends StatelessWidget {

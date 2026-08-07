@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/providers.dart';
 import '../../../app/theme/app_theme.dart';
+import '../../../core/sync/sync_settings_service.dart';
 import '../../../shared/widgets/state_widgets.dart';
 import '../../readings/domain/reading.dart';
 
@@ -12,6 +13,16 @@ class QueueMonitorScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final readingsAsync = ref.watch(readingsProvider);
+    final modeAsync = ref.watch(syncModeProvider);
+    final batchSizeAsync = ref.watch(syncBatchSizeProvider);
+    final mode = modeAsync.maybeWhen(
+      data: (value) => value,
+      orElse: () => SyncMode.batch,
+    );
+    final batchSize = batchSizeAsync.maybeWhen(
+      data: (value) => value,
+      orElse: () => 50,
+    );
 
     return Scaffold(
       appBar: AppBar(title: const Text('طابور القراءات')),
@@ -20,21 +31,60 @@ class QueueMonitorScreen extends ConsumerWidget {
         error: (e, _) => ErrorState(message: '$e'),
         data: (readings) {
           if (readings.isEmpty) {
-            return const EmptyState(
-              icon: Icons.inbox_outlined,
-              title: 'لا توجد قراءات في الطابور بعد',
-              subtitle: 'ستظهر هنا القراءات فور حفظها من شاشة إدخال القراءة',
+            return ListView(
+              padding: const EdgeInsets.all(12),
+              children: [
+                _QueueModeBanner(mode: mode, batchSize: batchSize),
+                const SizedBox(height: 32),
+                const EmptyState(
+                  icon: Icons.inbox_outlined,
+                  title: 'لا توجد قراءات في الطابور بعد',
+                  subtitle:
+                      'ستظهر هنا القراءات فور حفظها من شاشة إدخال القراءة',
+                ),
+              ],
             );
           }
           final sorted = [...readings]
             ..sort((a, b) => b.readingDate.compareTo(a.readingDate));
           return ListView.separated(
             padding: const EdgeInsets.all(12),
-            itemCount: sorted.length,
+            itemCount: sorted.length + 1,
             separatorBuilder: (_, __) => const SizedBox(height: 6),
-            itemBuilder: (context, i) => _ReadingQueueTile(reading: sorted[i]),
+            itemBuilder: (context, i) {
+              if (i == 0) {
+                return _QueueModeBanner(mode: mode, batchSize: batchSize);
+              }
+              return _ReadingQueueTile(reading: sorted[i - 1]);
+            },
           );
         },
+      ),
+    );
+  }
+}
+
+class _QueueModeBanner extends StatelessWidget {
+  final SyncMode mode;
+  final int batchSize;
+
+  const _QueueModeBanner({required this.mode, required this.batchSize});
+
+  @override
+  Widget build(BuildContext context) {
+    final immediate = mode == SyncMode.immediate;
+    return Card(
+      child: ListTile(
+        leading: Icon(
+          immediate ? Icons.flash_on_outlined : Icons.archive_outlined,
+          color: Theme.of(context).colorScheme.primary,
+        ),
+        title: Text(
+          immediate
+              ? 'الوضع الحالي: مزامنة فردية مباشرة'
+              : 'الوضع الحالي: حزم مضغوطة ($batchSize/حزمة)',
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
       ),
     );
   }

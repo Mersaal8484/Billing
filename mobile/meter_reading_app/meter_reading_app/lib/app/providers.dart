@@ -4,6 +4,7 @@ import '../core/database/app_database.dart';
 import '../core/image/image_processing_service.dart';
 import '../core/printing/thermal_printer_service.dart';
 import '../core/sync/sync_engine.dart';
+import '../core/sync/sync_settings_service.dart';
 import '../features/collections/data/mock_collection_repository.dart';
 import '../features/collections/domain/collection_models.dart';
 import '../features/customers/data/mock_assignment_repository.dart';
@@ -45,8 +46,16 @@ final thermalPrinterServiceProvider = Provider<ThermalPrinterService>((ref) {
   return ThermalPrinterService();
 });
 
+final syncSettingsServiceProvider = Provider<SyncSettingsService>((ref) {
+  return SyncSettingsService();
+});
+
 final syncEngineProvider = Provider<SyncEngine>((ref) {
-  final engine = SyncEngine(ref.watch(readingRepositoryProvider), ref.watch(databaseProvider));
+  final engine = SyncEngine(
+    ref.watch(readingRepositoryProvider),
+    ref.watch(databaseProvider),
+    ref.watch(syncSettingsServiceProvider),
+  );
   engine.start();
   ref.onDispose(engine.dispose);
   return engine;
@@ -86,6 +95,16 @@ final collectionAccountsProvider = StreamProvider.autoDispose
 final syncSnapshotProvider = StreamProvider.autoDispose<SyncSnapshot>((ref) {
   final engine = ref.watch(syncEngineProvider);
   return engine.snapshots;
+});
+
+final syncModeProvider = FutureProvider.autoDispose<SyncMode>((ref) {
+  final settings = ref.watch(syncSettingsServiceProvider);
+  return settings.getSyncMode();
+});
+
+final syncBatchSizeProvider = FutureProvider.autoDispose<int>((ref) {
+  final settings = ref.watch(syncSettingsServiceProvider);
+  return settings.getBatchSize();
 });
 
 /// Session state — replace with a real auth repository (token refresh,
