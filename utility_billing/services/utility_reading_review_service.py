@@ -35,8 +35,6 @@ class UtilityReadingReviewService(models.AbstractModel):
         domain = []
         if period_id:
             domain.append(('date_range_id', '=', int(period_id)))
-        if region_id:
-            domain.append(('account_id.region_id', '=', int(region_id)))
         if batch_id:
             domain.append(('image_asset_id.batch_id', '=', int(batch_id)))
 
@@ -50,6 +48,51 @@ class UtilityReadingReviewService(models.AbstractModel):
             domain.append(('consumption_alert', '!=', 'normal'))
             domain.append(('image_state', 'in', ['not_clear', 'not_same', 'none', 'loss_read']))
         return domain
+
+    def _build_reading_region_domain(self, region_id):
+        """Build a geography domain for utility.reading that supports customer and network readings."""
+        if not region_id:
+            return []
+        region_id = int(region_id)
+        return [
+            '|',
+            ('account_id.region_id', '=', region_id),
+            '&',
+            ('account_id', '=', False),
+            ('meter_id.region_id', '=', region_id),
+        ]
+
+    def _build_replacement_geographic_domain(self, user):
+        """Build the user scope domain for replacement queues."""
+        if user.has_group('utility_core.group_utility_admin'):
+            return []
+        regions = user.assigned_region_ids
+        if not regions:
+            return [('id', '=', False)]
+        return [
+            '|', '|',
+            '&',
+            ('target_type', '=', 'subscriber'),
+            ('utility_account_id.region_id', 'in', regions.ids),
+            '&',
+            ('target_type', '=', 'feeder'),
+            ('feeder_id.region_id', 'in', regions.ids),
+            '&',
+            ('target_type', '=', 'transformer'),
+            ('transformer_id.region_id', 'in', regions.ids),
+        ]
+
+    def _build_replacement_region_domain(self, region_id):
+        """Build the explicit region filter for replacement queues."""
+        if not region_id:
+            return []
+        region_id = int(region_id)
+        return [
+            '|', '|',
+            ('utility_account_id.region_id', '=', region_id),
+            ('feeder_id.region_id', '=', region_id),
+            ('transformer_id.region_id', '=', region_id),
+        ]
 
     def _build_review_status_domain(self, status='under_review'):
         """Build the reusable status domain for queue queries."""
@@ -253,6 +296,8 @@ class UtilityReadingReviewService(models.AbstractModel):
             search=search,
         )
         domain = expression.AND([stats_domain, self._build_review_status_domain(status)])
+        if region_id:
+            domain = expression.AND([domain, self._build_reading_region_domain(region_id)])
 
         # معالجة خاصة لتبويب الاستبدال (Meter Replacement Pair View)
         if review_tab == 'replacements':
@@ -285,12 +330,10 @@ class UtilityReadingReviewService(models.AbstractModel):
     def _get_replacements_queue(self, user, region_id=False, offset=0, include_stats=True):
         """Build replacement pair review queue with 20 operations/page."""
         Replacement = self.env['utility.meter.replacement'].sudo()
-        repl_domain = []
-        geo_domain = self._build_geographic_domain(user)
-        if geo_domain:
-            repl_domain = expression.AND([repl_domain, geo_domain])
-        if region_id:
-            repl_domain.append(('utility_account_id.region_id', '=', int(region_id)))
+        repl_domain = expression.AND([
+            self._build_replacement_geographic_domain(user),
+            self._build_replacement_region_domain(region_id),
+        ])
 
         total_repls = Replacement.search_count(repl_domain)
         replacements = Replacement.search(repl_domain, offset=offset, limit=20, order='replace_date desc, id desc')
@@ -350,7 +393,7 @@ class UtilityReadingReviewService(models.AbstractModel):
         if include_stats:
             stats_domain = self._build_geographic_domain(user)
             if region_id:
-                stats_domain = expression.AND([stats_domain, [('account_id.region_id', '=', int(region_id))]])
+                stats_domain = expression.AND([stats_domain, self._build_reading_region_domain(region_id)])
             res['stats'] = self._compute_review_stats(stats_domain)
         else:
             res['stats'] = {}

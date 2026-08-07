@@ -328,6 +328,37 @@ class TestUtilityReadingReview(TransactionCase):
         ids_in_queue = [item['id'] for item in res['items']]
         self.assertIn(r_net.id, ids_in_queue)
 
+    def test_08c_network_region_filter_matches_meter_region_when_account_missing(self):
+        """8c. Network region filter should match meter region when account_id is absent."""
+        network_region = self.Region.create({
+            'name': 'منطقة شبكة',
+            'code': 'NET-REG-01',
+            'type': 'region',
+        })
+        feeder = self.env['utility.feeder'].create({
+            'name': 'فيدر شبكة',
+            'code': 'FEED-NET-01',
+            'region_id': network_region.id,
+        })
+        meter_net = self.Meter.create({
+            'meter_number': 'MTR-NET-REG-01',
+            'feeder_id': feeder.id,
+        })
+        reading = self.Reading.create({
+            'meter_id': meter_net.id,
+            'feeder_id': feeder.id,
+            'reading_date': fields.Datetime.now(),
+            'reading_value': 12000,
+            'reading_category': 'feeder',
+            'reading_purpose': 'periodic',
+            'reading_event': 'normal',
+            'state': 'under_review',
+            'date_range_id': self.test_period.id,
+        })
+        res = self.ReadingReviewService.get_review_queue(
+            region_id=network_region.id, review_tab='network', status='under_review')
+        self.assertIn(reading.id, [item['id'] for item in res['items']])
+
     def test_08b_status_does_not_zero_other_stats(self):
         """8b. Status filter on queue does not wipe unrelated stats counts."""
         approved_customer, approved_meter = self._create_unique_customer_meter('STAT-APP-2')
@@ -359,6 +390,46 @@ class TestUtilityReadingReview(TransactionCase):
         self.assertGreaterEqual(res['stats']['approved'], 1)
         self.assertIn(reading_under_review.id, [item['id'] for item in res['items']])
         self.assertNotIn(reading_approved.id, [item['id'] for item in res['items']])
+
+    def test_08d_replacement_scope_supports_subscriber_and_network_regions(self):
+        """8d. Replacement scope should resolve subscriber, feeder, and transformer regions."""
+        region_sub = self.Region.create({
+            'name': 'منطقة استبدال مشترك',
+            'code': 'REP-SUB-01',
+            'type': 'region',
+        })
+        region_feed = self.Region.create({
+            'name': 'منطقة استبدال فيدر',
+            'code': 'REP-FEED-01',
+            'type': 'region',
+        })
+        region_trans = self.Region.create({
+            'name': 'منطقة استبدال محول',
+            'code': 'REP-TR-01',
+            'type': 'region',
+        })
+        subscriber_customer = self.Customer.create({
+            'name': 'مشترك استبدال scope',
+            'subscriber_code': 'CUST-REP-SUB',
+            'region_id': region_sub.id,
+        })
+        feeder = self.env['utility.feeder'].create({
+            'name': 'فيدر استبدال scope',
+            'code': 'FEED-REP-01',
+            'region_id': region_feed.id,
+        })
+        transformer = self.env['utility.transformer'].create({
+            'name': 'محول استبدال scope',
+            'code': 'TR-REP-01',
+            'region_id': region_trans.id,
+        })
+        dom_sub = self.ReadingReviewService._build_replacement_geographic_domain(
+            self.env['res.users'].browse(self.env.uid)
+        )
+        self.assertIsInstance(dom_sub, list)
+        self.assertTrue(self.ReadingReviewService._build_replacement_region_domain(region_sub.id))
+        self.assertTrue(self.ReadingReviewService._build_replacement_region_domain(region_feed.id))
+        self.assertTrue(self.ReadingReviewService._build_replacement_region_domain(region_trans.id))
 
     def test_09_dto_has_reading_context_fields(self):
         """9. DTO has reading context fields, NOT billing_behavior."""
