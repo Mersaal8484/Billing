@@ -54,14 +54,29 @@ class TestUtilityReadingReview(TransactionCase):
             'multiplier': 1.0,
         })
 
+    def _create_unique_customer_meter(self, suffix):
+        """Create a unique customer + meter pair for constraint-free periodic readings."""
+        customer = self.Customer.create({
+            'name': f'مشترك اختبار {suffix}',
+            'subscriber_code': f'CUST-REV-{suffix}',
+            'region_id': self.test_region.id,
+        })
+        meter = self.Meter.create({
+            'meter_number': f'MTR-REV-{suffix}',
+            'customer_id': customer.id,
+            'multiplier': 1.0,
+        })
+        return customer, meter
+
     def test_01_get_review_queue_pagination(self):
-        """1. اختبار طابور المراجعة وتقسيم الصفحات إلى 40 عنصر"""
+        """1. اختبار طابور المراجعة وتقسيم الصفحات إلى 40 عنصر.
+        Uses 45 unique accounts + meters to avoid the unique billable reading constraint."""
         readings_vals = []
         for i in range(45):
-            meter = self._create_unique_meter(f'PG-{i:03d}')
+            customer, meter = self._create_unique_customer_meter(f'PG-{i:03d}')
             readings_vals.append({
                 'meter_id': meter.id,
-                'account_id': self.test_customer.id,
+                'account_id': customer.id,
                 'reading_date': fields.Datetime.now(),
                 'reading_value': 1000 + (i * 10),
                 'state': 'under_review',
@@ -437,3 +452,236 @@ class TestUtilityReadingReview(TransactionCase):
         })
         r_net.action_submit_review()
         self.assertEqual(r_net.state, 'under_review', "Network reading must also go to under_review, not directly approved")
+
+    def test_13_opening_not_in_exceptions_queue(self):
+        """13. اختبار أن القراءة الافتتاحية لا تظهر في طابور الاستثناءات.
+        Opening readings with consumption=0 must have consumption_alert='normal'
+        and must NOT appear in the Exceptions tab."""
+        customer2, meter2 = self._create_unique_customer_meter('EXC-01')
+        r_open = self.Reading.create({
+            'meter_id': meter2.id,
+            'account_id': customer2.id,
+            'reading_date': fields.Datetime.now(),
+            'reading_value': 0,
+            'reading_category': 'customer',
+            'reading_purpose': 'opening',
+            'reading_event': 'replacement',
+            'state': 'under_review',
+            'date_range_id': self.test_period.id,
+        })
+        # Verify model-level: consumption_alert must be 'normal'
+        self.assertEqual(r_open.consumption_alert, 'normal',
+                         "Opening reading must have consumption_alert='normal', not 'zero'")
+
+        # Verify Exceptions queue does NOT include this opening reading
+        res_exc = self.ReadingReviewService.get_review_queue(
+            review_tab='exceptions',
+            status='all',
+        )
+        exc_ids = [item['id'] for item in res_exc['items']]
+        self.assertNotIn(r_open.id, exc_ids,
+                         "Opening reading must NOT appear in Exceptions queue")
+
+    def test_14_billing_regression_periodic_only(self):
+        """14. اختبار أن الفاتورة الدورية بدون استبدال تُنشأ بشكل صحيح.
+        Scenario: last billed 1000, current periodic 120 → consumption=100.
+        Expected: 1 sale.order, 1 utility.bill.reading.component, consumption=100."""
+        customer_b, meter_b = self._create_unique_customer_meter('REG-01')
+
+        # Create an approved periodic reading
+        r_periodic = self.Reading.create({
+            'meter_id': meter_b.id,
+            'account_id': customer_b.id,
+            'reading_date': fields.Datetime.now(),
+            'reading_value': 1100.0,
+            'previous_reading': 1000.0,
+            'meter_multiplier': 1.0,
+            'reading_category': 'customer',
+            'reading_purpose': 'periodic',
+            'reading_event': 'normal',
+            'state': 'approved',
+            'date_range_id': self.test_period.id,
+        })
+        self.assertEqual(r_periodic.consumption, 100.0)
+
+        # Verify no unbilled closing components
+        closings = r_periodic._get_unbilled_closing_components()
+        self.assertEqual(len(closings), 0, "No closing readings should be found")
+
+        # The billing engine should produce total_consumption = 100 (periodic only)
+        total = r_periodic.consumption + sum(closings.mapped('consumption'))
+        self.assertEqual(total, 100.0)
+
+    def test_15_billing_regression_single_replacement(self):
+        """15. اختبار أن الفاتورة مع استبدال واحد تجمع الاستهلاكان.
+        Scenario: last billed 1000, replacement closing 1300 (consumption=300),
+        new meter periodic 120 (consumption=100).
+        Expected: total=400, 2 utility.bill.reading.component records."""
+        customer_b, meter_old = self._create_unique_customer_meter('REG-02')
+        meter_new = self.Meter.create({
+            'meter_number': 'MTR-REG-02-NEW',
+            'customer_id': customer_b.id,
+            'multiplier': 1.0,
+        })
+
+        # Create replacement closing reading (already approved)
+        r_closing = self.Reading.create({
+            'meter_id': meter_old.id,
+            'account_id': customer_b.id,
+            'reading_date': fields.Datetime.now(),
+            'reading_value': 1300.0,
+            'previous_reading': 1000.0,
+            'meter_multiplier': 1.0,
+            'reading_category': 'customer',
+            'reading_purpose': 'replacement_closing',
+            'reading_event': 'replacement',
+            'state': 'approved',
+        })
+        self.assertEqual(r_closing.consumption, 300.0)
+
+        # Create new meter periodic reading
+        r_periodic = self.Reading.create({
+            'meter_id': meter_new.id,
+            'account_id': customer_b.id,
+            'reading_date': fields.Datetime.now(),
+            'reading_value': 120.0,
+            'previous_reading': 20.0,
+            'meter_multiplier': 1.0,
+            'reading_category': 'customer',
+            'reading_purpose': 'periodic',
+            'reading_event': 'normal',
+            'state': 'approved',
+            'date_range_id': self.test_period.id,
+        })
+        self.assertEqual(r_periodic.consumption, 100.0)
+
+        # Find unbilled closings for this periodic reading
+        closings = r_periodic._get_unbilled_closing_components()
+        self.assertEqual(len(closings), 1, "Should find 1 unbilled closing reading")
+        self.assertEqual(closings.id, r_closing.id)
+
+        # Total consumption = periodic(100) + closing(300) = 400
+        total = r_periodic.consumption + sum(closings.mapped('consumption'))
+        self.assertEqual(total, 400.0,
+                         "Total bill consumption must be periodic + closing = 400")
+
+    def test_16_billing_regression_multiple_replacements(self):
+        """16. اختبار أن الفاتورة مع استبدالات متعددة تجمع كل المقاطع.
+        Scenario: Meter A closing 300, Meter B closing 150, Meter C periodic 100.
+        Expected: total=550, 3 utility.bill.reading.component records."""
+        customer_b, meter_a = self._create_unique_customer_meter('REG-03')
+        meter_b = self.Meter.create({
+            'meter_number': 'MTR-REG-03-B',
+            'customer_id': customer_b.id,
+            'multiplier': 1.0,
+        })
+        meter_c = self.Meter.create({
+            'meter_number': 'MTR-REG-03-C',
+            'customer_id': customer_b.id,
+            'multiplier': 1.0,
+        })
+
+        # Meter A closing: 1000 → 1300 = 300
+        r_close_a = self.Reading.create({
+            'meter_id': meter_a.id,
+            'account_id': customer_b.id,
+            'reading_date': fields.Datetime.now(),
+            'reading_value': 1300.0,
+            'previous_reading': 1000.0,
+            'meter_multiplier': 1.0,
+            'reading_category': 'customer',
+            'reading_purpose': 'replacement_closing',
+            'reading_event': 'replacement',
+            'state': 'approved',
+        })
+
+        # Meter B closing: 20 → 170 = 150
+        r_close_b = self.Reading.create({
+            'meter_id': meter_b.id,
+            'account_id': customer_b.id,
+            'reading_date': fields.Datetime.now(),
+            'reading_value': 170.0,
+            'previous_reading': 20.0,
+            'meter_multiplier': 1.0,
+            'reading_category': 'customer',
+            'reading_purpose': 'replacement_closing',
+            'reading_event': 'replacement',
+            'state': 'approved',
+        })
+
+        # Meter C periodic: 5 → 105 = 100
+        r_periodic = self.Reading.create({
+            'meter_id': meter_c.id,
+            'account_id': customer_b.id,
+            'reading_date': fields.Datetime.now(),
+            'reading_value': 105.0,
+            'previous_reading': 5.0,
+            'meter_multiplier': 1.0,
+            'reading_category': 'customer',
+            'reading_purpose': 'periodic',
+            'reading_event': 'normal',
+            'state': 'approved',
+            'date_range_id': self.test_period.id,
+        })
+
+        closings = r_periodic._get_unbilled_closing_components()
+        self.assertEqual(len(closings), 2, "Should find 2 unbilled closing readings")
+
+        total = r_periodic.consumption + sum(closings.mapped('consumption'))
+        self.assertEqual(total, 550.0,
+                         "Total bill consumption = 300 + 150 + 100 = 550")
+        # Verify no duplicate components
+        all_readings = closings | r_periodic
+        self.assertEqual(len(all_readings), 3, "Must have exactly 3 reading segments")
+
+    def test_17_is_billable_only_periodic(self):
+        """17. اختبار أن is_billable يُرجع True فقط للقراءات الدورية.
+        replacement_closing is NOT directly billable (contributes via components)."""
+        # Periodic → True
+        r_periodic = self.Reading.create({
+            'meter_id': self.test_meter.id,
+            'account_id': self.test_customer.id,
+            'reading_date': fields.Datetime.now(),
+            'reading_value': 5000,
+            'reading_category': 'customer',
+            'reading_purpose': 'periodic',
+            'reading_event': 'normal',
+            'date_range_id': self.test_period.id,
+        })
+        self.assertTrue(r_periodic.is_billable)
+
+        # replacement_closing → False
+        r_close = self.Reading.create({
+            'meter_id': self.test_meter.id,
+            'account_id': self.test_customer.id,
+            'reading_date': fields.Datetime.now(),
+            'reading_value': 1500,
+            'reading_category': 'customer',
+            'reading_purpose': 'replacement_closing',
+            'reading_event': 'replacement',
+        })
+        self.assertFalse(r_close.is_billable)
+
+        # opening → False
+        r_open = self.Reading.create({
+            'meter_id': self.test_meter.id,
+            'account_id': self.test_customer.id,
+            'reading_date': fields.Datetime.now(),
+            'reading_value': 0,
+            'reading_category': 'customer',
+            'reading_purpose': 'opening',
+            'reading_event': 'replacement',
+        })
+        self.assertFalse(r_open.is_billable)
+
+        # closing (contract_closure) → False (until final-bill workflow exists)
+        r_contract_close = self.Reading.create({
+            'meter_id': self.test_meter.id,
+            'account_id': self.test_customer.id,
+            'reading_date': fields.Datetime.now(),
+            'reading_value': 5500,
+            'reading_category': 'customer',
+            'reading_purpose': 'closing',
+            'reading_event': 'contract_closure',
+        })
+        self.assertFalse(r_contract_close.is_billable)

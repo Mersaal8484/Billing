@@ -125,7 +125,7 @@
 
                         <!-- Bulk Approve Button -->
                         <button type="button" class="btn btn-sm btn-success px-3" t-att-disabled="!state.selectedIds.length" t-on-click="onBulkApprove">
-                            <i class="fa fa-check-circle me-1"/> اعتماد الملايين (<t t-esc="state.selectedIds.length"/>)
+                            <i class="fa fa-check-circle me-1"/> اعتماد جماعي (<t t-esc="state.selectedIds.length"/>)
                         </button>
 
                         <!-- Refresh Button -->
@@ -167,9 +167,14 @@
                                         </div>
                                         <div>
                                             <small class="text-muted me-2"><t t-esc="repl.replace_date"/></small>
-                                            <button type="button" class="btn btn-sm btn-success px-3" t-att-disabled="repl.state === 'done'" t-on-click="() => this.onApproveReplacementPair(repl)">
-                                                <i class="fa fa-check me-1"/> اعتماد عملية الاستبدال (Pair)
-                                            </button>
+                                            <t t-if="repl.state !== 'done'">
+                                                <button type="button" class="btn btn-sm btn-success px-3" t-on-click="() => this.onApproveReplacementPair(repl)">
+                                                    <i class="fa fa-check me-1"/> اعتماد عملية الاستبدال (Pair)
+                                                </button>
+                                            </t>
+                                            <t t-else="">
+                                                <span class="badge bg-success"><i class="fa fa-check me-1"/> تم الاعتماد</span>
+                                            </t>
                                         </div>
                                     </div>
                                     <div class="card-body p-3 bg-light">

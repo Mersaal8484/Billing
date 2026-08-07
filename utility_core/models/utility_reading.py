@@ -81,18 +81,20 @@ class UtilityReading(models.Model):
         )
 
     def _is_billable_reading(self):
+        """A reading is directly billable only if it's a periodic reading for a
+        commercial subject (customer or private transformer).
+        replacement_closing contributes to billing via utility.bill.reading.component
+        but does NOT independently create bills — it is NOT directly billable.
+        Final/closing readings for contract_closure will be billable when the
+        final-bill workflow is implemented."""
         self.ensure_one()
         if not self._is_commercial_subject():
             return False
-
-        purpose = self._canonical_reading_purpose()
-        if purpose == 'periodic':
-            return True
-        if purpose == 'closing' and self.reading_event == 'contract_closure':
+        if self.reading_purpose == 'periodic':
             return True
         return False
 
-    @api.depends('reading_category', 'reading_purpose', 'reading_event', 'is_private_transformer')
+    @api.depends('reading_category', 'reading_purpose', 'is_private_transformer')
     def _compute_is_billable(self):
         for reading in self:
             reading.is_billable = reading._is_billable_reading()
@@ -308,11 +310,7 @@ class UtilityReading(models.Model):
     def _check_unique_billable_reading_per_period(self):
         """قراءة واحدة قابلة للفوترة لكل عداد + فترة — يمنع تكرار الفوترة."""
         for r in self:
-            is_billable = (
-                r.reading_category == 'customer'
-                or (r.reading_category == 'transformer' and r.is_private_transformer)
-            )
-            if (not is_billable or r.reading_purpose != 'periodic'
+            if (not r.is_billable or r.reading_purpose != 'periodic'
                     or not r.date_range_id or r.state == 'error'):
                 continue
             duplicate = self.search([
@@ -334,10 +332,9 @@ class UtilityReading(models.Model):
     def _check_reading_purpose_rules(self):
         """Enforce period, replacement, and billing-anchor invariants."""
         for reading in self:
-            is_billable = (reading.reading_category == 'customer' or (reading.reading_category == 'transformer' and reading.is_private_transformer))
-            if is_billable and not reading.account_id:
+            if reading.is_billable and not reading.account_id:
                 raise ValidationError(_('القراءة القابلة للفوترة تتطلب حساب مشترك.'))
-            if is_billable and reading.reading_purpose == 'periodic':
+            if reading.is_billable and reading.reading_purpose == 'periodic':
                 if not reading.date_range_id:
                     raise ValidationError(_('القراءة الدورية تتطلب تحديد الفترة المفتوحة للقراءة بحسب العقد.'))
                 period = reading.date_range_id
@@ -398,7 +395,7 @@ class UtilityReading(models.Model):
                 reading.carried_consumption = 0.0
                 reading.billing_consumption = 0.0
 
-    @api.depends('consumption', 'meter_id')
+    @api.depends('consumption', 'meter_id', 'reading_purpose')
     def _compute_consumption_analysis(self):
         meters = self.mapped('meter_id')
         approved_map = {}
@@ -412,6 +409,13 @@ class UtilityReading(models.Model):
                 approved_map.setdefault(a.meter_id.id, []).append(a)
 
         for r in self:
+            # Opening readings: zero consumption is EXPECTED, never flag
+            if r.reading_purpose == 'opening':
+                r.consumption_alert = 'normal'
+                r.consumption_difference = 0
+                r.consumption_diff_percentage = 0
+                continue
+
             if r.consumption <= 0:
                 r.consumption_alert = 'zero' if r.consumption == 0 else 'negative'
                 r.consumption_difference = 0
@@ -459,9 +463,7 @@ class UtilityReading(models.Model):
             if r.state != 'draft':
                 raise ValidationError('يمكن إرسال القراءات المسودة فقط للمراجعة!')
 
-            is_billable = (r.reading_category == 'customer' or (r.reading_category == 'transformer' and r.is_private_transformer))
-
-            if not r.meter_image and is_billable:
+            if not r.meter_image and r.is_billable:
                 raise ValidationError('يجب رفع صورة العداد قبل إرسال القراءة للمراجعة!')
 
             r.write({
@@ -475,11 +477,7 @@ class UtilityReading(models.Model):
                 raise ValidationError('يمكن الموافقة على القراءات قيد المراجعة فقط!')
 
             # FIX-4: منع اعتماد قراءة بالاستهلاك سالب للقراءات القابلة للفوترة
-            is_billable = (
-                r.reading_category == 'customer'
-                or (r.reading_category == 'transformer' and r.is_private_transformer)
-            )
-            if is_billable and r.consumption < 0:
+            if r.is_billable and r.consumption < 0:
                 raise ValidationError(
                     'لا يمكن اعتماد قراءة باستهلاك سالب (%.2f). '
                     'تحقق من صحة القراءة أو أنشئ تسوية.'
