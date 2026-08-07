@@ -102,8 +102,11 @@
                                             <t t-if="props.reading.is_billable">
                                                 <span class="badge bg-success">نعم</span>
                                             </t>
+                                            <t t-elif="props.reading.reading_category === 'feeder' || props.reading.reading_category === 'transformer'">
+                                                <span class="badge bg-secondary">شبكي</span>
+                                            </t>
                                             <t t-else="">
-                                                <span class="badge bg-secondary">شبكي / غير فوتر</span>
+                                                <span class="badge bg-secondary">غير فوتر</span>
                                             </t>
                                         </td>
                                     </tr>

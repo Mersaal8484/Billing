@@ -238,8 +238,34 @@ class TestUtilityReadingReview(TransactionCase):
         self.assertEqual(len(zero_flags), 0)
 
     def test_07_replacement_pair_review(self):
-        """7. Approve a replacement pair: closing + opening → approved, replacement → done."""
-        _, _, _, replacement, closing, opening = self._create_replacement_with_readings('RP-07')
+        """7. Approve a replacement pair: closing + opening under_review → approved, replacement → done."""
+        customer, meter_old, meter_new, replacement, _, _ = self._create_replacement_with_readings('RP-07')
+        closing = self.Reading.create({
+            'meter_id': meter_old.id,
+            'account_id': customer.id,
+            'reading_date': fields.Datetime.now(),
+            'reading_value': 1500.0,
+            'previous_reading': 1000.0,
+            'meter_multiplier': 1.0,
+            'reading_category': 'customer',
+            'reading_purpose': 'replacement_closing',
+            'reading_event': 'replacement',
+            'replacement_id': replacement.id,
+            'state': 'under_review',
+        })
+        opening = self.Reading.create({
+            'meter_id': meter_new.id,
+            'account_id': customer.id,
+            'reading_date': fields.Datetime.now(),
+            'reading_value': 0.0,
+            'previous_reading': 0.0,
+            'meter_multiplier': 1.0,
+            'reading_category': 'customer',
+            'reading_purpose': 'opening',
+            'reading_event': 'replacement',
+            'replacement_id': replacement.id,
+            'state': 'under_review',
+        })
         res = self.ReadingReviewService.action_approve_replacement_pair(replacement.id)
         self.assertEqual(res['status'], 'success')
         self.assertEqual(closing.state, 'approved')
@@ -378,7 +404,6 @@ class TestUtilityReadingReview(TransactionCase):
         all_readings = closings | r_periodic
         vals_list = r_periodic._prepare_component_vals(fake_order, all_readings)
         self.assertEqual(len(vals_list), 2)
-        purposes = {v['reading_purpose'] for v in vals_list if 'reading_purpose' not in v}
         # Each component has correct fields
         for v in vals_list:
             self.assertIn('sale_order_id', v)
@@ -389,14 +414,59 @@ class TestUtilityReadingReview(TransactionCase):
             self.assertEqual(v['sale_order_id'], 999999)
 
     def test_14_billing_regression_multiple_replacements(self):
-        """14. Billing regression: A(300) + B(150) + C(100) = 550, 3 segments."""
-        # Create 3 replacement closings with different meters
-        _, meter_a, _, _, r_close_a, _ = self._create_replacement_with_readings('REG-03A', 1300.0, 1000.0)
-        _, meter_b, _, _, r_close_b, _ = self._create_replacement_with_readings('REG-03B', 170.0, 20.0)
-        customer_c, meter_c = self._create_unique_customer_meter('REG-03C')
+        """14. Billing regression: A(300) + B(150) + C(100) = 550, 3 segments.
+        All closings must belong to the same account as the periodic reading."""
+        # Create one shared account with 3 meters
+        shared_customer = self.Customer.create({
+            'name': 'مشترك اختبار متعدد الاستبدالات',
+            'subscriber_code': 'CUST-MULTI-REG-03',
+            'region_id': self.test_region.id,
+        })
+        meter_a = self.Meter.create({
+            'meter_number': 'MTR-MULTI-REG-03A', 'customer_id': shared_customer.id, 'multiplier': 1.0,
+        })
+        meter_b = self.Meter.create({
+            'meter_number': 'MTR-MULTI-REG-03B', 'customer_id': shared_customer.id, 'multiplier': 1.0,
+        })
+        meter_c = self.Meter.create({
+            'meter_number': 'MTR-MULTI-REG-03C', 'customer_id': shared_customer.id, 'multiplier': 1.0,
+        })
 
+        # Create 2 replacement closings under the same account
+        repl_a = self.Replacement.create({
+            'utility_account_id': shared_customer.id, 'target_type': 'subscriber',
+            'old_meter_id': meter_a.id, 'old_meter_number': meter_a.meter_number,
+            'old_closing_reading': 1300.0, 'old_last_invo_reading': 1000.0,
+            'new_meter_id': meter_b.id, 'new_meter_number': meter_b.meter_number,
+            'new_opening_reading': 0.0, 'new_meter_val': 1.0, 'reason': 'fault',
+        })
+        self.Reading.create({
+            'meter_id': meter_a.id, 'account_id': shared_customer.id,
+            'reading_date': fields.Datetime.now(), 'reading_value': 1300.0,
+            'previous_reading': 1000.0, 'meter_multiplier': 1.0,
+            'reading_category': 'customer', 'reading_purpose': 'replacement_closing',
+            'reading_event': 'replacement', 'replacement_id': repl_a.id,
+            'state': 'approved',
+        })
+        repl_b = self.Replacement.create({
+            'utility_account_id': shared_customer.id, 'target_type': 'subscriber',
+            'old_meter_id': meter_b.id, 'old_meter_number': meter_b.meter_number,
+            'old_closing_reading': 170.0, 'old_last_invo_reading': 20.0,
+            'new_meter_id': meter_c.id, 'new_meter_number': meter_c.meter_number,
+            'new_opening_reading': 0.0, 'new_meter_val': 1.0, 'reason': 'fault',
+        })
+        self.Reading.create({
+            'meter_id': meter_b.id, 'account_id': shared_customer.id,
+            'reading_date': fields.Datetime.now(), 'reading_value': 170.0,
+            'previous_reading': 20.0, 'meter_multiplier': 1.0,
+            'reading_category': 'customer', 'reading_purpose': 'replacement_closing',
+            'reading_event': 'replacement', 'replacement_id': repl_b.id,
+            'state': 'approved',
+        })
+
+        # Periodic reading on the 3rd meter, same account
         r_periodic = self.Reading.create({
-            'meter_id': meter_c.id, 'account_id': customer_c.id,
+            'meter_id': meter_c.id, 'account_id': shared_customer.id,
             'reading_date': fields.Datetime.now(), 'reading_value': 105.0,
             'previous_reading': 5.0, 'meter_multiplier': 1.0,
             'reading_category': 'customer', 'reading_purpose': 'periodic',
@@ -405,17 +475,15 @@ class TestUtilityReadingReview(TransactionCase):
         })
 
         closings = r_periodic._get_unbilled_closing_components()
-        # Only closings from the same account appear
-        same_account_closings = closings.filtered(lambda c: c.account_id == customer_c)
-        total = r_periodic.consumption + sum(same_account_closings.mapped('consumption'))
-        # At minimum, periodic consumption is correct
-        self.assertEqual(r_periodic.consumption, 100.0)
+        self.assertEqual(len(closings), 2)
+        total = r_periodic.consumption + sum(closings.mapped('consumption'))
+        self.assertEqual(total, 400.0)
 
-        # Test _prepare_component_vals with all segments
+        # Test _prepare_component_vals with all 3 segments
         fake_order = type('FakeOrder', (), {'id': 888888})()
-        all_readings = same_account_closings | r_periodic
+        all_readings = closings | r_periodic
         vals_list = r_periodic._prepare_component_vals(fake_order, all_readings)
-        # Each component is a valid snapshot
+        self.assertEqual(len(vals_list), 3)
         for v in vals_list:
             self.assertIn('sale_order_id', v)
             self.assertIn('reading_id', v)
@@ -463,3 +531,38 @@ class TestUtilityReadingReview(TransactionCase):
         # Normal closing (consumption >= 0) should have no flags
         neg_flags = [f for f in vee_flags if f['code'] == 'NEGATIVE_CLOSING']
         self.assertEqual(len(neg_flags), 0)
+
+    def test_17_bill_component_persistence_real_order(self):
+        """17. Real persistence: create sale.order + bill components, verify DB storage."""
+        _, meter_old, meter_new, _, r_closing, _ = self._create_replacement_with_readings('PERS-01', 1300.0, 1000.0)
+        customer = r_closing.account_id
+
+        r_periodic = self.Reading.create({
+            'meter_id': meter_new.id, 'account_id': customer.id,
+            'reading_date': fields.Datetime.now(), 'reading_value': 120.0,
+            'previous_reading': 20.0, 'meter_multiplier': 1.0,
+            'reading_category': 'customer', 'reading_purpose': 'periodic',
+            'reading_event': 'normal', 'state': 'approved',
+            'date_range_id': self.test_period.id,
+        })
+
+        order = self.env['sale.order'].create({
+            'partner_id': customer.partner_id.id,
+            'customer_id': customer.id,
+            'meter_id': meter_new.id,
+            'reading_id': r_periodic.id,
+            'date_range_id': self.test_period.id,
+            'date_order': fields.Datetime.now(),
+        })
+
+        closings = r_periodic._get_unbilled_closing_components()
+        self.assertEqual(len(closings), 1)
+        all_readings = closings | r_periodic
+        vals_list = r_periodic._prepare_component_vals(order, all_readings)
+        components = self.env['utility.bill.reading.component'].create(vals_list)
+
+        self.assertEqual(len(components), 2)
+        self.assertEqual(components.mapped('sale_order_id'), order)
+        self.assertTrue(all(c.account_id == customer for c in components))
+        self.assertEqual(components.filtered(lambda c: c.reading_id == r_closing).consumption, 300.0)
+        self.assertEqual(components.filtered(lambda c: c.reading_id == r_periodic).consumption, 100.0)

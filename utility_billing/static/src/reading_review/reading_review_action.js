@@ -43,26 +43,28 @@ export class ReadingReviewWorkspaceAction extends Component {
         this.debounceSearchTimeout = null;
 
         onWillStart(async () => {
+            this.applyActionContext();
             await this.loadMasterData();
             await this.loadQueue();
         });
 
-        onMounted(() => {
-            // Apply context filters if launched from batch or period
-            const ctx = this.props.action && this.props.action.context;
-            if (ctx) {
-                if (ctx.default_batch_id) this.state.filters.batch_id = ctx.default_batch_id;
-                if (ctx.default_period_id) this.state.filters.period_id = ctx.default_period_id;
-                if (ctx.default_region_id) this.state.filters.region_id = ctx.default_region_id;
-            }
-        });
+        onMounted(() => {});
+    }
+
+    applyActionContext() {
+        const ctx = this.props.action && this.props.action.context;
+        if (ctx) {
+            if (ctx.default_batch_id) this.state.filters.batch_id = String(ctx.default_batch_id);
+            if (ctx.default_period_id) this.state.filters.period_id = String(ctx.default_period_id);
+            if (ctx.default_region_id) this.state.filters.region_id = String(ctx.default_region_id);
+        }
     }
 
     async loadMasterData() {
         try {
-            const periods = await this.orm.searchRead("date.range", [("type_id.work_type", "=", "readings")], ["id", "name"], { limit: 50, order: "date_start desc" });
+            const periods = await this.orm.searchRead("date.range", [["type_id.work_type", "=", "readings"]], ["id", "name"], { limit: 50, order: "date_start desc" });
             const regions = await this.orm.searchRead("utility.region", [], ["id", "name"], { limit: 100 });
-            const batches = await this.orm.searchRead("utility.reading.batch", [("state", "!=", "draft")], ["id", "name"], { limit: 100, order: "id desc" });
+            const batches = await this.orm.searchRead("utility.reading.batch", [["state", "!=", "draft"]], ["id", "name"], { limit: 100, order: "id desc" });
 
             this.state.masterData.periods = periods;
             this.state.masterData.regions = regions;

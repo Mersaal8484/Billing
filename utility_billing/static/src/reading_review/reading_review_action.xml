@@ -316,7 +316,7 @@
                                             <span t-elif="item.reading_purpose === 'closing'" class="badge bg-danger">ختامية</span>
                                             <span t-if="item.reading_event === 'replacement'" class="badge bg-secondary ms-1">استبدال</span>
                                             <span t-elif="item.reading_event === 'installation'" class="badge bg-secondary ms-1">تركيب</span>
-                                            <span t-if="!item.is_billable" class="badge bg-dark ms-1">شبكي</span>
+                                            <span t-if="item.reading_category === 'feeder' || item.reading_category === 'transformer'" class="badge bg-dark ms-1">شبكي</span>
                                         </td>
 
                                         <!-- VEE Anomaly Badges -->
