@@ -16,6 +16,14 @@ BILLING_PERIOD_TYPES = [
     ('biweekly',      'نصف شهري (مستبدل - 15 يوم)'),
 ]
 
+def normalize_billing_cadence(value):
+    """تحويل قيم دورية الفوترة المتقادمة (مثل biweekly) إلى الدورية القياسية (semi_monthly)"""
+    if not value:
+        return value
+    if value == 'biweekly':
+        return 'semi_monthly'
+    return value
+
 WORK_TYPE_SELECTION = [
     ('readings', 'قراءات'),
     ('payment',  'دفع'),
@@ -340,11 +348,18 @@ class DateRange(models.Model):
                 if rec.reading_period_id.period_role != 'reading':
                     raise ValidationError(_("فترة القراءة المرتبطة يجب أن تكون من دور 'دورة قراءة وفوترة'."))
 
+    @api.model
+    def _normalize_cadence(self, cadence):
+        return normalize_billing_cadence(cadence)
+
     @api.constrains('region_ids', 'billing_cadence')
     def _check_region_cadence_consistency(self):
         for rec in self:
             if rec.region_ids:
-                mismatched = rec.region_ids.filtered(lambda r: r.recurring_rule_type and r.recurring_rule_type != rec.billing_cadence)
+                p_cadence = normalize_billing_cadence(rec.billing_cadence)
+                mismatched = rec.region_ids.filtered(
+                    lambda r: r.recurring_rule_type and normalize_billing_cadence(r.recurring_rule_type) != p_cadence
+                )
                 if mismatched:
                     names = ", ".join(mismatched.mapped('name'))
                     raise ValidationError(_(

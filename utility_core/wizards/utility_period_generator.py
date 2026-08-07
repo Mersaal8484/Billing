@@ -2,6 +2,7 @@ import calendar
 from datetime import date, datetime, time, timedelta
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
+from ..models.utility_date_range import normalize_billing_cadence
 
 
 class UtilityPeriodGenerator(models.TransientModel):
@@ -64,8 +65,8 @@ class UtilityPeriodGenerator(models.TransientModel):
         cadences = ['monthly', 'semi_monthly'] if self.billing_cadence == 'all' else [self.billing_cadence]
 
         for cadence in cadences:
-            target_cadences = [cadence, 'biweekly'] if cadence == 'semi_monthly' else [cadence]
-            target_regions = self.region_ids.filtered(lambda r: r.recurring_rule_type in target_cadences) if self.region_ids else Region.search([('type', '=', 'region'), ('recurring_rule_type', 'in', target_cadences)])
+            all_regions = self.region_ids if self.region_ids else Region.search([('type', '=', 'region')])
+            target_regions = all_regions.filtered(lambda r: normalize_billing_cadence(r.recurring_rule_type) == cadence)
 
             if cadence == 'monthly':
                 c_start = date(year, month, 1)

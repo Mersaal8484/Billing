@@ -636,3 +636,28 @@ class TestUtilityPeriodManagement(TransactionCase):
             'region_ids': [(6, 0, [region_bw.id])],
         })
         self.assertEqual(period.billing_cadence, 'semi_monthly')
+
+    def test_27_durable_outbox_queue_and_idempotency(self):
+        """27. تسجيل وتتبع أوامر مسارات العمل في طابور Outbox مع مفتاح عدم التكرار (Idempotency Key)"""
+        period = self.DateRange.create({
+            'name': 'فترة طابور الأوامر',
+            'period_code': 'R-OUTBOX-01',
+            'period_role': 'reading',
+            'billing_cadence': 'monthly',
+            'state': 'planned',
+        })
+
+        service = self.env['utility.workflow.service']
+        res = service.execute_open_reading_window(period.id)
+        self.assertTrue(res)
+        self.assertEqual(period.state, 'reading_open')
+
+        # التحقق من وجود أمر مسجل في Outbox بحالة executed
+        cmd = self.env['utility.workflow.command'].search([('period_id', '=', period.id), ('action_type', '=', 'open_reading_window')], limit=1)
+        self.assertTrue(cmd)
+        self.assertEqual(cmd.state, 'executed')
+        self.assertTrue(cmd.command_uuid)
+        self.assertTrue(cmd.idempotency_key)
+        self.assertGreater(cmd.attempt_count, 0)
+        self.assertTrue(cmd.started_at)
+        self.assertTrue(cmd.completed_at)
