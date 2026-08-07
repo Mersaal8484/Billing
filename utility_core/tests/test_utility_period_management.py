@@ -595,3 +595,44 @@ class TestUtilityPeriodManagement(TransactionCase):
 
         # الفترة التاريخية المنشأة سابقاً تظل محتفظة بدوريتها الأصيلة
         self.assertEqual(period.billing_cadence, 'semi_monthly')
+
+    def test_25_invalid_state_transition_prevented(self):
+        """25. منع القفز غير التسلسلي بين حالات الفترة بواسطة مصفوفة التحول (Transition Matrix)"""
+        period = self.DateRange.create({
+            'name': 'فترة اختراق الحالات',
+            'period_code': 'R-TRANS-01',
+            'period_role': 'reading',
+            'billing_cadence': 'monthly',
+            'state': 'planned',
+        })
+
+        # محاولة القفز المباشر من مخطط إلى الفوترة ينبغي أن تُرفض
+        with self.assertRaises(ValidationError):
+            period.action_start_billing()
+
+        # فتح القراءة أولاً
+        period.action_open_reading()
+        self.assertEqual(period.state, 'reading_open')
+
+        # محاولة القفز المباشر من نافذة القراءة مفتوحة إلى التظهير المحاسبي ينبغي أن تُرفض
+        with self.assertRaises(ValidationError):
+            period.action_start_accounting()
+
+    def test_26_biweekly_region_cadence_normalization(self):
+        """26. توحيد وقبول المنطقة ذات الدورية القديمة biweekly مع فترات semi_monthly دون خطأ تضارب"""
+        region_bw = self.env['utility.region'].create({
+            'name': 'منطقة دورية قديمة',
+            'code': 'REG-BW',
+            'type': 'region',
+            'recurring_rule_type': 'biweekly',
+        })
+
+        # ربط المنطقة القديمة بفترة نصف شهرية يجب أن ينجح بسبب الـ normalization
+        period = self.DateRange.create({
+            'name': 'فترة نصف شهرية لمنطقة biweekly',
+            'period_code': 'R-NORM-01',
+            'period_role': 'reading',
+            'billing_cadence': 'semi_monthly',
+            'region_ids': [(6, 0, [region_bw.id])],
+        })
+        self.assertEqual(period.billing_cadence, 'semi_monthly')

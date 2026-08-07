@@ -200,8 +200,8 @@ class DateRange(models.Model):
     )
 
     # ===== تتبع Workflow والتوقيتات =====
-    workflow_id = fields.Char(string="معرف workflow Temporal", copy=False)
-    workflow_run_id = fields.Char(string="معرف Run Temporal", copy=False)
+    workflow_id = fields.Char(string="مرجع مسار العمل (Workflow Ref)", copy=False)
+    workflow_run_id = fields.Char(string="مرجع تشغيل مسار العمل (Workflow Run Ref)", copy=False)
     opened_at = fields.Datetime(string="تاريخ الفتح", readonly=True)
     closed_at = fields.Datetime(string="تاريخ الإغلاق", readonly=True)
     locked_at = fields.Datetime(string="تاريخ الإقفال", readonly=True)
@@ -365,12 +365,25 @@ class DateRange(models.Model):
                 'workflow_run_id': rec.workflow_run_id,
             })
 
+    # ===== State Machine Transition Matrix Validation =====
+    def _validate_state_transition(self, allowed_states, target_state_label):
+        self.ensure_one()
+        if self.state not in allowed_states:
+            labels = dict(PERIOD_STATE_SELECTION)
+            allowed_labels = ", ".join([str(labels.get(s, s)) for s in allowed_states])
+            current_label = labels.get(self.state, self.state)
+            raise ValidationError(_(
+                "الانتقال التسلسلي إلى '%s' غير مسموح من الحالة الحالية '%s'. "
+                "الحالات المسموحة للانتقال إليها: [%s]."
+            ) % (target_state_label, current_label, allowed_labels))
+
     # ===== State Machine Action Methods =====
 
     def action_open_reading(self):
         for rec in self:
             if rec.period_role != 'reading':
                 raise ValidationError(_("هذا الإجراء ينطبق فقط على فترات القراءة."))
+            rec._validate_state_transition(['planned', 'reopened'], _('فتح القراءة'))
             old_s = rec.state
             rec.write({
                 'state': 'reading_open',
@@ -382,30 +395,35 @@ class DateRange(models.Model):
         for rec in self:
             if rec.period_role != 'reading':
                 raise ValidationError(_("هذا الإجراء ينطبق فقط على فترات القراءة."))
+            rec._validate_state_transition(['reading_open'], _('إغلاق نافذة القراءة'))
             old_s = rec.state
             rec.write({'state': 'reading_closed'})
             rec._log_state_transition(old_s, 'reading_closed', _("إغلاق نافذة القراءة العادية"))
 
     def action_start_review(self):
         for rec in self:
+            rec._validate_state_transition(['reading_open', 'reading_closed'], _('بدء المراجعة'))
             old_s = rec.state
             rec.write({'state': 'reviewing'})
             rec._log_state_transition(old_s, 'reviewing', _("بدء مراجعة القراءات واللقطات"))
 
     def action_close_review(self):
         for rec in self:
+            rec._validate_state_transition(['reviewing'], _('إكمال المراجعة'))
             old_s = rec.state
             rec.write({'state': 'review_closed'})
             rec._log_state_transition(old_s, 'review_closed', _("إكمال مراجعة القراءات"))
 
     def action_start_billing(self):
         for rec in self:
+            rec._validate_state_transition(['review_closed'], _('بدء الفوترة'))
             old_s = rec.state
             rec.write({'state': 'billing'})
             rec._log_state_transition(old_s, 'billing', _("بدء تحويل القراءات إلى فواتير"))
 
     def action_start_accounting(self):
         for rec in self:
+            rec._validate_state_transition(['billing'], _('بدء التظهير المحاسبي'))
             old_s = rec.state
             rec.write({'state': 'accounting'})
             rec._log_state_transition(old_s, 'accounting', _("بدء التظهير وترحيل الفواتير المحاسبية"))
@@ -454,6 +472,7 @@ class DateRange(models.Model):
 
     def action_close_period(self):
         for rec in self:
+            rec._validate_state_transition(['accounting', 'closing'], _('إغلاق الفترة'))
             if rec.period_role == 'reading':
                 rec._validate_period_closing_reconciliation()
             old_s = rec.state
@@ -465,6 +484,7 @@ class DateRange(models.Model):
 
     def action_lock_period(self):
         for rec in self:
+            rec._validate_state_transition(['closed', 'reconciled'], _('إقفال تاريخي'))
             old_s = rec.state
             rec.write({
                 'state': 'locked',
@@ -486,6 +506,7 @@ class DateRange(models.Model):
         for rec in self:
             if rec.period_role != 'payment':
                 raise ValidationError(_("هذا الإجراء ينطبق فقط على فترات التحصيل."))
+            rec._validate_state_transition(['planned', 'reopened'], _('فتح التحصيل'))
             old_s = rec.state
             rec.write({
                 'state': 'payment_open',
@@ -497,18 +518,21 @@ class DateRange(models.Model):
         for rec in self:
             if rec.period_role != 'payment':
                 raise ValidationError(_("هذا الإجراء ينطبق فقط على فترات التحصيل."))
+            rec._validate_state_transition(['payment_open'], _('إغلاق التحصيل'))
             old_s = rec.state
             rec.write({'state': 'payment_closing'})
             rec._log_state_transition(old_s, 'payment_closing', _("إغلاق نافذة التحصيل الميداني"))
 
     def action_reconcile_payment(self):
         for rec in self:
+            rec._validate_state_transition(['payment_closing', 'closed'], _('مطابقة التحصيل'))
             old_s = rec.state
             rec.write({'state': 'reconciled'})
             rec._log_state_transition(old_s, 'reconciled', _("إكمال مطابقة المقبوضات والتحصيل"))
 
     def action_reopen_period(self, reason="إعادة فتح استثنائي"):
         for rec in self:
+            rec._validate_state_transition(['closed', 'reconciled', 'locked', 'payment_closing', 'reading_closed'], _('إعادة فتح'))
             old_s = rec.state
             new_s = 'reading_open' if rec.period_role == 'reading' else 'payment_open'
             rec.write({'state': new_s})
@@ -526,5 +550,5 @@ class DateRangeLog(models.Model):
     user_id = fields.Many2one('res.users', string="المستخدم", default=lambda self: self.env.user)
     timestamp = fields.Datetime(string="التاريخ والوقت", default=fields.Datetime.now)
     reason = fields.Text(string="السبب / البيان")
-    workflow_id = fields.Char(string="معرف Temporal Workflow")
-    workflow_run_id = fields.Char(string="معرف Temporal Run")
+    workflow_id = fields.Char(string="مرجع مسار العمل (Workflow Ref)")
+    workflow_run_id = fields.Char(string="مرجع تشغيل مسار العمل (Workflow Run Ref)")
