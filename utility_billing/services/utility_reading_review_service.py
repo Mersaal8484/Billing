@@ -1,6 +1,7 @@
 import logging
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError, AccessError
+from odoo.osv import expression
 
 _logger = logging.getLogger(__name__)
 
@@ -28,6 +29,88 @@ class UtilityReadingReviewService(models.AbstractModel):
             ('account_id', '=', False),
             ('meter_id.region_id', 'in', regions.ids),
         ]
+
+    def _build_review_scope_domain(self, period_id=False, region_id=False, batch_id=False, review_tab='commercial'):
+        """Build the reusable scope domain for queue queries."""
+        domain = []
+        if period_id:
+            domain.append(('date_range_id', '=', int(period_id)))
+        if region_id:
+            domain.append(('account_id.region_id', '=', int(region_id)))
+        if batch_id:
+            domain.append(('image_asset_id.batch_id', '=', int(batch_id)))
+
+        if review_tab == 'commercial':
+            domain.append(('is_billable', '=', True))
+        elif review_tab == 'network':
+            domain.append(('reading_category', 'in', ['transformer', 'feeder']))
+            domain.append(('is_private_transformer', '=', False))
+        elif review_tab == 'exceptions':
+            domain.append('|')
+            domain.append(('consumption_alert', '!=', 'normal'))
+            domain.append(('image_state', 'in', ['not_clear', 'not_same', 'none', 'loss_read']))
+        return domain
+
+    def _build_review_status_domain(self, status='under_review'):
+        """Build the reusable status domain for queue queries."""
+        if status == 'under_review':
+            return [('state', '=', 'under_review')]
+        if status == 'approved':
+            return [('state', '=', 'approved')]
+        if status == 'rejected':
+            return [('state', '=', 'draft'), ('rejection_reason', '!=', False)]
+        if status == 'exceptions':
+            return ['|', ('state', '=', 'error'), ('image_state', 'in', ['not_clear', 'not_same', 'none', 'loss_read'])]
+        if status == 'all':
+            return [('state', 'in', ['under_review', 'approved', 'draft', 'error'])]
+        return [('state', '=', status)]
+
+    def _build_review_anomaly_domain(self, anomaly_filter='all'):
+        """Build anomaly filter domain separately to keep stats composition safe."""
+        if anomaly_filter == 'high_consumption':
+            return [('consumption_alert', '=', 'high')]
+        if anomaly_filter == 'negative_consumption':
+            return [('consumption_alert', '=', 'negative')]
+        if anomaly_filter == 'zero_consumption':
+            return [('consumption_alert', '=', 'zero')]
+        if anomaly_filter == 'image_issues':
+            return [('image_state', 'in', ['not_clear', 'not_same', 'none', 'loss_read'])]
+        if anomaly_filter == 'anomalies':
+            return ['|', ('consumption_alert', '!=', 'normal'), ('image_state', 'in', ['not_clear', 'not_same', 'none', 'loss_read'])]
+        return []
+
+    def _build_reading_review_domain(self, user, period_id=False, region_id=False, batch_id=False, status='under_review', anomaly_filter='all', review_tab='commercial', search=''):
+        """Compose the final queue domain from orthogonal pieces."""
+        domain = []
+        geo_domain = self._build_geographic_domain(user)
+        if geo_domain:
+            domain = expression.AND([domain, geo_domain])
+        domain = expression.AND([domain, self._build_review_scope_domain(period_id, region_id, batch_id, review_tab)])
+        domain = expression.AND([domain, self._build_review_status_domain(status)])
+        domain = expression.AND([domain, self._build_review_anomaly_domain(anomaly_filter)])
+        if search and search.strip():
+            term = search.strip()
+            domain = expression.AND([domain, ['|', '|', ('meter_id.meter_number', 'ilike', term), ('account_id.name', 'ilike', term), ('account_id.subscriber_code', 'ilike', term)]])
+        return domain
+
+    def _compute_review_stats(self, domain):
+        """Compute queue stats using grouped counts instead of four independent searches."""
+        Reading = self.env['utility.reading'].sudo()
+
+        def _count(extra_domain):
+            grouped = Reading.read_group(expression.AND([domain, extra_domain]), ['__count'], ['state'], lazy=False)
+            return sum(row['__count'] for row in grouped)
+
+        pending_count = _count([('state', '=', 'under_review')])
+        approved_count = _count([('state', '=', 'approved')])
+        rejected_count = _count([('state', '=', 'draft'), ('rejection_reason', '!=', False)])
+        exceptions_count = _count(['|', ('state', '=', 'error'), ('image_state', 'in', ['not_clear', 'not_same', 'none', 'loss_read'])])
+        return {
+            'pending': pending_count,
+            'approved': approved_count,
+            'rejected': rejected_count,
+            'exceptions': exceptions_count,
+        }
 
 
     def _build_context_aware_vee_flags(self, reading):
@@ -136,7 +219,7 @@ class UtilityReadingReviewService(models.AbstractModel):
         }
 
     @api.model
-    def get_review_queue(self, period_id=False, region_id=False, batch_id=False, status='under_review', anomaly_filter='all', review_tab='commercial', search='', offset=0, limit=40):
+    def get_review_queue(self, period_id=False, region_id=False, batch_id=False, status='under_review', anomaly_filter='all', review_tab='commercial', search='', offset=0, limit=40, include_stats=True):
         """
         جلب قائمة مراجعة القراءات مقسمة حسب التبويب والطلب العملياتي (Commercial, Network, Replacements, Exceptions):
         - Commercial: القراءات التجارية القابلة للفوترة (المشتركين والمحولات الخاصة).
@@ -146,70 +229,16 @@ class UtilityReadingReviewService(models.AbstractModel):
         """
         user = self.env.user
         Reading = self.env['utility.reading'].sudo()
-
-        domain = []
-
-        # 1. القيد الجغرافي للمستخدم (Geographic Scope)
-        geo_domain = self._build_geographic_domain(user)
-        if geo_domain:
-            domain.extend(geo_domain)
-
-        # 2. الفلاتر الأفقية (Period, Region, Batch)
-        if period_id:
-            domain.append(('date_range_id', '=', int(period_id)))
-        if region_id:
-            domain.append(('account_id.region_id', '=', int(region_id)))
-        if batch_id:
-            domain.append(('image_asset_id.batch_id', '=', int(batch_id)))
-
-        # 3. التبويب العملياتي (Review Context Tab)
-        if review_tab == 'commercial':
-            domain.append(('is_billable', '=', True))
-        elif review_tab == 'network':
-            domain.append(('reading_category', 'in', ['transformer', 'feeder']))
-            domain.append(('is_private_transformer', '=', False))
-        elif review_tab == 'exceptions':
-            domain.append('|')
-            domain.append(('consumption_alert', '!=', 'normal'))
-            domain.append(('image_state', 'in', ['not_clear', 'not_same', 'none', 'loss_read']))
-
-        # 4. فلتر الحالة (Review Status)
-        if status == 'under_review':
-            domain.append(('state', '=', 'under_review'))
-        elif status == 'approved':
-            domain.append(('state', '=', 'approved'))
-        elif status == 'rejected':
-            domain.append(('state', '=', 'draft'))
-            domain.append(('rejection_reason', '!=', False))
-        elif status == 'exceptions':
-            domain.append('|')
-            domain.append(('state', '=', 'error'))
-            domain.append(('image_state', 'in', ['not_clear', 'not_same', 'none', 'loss_read']))
-        elif status == 'all':
-            domain.append(('state', 'in', ['under_review', 'approved', 'draft', 'error']))
-
-        # 5. فلتر الشذوذ والمعاينة الفنية (VEE / Anomaly Filter)
-        if anomaly_filter == 'high_consumption':
-            domain.append(('consumption_alert', '=', 'high'))
-        elif anomaly_filter == 'negative_consumption':
-            domain.append(('consumption_alert', '=', 'negative'))
-        elif anomaly_filter == 'zero_consumption':
-            domain.append(('consumption_alert', '=', 'zero'))
-        elif anomaly_filter == 'image_issues':
-            domain.append(('image_state', 'in', ['not_clear', 'not_same', 'none', 'loss_read']))
-        elif anomaly_filter == 'anomalies':
-            domain.append('|')
-            domain.append(('consumption_alert', '!=', 'normal'))
-            domain.append(('image_state', 'in', ['not_clear', 'not_same', 'none', 'loss_read']))
-
-        # 6. البحث النصي السريع (Debounce Search)
-        if search and search.strip():
-            term = search.strip()
-            domain.append('|')
-            domain.append('|')
-            domain.append(('meter_id.meter_number', 'ilike', term))
-            domain.append(('account_id.name', 'ilike', term))
-            domain.append(('account_id.subscriber_code', 'ilike', term))
+        domain = self._build_reading_review_domain(
+            user,
+            period_id=period_id,
+            region_id=region_id,
+            batch_id=batch_id,
+            status=status,
+            anomaly_filter=anomaly_filter,
+            review_tab=review_tab,
+            search=search,
+        )
 
         # معالجة خاصة لتبويب الاستبدال (Meter Replacement Pair View)
         if review_tab == 'replacements':
@@ -218,13 +247,6 @@ class UtilityReadingReviewService(models.AbstractModel):
         # 7. جلب عدد السجلات الإجمالي والمجموعة الحالية المفهرسة
         total_count = Reading.search_count(domain)
         readings = Reading.search(domain, offset=offset, limit=limit, order='reading_date desc, id desc')
-
-        # حساب الإحصائيات الشاملة لطابور العمل (Queue Statistics Summary)
-        base_stats_domain = [d for d in domain if d[0] != 'state' and not (isinstance(d, tuple) and d[0] == 'rejection_reason')]
-        pending_count = Reading.search_count(base_stats_domain + [('state', '=', 'under_review')])
-        approved_count = Reading.search_count(base_stats_domain + [('state', '=', 'approved')])
-        rejected_count = Reading.search_count(base_stats_domain + [('state', '=', 'draft'), ('rejection_reason', '!=', False)])
-        exceptions_count = Reading.search_count(base_stats_domain + ['|', ('state', '=', 'error'), ('image_state', 'in', ['not_clear', 'not_same', 'none', 'loss_read'])])
 
         items = [self._build_reading_item(r) for r in readings]
 
@@ -241,13 +263,12 @@ class UtilityReadingReviewService(models.AbstractModel):
                 'pages': pages_count,
                 'offset': offset,
             },
-            'stats': {
-                'pending': pending_count,
-                'approved': approved_count,
-                'rejected': rejected_count,
-                'exceptions': exceptions_count,
-            }
         }
+        if include_stats:
+            res['stats'] = self._compute_review_stats(domain)
+        else:
+            res['stats'] = {}
+        return res
 
     def _get_replacements_queue(self, region_id=False, offset=0):
         """Build replacement pair review queue with 20 operations/page."""
@@ -311,12 +332,7 @@ class UtilityReadingReviewService(models.AbstractModel):
                 'pages': pages_count,
                 'offset': offset,
             },
-            'stats': {
-                'pending': Reading.search_count([('state', '=', 'under_review')]),
-                'approved': Reading.search_count([('state', '=', 'approved')]),
-                'rejected': Reading.search_count([('state', '=', 'draft'), ('rejection_reason', '!=', False)]),
-                'exceptions': Reading.search_count(['|', ('state', '=', 'error'), ('image_state', 'in', ['not_clear', 'not_same', 'none', 'loss_read'])]),
-            }
+            'stats': self._compute_review_stats([]),
         }
 
     def _check_geographic_access(self, readings, user):

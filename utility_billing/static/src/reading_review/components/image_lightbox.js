@@ -1,6 +1,6 @@
 /** @odoo-module **/
 
-import { Component, useState, onMounted, onWillUnmount } from "@odoo/owl";
+import { Component, useState, onMounted, onWillUnmount, onWillUpdateProps } from "@odoo/owl";
 
 export class ReadingImageLightbox extends Component {
     setup() {
@@ -11,13 +11,19 @@ export class ReadingImageLightbox extends Component {
         });
 
         this.handleKeyDown = this.handleKeyDown.bind(this);
+        this._prefetched = new Set();
 
         onMounted(() => {
             window.addEventListener("keydown", this.handleKeyDown);
+            this.prefetchNeighborImages(this.props);
         });
 
         onWillUnmount(() => {
             window.removeEventListener("keydown", this.handleKeyDown);
+        });
+
+        onWillUpdateProps((nextProps) => {
+            this.prefetchNeighborImages(nextProps);
         });
     }
 
@@ -69,6 +75,39 @@ export class ReadingImageLightbox extends Component {
         this.resetTransform();
     }
 
+    _prefetchUrl(url) {
+        if (!url || this._prefetched.has(url)) {
+            return;
+        }
+        this._prefetched.add(url);
+        const img = new Image();
+        img.src = url;
+    }
+
+    prefetchNeighborImages(props) {
+        const items = props.items || [];
+        if (!items.length || !props.reading) {
+            return;
+        }
+
+        let idx = Number.isInteger(props.currentIndex) ? props.currentIndex : items.findIndex((item) => item.id === props.reading.id);
+        if (idx < 0) {
+            idx = items.findIndex((item) => item.id === props.reading.id);
+        }
+
+        const candidateIndexes = [idx, idx - 1, idx + 1, idx - 2, idx + 2];
+        for (const candidate of candidateIndexes) {
+            if (candidate < 0 || candidate >= items.length) {
+                continue;
+            }
+            const reading = items[candidate];
+            if (!reading || !reading.review_url) {
+                continue;
+            }
+            this._prefetchUrl(reading.review_url);
+        }
+    }
+
     getImageUrl() {
         const r = this.props.reading;
         if (!r) return '';
@@ -84,6 +123,8 @@ export class ReadingImageLightbox extends Component {
 ReadingImageLightbox.template = "utility_billing.ReadingImageLightbox";
 ReadingImageLightbox.props = {
     reading: Object,
+    items: { type: Array, optional: true },
+    currentIndex: { type: Number, optional: true },
     onClose: Function,
     onNext: Function,
     onPrevious: Function,

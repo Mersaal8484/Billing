@@ -129,7 +129,7 @@
                         </button>
 
                         <!-- Refresh Button -->
-                        <button type="button" class="btn btn-sm btn-outline-secondary px-3" t-on-click="() => this.loadQueue(this.state.pagination.offset)" title="تحديث القائمة">
+                        <button type="button" class="btn btn-sm btn-outline-secondary px-3" t-on-click="() => this.loadQueue(this.state.pagination.offset, true)" title="تحديث القائمة">
                             <i class="fa fa-refresh" t-att-class="state.loading ? 'fa-spin' : ''"/>
                         </button>
                     </div>
@@ -395,7 +395,7 @@
                 <ReadingRejectionDialog reading="state.activeRejectionReading" onConfirm="onConfirmRejection.bind(this)" onCancel="onCloseRejectionDialog.bind(this)"/>
             </t>
             <t t-if="state.activeLightboxReading">
-                <ReadingImageLightbox reading="state.activeLightboxReading" onClose="onCloseLightbox.bind(this)" onNext="onNextLightboxReading.bind(this)" onPrevious="onPreviousLightboxReading.bind(this)" onApprove="onApproveRow.bind(this)" onReject="onRejectRow.bind(this)"/>
+                <ReadingImageLightbox reading="state.activeLightboxReading" items="state.items" currentIndex="state.activeLightboxIndex" onClose="onCloseLightbox.bind(this)" onNext="onNextLightboxReading.bind(this)" onPrevious="onPreviousLightboxReading.bind(this)" onApprove="onApproveRow.bind(this)" onReject="onRejectRow.bind(this)"/>
             </t>
         </div>
     </t>

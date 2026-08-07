@@ -163,17 +163,7 @@
         <record id="utility_reading_auditor_region_rule" model="ir.rule">
             <field name="name">Reading Auditor Geographic Region Rule</field>
             <field name="model_id" ref="utility_core.model_utility_reading"/>
-            <field name="domain_force">
-                [(1, '=', 1)] if user.has_group('utility_core.group_utility_admin')
-                else [
-                    '|',
-                    ('account_id.region_id', 'in', user.assigned_region_ids.ids),
-                    '&amp;',
-                    ('account_id', '=', False),
-                    ('meter_id.region_id', 'in', user.assigned_region_ids.ids),
-                ] if user.assigned_region_ids
-                else [('id', '=', False)]
-            </field>
+            <field name="domain_force">[(1, '=', 1)] if user.has_group('utility_core.group_utility_admin') else ([ '|', ('account_id.region_id', 'in', user.assigned_region_ids.ids), '&amp;', ('account_id', '=', False), ('meter_id.region_id', 'in', user.assigned_region_ids.ids)] if user.assigned_region_ids else [('id', '=', False)])</field>
             <field name="groups" eval="[(4, ref('group_utility_auditor'))]"/>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="False"/>

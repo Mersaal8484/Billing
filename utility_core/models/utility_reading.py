@@ -186,6 +186,14 @@ class UtilityReading(models.Model):
             ON utility_reading (meter_id, reading_date DESC)
         """)
         self.env.cr.execute("""
+            CREATE INDEX IF NOT EXISTS utility_reading_review_state_billable_date_idx
+            ON utility_reading (state, is_billable, reading_date DESC, id DESC)
+        """)
+        self.env.cr.execute("""
+            CREATE INDEX IF NOT EXISTS utility_reading_review_state_image_date_idx
+            ON utility_reading (state, image_state, reading_date DESC, id DESC)
+        """)
+        self.env.cr.execute("""
             UPDATE utility_reading reading
                SET account_id = meter.customer_id
               FROM utility_meter meter

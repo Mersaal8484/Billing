@@ -36,7 +36,12 @@ class UtilityMediaController(http.Controller):
             _logger.warning("Unauthorized media access attempt for asset %s by user %s", asset_uuid, request.env.user.id)
             return Response("Access Denied", status=403)
 
-        # 2. استرجاع البيانات الثنائية عبر Media Service
+        # 2. إعداد ترويسات التخزين المؤقت وحماية الأداء قبل أي استرجاع ثنائي
+        etag = f'"{asset.asset_uuid}-{variant}-v{asset.revision}"'
+        if request.httprequest.headers.get('If-None-Match') == etag:
+            return Response(status=304)
+
+        # 3. استرجاع البيانات الثنائية عبر Media Service
         media_service = request.env['utility.media.service'].sudo()
         raw_bytes = media_service.retrieve_media(asset, variant=variant)
 
@@ -49,15 +54,10 @@ class UtilityMediaController(http.Controller):
         if not raw_bytes:
             return Response("Media content unavailable", status=404)
 
-        # 3. إعداد ترويسات التخزين المؤقت وحماية الأداء (ETag Caching Header)
-        etag = f'"{asset.asset_uuid}-{variant}-v{asset.revision}"'
-        if request.httprequest.headers.get('If-None-Match') == etag:
-            return Response(status=304)
-
         headers = [
             ('Content-Type', asset.mime_type or 'image/jpeg'),
             ('Content-Length', len(raw_bytes)),
-            ('Cache-Control', 'public, max-age=86400'),
+            ('Cache-Control', 'private, max-age=86400'),
             ('ETag', etag),
         ]
         return request.make_response(raw_bytes, headers=headers)

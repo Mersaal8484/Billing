@@ -134,9 +134,10 @@ class TestUtilityReadingReview(TransactionCase):
         self.assertEqual(res_p1['pagination']['pages'], 2)
 
         res_p2 = self.ReadingReviewService.get_review_queue(
-            period_id=self.test_period.id, status='under_review', offset=40, limit=40)
+            period_id=self.test_period.id, status='under_review', offset=40, limit=40, include_stats=False)
         self.assertEqual(len(res_p2['items']), 5)
         self.assertEqual(res_p2['pagination']['page'], 2)
+        self.assertEqual(res_p2['stats'], {})
 
     def test_02_action_approve_review(self):
         """2. Approve a reading via Review Service."""

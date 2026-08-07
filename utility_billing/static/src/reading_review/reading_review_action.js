@@ -35,6 +35,7 @@ export class ReadingReviewWorkspaceAction extends Component {
                 batches: [],
             },
             activeLightboxReading: null,
+            activeLightboxIndex: -1,
             activeRejectionReading: null,
             fastReviewMode: false,
             selectedIds: [],
@@ -44,8 +45,7 @@ export class ReadingReviewWorkspaceAction extends Component {
 
         onWillStart(async () => {
             this.applyActionContext();
-            await this.loadMasterData();
-            await this.loadQueue();
+            await Promise.all([this.loadMasterData(), this.loadQueue(0, true)]);
         });
 
         onMounted(() => {});
@@ -62,9 +62,11 @@ export class ReadingReviewWorkspaceAction extends Component {
 
     async loadMasterData() {
         try {
-            const periods = await this.orm.searchRead("date.range", [["work_type", "=", "readings"]], ["id", "name"], { limit: 50, order: "date_start desc" });
-            const regions = await this.orm.searchRead("utility.region", [], ["id", "name"], { limit: 100 });
-            const batches = await this.orm.searchRead("utility.reading.batch", [["state", "!=", "draft"]], ["id", "name"], { limit: 100, order: "id desc" });
+            const [periods, regions, batches] = await Promise.all([
+                this.orm.searchRead("date.range", [["work_type", "=", "readings"]], ["id", "name"], { limit: 50, order: "date_start desc" }),
+                this.orm.searchRead("utility.region", [], ["id", "name"], { limit: 100 }),
+                this.orm.searchRead("utility.reading.batch", [["state", "!=", "draft"]], ["id", "name"], { limit: 100, order: "id desc" }),
+            ]);
 
             this.state.masterData.periods = periods;
             this.state.masterData.regions = regions;
@@ -74,7 +76,7 @@ export class ReadingReviewWorkspaceAction extends Component {
         }
     }
 
-    async loadQueue(offset = 0) {
+    async loadQueue(offset = 0, includeStats = false) {
         this.state.loading = true;
         try {
             const res = await this.orm.call("utility.reading.review.service", "get_review_queue", [], {
@@ -87,13 +89,20 @@ export class ReadingReviewWorkspaceAction extends Component {
                 search: this.state.filters.search,
                 offset: offset,
                 limit: parseInt(this.state.filters.page_size) || 40,
+                include_stats: includeStats,
             });
 
             this.state.items = res.items;
             this.state.isReplacementTab = !!res.is_replacement_tab;
             this.state.pagination = res.pagination;
-            this.state.stats = res.stats;
+            if (includeStats && res.stats) {
+                this.state.stats = res.stats;
+            }
             this.state.selectedIds = [];
+            if (!this.state.items.length) {
+                this.state.activeLightboxIndex = -1;
+                this.state.activeLightboxReading = null;
+            }
         } catch (e) {
             this.notification.add(_t("خطأ أثناء جلب قائمة مراجعة القراءات: ") + (e.message || e), { type: "danger" });
         } finally {
@@ -103,7 +112,7 @@ export class ReadingReviewWorkspaceAction extends Component {
 
     onSelectTab(tabName) {
         this.state.filters.review_tab = tabName;
-        this.loadQueue(0);
+        this.loadQueue(0, true);
     }
 
     async onApproveReplacementPair(replItem) {
@@ -124,7 +133,7 @@ export class ReadingReviewWorkspaceAction extends Component {
     }
 
     onFilterChange() {
-        this.loadQueue(0);
+        this.loadQueue(0, true);
     }
 
     onSearchInput(ev) {
@@ -133,7 +142,7 @@ export class ReadingReviewWorkspaceAction extends Component {
             clearTimeout(this.debounceSearchTimeout);
         }
         this.debounceSearchTimeout = setTimeout(() => {
-            this.loadQueue(0);
+            this.loadQueue(0, true);
         }, 300);
     }
 
@@ -205,10 +214,12 @@ export class ReadingReviewWorkspaceAction extends Component {
 
     onOpenLightbox(reading) {
         this.state.activeLightboxReading = reading;
+        this.state.activeLightboxIndex = this.state.items.findIndex(r => r.id === reading.id);
     }
 
     onCloseLightbox() {
         this.state.activeLightboxReading = null;
+        this.state.activeLightboxIndex = -1;
     }
 
     onNextLightboxReading() {
@@ -216,6 +227,7 @@ export class ReadingReviewWorkspaceAction extends Component {
         const idx = this.state.items.findIndex(r => r.id === this.state.activeLightboxReading.id);
         if (idx !== -1 && idx < this.state.items.length - 1) {
             this.state.activeLightboxReading = this.state.items[idx + 1];
+            this.state.activeLightboxIndex = idx + 1;
         }
     }
 
@@ -224,6 +236,7 @@ export class ReadingReviewWorkspaceAction extends Component {
         const idx = this.state.items.findIndex(r => r.id === this.state.activeLightboxReading.id);
         if (idx > 0) {
             this.state.activeLightboxReading = this.state.items[idx - 1];
+            this.state.activeLightboxIndex = idx - 1;
         }
     }
 
@@ -253,7 +266,7 @@ export class ReadingReviewWorkspaceAction extends Component {
 
             if (res.status === "success") {
                 this.notification.add(_t("تم الاعتماد الجملي بنجاح لـ ") + res.count + _t(" قراءة."), { type: "success" });
-                await this.loadQueue(this.state.pagination.offset);
+                await this.loadQueue(this.state.pagination.offset, false);
             } else {
                 this.notification.add(res.message || _t("تعذر الاعتماد الجملي"), { type: "warning" });
             }
@@ -265,7 +278,7 @@ export class ReadingReviewWorkspaceAction extends Component {
     changePage(newPage) {
         if (newPage < 1 || newPage > this.state.pagination.pages) return;
         const newOffset = (newPage - 1) * this.state.pagination.page_size;
-        this.loadQueue(newOffset);
+        this.loadQueue(newOffset, false);
     }
 }
 
