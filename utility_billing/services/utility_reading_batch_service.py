@@ -12,89 +12,118 @@ class UtilityReadingBatchService(models.AbstractModel):
 
     @api.model
     def process_batch(self, batch_id, chunk_size=500):
-        """معالجة دفعة قراءات بشكل مجزأ (Chunked Batch Processing) مع عزل الأخطاء وتوثيق الأصول الرقمية"""
+        """معالجة أسطر الدفعة بشكل مجزأ (Chunked Persistent Lines) مع عزل الأخطاء ومعالجة الأسطر المعلقة/الفاشلة فقط عند إعادة المحاولة"""
         batch = self.env['utility.reading.batch'].sudo().browse(batch_id)
         if not batch or not batch.exists():
             raise ValidationError(_("دفعة القراءات غير موجودة."))
 
-        _logger.info("Starting service batch processing for batch %s (Chunk Size: %d)", batch.name, chunk_size)
+        _logger.info("Starting persistent line batch processing for batch %s", batch.name)
 
         batch.write({
             'state': 'processing',
         })
 
-        data_json = batch._get_parsed_json_data()
-        readings_raw = data_json.get('readings', []) if isinstance(data_json, dict) else []
+        # 1. إنشاء الأسطر التفصيلية المستمرة (utility.reading.batch.line) إذا لم تكن موجودة بعد
+        if not batch.line_ids:
+            data_json = batch._get_parsed_json_data()
+            readings_raw = data_json.get('readings', []) if isinstance(data_json, dict) else []
+            if not readings_raw:
+                batch.write({
+                    'state': 'error',
+                    'error_log': _("الملف المرفق لا يحتوي على قائمة قراءات صالحة (readings)."),
+                })
+                return {'status': 'failed', 'reason': 'empty_data'}
 
-        if not readings_raw:
-            batch.write({
-                'state': 'error',
-                'error_log': _("الملف المرفق لا يحتوي على قائمة قراءات صالحة (readings)."),
-            })
-            return {'status': 'failed', 'reason': 'empty_data'}
+            line_vals = []
+            for item in readings_raw:
+                line_vals.append({
+                    'batch_id': batch.id,
+                    'seq': item.get('seq', 1),
+                    'meter_number': item.get('meter_number'),
+                    'reading_value': item.get('reading_value', 0.0),
+                    'reading_date': item.get('reading_date') or fields.Datetime.now(),
+                    'reading_category': item.get('reading_category', 'customer'),
+                    'image_filename': item.get('image_filename'),
+                    'state': 'pending',
+                })
+            self.env['utility.reading.batch.line'].sudo().create(line_vals)
 
-        # 1. البحث في الأصول الرقمية المرفوعة بدفعة القراءات (utility.media.asset)
+        # 2. البحث في الأصول الرقمية والمرفقات لتحديد الوسائط
         media_assets = self.env['utility.media.asset'].sudo().search([
             ('batch_id', '=', batch.id),
             ('asset_type', '=', 'meter_reading'),
         ])
         media_assets_by_name = {asset.original_filename: asset for asset in media_assets}
-
-        # 2. التوافقية السابقة: البحث في مرفقات ir.attachment الدفعة
         legacy_attachments = {att.name: att for att in batch.image_ids}
-        
-        success_count = 0
-        error_count = 0
-        logs = []
 
-        # معالجة القراءات مجزأة بحجم chunk_size
-        total_items = len(readings_raw)
-        for i in range(0, total_items, chunk_size):
-            chunk = readings_raw[i:i + chunk_size]
-            _logger.info("Processing batch %s chunk %d to %d of %d", batch.name, i, i + len(chunk), total_items)
-            
-            for item in chunk:
+        # 3. اختيار الأسطر التي تحتاج المعالجة فقط (pending أو failed) — يتجاوز الأسطر المكتملة بنجاح (done)
+        pending_lines = batch.line_ids.filtered(lambda l: l.state in ('pending', 'failed'))
+        _logger.info("Batch %s has %d lines pending/failed to process out of %d total lines",
+                     batch.name, len(pending_lines), len(batch.line_ids))
+
+        # معالجة مجزأة بحجم chunk_size
+        total_pending = len(pending_lines)
+        for i in range(0, total_pending, chunk_size):
+            chunk = pending_lines[i:i + chunk_size]
+            for line in chunk:
                 try:
-                    res = self._process_single_reading_item(batch, item, media_assets_by_name, legacy_attachments)
+                    res = self._process_single_batch_line(batch, line, media_assets_by_name, legacy_attachments)
                     if res.get('success'):
-                        success_count += 1
+                        line.write({
+                            'state': 'done',
+                            'reading_id': res.get('reading_id'),
+                            'error_message': False,
+                        })
                     else:
-                        error_count += 1
-                        logs.append(res.get('error', _('خطأ غير معروف')))
+                        line.write({
+                            'state': 'failed',
+                            'error_message': res.get('error', _('خطأ غير معروف')),
+                        })
                 except Exception as e:
-                    error_count += 1
-                    error_msg = f"متر {item.get('meter_number', 'N/A')}: {str(e)}"
-                    logs.append(error_msg)
-                    _logger.error("Single reading item processing error: %s", error_msg)
+                    error_msg = str(e)
+                    line.write({
+                        'state': 'failed',
+                        'error_message': error_msg,
+                    })
+                    _logger.error("Single batch line processing error: %s", error_msg)
 
-        # حساب الحالة النهائية الصالحة (done / partial / error)
-        if success_count > 0 and error_count > 0:
-            final_state = 'partial'
-        elif success_count > 0:
+        # 4. تحديث حالة الدفعة الكلية من واقع كافّة الأسطر (done / partial / error)
+        all_lines = batch.line_ids
+        done_count = len(all_lines.filtered(lambda l: l.state == 'done'))
+        failed_count = len(all_lines.filtered(lambda l: l.state == 'failed'))
+        total_count = len(all_lines)
+
+        if done_count == total_count and total_count > 0:
             final_state = 'done'
+        elif done_count > 0:
+            final_state = 'partial'
         else:
             final_state = 'error'
 
-        log_text = "\n".join(logs) if logs else _("تمت المعالجة بنجاح دون أخطاء.")
+        failed_messages = [f"متر {l.meter_number}: {l.error_message}" for l in all_lines if l.state == 'failed']
+        log_text = "\n".join(failed_messages) if failed_messages else _("تمت المعالجة بنجاح دون أخطاء.")
 
         batch.write({
             'state': final_state,
-            'processed_count': success_count,
-            'error_count': error_count,
+            'total_readings': total_count,
+            'processed_count': done_count,
+            'error_count': failed_count,
             'error_log': log_text,
         })
 
-        _logger.info("Completed batch processing %s: %d success, %d errors, state: %s", batch.name, success_count, error_count, final_state)
+        _logger.info("Completed batch processing %s: %d done, %d failed out of %d, state: %s",
+                     batch.name, done_count, failed_count, total_count, final_state)
+
         return {
             'status': 'completed',
-            'success_count': success_count,
-            'error_count': error_count,
+            'success_count': done_count,
+            'error_count': failed_count,
             'final_state': final_state,
         }
 
     @api.model
-    def _process_single_reading_item(self, batch, item, media_assets_by_name, legacy_attachments):
-        meter_number = item.get('meter_number')
+    def _process_single_batch_line(self, batch, line, media_assets_by_name, legacy_attachments):
+        meter_number = line.meter_number
         if not meter_number:
             return {'success': False, 'error': _("رمز العداد غير موجود في السجل.")}
 
@@ -110,9 +139,9 @@ class UtilityReadingBatchService(models.AbstractModel):
         if not customer:
             return {'success': False, 'error': _("العداد %s غير مرتبط بمشترك/حساب.") % meter_number}
 
-        reading_value = item.get('reading_value', 0.0)
-        reading_date = item.get('reading_date') or fields.Datetime.now()
-        image_filename = item.get('image_filename')
+        reading_value = line.reading_value
+        reading_date = line.reading_date or fields.Datetime.now()
+        image_filename = line.image_filename
 
         # معالجة الصورة الرقمية عبر Media Service أو المرفقات السابقة
         media_asset = False
@@ -132,7 +161,7 @@ class UtilityReadingBatchService(models.AbstractModel):
                 except Exception as e:
                     _logger.warning("Could not store media asset for %s: %s", image_filename, str(e))
 
-        reading_state = 'under_review' if (media_asset or item.get('has_anomaly')) else 'approved'
+        reading_state = 'under_review' if media_asset else 'approved'
         reading_vals = {
             'meter_id': meter.id,
             'account_id': customer.id,

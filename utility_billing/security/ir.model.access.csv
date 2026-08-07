@@ -24,6 +24,8 @@ access_sale_workflow_process_all,sale.workflow.process.all,model_sale_workflow_p
 access_automatic_workflow_job_all,automatic.workflow.job.all,model_automatic_workflow_job,base.group_system,1,1,1,1
 admin_reading_batch,utility.reading.batch.admin,model_utility_reading_batch,base.group_system,1,1,1,1
 billing_manager_reading_batch,utility.reading.batch.billing_manager,model_utility_reading_batch,utility_core.group_utility_billing_manager,1,1,1,1
+admin_reading_batch_line,utility.reading.batch.line.admin,model_utility_reading_batch_line,base.group_system,1,1,1,1
+billing_manager_reading_batch_line,utility.reading.batch.line.billing_manager,model_utility_reading_batch_line,utility_core.group_utility_billing_manager,1,1,1,1
 technician_reading_batch,utility.reading.batch.technician,model_utility_reading_batch,utility_core.group_utility_technician,1,1,1,0
 supervisor_reading_batch,utility.reading.batch.supervisor,model_utility_reading_batch,utility_core.group_utility_supervisor,1,1,0,0
 auditor_reading_batch,utility.reading.batch.auditor,model_utility_reading_batch,utility_core.group_utility_auditor,1,0,0,0

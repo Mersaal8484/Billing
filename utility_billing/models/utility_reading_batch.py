@@ -48,6 +48,8 @@ class UtilityReadingBatch(models.Model):
     error_log = fields.Text('سجل الأخطاء', readonly=True)
     reading_ids = fields.One2many('utility.reading', 'batch_id',
                                   string='القراءات المُنشأة')
+    line_ids = fields.One2many('utility.reading.batch.line', 'batch_id',
+                               string='أسطر الدفعة التفصيلية')
 
     state = fields.Selection([
         ('uploaded', 'تم الرفع'),
@@ -110,8 +112,8 @@ class UtilityReadingBatch(models.Model):
                     ) % (batch.region_id.recurring_rule_type, period.billing_cadence))
                 if period.region_ids and batch.region_id not in period.region_ids:
                     raise ValidationError(_(
-                        'المنطقة المحدد للدفعة (%s) غير مشمولة في نطاق مناطق هذه الفترة.'
-                    ) % batch.region_id.name)
+                        'منطقة الدفعة (%s) غير مشمولة في نطاق هذه الفترة (%s).'
+                    ) % (batch.region_id.name, ", ".join(period.region_ids.mapped('name'))))
 
             if period.reading_window_end and batch.upload_date and batch.upload_date > period.reading_window_end:
                 raise ValidationError(_(
@@ -127,11 +129,18 @@ class UtilityReadingBatch(models.Model):
         return super().create(vals_list)
 
     def action_confirm(self):
-        """تأكيد اكتمال الرفع — تفويض المعالجة عبر أمر Workflow Command وحماية التكرار READING-BATCH:{batch_uuid}"""
+        """تأكيد اكتمال الرفع — تفويض المعالجة عبر أمر Workflow Command مع فحص مفتاح عدم التكرار أولاً"""
         for batch in self:
+            cmd_key = f"READING-BATCH:{batch.batch_uuid}"
+            cmd_model = self.env['utility.workflow.command'].sudo()
+            existing = cmd_model.search([('idempotency_key', '=', cmd_key)], limit=1)
+            if existing and existing.state == 'executed':
+                _logger.info("Batch confirmation already executed for key %s", cmd_key)
+                return existing.result_summary
+
             if batch.state != 'uploaded':
                 raise ValidationError(_('يمكن تأكيد الدفعات التي بحالة "تم الرفع" فقط!'))
-            if not batch.data_file:
+            if not batch.data_file and not batch.line_ids:
                 raise ValidationError(_('لم يتم رفع ملف البيانات (JSON)!'))
 
             self.env['utility.workflow.service'].sudo().dispatch_batch_command(
@@ -140,8 +149,12 @@ class UtilityReadingBatch(models.Model):
             )
 
     def action_reset_to_uploaded(self):
-        """إعادة الدفعة إلى حالة تم الرفع لمحاولة المعالجة مرة أخرى مع زيادة retry_count"""
+        """إعادة الدفعة إلى حالة تم الرفع لمحاولة المعالجة مرة أخرى مع زيادة retry_count وفرض الحد الأقصى (3 محاولات)"""
+        MAX_BATCH_RETRIES = 3
         for batch in self:
+            if batch.retry_count >= MAX_BATCH_RETRIES:
+                raise ValidationError(_("تجاوزت الدفعة الحد الأقصى المسموح لإعادة المحاولة (3 محاولات)."))
+
             if batch.state not in ('error', 'partial'):
                 raise ValidationError(_('يمكن إعادة المحاولة فقط للدفعات بحالة خطأ أو مكتمل جزئياً!'))
             new_retry = batch.retry_count + 1
