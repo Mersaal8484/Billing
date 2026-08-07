@@ -483,6 +483,7 @@ class DateRange(models.Model):
         Context bypass: _bypass_period_scope_protection يُستخدم داخلياً فقط
         من action_open_reading() للـ Final Sync قبل التجميد.
         """
+        vals = dict(vals)
         scope_changed = set(vals.keys()) & self._SCOPE_PROTECTED_FIELDS
         if scope_changed and not self.env.context.get('_bypass_period_scope_protection'):
             for rec in self:
@@ -496,16 +497,20 @@ class DateRange(models.Model):
                         ', '.join(sorted(scope_changed)),
                         dict(PERIOD_STATE_SELECTION).get(rec.state, rec.state),
                     ))
-        # Auto-sync region_ids when billing_cadence changes on planned reading periods
-        if 'billing_cadence' in vals:
-            planned_readings = self.filtered(
-                lambda r: r.state == 'planned' and r.period_role == 'reading'
-            )
-            if planned_readings:
-                new_cadence = vals['billing_cadence']
+        planned_readings = self.filtered(
+            lambda r: r.state == 'planned' and r.period_role == 'reading'
+        )
+        if planned_readings:
+            if 'billing_cadence' in vals or 'region_ids' in vals:
+                new_cadence = vals.get('billing_cadence', planned_readings[0].billing_cadence)
                 regions = planned_readings[0]._get_regions_for_billing_cadence(new_cadence)
-                if regions:
-                    vals['region_ids'] = [(6, 0, regions.ids)]
+                vals['region_ids'] = [(6, 0, regions.ids)]
+        payment_periods = self.filtered(lambda r: r.period_role == 'payment' and 'reading_period_id' in vals)
+        if payment_periods:
+            reading_period = self.env['date.range'].browse(vals['reading_period_id']).exists()
+            if reading_period:
+                vals['billing_cadence'] = reading_period.billing_cadence
+                vals['region_ids'] = [(6, 0, reading_period.region_ids.ids)]
         return super().write(vals)
 
     # ===== Audit Helper =====

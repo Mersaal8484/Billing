@@ -175,6 +175,36 @@ class TestUtilityMediaAsset(TransactionCase):
         )
         self.assertTrue(asset.check_user_access_security(self.env.user))
 
+    def test_05b_user_media_access_default_deny_when_region_unresolved(self):
+        """5b. الأصل الرقمي المرتبط بقراءة بلا منطقة قابلة للحل يجب أن يُرفض."""
+        customer = self.Customer.create({
+            'name': 'مشترك وسائط بلا منطقة',
+            'customer_number': 'CUST-MEDIA-NOREG',
+        })
+        meter = self.Meter.create({
+            'meter_number': 'MTR-MEDIA-NOREG',
+            'customer_id': customer.id,
+        })
+        reading = self.env['utility.reading'].create({
+            'meter_id': meter.id,
+            'account_id': customer.id,
+            'reading_value': 88.0,
+        })
+        asset = self.MediaService.store_media(
+            file_data=self.sample_bytes,
+            filename="security_default_deny.jpg",
+            mimetype="image/png",
+            reading_id=reading.id,
+        )
+        scoped_user = self.env['res.users'].with_context(no_reset_password=True).create({
+            'name': 'مستخدم وسائط مقيد',
+            'login': 'media.scope.05b@example.com',
+            'email': 'media.scope.05b@example.com',
+            'assigned_region_ids': [(6, 0, [self.region.id])],
+        })
+        with self.assertRaises(AccessError):
+            asset.check_user_access_security(scoped_user)
+
     def test_06_duplicate_confirm_returns_previous_command_result_without_validation_error(self):
         """6. اختبار أن التأكيد المزدوج يعيد نتيجة الأمر السابق دون رفع ValidationError"""
         period = self.DateRange.create({

@@ -273,12 +273,9 @@
 
                     <notebook>
                         <page string="المناطق المشتركة">
-                            <field name="region_ids" widget="many2many_tags" options="{'no_create': True}"
-                                   attrs="{'readonly': [('period_role', '=', 'payment')]}"/>
-                            <div class="text-muted mt-2"
-                                 attrs="{'invisible': [('period_role', '!=', 'payment')]}"
-                            >
-                                <i class="fa fa-info-circle"/> المناطق snapshot من فترة القراءة المرتبطة — تعديلها يدوياً غير مسموح.
+                            <field name="region_ids" widget="many2many_tags" options="{'no_create': True}" readonly="1"/>
+                            <div class="text-muted mt-2">
+                                <i class="fa fa-info-circle"/> المناطق snapshot مشتقة تلقائياً من الدورية أو من فترة القراءة المرتبطة، وتعديلها يدوياً غير مسموح.
                             </div>
                         </page>
 

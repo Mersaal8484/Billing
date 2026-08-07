@@ -135,7 +135,9 @@ class UtilityMediaAsset(models.Model):
             elif reading.meter_id.feeder_id and hasattr(reading.meter_id.feeder_id, 'region_id'):
                 region = reading.meter_id.feeder_id.region_id
 
-        if region and region not in regions:
+        if not region:
+            raise AccessError(_("عذراً، تعذّر تحديد المنطقة التشغيلية لهذا الأصل الرقمي."))
+
+        if region not in regions:
             raise AccessError(_("عذراً، ليس لديك صلاحية للوصول لوسائط المنطقة التشغيلية المحددة."))
         return True
-

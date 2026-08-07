@@ -27,6 +27,12 @@ class TestUtilityPeriodManagement(TransactionCase):
             'type': 'region',
             'recurring_rule_type': 'monthly',
         })
+        self.region_monthly_2 = self.Region.create({
+            'name': 'منطقة عدن (شهري)',
+            'code': 'ADEN_M',
+            'type': 'region',
+            'recurring_rule_type': 'monthly',
+        })
         self.region_semi = self.Region.create({
             'name': 'منطقة تعز (نصف شهري)',
             'code': 'TAIZ_S',
@@ -874,15 +880,38 @@ class TestUtilityPeriodManagement(TransactionCase):
             'region_ids': [(6, 0, [self.region_monthly.id])],
             'state': 'planned',
         })
-        # monthly cadence should include only region_monthly
-        self.assertEqual(len(period.region_ids), 1)
+        # monthly cadence should include all monthly regions, not only the partial input
+        self.assertEqual(
+            set(period.region_ids.ids),
+            {self.region_monthly.id, self.region_monthly_2.id}
+        )
         self.assertIn(self.region_monthly, period.region_ids)
+        self.assertIn(self.region_monthly_2, period.region_ids)
 
-    def test_39_planned_write_billing_cadence_auto_syncs_regions(self):
+    def test_39_planned_write_region_ids_is_ignored_and_rederived(self):
+        """39. Planned Reading write with explicit region_ids input → system re-derives all cadence regions."""
+        period = self.DateRange.create({
+            'name': 'فترة للاختبار 39 — Write Regions',
+            'period_code': 'R-WREG-39',
+            'period_role': 'reading',
+            'billing_cadence': 'monthly',
+            'state': 'planned',
+        })
+        self.assertEqual(
+            set(period.region_ids.ids),
+            {self.region_monthly.id, self.region_monthly_2.id}
+        )
+        period.write({'region_ids': [(6, 0, [self.region_monthly.id])]})
+        self.assertEqual(
+            set(period.region_ids.ids),
+            {self.region_monthly.id, self.region_monthly_2.id}
+        )
+
+    def test_40_planned_write_billing_cadence_auto_syncs_regions(self):
         """39. Planned Reading write billing_cadence monthly→semi_monthly → region_ids auto-changed."""
         period = self.DateRange.create({
-            'name': 'فترة للاختبار 39 — Write Cadence',
-            'period_code': 'R-WCAD-39',
+            'name': 'فترة للاختبار 40 — Write Cadence',
+            'period_code': 'R-WCAD-40',
             'period_role': 'reading',
             'billing_cadence': 'monthly',
             'region_ids': [(6, 0, [self.region_monthly.id])],
@@ -896,11 +925,11 @@ class TestUtilityPeriodManagement(TransactionCase):
         self.assertIn(self.region_semi, period.region_ids)
         self.assertNotIn(self.region_monthly, period.region_ids)
 
-    def test_40_payment_create_overrides_wrong_regions_from_reading(self):
-        """40. Payment create with wrong region_ids/cadence → overridden from reading_period_id."""
+    def test_41_payment_create_overrides_wrong_regions_from_reading(self):
+        """41. Payment create with wrong region_ids/cadence → overridden from reading_period_id."""
         reading_period = self.DateRange.create({
-            'name': 'فترة قراءة 40',
-            'period_code': 'R-PAY-40',
+            'name': 'فترة قراءة 41',
+            'period_code': 'R-PAY-41',
             'period_role': 'reading',
             'billing_cadence': 'monthly',
             'region_ids': [(6, 0, [self.region_monthly.id])],
@@ -908,8 +937,8 @@ class TestUtilityPeriodManagement(TransactionCase):
         })
         # Create payment with intentionally wrong values
         payment = self.DateRange.create({
-            'name': 'فترة سداد 40 — خاطئ',
-            'period_code': 'P-PAY-40',
+            'name': 'فترة سداد 41 — خاطئ',
+            'period_code': 'P-PAY-41',
             'period_role': 'payment',
             'reading_period_id': reading_period.id,
             'billing_cadence': 'semi_monthly',
@@ -922,11 +951,11 @@ class TestUtilityPeriodManagement(TransactionCase):
         self.assertIn(self.region_monthly, payment.region_ids)
         self.assertNotIn(self.region_semi, payment.region_ids)
 
-    def test_41_reopen_preserves_existing_regions(self):
-        """41. Reopened period → action_open_reading preserves existing region_ids."""
+    def test_42_reopen_preserves_existing_regions(self):
+        """42. Reopened period → action_open_reading preserves existing region_ids."""
         period = self.DateRange.create({
-            'name': 'فترة للاختبار 41 — Reopen Preserve',
-            'period_code': 'R-REOP-41',
+            'name': 'فترة للاختبار 42 — Reopen Preserve',
+            'period_code': 'R-REOP-42',
             'period_role': 'reading',
             'billing_cadence': 'monthly',
             'region_ids': [(6, 0, [self.region_monthly.id])],
@@ -945,15 +974,15 @@ class TestUtilityPeriodManagement(TransactionCase):
         # Region IDs must be preserved (not recalculated)
         self.assertEqual(sorted(period.region_ids.ids), sorted(original_regions))
 
-    def test_42_unresolved_region_default_deny(self):
-        """42. Reading with no resolvable region → AccessError for scoped reviewer."""
+    def test_43_unresolved_region_default_deny(self):
+        """43. Reading with no resolvable region → AccessError for scoped reviewer."""
         from odoo.exceptions import AccessError
         customer = self.Customer.create({
             'name': 'مشترك بدون منطقة',
-            'subscriber_code': 'NO-REG-42',
+            'subscriber_code': 'NO-REG-43',
         })
         meter = self.Meter.create({
-            'meter_number': 'MTR-NO-REG-42',
+            'meter_number': 'MTR-NO-REG-43',
             'customer_id': customer.id,
             'multiplier': 1.0,
         })
@@ -965,6 +994,12 @@ class TestUtilityPeriodManagement(TransactionCase):
             'state': 'under_review',
         })
         ReviewService = self.env['utility.reading.review.service']
-        user = self.env.user
+        auditor = self.env['res.users'].with_context(no_reset_password=True).create({
+            'name': 'مراجع جغرافي',
+            'login': 'auditor.scope.43@example.com',
+            'email': 'auditor.scope.43@example.com',
+            'groups_id': [(6, 0, [self.env.ref('utility_core.group_utility_auditor').id])],
+            'assigned_region_ids': [(6, 0, [self.region_monthly.id])],
+        })
         with self.assertRaises(AccessError):
-            ReviewService._check_geographic_access(reading, user)
+            ReviewService.with_user(auditor)._check_geographic_access(reading, auditor)
