@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import '../../features/readings/data/mock_reading_repository.dart';
 import '../../features/readings/domain/reading.dart';
 import '../database/app_database.dart';
+import '../image/image_processing_service.dart';
 import 'reading_archive_builder.dart';
 import 'sync_settings_service.dart';
 
@@ -210,7 +211,7 @@ class SyncEngine {
         policy: SyncBatchPolicy(
           maxImagesPerArchive: batchSize,
           maxArchiveBytes: 5 * 1024 * 1024,
-          maxImageBytes: 50 * 1024, // 50KB limit per image
+          maxImageBytes: ImageProcessingService.maxBytes,
         ),
         destination: destDir,
       );

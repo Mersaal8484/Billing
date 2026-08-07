@@ -29,7 +29,7 @@ class SyncBatchPolicy {
       return parsed != null && parsed > 0 ? parsed : fallback;
     }
 
-    final imageLimitKb = positiveInt(settings['max_image_size_kb'], 60);
+    final imageLimitKb = positiveInt(settings['max_image_size_kb'], 80);
     if (imageLimitKb != 60 && imageLimitKb != 80) {
       throw ArgumentError.value(
         imageLimitKb,
