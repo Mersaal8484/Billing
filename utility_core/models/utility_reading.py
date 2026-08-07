@@ -52,8 +52,9 @@ class UtilityReading(models.Model):
     included_sale_order_id = fields.Many2one('sale.order', 'الفاتورة المتضمنة', index=True, readonly=True, copy=False, ondelete='restrict')
     carried_consumption = fields.Float('استهلاك مرحل', compute='_compute_billing_consumption', store=True)
     billing_consumption = fields.Float('استهلاك الفاتورة', compute='_compute_billing_consumption', store=True)
-    meter_image = fields.Binary('صورة العداد', attachment=True,
-        help='الصورة الملتقطة للعداد وقت القراءة')
+    image_asset_id = fields.Many2one('utility.media.asset', string='Meter Image Asset', ondelete='set null', index=True)
+    meter_image = fields.Binary('صورة العداد (توافقي)', compute='_compute_meter_image', inverse='_inverse_meter_image', store=True, attachment=True,
+                                help='حقل توافقي مع الواجهات والتقارير القديمة — المرصد الفعلي للتخزين هو image_asset_id')
     meter_image_secondary = fields.Binary('صورة إضافية', attachment=True)
     image_state = fields.Selection([
         ('clear', 'واضحة'),
@@ -68,6 +69,26 @@ class UtilityReading(models.Model):
     reviewer_id = fields.Many2one('res.users', 'المراجع',
         readonly=True, tracking=True)
     review_date = fields.Datetime('تاريخ المراجعة', readonly=True)
+
+    @api.depends('image_asset_id', 'image_asset_id.original_attachment_id', 'attachment_id')
+    def _compute_meter_image(self):
+        for r in self:
+            if r.image_asset_id and r.image_asset_id.original_attachment_id:
+                r.meter_image = r.image_asset_id.original_attachment_id.datas
+            elif r.attachment_id:
+                r.meter_image = r.attachment_id.datas
+
+    def _inverse_meter_image(self):
+        for r in self:
+            if r.meter_image and not r.image_asset_id:
+                asset = self.env['utility.media.service'].sudo().store_media(
+                    file_data=r.meter_image,
+                    filename=f"reading_{r.id or 'legacy'}.jpg",
+                    mimetype='image/jpeg',
+                    reading_id=r.id if isinstance(r.id, int) else False,
+                    asset_type='meter_reading'
+                )
+                r.image_asset_id = asset.id
     review_notes = fields.Text('ملاحظات المراجعة')
     rejection_reason = fields.Text('سبب الرفض')
     is_validated = fields.Boolean('تم التحقق', default=False)
@@ -228,9 +249,33 @@ class UtilityReading(models.Model):
     # ── FIX-2: منع أكثر من قراءة قابلة للفوترة لنفس العداد والفترة ──────────
     @api.constrains('account_id', 'date_range_id', 'state', 'reading_category', 'reading_purpose')
     def _check_unique_billable_reading_per_period(self):
-        """قراءة واحدة قابلة للفوترة لكل عداد + فترة — يمنع تكرار الف    @api.constrains('reading_purpose', 'date_range_id', 'replacement_id', 'billing_anchor_id', 'account_id', 'reading_date')
+        """قراءة واحدة قابلة للفوترة لكل عداد + فترة — يمنع تكرار الفوترة."""
+        for r in self:
+            is_billable = (
+                r.reading_category == 'customer'
+                or (r.reading_category == 'transformer' and r.is_private_transformer)
+            )
+            if (not is_billable or r.reading_purpose != 'periodic'
+                    or not r.date_range_id or r.state == 'error'):
+                continue
+            duplicate = self.search([
+                ('account_id', '=', r.account_id.id),
+                ('date_range_id', '=', r.date_range_id.id),
+                ('reading_purpose', '=', 'periodic'),
+                ('reading_category', '=', r.reading_category),
+                ('state', 'not in', ['error']),
+                ('id', '!=', r.id),
+            ], limit=1)
+            if duplicate:
+                raise ValidationError(
+                    'يوجد قراءة دورية أخرى للحساب [%s] في فترة الفوترة [%s].\n'
+                    'لا يُسمح بأكثر من قراءة دورية واحدة للحساب والفترة، حتى عند استبدال العداد.'
+                    % (r.account_id.display_name, r.date_range_id.name)
+                )
+
+    @api.constrains('reading_purpose', 'date_range_id', 'replacement_id', 'billing_anchor_id', 'account_id', 'reading_date')
     def _check_reading_purpose_rules(self):
-        """Enforce period, replacement, window dates, region membership, and billing-anchor invariants."""
+        """Enforce period, replacement, and billing-anchor invariants."""
         for reading in self:
             is_billable = (reading.reading_category == 'customer' or (reading.reading_category == 'transformer' and reading.is_private_transformer))
             if is_billable and not reading.account_id:
@@ -240,62 +285,20 @@ class UtilityReading(models.Model):
                     raise ValidationError(_('القراءة الدورية تتطلب تحديد الفترة المفتوحة للقراءة بحسب العقد.'))
                 period = reading.date_range_id
                 expected = reading.account_id._get_effective_billing_period()
-                if expected == 'biweekly':
-                    expected = 'semi_monthly'
-
-                if period.period_role != 'reading':
+                if period.period_role and period.period_role != 'reading':
                     raise ValidationError(_('فترة القراءة الدورية يجب أن تكون من نوع قراءات.'))
-                if expected and period.billing_cadence != expected:
+                cadence = period.billing_cadence or getattr(period, 'billing_period', False)
+                if expected and cadence and cadence != expected:
                     raise ValidationError(_(
                         'دورية الفترة المختارة (%s) لا تطابق دورية المشترك (%s).')
-                        % (period.billing_cadence, expected))
-                if period.state not in ('planned', 'reading_open', 'reading_closed', 'reviewing', 'review_closed'):
+                        % (cadence, expected))
+                if not period.is_current_period:
                     raise ValidationError(_(
-                        'حالة الفترة المختارة (%s) لا تسمح بأخذ أو تعديل القراءات.') % period.state)
-                
-                # التحقق من الفاصل الزمني لنافذة القراءة
-                if period.reading_window_start and reading.reading_date < period.reading_window_start:
-                    raise ValidationError(_(
-                        'تاريخ القراءة (%s) سابق لبداية نافذة القراءة المسموحة للفترة (%s).'
-                    ) % (reading.reading_date, period.reading_window_start))
-                if period.reading_window_end and reading.reading_date > period.reading_window_end:
-                    raise ValidationError(_(
-                        'تاريخ القراءة (%s) متأخر عن نهاية نافذة القراءة المسموحة للفترة (%s).'
-                    ) % (reading.reading_date, period.reading_window_end))
-
-                # التحقق من نطاق المنطقة
-                if period.region_ids and reading.account_id.region_id:
-                    if reading.account_id.region_id not in period.region_ids:
-                        raise ValidationError(_(
-                            'منطقة المشترك (%s) لا تنتمي إلى المناطق المشتركة في هذه الفترة (%s).'
-                        ) % (reading.account_id.region_id.name, ", ".join(period.region_ids.mapped('name'))))
-
+                        'الفترة الصحيحة لهذه القراءة غير مفعلة حالياً: %s.') % period.name)
             if reading.reading_purpose != 'periodic' and reading.date_range_id:
                 raise ValidationError(_('الفترة مسموحة للقراءة الدورية فقط.'))
             if reading.reading_purpose == 'replacement_closing' and not reading.replacement_id:
                 raise ValidationError(_('القراءة الختامية تتطلب عملية استبدال مرتبطة.'))
-            anchor = reading.billing_anchor_id
-            if anchor and (anchor.reading_purpose != 'periodic' or anchor.account_id != reading.account_id or anchor.reading_date < reading.reading_date):
-                raise ValidationError(_('يجب أن تكون قراءة الربط دورية ولاحقة ومن حساب المشترك نفسه.'))
-
-    @api.depends('account_id.contract_template_id.recurring_rule_type', 'account_id.area_id.recurring_rule_type', 'account_id.region_id.recurring_rule_type')
-    def _compute_available_open_reading_period_ids(self):
-        for reading in self:
-            account = reading.account_id
-            billing_period = account._get_effective_billing_period() if account else False
-            region_id = account.region_id.id if account and account.region_id else False
-            domain = self._get_open_period_domain(
-                work_type='readings', billing_period=billing_period, region_id=region_id)
-            reading.available_open_reading_period_ids = self.env['date.range'].search(domain)
-
-    @api.onchange('account_id', 'meter_id', 'reading_purpose')
-    def _onchange_account_id_date_range(self):
-        available_periods = self.available_open_reading_period_ids
-        if self.date_range_id and self.date_range_id not in available_periods:
-            self.date_range_id = False
-        if self.reading_purpose == 'periodic' and not self.date_range_id and available_periods:
-            self.date_range_id = available_periods[0].id
-        return {'domain': {'date_range_id': [('id', 'in', available_periods.ids)]}}�ال مرتبطة.'))
             anchor = reading.billing_anchor_id
             if anchor and (anchor.reading_purpose != 'periodic' or anchor.account_id != reading.account_id or anchor.reading_date < reading.reading_date):
                 raise ValidationError(_('يجب أن تكون قراءة الربط دورية ولاحقة ومن حساب المشترك نفسه.'))

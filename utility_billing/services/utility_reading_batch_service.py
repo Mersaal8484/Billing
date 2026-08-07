@@ -21,7 +21,6 @@ class UtilityReadingBatchService(models.AbstractModel):
 
         batch.write({
             'state': 'processing',
-            'processing_started_at': fields.Datetime.now(),
         })
 
         data_json = batch._get_parsed_json_data()
@@ -34,8 +33,15 @@ class UtilityReadingBatchService(models.AbstractModel):
             })
             return {'status': 'failed', 'reason': 'empty_data'}
 
-        # خريطة المرفقات المرفوعة مع الدفعة
-        image_attachments = {att.name: att for att in batch.image_ids}
+        # 1. البحث في الأصول الرقمية المرفوعة بدفعة القراءات (utility.media.asset)
+        media_assets = self.env['utility.media.asset'].sudo().search([
+            ('batch_id', '=', batch.id),
+            ('asset_type', '=', 'meter_reading'),
+        ])
+        media_assets_by_name = {asset.original_filename: asset for asset in media_assets}
+
+        # 2. التوافقية السابقة: البحث في مرفقات ir.attachment الدفعة
+        legacy_attachments = {att.name: att for att in batch.image_ids}
         
         success_count = 0
         error_count = 0
@@ -49,7 +55,7 @@ class UtilityReadingBatchService(models.AbstractModel):
             
             for item in chunk:
                 try:
-                    res = self._process_single_reading_item(batch, item, image_attachments)
+                    res = self._process_single_reading_item(batch, item, media_assets_by_name, legacy_attachments)
                     if res.get('success'):
                         success_count += 1
                     else:
@@ -61,7 +67,14 @@ class UtilityReadingBatchService(models.AbstractModel):
                     logs.append(error_msg)
                     _logger.error("Single reading item processing error: %s", error_msg)
 
-        final_state = 'processed' if success_count > 0 else 'error'
+        # حساب الحالة النهائية الصالحة (done / partial / error)
+        if success_count > 0 and error_count > 0:
+            final_state = 'partial'
+        elif success_count > 0:
+            final_state = 'done'
+        else:
+            final_state = 'error'
+
         log_text = "\n".join(logs) if logs else _("تمت المعالجة بنجاح دون أخطاء.")
 
         batch.write({
@@ -69,10 +82,9 @@ class UtilityReadingBatchService(models.AbstractModel):
             'processed_count': success_count,
             'error_count': error_count,
             'error_log': log_text,
-            'processing_completed_at': fields.Datetime.now(),
         })
 
-        _logger.info("Completed batch processing %s: %d success, %d errors", batch.name, success_count, error_count)
+        _logger.info("Completed batch processing %s: %d success, %d errors, state: %s", batch.name, success_count, error_count, final_state)
         return {
             'status': 'completed',
             'success_count': success_count,
@@ -81,7 +93,7 @@ class UtilityReadingBatchService(models.AbstractModel):
         }
 
     @api.model
-    def _process_single_reading_item(self, batch, item, image_attachments):
+    def _process_single_reading_item(self, batch, item, media_assets_by_name, legacy_attachments):
         meter_number = item.get('meter_number')
         if not meter_number:
             return {'success': False, 'error': _("رمز العداد غير موجود في السجل.")}
@@ -102,20 +114,23 @@ class UtilityReadingBatchService(models.AbstractModel):
         reading_date = item.get('reading_date') or fields.Datetime.now()
         image_filename = item.get('image_filename')
 
-        # معالجة الصورة الرقمية عبر Media Service
+        # معالجة الصورة الرقمية عبر Media Service أو المرفقات السابقة
         media_asset = False
-        if image_filename and image_filename in image_attachments:
-            att = image_attachments[image_filename]
-            try:
-                media_asset = MediaService.store_media(
-                    file_data=att.datas,
-                    filename=att.name,
-                    mimetype=att.mimetype or 'image/jpeg',
-                    batch_id=batch.id,
-                    asset_type='meter_reading'
-                )
-            except Exception as e:
-                _logger.warning("Could not store media asset for %s: %s", image_filename, str(e))
+        if image_filename:
+            if image_filename in media_assets_by_name:
+                media_asset = media_assets_by_name[image_filename]
+            elif image_filename in legacy_attachments:
+                att = legacy_attachments[image_filename]
+                try:
+                    media_asset = MediaService.store_media(
+                        file_data=att.datas,
+                        filename=att.name,
+                        mimetype=att.mimetype or 'image/jpeg',
+                        batch_id=batch.id,
+                        asset_type='meter_reading'
+                    )
+                except Exception as e:
+                    _logger.warning("Could not store media asset for %s: %s", image_filename, str(e))
 
         # إنشاء سجل القراءة المعتمد
         reading_vals = {
@@ -134,7 +149,7 @@ class UtilityReadingBatchService(models.AbstractModel):
                 reading_vals['attachment_id'] = media_asset.original_attachment_id.id
 
         reading = Reading.create(reading_vals)
-        if media_asset:
+        if media_asset and not media_asset.reading_id:
             media_asset.write({'reading_id': reading.id})
 
         return {'success': True, 'reading_id': reading.id}

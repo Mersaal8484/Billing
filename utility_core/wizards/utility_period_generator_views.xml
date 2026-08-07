@@ -19,7 +19,7 @@
                             <div class="card o_settings_card mb-3">
                                 <div class="card-header">
                                     <div class="d-flex align-items-center">
-                                        <i class="fa fa-calendar fa-2x text-primary me-3"/>
+                                        <i class="fa fa-calendar fa-2x text-primary me-3" title="النطاق والدورية"/>
                                         <div>
                                             <h4 class="mb-0">النطاق والدورية</h4>
                                             <small class="text-muted">تحديد السنة والشهر ونوع دورة الفوترة</small>
@@ -52,7 +52,7 @@
                             <div class="card o_settings_card mb-3">
                                 <div class="card-header">
                                     <div class="d-flex align-items-center">
-                                        <i class="fa fa-clock-o fa-2x text-success me-3"/>
+                                        <i class="fa fa-clock-o fa-2x text-success me-3" title="النوافذ التشغيلية"/>
                                         <div>
                                             <h4 class="mb-0">إعدادات النوافذ التشغيلية</h4>
                                             <small class="text-muted">تحديد تواريخ فتح وإغلاق القراءة والسداد</small>
@@ -90,11 +90,6 @@
                 </sheet>
             </form>
         </field>
-    </record>
-
-    <!-- Action: معالج إنشاء الفترات -->
-    <record id="action_utility_period_generator_wizard" model="ir.ui.view">
-        <field name="name">توليد الفترات التلقائي</field>
     </record>
 
     <record id="action_utility_period_generator" model="ir.actions.act_window">

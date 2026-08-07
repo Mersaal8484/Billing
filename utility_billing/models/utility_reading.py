@@ -140,14 +140,10 @@ class UtilityReading(models.Model):
         order.action_confirm()
         invoices = order._create_invoices()
         invoices.action_post()
-        if self.meter_image:
-            attachment = self.env['ir.attachment'].create({
-                'name': 'invoice_meter_%s.png' % (order.name or self.reading_id),
-                'type': 'binary', 'datas': self.meter_image,
-                'res_model': 'sale.order', 'res_id': order.id,
-            })
-            order.attachment_id = attachment
-            self.attachment_id = attachment
+        if self.image_asset_id and self.image_asset_id.original_attachment_id:
+            order.attachment_id = self.image_asset_id.original_attachment_id
+        elif self.attachment_id:
+            order.attachment_id = self.attachment_id
         self.with_context(_bypass_reading_protection=True).write({
             'state': 'billed', 'billing_error': False,
         })

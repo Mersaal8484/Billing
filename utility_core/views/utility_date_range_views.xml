@@ -145,6 +145,7 @@
                 </header>
 
                 <sheet>
+                    <field name="company_id" invisible="1"/>
                     <div class="oe_button_box" name="button_box">
                         <button class="oe_stat_button" icon="fa-tachometer">
                             <div class="o_field_widget o_stat_info">
@@ -185,7 +186,7 @@
                             <div class="card o_settings_card mb-3">
                                 <div class="card-header">
                                     <div class="d-flex align-items-center">
-                                        <i class="fa fa-tag fa-2x text-primary me-3"/>
+                                        <i class="fa fa-tag fa-2x text-primary me-3" title="نوع والدورية"/>
                                         <div>
                                             <h4 class="mb-0">نوع والدورية والتصنيف</h4>
                                             <small class="text-muted">تحديد الدور والدورية الرئيسية للفترة</small>
@@ -217,7 +218,7 @@
                             <div class="card o_settings_card mb-3">
                                 <div class="card-header">
                                     <div class="d-flex align-items-center">
-                                        <i class="fa fa-calendar fa-2x text-success me-3"/>
+                                        <i class="fa fa-calendar fa-2x text-success me-3" title="التواريخ والنوافذ"/>
                                         <div>
                                             <h4 class="mb-0">التواريخ والنوافذ التشغيلية</h4>
                                             <small class="text-muted">فترات الاستهلاك ونوافذ القراءة والتحصيل</small>

@@ -66,3 +66,9 @@ class UtilityWorkflowService(models.AbstractModel):
         period = self.env['date.range'].browse(period_id)
         adapter = self._get_workflow_adapter()
         return adapter.execute_reconcile_and_close(period)
+
+    @api.model
+    def dispatch_batch_command(self, batch, payload_func):
+        """توجيه أمر معالجة الدفعة عبر المحول النشط بطريقة غير مكررة (Idempotent Batch Command)"""
+        adapter = self._get_workflow_adapter()
+        return adapter.dispatch_batch_command(batch, payload_func)

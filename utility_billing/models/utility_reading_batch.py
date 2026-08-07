@@ -2,6 +2,7 @@ import base64
 import json
 import logging
 import os
+import uuid
 from datetime import timedelta
 
 from odoo import api, fields, models, _
@@ -18,6 +19,7 @@ class UtilityReadingBatch(models.Model):
     _order = 'upload_date desc'
 
     name = fields.Char('رقم الدفعة', readonly=True, default=lambda self: _('New'))
+    batch_uuid = fields.Char(string='رمز المعرف الفريد للدفعة (Batch UUID)', required=True, copy=False, index=True, default=lambda self: str(uuid.uuid4()))
     user_id = fields.Many2one('res.users', 'القارئ / الجابي',
                               default=lambda self: self.env.user, tracking=True)
     upload_date = fields.Datetime('تاريخ الرفع', default=fields.Datetime.now,
@@ -112,15 +114,17 @@ class UtilityReadingBatch(models.Model):
         return super().create(vals_list)
 
     def action_confirm(self):
-        """تأكيد اكتمال الرفع — تفويض المعالجة لمخدم ReadingBatchService عبر Adapter"""
+        """تأكيد اكتمال الرفع — تفويض المعالجة عبر أمر Workflow Command وحماية التكرار READING-BATCH:{batch_uuid}"""
         for batch in self:
             if batch.state != 'uploaded':
                 raise ValidationError(_('يمكن تأكيد الدفعات التي بحالة "تم الرفع" فقط!'))
             if not batch.data_file:
                 raise ValidationError(_('لم يتم رفع ملف البيانات (JSON)!'))
 
-            # معالجة الدفعة عبر الخدمة المستقلة ReadingBatchService
-            self.env['utility.reading.batch.service'].sudo().process_batch(batch.id)
+            self.env['utility.workflow.service'].sudo().dispatch_batch_command(
+                batch,
+                lambda: self.env['utility.reading.batch.service'].sudo().process_batch(batch.id)
+            )
 
     def action_reset_to_uploaded(self):
         """إعادة الدفعة إلى حالة تم الرفع لمحاولة المعالجة مرة أخرى"""
@@ -134,7 +138,10 @@ class UtilityReadingBatch(models.Model):
                 'processed_offset': 0,
                 'error_log': False,
             })
-            self.env['utility.reading.batch.service'].sudo().process_batch(batch.id)
+            self.env['utility.workflow.service'].sudo().dispatch_batch_command(
+                batch,
+                lambda: self.env['utility.reading.batch.service'].sudo().process_batch(batch.id)
+            )
 
     @api.model
     def _cron_process_readings(self):

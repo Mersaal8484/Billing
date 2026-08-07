@@ -167,3 +167,41 @@ class LocalWorkflowAdapter(AbstractWorkflowAdapter):
             lambda: period.action_close_period() or True,
             _("تمت المطابقة والإغلاق النهائي للفترة بنجاح.")
         )
+
+    def dispatch_batch_command(self, batch, payload_func):
+        """تنفيذ أمر معالجة دفعة القراءات عبر مفتاح عدم التكرار (Idempotency Key) READING-BATCH:{batch_uuid}"""
+        idempotency_key = f"READING-BATCH:{batch.batch_uuid}"
+        cmd_model = self.env['utility.workflow.command'].sudo()
+        existing = cmd_model.search([('idempotency_key', '=', idempotency_key)], limit=1)
+        if existing and existing.state == 'executed':
+            _logger.info("Batch Command already executed for key %s (UUID: %s)", idempotency_key, existing.command_uuid)
+            return existing.result_summary
+
+        cmd = existing or cmd_model.create({
+            'name': f"CMD-BATCH-{batch.name}",
+            'idempotency_key': idempotency_key,
+            'state': 'pending',
+            'payload_json': json.dumps({'batch_id': batch.id, 'batch_uuid': batch.batch_uuid}, ensure_ascii=False),
+        })
+
+        cmd.write({
+            'state': 'processing',
+            'started_at': fields.Datetime.now(),
+            'attempt_count': cmd.attempt_count + 1,
+        })
+
+        try:
+            res = payload_func()
+            summary = f"Batch {batch.name} processed: {res.get('success_count', 0)} success, {res.get('error_count', 0)} errors" if isinstance(res, dict) else str(res)
+            cmd.write({
+                'state': 'executed',
+                'completed_at': fields.Datetime.now(),
+                'result_summary': summary,
+            })
+            return res
+        except Exception as e:
+            cmd.write({
+                'state': 'failed',
+                'error_message': str(e),
+            })
+            raise
