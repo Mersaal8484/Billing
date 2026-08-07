@@ -73,9 +73,9 @@
         <field name="model">date.range</field>
         <field name="priority" eval="5"/>
         <field name="arch" type="xml">
-            <tree decoration-success="state in ('reading_open', 'open')"
-                  decoration-info="state in ('reviewing', 'billing', 'accounting')"
-                  decoration-warning="state in ('closing', 'closing')"
+            <tree decoration-success="state in ('reading_open', 'payment_open')"
+                  decoration-info="state in ('reviewing', 'billing', 'accounting', 'payment_closing')"
+                  decoration-warning="state == 'closing'"
                   decoration-muted="state in ('closed', 'locked')"
                   decoration-danger="state == 'reopened'">
                 <field name="period_code"/>
@@ -87,9 +87,9 @@
                        decoration-success="billing_cadence == 'monthly'"
                        decoration-primary="billing_cadence == 'semi_monthly'"/>
                 <field name="state" widget="badge"
-                       decoration-success="state in ('reading_open', 'open')"
+                       decoration-success="state in ('reading_open', 'payment_open')"
                        decoration-info="state in ('reviewing', 'billing', 'accounting')"
-                       decoration-warning="state == 'closing'"
+                       decoration-warning="state in ('closing', 'payment_closing')"
                        decoration-muted="state in ('closed', 'locked')"/>
                 <field name="consumption_start"/>
                 <field name="consumption_end"/>
@@ -132,15 +132,15 @@
                     <button name="action_open_payment" type="object" string="فتح التحصيل" class="oe_highlight"
                             attrs="{'invisible': ['|', ('period_role', '!=', 'payment'), ('state', '!=', 'planned')]}"/>
                     <button name="action_close_payment" type="object" string="إغلاق التحصيل" class="btn-warning"
-                            attrs="{'invisible': ['|', ('period_role', '!=', 'payment'), ('state', '!=', 'open')]}"/>
+                            attrs="{'invisible': ['|', ('period_role', '!=', 'payment'), ('state', '!=', 'payment_open')]}"/>
                     <button name="action_reconcile_payment" type="object" string="مطابقة التحصيل" class="btn-success"
-                            attrs="{'invisible': ['|', ('period_role', '!=', 'payment'), ('state', '!=', 'closed')]}"/>
+                            attrs="{'invisible': ['|', ('period_role', '!=', 'payment'), ('state', 'not in', ('payment_closing', 'closed'))]}"/>
 
                     <field name="state" widget="statusbar"
                            statusbar_visible="planned,reading_open,reviewing,billing,closed,locked"
                            attrs="{'invisible': [('period_role', '=', 'payment')]}"/>
                     <field name="state" widget="statusbar"
-                           statusbar_visible="planned,open,closed,reconciled,locked"
+                           statusbar_visible="planned,payment_open,payment_closing,closed,reconciled,locked"
                            attrs="{'invisible': [('period_role', '=', 'reading')]}"/>
                 </header>
 

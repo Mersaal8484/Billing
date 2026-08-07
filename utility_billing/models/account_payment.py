@@ -219,7 +219,7 @@ class AccountPayment(models.Model):
                     payment.timing_classification = 'on_time'
                 else:
                     payment.timing_classification = 'late' if pay_datetime > period.payment_window_end else 'outside_window'
-            elif period and period.state == 'open':
+            elif period and period.state in ('open', 'payment_open'):
                 payment.timing_classification = 'on_time'
             else:
                 payment.timing_classification = 'late'

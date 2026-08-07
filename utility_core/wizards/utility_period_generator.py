@@ -64,7 +64,8 @@ class UtilityPeriodGenerator(models.TransientModel):
         cadences = ['monthly', 'semi_monthly'] if self.billing_cadence == 'all' else [self.billing_cadence]
 
         for cadence in cadences:
-            target_regions = self.region_ids.filtered(lambda r: r.recurring_rule_type == cadence) if self.region_ids else Region.search([('type', '=', 'region'), ('recurring_rule_type', '=', cadence)])
+            target_cadences = [cadence, 'biweekly'] if cadence == 'semi_monthly' else [cadence]
+            target_regions = self.region_ids.filtered(lambda r: r.recurring_rule_type in target_cadences) if self.region_ids else Region.search([('type', '=', 'region'), ('recurring_rule_type', 'in', target_cadences)])
 
             if cadence == 'monthly':
                 c_start = date(year, month, 1)
@@ -100,10 +101,10 @@ class UtilityPeriodGenerator(models.TransientModel):
                 h1_p_code = f"PAY-SEMI-{year:04d}-{month:02d}-H1"
                 h1_p_name = f"النصف الأول {month:02d}-{year:04d} (تحصيل)"
 
-                h1_rw_start = datetime.combine(h1_end - timedelta(days=2), time.min)
-                h1_rw_end = datetime.combine(h1_end + timedelta(days=3), time.max)
-                h1_pw_start = datetime.combine(h1_end + timedelta(days=1), time.min)
-                h1_pw_end = datetime.combine(h1_pw_start.date() + timedelta(days=12), time.max)
+                h1_rw_start = datetime.combine(h1_end - timedelta(days=self.reading_window_open_days_before), time.min)
+                h1_rw_end = datetime.combine(h1_end + timedelta(days=self.reading_window_close_days_after), time.max)
+                h1_pw_start = datetime.combine(h1_end + timedelta(days=self.payment_window_open_days_after), time.min)
+                h1_pw_end = datetime.combine(h1_pw_start.date() + timedelta(days=self.payment_window_duration_days), time.max)
 
                 h1_reading = self._create_or_update_period(
                     DateRange, h1_r_code, h1_r_name, 'reading', cadence,
@@ -123,10 +124,10 @@ class UtilityPeriodGenerator(models.TransientModel):
                 h2_p_code = f"PAY-SEMI-{year:04d}-{month:02d}-H2"
                 h2_p_name = f"النصف الثاني {month:02d}-{year:04d} (تحصيل)"
 
-                h2_rw_start = datetime.combine(h2_end - timedelta(days=3), time.min)
-                h2_rw_end = datetime.combine(h2_end + timedelta(days=3), time.max)
-                h2_pw_start = datetime.combine(h2_end + timedelta(days=1), time.min)
-                h2_pw_end = datetime.combine(h2_pw_start.date() + timedelta(days=12), time.max)
+                h2_rw_start = datetime.combine(h2_end - timedelta(days=self.reading_window_open_days_before), time.min)
+                h2_rw_end = datetime.combine(h2_end + timedelta(days=self.reading_window_close_days_after), time.max)
+                h2_pw_start = datetime.combine(h2_end + timedelta(days=self.payment_window_open_days_after), time.min)
+                h2_pw_end = datetime.combine(h2_pw_start.date() + timedelta(days=self.payment_window_duration_days), time.max)
 
                 h2_reading = self._create_or_update_period(
                     DateRange, h2_r_code, h2_r_name, 'reading', cadence,
@@ -151,8 +152,6 @@ class UtilityPeriodGenerator(models.TransientModel):
 
     def _create_or_update_period(self, DateRange, code, name, role, cadence, c_start, c_end, w_start, w_end, regions, reading_period_id=False, previous_period_id=False):
         existing = DateRange.search([('period_code', '=', code)], limit=1)
-        
-        # البحث عن date.range.type مناسب أو افتراضي
         type_id = self.env['date.range.type'].search([], limit=1).id
 
         vals = {
@@ -160,21 +159,23 @@ class UtilityPeriodGenerator(models.TransientModel):
             'period_code': code,
             'period_role': role,
             'billing_cadence': cadence,
-            'consumption_start': c_start,
-            'consumption_end': c_end,
-            'date_start': c_start,
-            'date_end': c_end,
             'region_ids': [(6, 0, regions.ids)] if regions else False,
             'type_id': type_id,
         }
 
         if role == 'reading':
             vals.update({
+                'consumption_start': c_start,
+                'consumption_end': c_end,
+                'date_start': c_start,
+                'date_end': c_end,
                 'reading_window_start': w_start,
                 'reading_window_end': w_end,
             })
         else:
             vals.update({
+                'date_start': w_start.date(),
+                'date_end': w_end.date(),
                 'payment_window_start': w_start,
                 'payment_window_end': w_end,
                 'reading_period_id': reading_period_id,

@@ -239,12 +239,12 @@ class TestUtilityPeriodManagement(TransactionCase):
             'period_role': 'payment',
             'billing_cadence': 'semi_monthly',
             'reading_period_id': r_period.id,
-            'state': 'open',
+            'state': 'payment_open',
         })
 
         r_period.action_close_reading()
         self.assertEqual(r_period.state, 'reading_closed')
-        self.assertEqual(p_period.state, 'open')
+        self.assertEqual(p_period.state, 'payment_open')
 
     def test_12_new_reading_opens_previous_payment_remains_open(self):
         """12. فتح فترة قراءة جديدة لا يغلق فترة التحصيل السابقة"""
@@ -261,7 +261,7 @@ class TestUtilityPeriodManagement(TransactionCase):
             'period_role': 'payment',
             'billing_cadence': 'semi_monthly',
             'reading_period_id': r_h1.id,
-            'state': 'open',
+            'state': 'payment_open',
         })
 
         r_h2 = self.DateRange.create({
@@ -274,7 +274,7 @@ class TestUtilityPeriodManagement(TransactionCase):
         r_h2.action_open_reading()
 
         self.assertEqual(r_h2.state, 'reading_open')
-        self.assertEqual(p_h1.state, 'open')
+        self.assertEqual(p_h1.state, 'payment_open')
 
     def test_13_overlapping_payment_periods(self):
         """13. تداخل وتزامن فترتي سداد وتحصيل مفتوحتين في الوقت نفسه"""
@@ -297,7 +297,7 @@ class TestUtilityPeriodManagement(TransactionCase):
             'period_role': 'payment',
             'billing_cadence': 'semi_monthly',
             'reading_period_id': r1.id,
-            'state': 'open',
+            'state': 'payment_open',
         })
         p2 = self.DateRange.create({
             'name': 'تحصيل H2',
@@ -305,11 +305,11 @@ class TestUtilityPeriodManagement(TransactionCase):
             'period_role': 'payment',
             'billing_cadence': 'semi_monthly',
             'reading_period_id': r2.id,
-            'state': 'open',
+            'state': 'payment_open',
         })
 
-        self.assertEqual(p1.state, 'open')
-        self.assertEqual(p2.state, 'open')
+        self.assertEqual(p1.state, 'payment_open')
+        self.assertEqual(p2.state, 'payment_open')
 
     def test_14_monthly_and_semi_monthly_concurrent(self):
         """14. عمل واستمرار الفترات الشهرية ونصف الشهرية بالتزامن الاستقلالي"""
@@ -349,11 +349,11 @@ class TestUtilityPeriodManagement(TransactionCase):
             'period_role': 'payment',
             'billing_cadence': 'monthly',
             'reading_period_id': r_period.id,
-            'state': 'open',
+            'state': 'payment_open',
         })
 
         r_period.action_close_reading()
-        self.assertEqual(p_period.state, 'open')
+        self.assertEqual(p_period.state, 'payment_open')
 
     def test_16_opening_next_reading_does_not_close_previous_payment(self):
         """16. فتح فترة قراءة تالية لا يغلق تلقائياً فترة تحصيل الدورة السابقة"""
@@ -370,7 +370,7 @@ class TestUtilityPeriodManagement(TransactionCase):
             'period_role': 'payment',
             'billing_cadence': 'semi_monthly',
             'reading_period_id': r_aug.id,
-            'state': 'open',
+            'state': 'payment_open',
         })
 
         r_sep = self.DateRange.create({
@@ -382,7 +382,7 @@ class TestUtilityPeriodManagement(TransactionCase):
         })
         r_sep.action_open_reading()
 
-        self.assertEqual(p_aug.state, 'open')
+        self.assertEqual(p_aug.state, 'payment_open')
         self.assertEqual(r_sep.state, 'reading_open')
 
     def test_17_late_payment_controlled_accounting_flow(self):
@@ -519,20 +519,21 @@ class TestUtilityPeriodManagement(TransactionCase):
                 'reading_id': reading1.id,
             })
 
-    def test_21_temporal_retry_idempotency(self):
-        """21. محاكاة إعادة المحاولة في Temporal لضمان التكرارية الآمنة (Idempotency)"""
+    def test_21_workflow_adapter_execution(self):
+        """21. محاكاة تشغيل مسار العمل عبر LocalWorkflowAdapter"""
         period = self.DateRange.create({
-            'name': 'فترة اختبار Temporal',
-            'period_code': 'R-TEMP-01',
+            'name': 'فترة اختبار Workflow Service',
+            'period_code': 'R-WF-01',
             'period_role': 'reading',
             'billing_cadence': 'monthly',
             'state': 'planned',
         })
 
-        service = self.env['utility.temporal.service']
+        service = self.env['utility.workflow.service']
 
         res1 = service.trigger_reading_period_workflow(period.id)
         self.assertEqual(res1['status'], 'started')
+        self.assertEqual(res1['adapter'], 'local')
         w_id1 = period.workflow_id
 
         # إعادة الاستدعاء لا تخلق فترات مكررة أو تكسر الحالة

@@ -27,28 +27,21 @@ PERIOD_ROLE_SELECTION = [
     ('payment', 'دورة سداد وتحصيل'),
 ]
 
-READING_STATE_SELECTION = [
-    ('planned',        'مخطط'),
-    ('reading_open',   'نافذة القراءة مفتوحة'),
-    ('reading_closed', 'نافذة القراءة مغلقة'),
-    ('reviewing',      'قيد المراجعة'),
-    ('review_closed',  'اكتملت المراجعة'),
-    ('billing',        'قيد الفوترة'),
-    ('accounting',     'قيد التظهير المحاسبي'),
-    ('closing',        'قيد المطابقة والإغلاق'),
-    ('closed',         'مغلقة'),
-    ('locked',         'مقفلة تاريخياً'),
-    ('reopened',       'معاد فتحها استثنائياً'),
-]
-
-PAYMENT_STATE_SELECTION = [
-    ('planned',    'مخطط'),
-    ('open',       'نافذة التحصيل مفتوحة'),
-    ('closing',    'قيد الإغلاق'),
-    ('closed',     'مغلقة'),
-    ('reconciled', 'تمت المطابقة'),
-    ('locked',     'مقفلة تاريخياً'),
-    ('reopened',   'معاد فتحها استثنائياً'),
+PERIOD_STATE_SELECTION = [
+    ('planned',         'مخطط'),
+    ('reading_open',    'نافذة القراءة مفتوحة'),
+    ('reading_closed',  'نافذة القراءة مغلقة'),
+    ('reviewing',       'قيد المراجعة'),
+    ('review_closed',   'اكتملت المراجعة'),
+    ('billing',         'قيد الفوترة'),
+    ('accounting',      'قيد التظهير المحاسبي'),
+    ('payment_open',    'نافذة التحصيل مفتوحة'),
+    ('payment_closing', 'تحصيل قيد الإغلاق'),
+    ('reconciled',      'تمت المطابقة'),
+    ('closing',         'قيد المطابقة والإغلاق'),
+    ('closed',          'مغلقة'),
+    ('locked',          'مقفلة تاريخياً'),
+    ('reopened',        'معاد فتحها استثنائياً'),
 ]
 
 
@@ -96,7 +89,7 @@ class DateRange(models.Model):
 
     # ===== حالات دورة الحياة المستقلة =====
     state = fields.Selection(
-        READING_STATE_SELECTION,
+        PERIOD_STATE_SELECTION,
         string="حالة الفترة",
         default='planned',
         required=True,
@@ -265,7 +258,7 @@ class DateRange(models.Model):
     @api.depends('state')
     def _compute_is_current_period(self):
         for rec in self:
-            rec.is_current_period = rec.state in ('reading_open', 'open')
+            rec.is_current_period = rec.state in ('reading_open', 'payment_open')
 
     @api.depends('child_ids')
     def _compute_child_count(self):
@@ -479,24 +472,34 @@ class DateRange(models.Model):
             })
             rec._log_state_transition(old_s, 'locked', _("إقفال تاريخي نائي للفترة"))
 
+    @api.constrains('period_role', 'state')
+    def _check_role_state_consistency(self):
+        reading_states = {'planned', 'reading_open', 'reading_closed', 'reviewing', 'review_closed', 'billing', 'accounting', 'closing', 'closed', 'locked', 'reopened'}
+        payment_states = {'planned', 'payment_open', 'payment_closing', 'closed', 'reconciled', 'locked', 'reopened'}
+        for rec in self:
+            if rec.period_role == 'reading' and rec.state not in reading_states:
+                raise ValidationError(_("الحالة '%s' غير مسموحة لفترة قراءة.") % rec.state)
+            elif rec.period_role == 'payment' and rec.state not in payment_states:
+                raise ValidationError(_("الحالة '%s' غير مسموحة لفترة تحصيل.") % rec.state)
+
     def action_open_payment(self):
         for rec in self:
             if rec.period_role != 'payment':
-                raise ValidationError(_("هذا الإجراء ينطبق فقط على فترات التحصيل والتحصيل."))
+                raise ValidationError(_("هذا الإجراء ينطبق فقط على فترات التحصيل."))
             old_s = rec.state
             rec.write({
-                'state': 'open',
+                'state': 'payment_open',
                 'opened_at': fields.Datetime.now(),
             })
-            rec._log_state_transition(old_s, 'open', _("فتح نافذة التحصيل"))
+            rec._log_state_transition(old_s, 'payment_open', _("فتح نافذة التحصيل"))
 
     def action_close_payment(self):
         for rec in self:
             if rec.period_role != 'payment':
                 raise ValidationError(_("هذا الإجراء ينطبق فقط على فترات التحصيل."))
             old_s = rec.state
-            rec.write({'state': 'closed'})
-            rec._log_state_transition(old_s, 'closed', _("إغلاق نافذة التحصيل"))
+            rec.write({'state': 'payment_closing'})
+            rec._log_state_transition(old_s, 'payment_closing', _("إغلاق نافذة التحصيل الميداني"))
 
     def action_reconcile_payment(self):
         for rec in self:
@@ -507,7 +510,7 @@ class DateRange(models.Model):
     def action_reopen_period(self, reason="إعادة فتح استثنائي"):
         for rec in self:
             old_s = rec.state
-            new_s = 'reading_open' if rec.period_role == 'reading' else 'open'
+            new_s = 'reading_open' if rec.period_role == 'reading' else 'payment_open'
             rec.write({'state': new_s})
             rec._log_state_transition(old_s, new_s, reason)
 
