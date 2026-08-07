@@ -5,7 +5,7 @@ import logging
 from PIL import Image
 
 from odoo import api, fields, models, _
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 from ..adapters.media.attachment import AttachmentMediaAdapter
 
 _logger = logging.getLogger(__name__)
@@ -17,12 +17,19 @@ class UtilityMediaService(models.AbstractModel):
 
     @api.model
     def get_media_adapter(self):
+        """إرجاع المحول الخاص بتخزين الوسائط والصور الرقمية دون silent fallback"""
         backend = self.env['ir.config_parameter'].sudo().get_param('utility.media_backend', 'attachment')
         if backend == 'attachment':
+            from ..adapters.media.attachment import AttachmentMediaAdapter
             return AttachmentMediaAdapter(self.env)
+        elif backend == 'filesystem':
+            from ..adapters.media.filesystem import FilesystemMediaAdapter
+            return FilesystemMediaAdapter(self.env)
+        elif backend == 's3':
+            from ..adapters.media.s3 import S3MediaAdapter
+            return S3MediaAdapter(self.env)
         else:
-            # افتراضي للاستقرار أثناء التطوير
-            return AttachmentMediaAdapter(self.env)
+            raise UserError(_("نوع محول تخزين الوسائط غير معروف: %s") % backend)
 
     @api.model
     def calculate_sha256(self, raw_bytes):

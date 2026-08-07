@@ -339,6 +339,61 @@
                             </div>
                         </div>
                     </div>
+
+                    <h2>إعدادات البنية التحتية والمحولات (Infrastructure Adapters)</h2>
+                    <div class="row mt16 o_settings_container" id="utility_infrastructure">
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_right_pane">
+                                <label for="workflow_backend"/>
+                                <div class="text-muted">مُحَوِّل مسارات العمل لطلب المعالجات والمسارات التشغيلية</div>
+                                <div class="content-group mt16">
+                                    <field name="workflow_backend" class="o_light_label"/>
+                                </div>
+                                <div attrs="{'invisible': [('workflow_backend', '!=', 'temporal')]}" class="mt16 border p-2 bg-light rounded">
+                                    <div>
+                                        <label for="temporal_target_host" class="o_light_label"/>
+                                        <field name="temporal_target_host"/>
+                                    </div>
+                                    <div class="mt8">
+                                        <label for="temporal_namespace" class="o_light_label"/>
+                                        <field name="temporal_namespace"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_right_pane">
+                                <label for="media_backend"/>
+                                <div class="text-muted">مُحَوِّل تخزين الصور والوسائط الرقمية</div>
+                                <div class="content-group mt16">
+                                    <field name="media_backend" class="o_light_label"/>
+                                </div>
+                                <div attrs="{'invisible': [('media_backend', '!=', 'filesystem')]}" class="mt16 border p-2 bg-light rounded">
+                                    <label for="filesystem_storage_path" class="o_light_label"/>
+                                    <field name="filesystem_storage_path"/>
+                                </div>
+                                <div attrs="{'invisible': [('media_backend', '!=', 's3')]}" class="mt16 border p-2 bg-light rounded">
+                                    <div>
+                                        <label for="s3_endpoint_url" class="o_light_label"/>
+                                        <field name="s3_endpoint_url"/>
+                                    </div>
+                                    <div class="mt8">
+                                        <label for="s3_bucket_name" class="o_light_label"/>
+                                        <field name="s3_bucket_name"/>
+                                    </div>
+                                    <div class="mt8">
+                                        <label for="s3_access_key" class="o_light_label"/>
+                                        <field name="s3_access_key"/>
+                                    </div>
+                                    <div class="mt8">
+                                        <label for="s3_secret_key" class="o_light_label"/>
+                                        <field name="s3_secret_key"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </xpath>
         </field>

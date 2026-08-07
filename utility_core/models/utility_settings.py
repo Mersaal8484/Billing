@@ -192,3 +192,74 @@ class ResConfigSettings(models.TransientModel):
         related='company_id.discount_product_id',
         readonly=False,
         string='منتج الخصم والإعفاءات')
+
+    # --- Infrastructure Settings (إعدادات البنية التحتية — مسارات العمل والوسائط) ---
+    workflow_backend = fields.Selection([
+        ('local', 'Local Odoo (In-Process Outbox)'),
+        ('temporal', 'Temporal Workflow Service'),
+    ], string='مُحَوِّل مسارات العمل (Workflow Backend)',
+       config_parameter='utility.workflow_adapter',
+       default='local', required=True)
+
+    media_backend = fields.Selection([
+        ('attachment', 'Odoo Attachments (Database/Filestore)'),
+        ('filesystem', 'Local Shared Filesystem'),
+        ('s3', 'S3 Compatible Cloud Storage'),
+    ], string='مُحَوِّل الوسائط والصور (Media Backend)',
+       config_parameter='utility.media_backend',
+       default='attachment', required=True)
+
+    # إعدادات Temporal
+    temporal_target_host = fields.Char(
+        string='عنوان خادم Temporal Host',
+        config_parameter='utility.temporal_target_host',
+        default='localhost:7233')
+    temporal_namespace = fields.Char(
+        string='نطاق Temporal Namespace',
+        config_parameter='utility.temporal_namespace',
+        default='default')
+
+    # إعدادات Filesystem
+    filesystem_storage_path = fields.Char(
+        string='مسار تخزين الملفات (Filesystem Path)',
+        config_parameter='utility.filesystem_storage_path')
+
+    # إعدادات S3
+    s3_endpoint_url = fields.Char(
+        string='رابط خادم S3 Endpoint URL',
+        config_parameter='utility.s3_endpoint_url')
+    s3_bucket_name = fields.Char(
+        string='اسم الحاوية S3 Bucket Name',
+        config_parameter='utility.s3_bucket_name')
+    s3_access_key = fields.Char(
+        string='مفتاح الوصول S3 Access Key',
+        config_parameter='utility.s3_access_key')
+    s3_secret_key = fields.Char(
+        string='المفتاح السري S3 Secret Key',
+        config_parameter='utility.s3_secret_key')
+    s3_region_name = fields.Char(
+        string='المنطقة S3 Region',
+        config_parameter='utility.s3_region_name',
+        default='us-east-1')
+
+    @api.constrains('workflow_backend', 'temporal_target_host', 'media_backend', 'filesystem_storage_path', 's3_endpoint_url', 's3_bucket_name', 's3_access_key', 's3_secret_key')
+    def _check_infrastructure_backend_config(self):
+        for rec in self:
+            if rec.workflow_backend == 'temporal' and not rec.temporal_target_host:
+                raise ValidationError(_("عند اختيار Temporal يجب تحديد عنوان خادم Temporal Host."))
+
+            if rec.media_backend == 'filesystem' and not rec.filesystem_storage_path:
+                raise ValidationError(_("عند اختيار Filesystem يجب تحديد مسار تخزين الملفات."))
+
+            if rec.media_backend == 's3':
+                missing = []
+                if not rec.s3_endpoint_url:
+                    missing.append('S3 Endpoint URL')
+                if not rec.s3_bucket_name:
+                    missing.append('S3 Bucket Name')
+                if not rec.s3_access_key:
+                    missing.append('S3 Access Key')
+                if not rec.s3_secret_key:
+                    missing.append('S3 Secret Key')
+                if missing:
+                    raise ValidationError(_("عند اختيار S3 يجب إدخال كافّة البيانات المطلوبة: %s") % ", ".join(missing))
