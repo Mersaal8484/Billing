@@ -133,7 +133,7 @@ class UtilityReadingReviewService(models.AbstractModel):
         domain = expression.AND([domain, self._build_review_anomaly_domain(anomaly_filter)])
         if search and search.strip():
             term = search.strip()
-            domain = expression.AND([domain, ['|', '|', ('meter_id.meter_number', 'ilike', term), ('account_id.name', 'ilike', term), ('account_id.subscriber_code', 'ilike', term)]])
+            domain = expression.AND([domain, ['|', '|', ('meter_id.meter_number', 'ilike', term), ('account_id.display_name', 'ilike', term), ('account_id.customer_number', 'ilike', term)]])
         return domain
 
     def _compute_review_stats(self, domain):
@@ -165,7 +165,7 @@ class UtilityReadingReviewService(models.AbstractModel):
         domain = expression.AND([domain, self._build_review_anomaly_domain(anomaly_filter)])
         if search and search.strip():
             term = search.strip()
-            domain = expression.AND([domain, ['|', '|', ('meter_id.meter_number', 'ilike', term), ('account_id.name', 'ilike', term), ('account_id.subscriber_code', 'ilike', term)]])
+            domain = expression.AND([domain, ['|', '|', ('meter_id.meter_number', 'ilike', term), ('account_id.display_name', 'ilike', term), ('account_id.customer_number', 'ilike', term)]])
         return domain
 
 
@@ -242,8 +242,8 @@ class UtilityReadingReviewService(models.AbstractModel):
         return {
             'id': reading.id,
             'meter_number': reading.meter_id.meter_number if reading.meter_id else '',
-            'account_name': reading.account_id.name if reading.account_id else (reading.feeder_id.name if reading.feeder_id else (reading.transformer_id.name if reading.transformer_id else '')),
-            'subscriber_code': reading.account_id.subscriber_code if reading.account_id else '',
+            'account_name': reading.account_id.display_name if reading.account_id else (reading.feeder_id.name if reading.feeder_id else (reading.transformer_id.name if reading.transformer_id else '')),
+            'subscriber_code': reading.account_id.customer_number if reading.account_id else '',
             'region_name': reading.account_id.region_id.name if reading.account_id and reading.account_id.region_id else '',
             'previous_reading': reading.previous_reading or 0.0,
             'current_reading': reading.reading_value or 0.0,

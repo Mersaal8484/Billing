@@ -290,6 +290,20 @@ class UtilityReading(models.Model):
             'context': {'create': False},
         }
 
+    def action_open_meter_images(self):
+        """Open the current reading in a modal image form bound to this record."""
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('صورة العداد'),
+            'res_model': 'utility.reading',
+            'res_id': self.id,
+            'view_mode': 'form',
+            'views': [(self.env.ref('utility_billing.view_utility_reading_images').id, 'form')],
+            'target': 'new',
+            'context': {'form_view_initial_mode': 'edit', 'create': False, 'edit': True},
+        }
+
     _sql_constraints = [
         ('unique_meter_reading_date',
          'unique(meter_id, reading_date)',
@@ -299,18 +313,18 @@ class UtilityReading(models.Model):
     STATE_EDITABLE = {
         'draft': {'meter_id', 'reading_date', 'reading_value', 'reading_category',
                   'reading_type', 'reading_purpose', 'reading_event', 'account_id', 'meter_multiplier',
-                  'is_estimated', 'is_initial_reading', 'replacement_id', 'meter_image', 'meter_image_secondary',
+                  'is_estimated', 'is_initial_reading', 'replacement_id', 'meter_image', 'image_asset_id', 'meter_image_secondary',
                   'image_state', 'rejection_reason', 'remarks', 'date_range_id',
                   'reading_source', 'active', 'is_validated', 'validator_id',
                   'reviewer_id', 'review_date'},
-        'under_review': {'meter_image', 'meter_image_secondary', 'image_state',
+        'under_review': {'meter_image', 'image_asset_id', 'meter_image_secondary', 'image_state',
                           'review_notes', 'rejection_reason', 'state',
                           'is_validated', 'validator_id', 'reviewer_id', 'review_date'},
         'approved': {'rejection_reason', 'state', 'active', 'attachment_id', 'date_range_id',
                      'billing_error', 'billing_anchor_id', 'included_sale_order_id'},
         'queued': {'state', 'attachment_id', 'billing_error'},
         'billed': {'active', 'remarks', 'billing_error'},
-        'error': {'reading_date', 'reading_value', 'meter_image', 'meter_image_secondary',
+        'error': {'reading_date', 'reading_value', 'meter_image', 'image_asset_id', 'meter_image_secondary',
                   'image_state', 'remarks', 'date_range_id', 'state', 'billing_error'},
     }
 

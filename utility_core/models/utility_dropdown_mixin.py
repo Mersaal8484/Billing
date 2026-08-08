@@ -51,7 +51,9 @@ class UtilityDropdownMixin(models.AbstractModel):
     @api.model
     def _get_open_period_domain(self, work_type='readings', billing_period=False, region_id=False):
         period_role = 'reading' if work_type == 'readings' else 'payment'
-        allowed_states = ['reading_open', 'planned', 'reading_closed', 'reviewing'] if period_role == 'reading' else ['open', 'planned']
+        # Reading intake must only target active periods. Payment periods follow
+        # the same operational rule and only expose live cycles to callers.
+        allowed_states = ['open']
         cadence = 'semi_monthly' if billing_period == 'biweekly' else billing_period
         
         domain = [

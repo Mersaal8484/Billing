@@ -1,5 +1,6 @@
 import calendar
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, time, timedelta, timezone
+from zoneinfo import ZoneInfo
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
 from ..models.utility_date_range import normalize_billing_cadence
@@ -128,15 +129,15 @@ class UtilityPeriodGenerator(models.TransientModel):
             p_start_off = self.payment_start_offset_days
             p_end_off = self.payment_end_offset_days
         else:
-            r_start_off = reading_type.reading_start_offset_days or -2
-            r_end_off = reading_type.reading_end_offset_days or 3
-            p_start_off = reading_type.payment_start_offset_days or 1
-            p_end_off = reading_type.payment_end_offset_days or 13
+            r_start_off = reading_type.reading_start_offset_days
+            r_end_off = reading_type.reading_end_offset_days
+            p_start_off = reading_type.payment_start_offset_days
+            p_end_off = reading_type.payment_end_offset_days
 
-        rw_start = datetime.combine(c_end + timedelta(days=r_start_off), time.min)
-        rw_end = datetime.combine(c_end + timedelta(days=r_end_off), time.max)
-        pw_start = datetime.combine(c_end + timedelta(days=p_start_off), time.min)
-        pw_end = datetime.combine(c_end + timedelta(days=p_end_off), time.max)
+        rw_start = self._to_utc_start_of_day(c_end + timedelta(days=r_start_off))
+        rw_end = self._to_utc_end_of_day(c_end + timedelta(days=r_end_off))
+        pw_start = self._to_utc_start_of_day(c_end + timedelta(days=p_start_off))
+        pw_end = self._to_utc_end_of_day(c_end + timedelta(days=p_end_off))
 
         existing_reading = DateRange.search([('cycle_key', '=', cycle_key), ('period_role', '=', 'reading')], limit=1)
         existing_payment = DateRange.search([('cycle_key', '=', cycle_key), ('period_role', '=', 'payment')], limit=1)
@@ -150,6 +151,9 @@ class UtilityPeriodGenerator(models.TransientModel):
             raise ValidationError(_(
                 "فترة السداد للدورة [%s] موجودة مسبقاً وتمر بالحالة '%s'."
             ) % (cycle_key, existing_payment.state))
+
+        if existing_reading and existing_payment:
+            return existing_reading, existing_payment
 
         read_code = f"READ-{cycle_key}"
         pay_code = f"PAY-{cycle_key}"
@@ -173,7 +177,6 @@ class UtilityPeriodGenerator(models.TransientModel):
             reading_vals['previous_period_id'] = prev_reading_id
 
         if existing_reading:
-            existing_reading.write(reading_vals)
             reading_period = existing_reading
         else:
             reading_vals['state'] = 'planned'
@@ -197,10 +200,21 @@ class UtilityPeriodGenerator(models.TransientModel):
             payment_vals['previous_period_id'] = prev_payment_id
 
         if existing_payment:
-            existing_payment.write(payment_vals)
             payment_period = existing_payment
         else:
             payment_vals['state'] = 'planned'
             payment_period = DateRange.create(payment_vals)
 
         return reading_period, payment_period
+
+    def _to_utc_start_of_day(self, local_date):
+        """Convert a local date to a UTC naive datetime at 00:00:00."""
+        user_tz = self.env.user.tz or self.env.context.get('tz') or 'UTC'
+        local_dt = datetime.combine(local_date, time.min).replace(tzinfo=ZoneInfo(user_tz))
+        return local_dt.astimezone(timezone.utc).replace(tzinfo=None)
+
+    def _to_utc_end_of_day(self, local_date):
+        """Convert a local date to a UTC naive datetime at 23:59:59.999999."""
+        user_tz = self.env.user.tz or self.env.context.get('tz') or 'UTC'
+        local_dt = datetime.combine(local_date, time.max).replace(tzinfo=ZoneInfo(user_tz))
+        return local_dt.astimezone(timezone.utc).replace(tzinfo=None)

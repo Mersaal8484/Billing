@@ -100,6 +100,33 @@ class TestUtilityMediaAsset(TransactionCase):
         # التحقق من أن meter_image يقرأ تلقائياً عبر compute من الأصل الرقمي
         self.assertTrue(reading.meter_image)
 
+    def test_03b_draft_reading_can_persist_image_asset_through_inverse(self):
+        """3b. رفع صورة على قراءة مسودة يجب أن يحفظ image_asset_id دون كسر حماية الحالة"""
+        customer = self.Customer.create({
+            'name': 'مشترك الصورة المسودة',
+            'customer_number': 'CUST-DRAFT-IMG',
+            'region_id': self.region.id,
+        })
+        meter = self.Meter.create({
+            'meter_number': 'MTR-DRAFT-IMG',
+            'customer_id': customer.id,
+        })
+
+        reading = self.env['utility.reading'].create({
+            'meter_id': meter.id,
+            'account_id': customer.id,
+            'reading_value': 42.0,
+            'state': 'draft',
+        })
+        reading.write({'meter_image': self.sample_base64})
+
+        self.assertTrue(reading.image_asset_id)
+        self.assertEqual(reading.state, 'draft')
+        self.assertTrue(reading.meter_image)
+
+        reading.action_submit_review()
+        self.assertEqual(reading.state, 'under_review')
+
     def test_04_decoupled_batch_processing_retry_and_under_review_state(self):
         """4. اختبار معالجة الدفعة وحماية التكرار والصور المصحوبة تحت المراجعة (under_review)"""
         period = self.DateRange.create({

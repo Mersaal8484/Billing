@@ -1,5 +1,7 @@
 .o_utility_review_workspace {
     font-family: 'Cairo', system-ui, -apple-system, sans-serif !important;
+    position: relative;
+    z-index: 1;
 
     .hover-zoom {
         transition: transform 0.15s ease-in-out;
@@ -14,6 +16,8 @@
     }
 
     .table {
+        position: relative;
+
         th {
             font-size: 0.82rem;
             letter-spacing: 0.2px;
@@ -25,6 +29,27 @@
             padding-bottom: 0.4rem;
             vertical-align: middle;
         }
+    }
+
+    .o_control_panel {
+        position: relative;
+        z-index: 3;
+        overflow: visible;
+    }
+
+    .dropdown,
+    .dropup,
+    .btn-group {
+        position: relative;
+        z-index: 4;
+    }
+
+    .dropdown-menu {
+        z-index: 3000 !important;
+    }
+
+    .sticky-top {
+        z-index: 2;
     }
 
     .o_utility_lightbox_backdrop {

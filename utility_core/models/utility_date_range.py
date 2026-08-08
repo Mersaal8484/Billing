@@ -78,26 +78,22 @@ class DateRangeType(models.Model):
 
     @api.model
     def _resolve_period_type(self, cadence, role='reading'):
-        """إرجاع نوع فترة فريد ومحدد يطابق الدورية ويسمح بالتداخل، ويرفض الإعدادات المبهمة"""
+        """Return exactly one matching type for the requested cadence."""
         cadence = normalize_billing_cadence(cadence)
         cadence_keys = [cadence, 'biweekly'] if cadence in ('semi_monthly', 'biweekly') else [cadence]
-        
         matches = self.search([
             ('default_billing_period', 'in', cadence_keys),
             ('fiscal_year', '=', False),
             ('allow_overlap', '=', True),
         ])
         if not matches:
-            matches = self.search([
-                ('allow_overlap', '=', True),
-                ('fiscal_year', '=', False),
-            ])
-        if not matches:
-            matches = self.search([('fiscal_year', '=', False)])
-            
-        if not matches:
             raise ValidationError(_(
                 "لم يتم العثور على نوع فترة زمنية (Date Range Type) مناسب يطابق الدورية '%s'."
+            ) % cadence)
+        if len(matches) > 1:
+            raise ValidationError(_(
+                "تم العثور على أكثر من نوع فترة زمنية يطابق الدورية '%s'. "
+                "يرجى إزالة التكرار في إعدادات أنواع الفترات."
             ) % cadence)
         return matches[0]
 
@@ -489,8 +485,11 @@ class DateRange(models.Model):
 
             if role == 'reading' and not is_fiscal and 'region_ids' not in vals:
                 regions = self._get_regions_for_billing_cadence(cadence)
-                if regions:
-                    vals['region_ids'] = [(6, 0, regions.ids)]
+                if not regions:
+                    raise ValidationError(_(
+                        "لا توجد مناطق نشطة تطابق دورة الفوترة '%s'."
+                    ) % cadence)
+                vals['region_ids'] = [(6, 0, regions.ids)]
             elif role == 'payment' and 'region_ids' not in vals:
                 reading_period_id = vals.get('reading_period_id')
                 if reading_period_id:
@@ -532,7 +531,7 @@ class DateRange(models.Model):
 
     # حقول النطاق محمية بعد مرحلة التخطيط — لا تعديل على فترات تاريخية
     _SCOPE_PROTECTED_FIELDS = frozenset({
-        'region_ids', 'billing_cadence', 'period_role', 'reading_period_id',
+        'cycle_key', 'region_ids', 'billing_cadence', 'period_role', 'reading_period_id',
     })
     # الحالة الوحيدة التي يُسمح فيها بتعديل النطاق
     _SCOPE_MUTABLE_STATES = frozenset({'planned'})
@@ -614,7 +613,7 @@ class DateRange(models.Model):
         for rec in self:
             if rec.state == 'locked':
                 raise ValidationError(_("لا يمكن فتح فترة مقفلة تاريخياً (locked)."))
-            rec._validate_state_transition(['planned', 'closed', 'reconciled', 'closing'], _('فتح الفترة'))
+            rec._validate_state_transition(['planned'], _('فتح الفترة'))
             old_s = rec.state
             write_vals = {
                 'state': 'open',
@@ -622,6 +621,10 @@ class DateRange(models.Model):
             }
             if old_s == 'planned':
                 final_regions = rec._get_regions_for_billing_cadence(rec.billing_cadence)
+                if not final_regions:
+                    raise ValidationError(_(
+                        "لا توجد مناطق نشطة تطابق دورة الفوترة '%s'."
+                    ) % rec.billing_cadence)
                 write_vals['region_ids'] = [(6, 0, final_regions.ids)]
             rec.with_context(_bypass_period_scope_protection=True).write(write_vals)
             rec._log_state_transition(old_s, 'open', _("فتح الفترة للعمليات التشغيلية"))
@@ -689,7 +692,9 @@ class DateRange(models.Model):
 
     def action_close_period(self):
         for rec in self:
-            rec._validate_state_transition(['closing', 'open'], _('إغلاق الفترة'))
+            if rec.period_role == 'payment':
+                raise ValidationError(_("فترة التحصيل لا تُغلق إلى closed؛ يجب استخدام مطابقة التحصيل."))
+            rec._validate_state_transition(['closing'], _('إغلاق الفترة'))
             if rec.period_role == 'reading':
                 rec._validate_period_closing_reconciliation()
             old_s = rec.state
@@ -703,7 +708,7 @@ class DateRange(models.Model):
         for rec in self:
             if rec.period_role != 'payment':
                 raise ValidationError(_("هذا الإجراء ينطبق فقط على فترات التحصيل."))
-            rec._validate_state_transition(['closing', 'open', 'closed'], _('مطابقة التحصيل'))
+            rec._validate_state_transition(['closing'], _('مطابقة التحصيل'))
             old_s = rec.state
             rec.write({'state': 'reconciled'})
             rec._log_state_transition(old_s, 'reconciled', _("إكمال مطابقة المقبوضات والتحصيل"))
@@ -721,7 +726,7 @@ class DateRange(models.Model):
     @api.constrains('period_role', 'state')
     def _check_role_state_consistency(self):
         reading_states = {'planned', 'open', 'closing', 'closed', 'locked'}
-        payment_states = {'planned', 'open', 'closing', 'reconciled', 'closed', 'locked'}
+        payment_states = {'planned', 'open', 'closing', 'reconciled', 'locked'}
         for rec in self:
             if rec.period_role == 'reading' and rec.state not in reading_states:
                 raise ValidationError(_("الحالة '%s' غير مسموحة لفترة قراءة.") % rec.state)

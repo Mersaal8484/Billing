@@ -106,6 +106,22 @@ class TestUtilityPeriodManagement(TransactionCase):
         domain_s = self.Reading._get_open_period_domain(work_type='readings', billing_period='semi_monthly', region_id=self.region_semi.id)
         self.assertIn(('billing_cadence', '=', 'semi_monthly'), domain_s)
 
+    def test_02b_open_semi_monthly_period_remains_selectable(self):
+        """2b. الفترة نصف الشهرية المفتوحة تبقى متاحة للقراءات إذا طابقت الدورية"""
+        period = self.DateRange.search([
+            ('cycle_key', '=', 'SEMI-2026-07-H1'),
+            ('period_role', '=', 'reading'),
+        ], limit=1)
+        self.assertTrue(period)
+
+        domain = self.Reading._get_open_period_domain(
+            work_type='readings',
+            billing_period='semi_monthly',
+            region_id=self.region_semi.id,
+        )
+        self.assertIn(('state', 'in', ['open']), domain)
+        self.assertIn(period, self.DateRange.search(domain))
+
     def test_03_04_05_period_generator_h1_h2_february(self):
         """3, 4, 5. مولد الفترات للنصف الأول (1-15) والثاني (16-نهاية الشهر) واختبار فبراير"""
         wizard = self.Generator.create({

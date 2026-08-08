@@ -28,6 +28,7 @@
         <field name="view_mode">form</field>
         <field name="view_id" ref="view_utility_reading_images"/>
         <field name="target">new</field>
+        <field name="context">{'form_view_initial_mode': 'edit', 'create': False, 'edit': True}</field>
     </record>
 
     <!-- ===================== LIST VIEW ===================== -->
@@ -95,7 +96,7 @@
                 <sheet>
                     <div class="oe_button_box" name="button_box">
                         <!-- صور العداد -->
-                        <button name="%(action_open_meter_images)d" type="action"
+                        <button name="action_open_meter_images" type="object"
                                 class="oe_stat_button" icon="fa-camera"
                                 help="صورة العداد">
                             <div class="o_stat_info">

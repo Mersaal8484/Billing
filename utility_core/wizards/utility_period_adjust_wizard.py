@@ -64,6 +64,9 @@ class UtilityPeriodAdjustWizard(models.TransientModel):
         if p.state == 'locked':
             raise ValidationError(_("الفترة مقفلة تاريخياً (locked) ولا يمكن تعديلها إطلاقاً."))
 
+        if self.operation_type in ('extend_reading_window', 'extend_payment_window', 'change_reading_window', 'change_consumption_bounds') and p.state not in ('planned', 'open'):
+            raise ValidationError(_("يمكن تعديل النوافذ فقط على الفترات المخطط لها أو المفتوحة."))
+
         old_vals = {}
         new_vals = {}
         changed_fields_list = []
@@ -72,8 +75,10 @@ class UtilityPeriodAdjustWizard(models.TransientModel):
         if self.operation_type == 'extend_reading_window':
             if not self.new_reading_window_end:
                 raise ValidationError(_("يجب تحديد تاريخ نهاية نافذة القراءة الجديد."))
-            if self.new_reading_window_end <= p.reading_window_end:
+            if p.reading_window_end and self.new_reading_window_end <= p.reading_window_end:
                 raise ValidationError(_("التاريخ الجديد ينبغي أن يكون لاحقاً للتاريخ الحالي لتمديد النافذة."))
+            if p.state == 'closed':
+                raise ValidationError(_("لا يمكن تمديد نافذة قراءة لفترة مغلقة."))
             
             old_vals['reading_window_end'] = str(p.reading_window_end)
             new_vals['reading_window_end'] = str(self.new_reading_window_end)
@@ -83,8 +88,10 @@ class UtilityPeriodAdjustWizard(models.TransientModel):
         elif self.operation_type == 'extend_payment_window':
             if not self.new_payment_window_end:
                 raise ValidationError(_("يجب تحديد تاريخ نهاية نافذة التحصيل الجديد."))
-            if self.new_payment_window_end <= p.payment_window_end:
+            if p.payment_window_end and self.new_payment_window_end <= p.payment_window_end:
                 raise ValidationError(_("التاريخ الجديد ينبغي أن يكون لاحقاً للتاريخ الحالي لتمديد النافذة."))
+            if p.state == 'reconciled':
+                raise ValidationError(_("لا يمكن تمديد نافذة تحصيل لفترة تمت مطابقتها."))
 
             old_vals['payment_window_end'] = str(p.payment_window_end)
             new_vals['payment_window_end'] = str(self.new_payment_window_end)
@@ -99,8 +106,8 @@ class UtilityPeriodAdjustWizard(models.TransientModel):
 
             # التأكد من الأثر الجاري
             readings = self.env['utility.reading'].search([('date_range_id', '=', p.id)], limit=1)
-            if readings and p.state in ('closing', 'closed'):
-                raise ValidationError(_("لا يمكن تعديل نافذة القراءة بفترة في حالة إغلاق تحتوي على قراءات مسجلة."))
+            if readings:
+                raise ValidationError(_("لا يمكن تعديل نافذة القراءة بعد وجود قراءات مسجلة على الفترة."))
 
             old_vals['reading_window_start'] = str(p.reading_window_start)
             old_vals['reading_window_end'] = str(p.reading_window_end)
@@ -118,9 +125,10 @@ class UtilityPeriodAdjustWizard(models.TransientModel):
             if self.new_consumption_start >= self.new_consumption_end:
                 raise ValidationError(_("تاريخ بداية الاستهلاك يجب أن يكون قبل تاريخ نهايته."))
 
-            # التحقق من وجود فواتير مرتبطة
-            orders = self.env['sale.order'].search([('date_range_id', '=', p.id), ('state', '!=', 'cancel')], limit=1)
-            if orders:
+            # التحقق من عدم وجود أي قراءات أو فواتير مرتبطة
+            if self.env['utility.reading'].search_count([('date_range_id', '=', p.id)]):
+                raise ValidationError(_("لا يمكن تعديل حدود الاستهلاك لوجود قراءات مرتبطة بالفعل."))
+            if self.env['sale.order'].search_count([('date_range_id', '=', p.id), ('state', '!=', 'cancel')]):
                 raise ValidationError(_("لا يمكن تعديل حد فترات الاستهلاك لوجود فواتير كهرباء منشأة على هذه الفترة."))
 
             old_vals['consumption_start'] = str(p.consumption_start)
