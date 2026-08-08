@@ -50,17 +50,18 @@ debt management, collections, and online payment gateway integration.
     'auto_install': False,
     'sequence': 2,
     'post_init_hook': 'post_init_hook',
-    'assets': {
+        'assets': {
         'web.assets_backend': [
             'utility_billing/static/src/reading_review/reading_review.scss',
             'utility_billing/static/src/reading_review/components/rejection_dialog.js',
             'utility_billing/static/src/reading_review/components/rejection_dialog.xml',
             'utility_billing/static/src/reading_review/components/image_lightbox.js',
             'utility_billing/static/src/reading_review/components/image_lightbox.xml',
+            'utility_billing/static/src/reading_review/components/media_image_field.js',
+            'utility_billing/static/src/reading_review/components/media_image_field.xml',
             'utility_billing/static/src/reading_review/reading_review_action.js',
             'utility_billing/static/src/reading_review/reading_review_action.xml',
         ],
     },
 }
-
 
