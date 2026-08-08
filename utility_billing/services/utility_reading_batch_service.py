@@ -1,3 +1,4 @@
+import base64
 import json
 import logging
 from odoo import api, fields, models, _
@@ -151,8 +152,11 @@ class UtilityReadingBatchService(models.AbstractModel):
             elif image_filename in legacy_attachments:
                 att = legacy_attachments[image_filename]
                 try:
+                    raw = att.datas
+                    if isinstance(raw, str):
+                        raw = base64.b64decode(raw)
                     media_asset = MediaService.store_media(
-                        file_data=att.datas,
+                        file_data=raw,
                         filename=att.name,
                         mimetype=att.mimetype or 'image/jpeg',
                         batch_id=batch.id,

@@ -78,15 +78,51 @@ class UtilityMediaService(models.AbstractModel):
             }
 
     @api.model
+    def _detect_mime_from_bytes(self, raw_bytes):
+        """اكتشاف نوع MIME الحقيقي من بصمة البايتات الأولية للصورة"""
+        format_to_mime = {
+            'JPEG': 'image/jpeg',
+            'PNG': 'image/png',
+            'WEBP': 'image/webp',
+            'GIF': 'image/gif',
+            'BMP': 'image/bmp',
+            'TIFF': 'image/tiff',
+        }
+        try:
+            image = Image.open(io.BytesIO(raw_bytes))
+            fmt = image.format or 'JPEG'
+            image.close()
+            return format_to_mime.get(fmt, 'image/jpeg')
+        except Exception:
+            return 'image/jpeg'
+
+    @api.model
     def store_media(self, file_data, filename, mimetype='image/jpeg', reading_id=False, batch_id=False, asset_type='meter_reading'):
-        """تخزين وسائط جديدة ومعالجتها عبر Adapter وتوليد النسخ"""
+        """تخزين وسائط جديدة ومعالجتها عبر Adapter وتوليد النسخ.
+
+        العقد: file_data يجب أن يكون raw bytes (صورة ثنائية حقيقية).
+        أي ناقل (UI / REST / AMI) مسؤول عن فك Base64 قبل الاستدعاء.
+        """
         if not file_data:
             raise ValidationError(_("بيانات الصورة أو الملف فارغة."))
 
         if isinstance(file_data, str):
-            raw_bytes = base64.b64decode(file_data)
-        else:
-            raw_bytes = file_data
+            raise ValidationError(_(
+                "Media service لا يقبل Base64 strings. "
+                "يجب فك الترميز إلى raw bytes قبل الاستدعاء."
+            ))
+
+        raw_bytes = bytes(file_data)
+
+        try:
+            img = Image.open(io.BytesIO(raw_bytes))
+            img.verify()
+        except Exception as exc:
+            raise ValidationError(_(
+                "بيانات الصورة غير صالحة — لا يمكن فتحها كصورة: %s"
+            ) % filename) from exc
+
+        mimetype = self._detect_mime_from_bytes(raw_bytes)
 
         sha256_hash = self.calculate_sha256(raw_bytes)
         file_size = len(raw_bytes)

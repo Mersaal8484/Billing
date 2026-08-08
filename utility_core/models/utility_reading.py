@@ -159,15 +159,34 @@ class UtilityReading(models.Model):
 
     def _inverse_meter_image(self):
         for r in self:
-            if r.meter_image and not r.image_asset_id:
-                asset = self.env['utility.media.service'].sudo().store_media(
-                    file_data=r.meter_image,
-                    filename=f"reading_{r.id or 'legacy'}.jpg",
-                    mimetype='image/jpeg',
-                    reading_id=r.id if isinstance(r.id, int) else False,
-                    asset_type='meter_reading'
-                )
-                r.image_asset_id = asset.id
+            if not r.meter_image:
+                continue
+            raw = r.meter_image
+            if isinstance(raw, str):
+                try:
+                    raw = base64.b64decode(raw, validate=True)
+                except Exception:
+                    pass
+            if isinstance(raw, bytes) and raw[:4] in (b'\xff\xd8\xff\xe0', b'\xff\xd8\xff\xe1', b'\xff\xd8\xff\xdb', b'\x89PNG', b'RIFF'):
+                pass
+            else:
+                try:
+                    raw_decoded = base64.b64decode(raw, validate=True)
+                    if raw_decoded[:4] in (b'\xff\xd8\xff\xe0', b'\xff\xd8\xff\xe1', b'\xff\xd8\xff\xdb', b'\x89PNG', b'RIFF'):
+                        raw = raw_decoded
+                except Exception:
+                    pass
+            old_asset = r.image_asset_id
+            new_asset = self.env['utility.media.service'].sudo().store_media(
+                file_data=raw,
+                filename=f"reading_{r.id or 'legacy'}.jpg",
+                mimetype='image/jpeg',
+                reading_id=r.id if isinstance(r.id, int) else False,
+                asset_type='meter_reading'
+            )
+            if old_asset and old_asset != new_asset:
+                new_asset.sudo().write({'revision': (old_asset.revision or 1) + 1})
+            r.image_asset_id = new_asset.id
     review_notes = fields.Text('ملاحظات المراجعة')
     rejection_reason = fields.Text('سبب الرفض')
     is_validated = fields.Boolean('تم التحقق', default=False)
@@ -626,4 +645,6 @@ class UtilityReading(models.Model):
         for r in records:
             if r.meter_id:
                 r.meter_id._update_last_reading()
+            if r.image_asset_id and not r.image_asset_id.reading_id:
+                r.image_asset_id.sudo().write({'reading_id': r.id})
         return records

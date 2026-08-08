@@ -150,7 +150,7 @@ class UtilityReaderAPI(http.Controller):
             return {'success': False, 'error': f'بيانات الصورة غير صالحة: {e}'}
 
         media_asset = request.env['utility.media.service'].sudo().store_media(
-            file_data=image_data,
+            file_data=decoded,
             filename=filename,
             mimetype='image/jpeg',
             batch_id=batch.id,
