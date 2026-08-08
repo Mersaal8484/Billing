@@ -116,7 +116,14 @@ class UtilityReading(models.Model):
     image_asset_id = fields.Many2one('utility.media.asset', string='Meter Image Asset', ondelete='set null', index=True)
     meter_image = fields.Binary('صورة العداد (توافقي)', compute='_compute_meter_image', inverse='_inverse_meter_image', store=False,
                                 help='حقل توافقي غير مخزن — التخزين الأصيل ممركز في image_asset_id')
-    meter_image_url = fields.Char('رابط صورة العداد', compute='_compute_meter_image_url', store=False)
+    meter_image_preview = fields.Binary(
+        'معاينة صورة العداد',
+        related='image_asset_id.review_attachment_id.datas',
+        readonly=True,
+        store=False,
+        compute_sudo=True,
+    )
+    meter_image_url = fields.Char('رابط صورة العداد', compute='_compute_meter_image_url', store=False, compute_sudo=True)
     meter_image_secondary = fields.Binary('صورة إضافية', attachment=True)
     image_state = fields.Selection([
         ('clear', 'واضحة'),
@@ -148,10 +155,12 @@ class UtilityReading(models.Model):
     @api.depends('image_asset_id', 'image_asset_id.state', 'image_asset_id.review_url', 'attachment_id')
     def _compute_meter_image_url(self):
         for r in self:
-            if r.image_asset_id and r.image_asset_id.state == 'ready':
-                r.meter_image_url = r.image_asset_id.review_url or r.image_asset_id.thumbnail_url or r.image_asset_id.original_url or ''
-            elif r.attachment_id:
-                r.meter_image_url = f"/web/image/{r.attachment_id.id}"
+            asset = r.image_asset_id.sudo() if r.image_asset_id else False
+            attachment = r.attachment_id.sudo() if r.attachment_id else False
+            if asset and asset.state == 'ready':
+                r.meter_image_url = asset.review_url or asset.thumbnail_url or asset.original_url or ''
+            elif attachment:
+                r.meter_image_url = f"/web/image/{attachment.id}"
             else:
                 r.meter_image_url = ''
 

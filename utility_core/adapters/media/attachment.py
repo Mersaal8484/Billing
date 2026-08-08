@@ -34,7 +34,10 @@ class AttachmentMediaAdapter(AbstractMediaStorageAdapter):
         attachment = self._get_attachment_for_variant(asset, variant)
         if not attachment or not attachment.datas:
             return b''
-        return base64.b64decode(attachment.datas)
+        try:
+            return base64.b64decode(attachment.datas)
+        except Exception:
+            return attachment.datas if isinstance(attachment.datas, bytes) else b''
 
     def delete(self, asset):
         attachments = self.env['ir.attachment'].sudo()

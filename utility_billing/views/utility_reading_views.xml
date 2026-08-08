@@ -8,9 +8,8 @@
             <form string="صور العداد">
                 <sheet>
                     <group>
-                        <field name="meter_image_url" widget="image" class="oe_avatar"
-                               options="{'size': [400, 300]}" readonly="1" invisible="1"/>
-                        <field name="meter_image_url" widget="utility_media_image" nolabel="1" readonly="1"/>
+                        <field name="meter_image_preview" widget="image" nolabel="1" readonly="1"
+                               options="{'size': [400, 300]}"/>
                         <field name="meter_image" widget="binary" string="رفع/استبدال الصورة"/>
                         <field name="meter_image_secondary" widget="image" class="oe_avatar"
                                options="{'size': [400, 300]}"/>
@@ -42,7 +41,7 @@
                   decoration-success="state == 'approved'"
                   decoration-danger="state == 'error'">
                 <field name="company_id" invisible="1"/>
-                <field name="meter_image_url" widget="image" class="oe_avatar" options="{'size': [64, 64]}" string="الصورة"/>
+                <field name="meter_image_preview" widget="image" class="oe_avatar" options="{'size': [64, 64]}" string="الصورة"/>
                 <field name="reading_id" string="رقم القراءة"/>
                 <field name="reading_purpose" widget="badge" string="غرض القراءة"/>
                 <field name="customer_id" string="اسم المشترك"/>
@@ -151,7 +150,8 @@
                         </group>
                     </group>
                     <group string="صور العداد">
-                        <field name="meter_image_url" widget="utility_media_image" nolabel="1" readonly="1"/>
+                        <field name="meter_image_preview" widget="image" nolabel="1" readonly="1"
+                               options="{'size': [200, 150]}"/>
                         <field name="meter_image" widget="binary" string="رفع/استبدال الصورة"
                                attrs="{'readonly': [('state', 'not in', ('draft', 'under_review', 'error'))]}"/>
                         <field name="meter_image_secondary" widget="image"
@@ -192,18 +192,17 @@
                 <field name="meter_id"/>
                 <field name="reading_value"/>
                 <field name="state"/>
-                <field name="meter_image"/>
-                <field name="meter_image_url"/>
+                <field name="meter_image_preview"/>
                 <field name="create_uid"/>
                 <field name="id"/>
                 <templates>
                     <t t-name="kanban-box">
                         <div t-attf-class="oe_kanban_global_click o_kanban_record_has_image_fill">
-                            <div class="o_kanban_image_fill_left d-none d-md-block" t-attf-style="background-image:url('#{record.meter_image_url &amp;&amp; record.meter_image_url.raw_value || ''}')">
-                                <img class="o_kanban_image_inner_pic" t-if="record.meter_image_url &amp;&amp; record.meter_image_url.raw_value" t-att-alt="record.reading_id.value" t-att-src="record.meter_image_url.raw_value"/>
+                            <div class="o_kanban_image_fill_left d-none d-md-block" t-attf-style="background-image:url('#{kanban_image('utility.reading', 'meter_image_preview', record.id.raw_value)}')">
+                                <img class="o_kanban_image_inner_pic" t-if="record.meter_image_preview.raw_value" t-att-alt="record.reading_id.value" t-att-src="kanban_image('utility.reading', 'meter_image_preview', record.id.raw_value)"/>
                             </div>
-                            <div class="o_kanban_image d-md-none" t-attf-style="background-image:url('#{record.meter_image_url &amp;&amp; record.meter_image_url.raw_value || ''}')">
-                                <img class="o_kanban_image_inner_pic" t-if="record.meter_image_url &amp;&amp; record.meter_image_url.raw_value" t-att-alt="record.reading_id.value" t-att-src="record.meter_image_url.raw_value"/>
+                            <div class="o_kanban_image d-md-none" t-attf-style="background-image:url('#{kanban_image('utility.reading', 'meter_image_preview', record.id.raw_value)}')">
+                                <img class="o_kanban_image_inner_pic" t-if="record.meter_image_preview.raw_value" t-att-alt="record.reading_id.value" t-att-src="kanban_image('utility.reading', 'meter_image_preview', record.id.raw_value)"/>
                             </div>
                             <div class="oe_kanban_details">
                                 <div class="o_kanban_record_top">
