@@ -12,7 +12,7 @@ class UtilityMediaController(http.Controller):
     @http.route([
         '/utility/media/<string:asset_uuid>/<string:variant>',
         '/utility/media/<string:asset_uuid>',
-    ], type='http', auth='public', methods=['GET'], csrf=False)
+    ], type='http', auth='user', methods=['GET'], csrf=False)
     def stream_media_variant(self, asset_uuid, variant='thumbnail', **kwargs):
         """
         بث الوسائط الرقمية ومقاطع المعاينة بأمان وتدقيق صلاحيات الوصول:
@@ -22,9 +22,6 @@ class UtilityMediaController(http.Controller):
         """
         if variant not in ['thumbnail', 'review', 'original']:
             variant = 'thumbnail'
-
-        if not request.session.uid:
-            return Response("Unauthorized", status=401)
 
         Asset = request.env['utility.media.asset'].sudo()
         asset = Asset.search([('asset_uuid', '=', asset_uuid)], limit=1)
