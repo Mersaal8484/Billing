@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_transformer_balance_document">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-set="values" t-value="doc._prepare_balance_values()"/>
+                <t t-set="totals" t-value="values['totals']"/>
+                <div class="page" dir="rtl" style="font-family: Arial, sans-serif; font-size: 12px;">
+                    <h2 style="text-align:center; margin-bottom: 4px;">تقرير توازن المحول</h2>
+                    <h3 style="text-align:center; margin-top: 0;" t-esc="doc.transformer_id.name"/>
+
+                    <table style="width:100%; margin-bottom:12px; border-collapse:collapse;">
+                        <tr>
+                            <td><strong>المحول:</strong> <span t-esc="doc.transformer_id.name"/></td>
+                            <td><strong>الكود:</strong> <span t-esc="doc.transformer_id.code"/></td>
+                        </tr>
+                        <tr>
+                            <td><strong>الفيدر:</strong> <span t-esc="doc.transformer_id.feeder_id.name or ''"/></td>
+                            <td><strong>المنطقة:</strong> <span t-esc="doc.transformer_id.region_id.name or ''"/></td>
+                        </tr>
+                        <tr>
+                            <td><strong>الفترة:</strong> <span t-esc="doc.date_from"/> - <span t-esc="doc.date_to"/></td>
+                            <td><strong>حد إنذار الفاقد:</strong> <span t-esc="'%.2f' % doc.show_loss_threshold"/>%</td>
+                        </tr>
+                    </table>
+
+                    <table style="width:100%; border-collapse:collapse; margin-bottom:14px;" border="1">
+                        <thead>
+                            <tr style="background:#f0f0f0;">
+                                <th style="padding:5px;">الطاقة الموردة</th>
+                                <th style="padding:5px;">استهلاك المشتركين</th>
+                                <th style="padding:5px;">الفاقد kWh</th>
+                                <th style="padding:5px;">نسبة الفاقد</th>
+                                <th style="padding:5px;">الحالة</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="padding:5px; text-align:left;"><span t-esc="'%.2f' % totals['supplied']"/></td>
+                                <td style="padding:5px; text-align:left;"><span t-esc="'%.2f' % totals['consumed']"/></td>
+                                <td style="padding:5px; text-align:left;"><span t-esc="'%.2f' % totals['loss']"/></td>
+                                <td style="padding:5px; text-align:left;"><span t-esc="'%.2f' % totals['loss_percentage']"/>%</td>
+                                <td style="padding:5px;"><span t-esc="'تجاوز الحد' if totals['is_loss_warning'] else 'ضمن الحد'"/></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h4>عدادات الربط</h4>
+                    <table style="width:100%; border-collapse:collapse; margin-bottom:14px;" border="1">
+                        <thead>
+                            <tr style="background:#f0f0f0;">
+                                <th style="padding:5px;">العداد</th>
+                                <th style="padding:5px;">آخر قراءة</th>
+                                <th style="padding:5px;">تاريخ القراءة</th>
+                                <th style="padding:5px;">الاستهلاك</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="values['coupling_lines']" t-as="line">
+                                <td style="padding:5px;"><span t-esc="line['meter'].meter_number"/></td>
+                                <td style="padding:5px; text-align:left;"><span t-esc="line['reading'].reading_value if line['reading'] else ''"/></td>
+                                <td style="padding:5px;"><span t-esc="line['reading'].reading_date if line['reading'] else 'لا توجد قراءة'"/></td>
+                                <td style="padding:5px; text-align:left;"><span t-esc="'%.2f' % line['consumption']"/></td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h4>عدادات المشتركين</h4>
+                    <table style="width:100%; border-collapse:collapse;" border="1">
+                        <thead>
+                            <tr style="background:#f0f0f0;">
+                                <th style="padding:5px;">العداد</th>
+                                <th style="padding:5px;">المشترك</th>
+                                <th style="padding:5px;">آخر قراءة</th>
+                                <th style="padding:5px;">تاريخ القراءة</th>
+                                <th style="padding:5px;">الاستهلاك</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr t-foreach="values['child_lines']" t-as="line">
+                                <td style="padding:5px;"><span t-esc="line['meter'].meter_number"/></td>
+                                <td style="padding:5px;"><span t-esc="line['customer'].partner_id.name if line['customer'] else ''"/></td>
+                                <td style="padding:5px; text-align:left;"><span t-esc="line['reading'].reading_value if line['reading'] else ''"/></td>
+                                <td style="padding:5px;"><span t-esc="line['reading'].reading_date if line['reading'] else 'لا توجد قراءة'"/></td>
+                                <td style="padding:5px; text-align:left;"><span t-esc="'%.2f' % line['consumption']"/></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Menu Item under Readings Menu -->
+    <menuitem id="menu_utility_reading_review_workspace"
+              name="مراجعة وتدقيق القراءات"
+              parent="utility_billing.menu_utility_readings"
+              sequence="5"
+              action="action_utility_readings_pending_review"/>
+</odoo>

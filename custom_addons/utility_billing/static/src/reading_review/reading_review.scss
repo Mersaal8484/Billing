@@ -1,0 +1,58 @@
+.o_utility_review_workspace {
+    font-family: 'Cairo', system-ui, -apple-system, sans-serif !important;
+    position: relative;
+    z-index: 1;
+
+    .hover-zoom {
+        transition: transform 0.15s ease-in-out;
+        &:hover {
+            transform: scale(1.15);
+            z-index: 10;
+        }
+    }
+
+    .cursor-pointer {
+        cursor: pointer;
+    }
+
+    .table {
+        position: relative;
+
+        th {
+            font-size: 0.82rem;
+            letter-spacing: 0.2px;
+            padding-top: 0.6rem;
+            padding-bottom: 0.6rem;
+        }
+        td {
+            padding-top: 0.4rem;
+            padding-bottom: 0.4rem;
+            vertical-align: middle;
+        }
+    }
+
+    .o_control_panel {
+        position: relative;
+        z-index: 3;
+        overflow: visible;
+    }
+
+    .dropdown,
+    .dropup,
+    .btn-group {
+        position: relative;
+        z-index: 4;
+    }
+
+    .dropdown-menu {
+        z-index: 3000 !important;
+    }
+
+    .sticky-top {
+        z-index: 2;
+    }
+
+    .o_utility_lightbox_backdrop {
+        backdrop-filter: blur(4px);
+    }
+}

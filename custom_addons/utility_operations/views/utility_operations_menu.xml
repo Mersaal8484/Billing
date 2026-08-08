@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <!-- ====== تحت قائمة Utility الرئيسية ====== -->
+        <menuitem id="menu_utility_field_ops"
+                  name="العمليات الميدانية"
+                  parent="utility_core.menu_utility_root"
+                  sequence="25"/>
+
+        <!-- ====== أمور الخدمة ====== -->
+        <menuitem id="menu_utility_service_orders"
+                  name="أوامر الخدمة"
+                  parent="menu_utility_field_ops"
+                  sequence="10"/>
+
+        <menuitem id="menu_utility_service_order_list"
+                  name="أوامر الخدمة"
+                  parent="menu_utility_service_orders"
+                  action="action_utility_service_order"
+                  sequence="10"/>
+
+        <menuitem id="menu_utility_installation_list"
+                  name="التركيبات"
+                  parent="menu_utility_service_orders"
+                  action="action_utility_installation"
+                  sequence="20"/>
+
+        <menuitem id="menu_utility_inspection_list"
+                  name="المعاينات"
+                  parent="menu_utility_service_orders"
+                  action="action_utility_inspection"
+                  sequence="30"/>
+
+        <!-- ====== الأمن ====== -->
+        <menuitem id="menu_utility_tamper_case_list"
+                  name="حالات التلاعب"
+                  parent="menu_utility_field_ops"
+                  action="action_utility_tamper_case"
+                  sequence="20"/>
+
+        <!-- ====== المراقبة ====== -->
+        <menuitem id="menu_utility_alarm_list"
+                  name="الإنذارات"
+                  parent="menu_utility_field_ops"
+                  action="action_utility_alarm"
+                  sequence="30"/>
+
+        <!-- ====== الأعمال الميدانية ====== -->
+        <menuitem id="menu_utility_work_order_list"
+                  name="أوامر العمل"
+                  parent="menu_utility_field_ops"
+                  action="action_utility_work_order"
+                  sequence="40"/>
+
+        <!-- ====== الصيانة والإجراءات ====== -->
+        <menuitem id="menu_utility_maintenance"
+                  name="الصيانة والإجراءات"
+                  parent="menu_utility_field_ops"
+                  sequence="50"/>
+
+        <menuitem id="menu_utility_readings_settlement"
+                  name="تسويات القراءات"
+                  parent="menu_utility_maintenance"
+                  action="action_utility_readings_settlement"
+                  sequence="20"/>
+
+    </data>
+</odoo>

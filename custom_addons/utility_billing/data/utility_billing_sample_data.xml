@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- ==================== 1. أنواع الفترات (Types) ==================== -->
+
+        <!-- سنة مالية -->
+        <record id="demo_date_range_type_yearly" model="date.range.type">
+            <field name="name">سنة مالية</field>
+            <field name="fiscal_year" eval="True"/>
+            <field name="allow_overlap" eval="False"/>
+            <field name="default_billing_period">yearly</field>
+        </record>
+
+        <!-- دورة شهرية -->
+        <record id="demo_date_range_type_monthly" model="date.range.type">
+            <field name="name">دورة فوترة شهرية</field>
+            <field name="allow_overlap" eval="True"/>
+            <field name="default_billing_period">monthly</field>
+        </record>
+
+        <!-- دورة نصف شهرية -->
+        <record id="demo_date_range_type_biweekly" model="date.range.type">
+            <field name="name">دورة فوترة نصف شهرية</field>
+            <field name="allow_overlap" eval="True"/>
+            <field name="default_billing_period">biweekly</field>
+        </record>
+
+        <!-- ==================== 2. السنة المالية ==================== -->
+        <record id="demo_fiscal_year_2026" model="date.range">
+            <field name="name">السنة المالية 2026</field>
+            <field name="period_code">FY-2026</field>
+            <field name="type_id" ref="demo_date_range_type_yearly"/>
+            <field name="date_start">2026-01-01</field>
+            <field name="date_end">2026-12-31</field>
+            <field name="billing_period">yearly</field>
+            <field name="work_type">other</field>
+            <field name="state">open</field>
+        </record>
+
+        <!-- ==================== 3. فترات القراءة (Readings) ==================== -->
+
+        <!-- فترة قراءة شهرية نشطة -->
+        <record id="demo_reading_monthly_july_2026" model="date.range">
+            <field name="name">فترة قراءة شهرية - يوليو 2026</field>
+            <field name="period_code">READ-MONTHLY-2026-07</field>
+            <field name="cycle_key">MONTHLY-2026-07</field>
+            <field name="period_role">reading</field>
+            <field name="type_id" ref="demo_date_range_type_monthly"/>
+            <field name="date_start">2026-07-01</field>
+            <field name="date_end">2026-07-31</field>
+            <field name="consumption_start">2026-07-01</field>
+            <field name="consumption_end">2026-07-31</field>
+            <field name="billing_period">monthly</field>
+            <field name="work_type">readings</field>
+            <field name="state">open</field>
+        </record>
+
+        <!-- فترة قراءة نصف شهرية (النصف الأول) نشطة -->
+        <record id="demo_reading_biweekly_july_2026_a" model="date.range">
+            <field name="name">فترة قراءة نصف شهرية - النصف الأول يوليو 2026</field>
+            <field name="period_code">READ-SEMI-2026-07-H1</field>
+            <field name="cycle_key">SEMI-2026-07-H1</field>
+            <field name="period_role">reading</field>
+            <field name="type_id" ref="demo_date_range_type_biweekly"/>
+            <field name="date_start">2026-07-01</field>
+            <field name="date_end">2026-07-15</field>
+            <field name="consumption_start">2026-07-01</field>
+            <field name="consumption_end">2026-07-15</field>
+            <field name="billing_period">biweekly</field>
+            <field name="work_type">readings</field>
+            <field name="state">open</field>
+        </record>
+
+        <!-- فترة قراءة نصف شهرية (النصف الثاني) -->
+        <record id="demo_reading_biweekly_july_2026_b" model="date.range">
+            <field name="name">فترة قراءة نصف شهرية - النصف الثاني يوليو 2026</field>
+            <field name="period_code">READ-SEMI-2026-07-H2</field>
+            <field name="cycle_key">SEMI-2026-07-H2</field>
+            <field name="period_role">reading</field>
+            <field name="type_id" ref="demo_date_range_type_biweekly"/>
+            <field name="date_start">2026-07-16</field>
+            <field name="date_end">2026-07-31</field>
+            <field name="consumption_start">2026-07-16</field>
+            <field name="consumption_end">2026-07-31</field>
+            <field name="billing_period">biweekly</field>
+            <field name="work_type">readings</field>
+            <field name="state">planned</field>
+        </record>
+
+        <!-- ==================== 4. فترات التحصيل (Payment) ==================== -->
+
+        <!-- فترة تحصيل شهرية مرتبطة بفترة القراءة الشهرية -->
+        <record id="demo_payment_monthly_july_2026" model="date.range">
+            <field name="name">فترة تحصيل شهرية - يوليو 2026</field>
+            <field name="period_code">PAY-MONTHLY-2026-07</field>
+            <field name="cycle_key">MONTHLY-2026-07</field>
+            <field name="period_role">payment</field>
+            <field name="type_id" ref="demo_date_range_type_monthly"/>
+            <field name="date_start">2026-07-01</field>
+            <field name="date_end">2026-08-10</field>
+            <field name="billing_period">monthly</field>
+            <field name="work_type">payment</field>
+            <field name="reading_period_id" ref="demo_reading_monthly_july_2026"/>
+            <field name="state">open</field>
+        </record>
+
+        <!-- فترة تحصيل نصف شهرية مرتبطة بفترة القراءة (النصف الأول) -->
+        <record id="demo_payment_biweekly_july_2026_a" model="date.range">
+            <field name="name">فترة تحصيل نصف شهرية - النصف الأول يوليو 2026</field>
+            <field name="period_code">PAY-SEMI-2026-07-H1</field>
+            <field name="cycle_key">SEMI-2026-07-H1</field>
+            <field name="period_role">payment</field>
+            <field name="type_id" ref="demo_date_range_type_biweekly"/>
+            <field name="date_start">2026-07-01</field>
+            <field name="date_end">2026-07-25</field>
+            <field name="billing_period">biweekly</field>
+            <field name="work_type">payment</field>
+            <field name="reading_period_id" ref="demo_reading_biweekly_july_2026_a"/>
+            <field name="state">open</field>
+        </record>
+
+        <!-- فترة تحصيل نصف شهرية مرتبطة بفترة القراءة (النصف الثاني) -->
+        <record id="demo_payment_biweekly_july_2026_b" model="date.range">
+            <field name="name">فترة تحصيل نصف شهرية - النصف الثاني يوليو 2026</field>
+            <field name="period_code">PAY-SEMI-2026-07-H2</field>
+            <field name="cycle_key">SEMI-2026-07-H2</field>
+            <field name="period_role">payment</field>
+            <field name="type_id" ref="demo_date_range_type_biweekly"/>
+            <field name="date_start">2026-07-16</field>
+            <field name="date_end">2026-08-10</field>
+            <field name="billing_period">biweekly</field>
+            <field name="work_type">payment</field>
+            <field name="reading_period_id" ref="demo_reading_biweekly_july_2026_b"/>
+            <field name="state">planned</field>
+        </record>
+
+    </data>
+</odoo>

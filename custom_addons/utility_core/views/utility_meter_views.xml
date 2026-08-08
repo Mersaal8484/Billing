@@ -1,0 +1,252 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_meter_tree" model="ir.ui.view">
+        <field name="name">utility.meter.tree</field>
+        <field name="model">utility.meter</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="meter_number"/>
+                <field name="serial_number"/>
+                <field name="connection_type" widget="badge" decoration-info="connection_type == 'subscriber'"
+                        decoration-success="connection_type == 'feeder'"
+                        decoration-warning="connection_type in ('private_transformer', 'transformer')"/>
+                <field name="meter_type_id"/>
+                <field name="is_coupling_meter"/>
+                <field name="status_id"/>
+                <field name="phase"/>
+                <field name="account_id"/>
+                <field name="customer_id"/>
+                <field name="reading_count"/>
+                <field name="last_reading_value"/>
+                <field name="last_read_date"/>
+                <field name="multiplier"/>
+                <field name="installation_date"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_utility_meter_form" model="ir.ui.view">
+        <field name="name">utility.meter.form</field>
+        <field name="model">utility.meter</field>
+        <field name="arch" type="xml">
+            <form>
+                <field name="customer_id" invisible="1"/>
+                <header>
+                    <button name="action_request_ami_reading" type="object" string="طلب قراءة AMI" class="btn-secondary"
+                            attrs="{'invisible': [('payment_type', '!=', 'postpaid')]}"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_readings" type="object"
+                                class="oe_stat_button" icon="fa-history"
+                                help="سجل قراءات العداد">
+                            <div class="o_stat_info">
+                                <field name="reading_count" widget="statinfo"/>
+                                <span class="o_stat_text">سجل القراءات</span>
+                            </div>
+                        </button>
+                        <button name="%(utility_core.action_utility_meter_log)d" type="action"
+                                class="oe_stat_button" icon="fa-list-alt"
+                                help="سجل تاريخ وحركات العداد">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">سجل الحركات</span>
+                            </div>
+                        </button>
+                        <button name="action_add_subscriber" type="object"
+                                class="oe_stat_button" icon="fa-user-plus"
+                                attrs="{'invisible': ['|', ('connection_type', '!=', 'not_connected'), ('customer_id', '!=', False)]}"
+                                help="إضافة مشترك جديد لهذا العداد">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">إضافة مشترك</span>
+                            </div>
+                        </button>
+                        <button name="action_add_private_transformer" type="object"
+                                class="oe_stat_button" icon="fa-bolt"
+                                attrs="{'invisible': [('connection_type', '!=', 'private_transformer')]}"
+                                help="إضافة محول خاص جديد لهذا العداد">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">إضافة محول خاص</span>
+                            </div>
+                        </button>
+                        <button name="action_add_transformer" type="object"
+                                class="oe_stat_button" icon="fa-bolt"
+                                attrs="{'invisible': [('connection_type', '!=', 'transformer')]}"
+                                help="إضافة محول جديد لهذا العداد">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">إضافة محول</span>
+                            </div>
+                        </button>
+                        <button name="action_add_feeder" type="object"
+                                class="oe_stat_button" icon="fa-sitemap"
+                                attrs="{'invisible': [('connection_type', '!=', 'feeder')]}"
+                                help="إضافة فيدر / خلية جديد لهذا العداد">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">إضافة فيدر</span>
+                            </div>
+                        </button>
+                    </div>
+                    <field name="qr_code_image" widget="image" class="oe_avatar" readonly="1" options="{'size': [128,128]}"/>
+                    <div class="oe_title">
+                        <h1><field name="meter_number"/></h1>
+                    </div>
+                    <group>
+                        <group string="معلومات أساسية">
+                            <field name="payment_type"/>
+                            <field name="connection_type" widget="radio"/>
+                            <field name="meter_type_id" options="{'no_create': True, 'no_open': True}"/>
+                            <field name="serial_number"/>
+                            <field name="manufacturer"/>
+                            <field name="model_id" options="{'no_create': True, 'no_open': True}"/>
+                            <field name="status_id" options="{'no_create': True}"/>
+                            <field name="phase"/>
+                            <field name="active" invisible="1"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group string="آخر قراءة">
+                            <field name="last_reading_value"/>
+                            <field name="last_read_date"/>
+                            <field name="multiplier"/>
+                        </group>
+                        <group string="المواصفات الفنية">
+                            <field name="voltage"/>
+                            <field name="current_rating"/>
+                            <field name="power_rating"/>
+                        </group>
+                        <group string="الصيانة والتدقيق">
+                            <field name="idle_months"/>
+                            <field name="last_calibration_date"/>
+                            <field name="next_calibration_date"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page name="reading_history" string="سجل القراءات">
+                            <field name="reading_ids" readonly="1">
+                                <tree default_order="reading_date desc">
+                                    <field name="reading_id"/>
+                                    <field name="reading_purpose" widget="badge"/>
+                                    <field name="reading_date"/>
+                                    <field name="reading_value"/>
+                                    <field name="consumption"/>
+                                    <field name="reading_type"/>
+                                    <field name="state" widget="badge"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page name="meter_history" string="تاريخ العداد">
+                            <field name="log_ids" readonly="1">
+                                <tree default_order="date desc">
+                                    <field name="date"/>
+                                    <field name="log_type" widget="badge"/>
+                                    <field name="description"/>
+                                    <field name="ref_name"/>
+                                    <field name="user_id"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page name="specific_data" string="بيانات العداد المخصصة">
+                            <group>
+                                <!-- Prepaid Data -->
+                                <group string="بيانات الدفع المسبق (STS)" attrs="{'invisible': [('payment_type', '!=', 'prepaid')]}">
+                                    <field name="sts_key_revision" attrs="{'required': [('payment_type', '=', 'prepaid')]}"/>
+                                </group>
+                                <!-- Postpaid Data (AMI/Smart) -->
+                                <group string="بيانات العداد الذكي (عن بُعد)" attrs="{'invisible': [('payment_type', '!=', 'postpaid')]}">
+                                    <field name="communication_type" attrs="{'required': [('payment_type', '=', 'postpaid')]}"/>
+                                    <field name="sim_number" attrs="{'invisible': [('communication_type', 'not in', ('gsm', 'nbiot'))]}"/>
+                            <field name="qr_code_url" readonly="1"/>
+                                </group>
+                                <!-- Manual Data -->
+                                <group string="بيانات العداد اليدوي" attrs="{'invisible': [('payment_type', '!=', 'manual')]}">
+                                    <div class="text-muted" colspan="2">
+                                        يتم إدخال قراءات هذا العداد يدوياً عبر شاشة القراءات الدورية.
+                                    </div>
+                                </group>
+                            </group>
+                        </page>
+                        <page name="assignment" string="التعيين والموقع">
+                            <group>
+                                <group string="بيانات الربط">
+                                    <field name="customer_id"
+                                           attrs="{'required': [('connection_type', '=', 'subscriber')],
+                                                   'invisible': [('connection_type', '!=', 'subscriber')]}"/>
+                                    <field name="linked_transformer_id"
+                                           attrs="{'required': [('connection_type', '=', 'transformer')],
+                                                   'invisible': [('connection_type', '!=', 'transformer')]}"/>
+                                    <field name="linked_private_transformer_id"
+                                           attrs="{'required': [('connection_type', '=', 'private_transformer')],
+                                                   'invisible': [('connection_type', '!=', 'private_transformer')]}"/>
+                                    <field name="linked_feeder_id"
+                                           attrs="{'required': [('connection_type', '=', 'feeder')],
+                                                   'invisible': [('connection_type', '!=', 'feeder')]}"/>
+                                    <field name="is_coupling_meter"/>
+                                </group>
+                                <group string="الموقع الجغرافي">
+                                    <field name="region_id"/>
+                                    <field name="area_id"/>
+                                    <field name="zone_id"/>
+                                    <field name="substation_id"/>
+                                    <field name="feeder_id"/>
+                                    <field name="transformer_id"/>
+                                    <field name="route_id"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page name="location" string="التركيب والإحداثيات">
+                            <group>
+                                <group>
+                                    <field name="installation_date"/>
+                                </group>
+                                <group>
+                                    <field name="address"/>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_ids" widget="mail_thread"/>
+                </div>
+            </form>
+        </field>
+    </record>
+    <record id="view_utility_meter_search" model="ir.ui.view">
+        <field name="name">utility.meter.search</field>
+        <field name="model">utility.meter</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="meter_number"/>
+                <field name="serial_number"/>
+                <field name="customer_id"/>
+                <field name="account_id"/>
+                <field name="status_id"/>
+                <field name="region_id"/>
+                <field name="area_id"/>
+                <field name="route_id"/>
+                <field name="connection_type"/>
+                <filter name="active" string="نشط" domain="[('active','=',True)]"/>
+                <filter name="single_phase" string="أحادي الطور" domain="[('phase','=','single')]"/>
+                <filter name="three_phase" string="ثلاثي الطور" domain="[('phase','=','three')]"/>
+                <separator/>
+                <filter name="conn_not_connected" string="غير مربوط" domain="[('connection_type','=','not_connected')]"/>
+                <filter name="conn_subscriber" string="مربوط بمشترك" domain="[('connection_type','=','subscriber')]"/>
+                <filter name="conn_private_transformer" string="محول خاص" domain="[('connection_type','=','private_transformer')]"/>
+                <filter name="conn_transformer" string="محول" domain="[('connection_type','=','transformer')]"/>
+                <filter name="conn_feeder" string="فيدر" domain="[('connection_type','=','feeder')]"/>
+                <group expand="0" string="تصنيف حسب">
+                    <filter name="group_status" string="الحالة" context="{'group_by':'status_id'}"/>
+                    <filter name="group_type" string="نوع العداد" context="{'group_by':'meter_type_id'}"/>
+                    <filter name="group_phase" string="الطور" context="{'group_by':'phase'}"/>
+                    <filter name="group_region" string="المنطقة" context="{'group_by':'region_id'}"/>
+                    <filter name="group_route" string="المسار" context="{'group_by':'route_id'}"/>
+                    <filter name="group_connection_type" string="نوع الربط" context="{'group_by':'connection_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    <record id="action_utility_meter" model="ir.actions.act_window">
+        <field name="name">العدادات</field>
+        <field name="res_model">utility.meter</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_utility_meter_search"/>
+    </record>
+</odoo>

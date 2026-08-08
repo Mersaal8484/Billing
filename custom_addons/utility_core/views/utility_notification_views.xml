@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_notification_log_tree" model="ir.ui.view">
+        <field name="name">utility.notification.log.tree</field>
+        <field name="model">utility.notification.log</field>
+        <field name="arch" type="xml">
+            <tree decoration-success="state == 'sent'" decoration-danger="state == 'failed'" decoration-muted="state == 'cancelled'">
+                <field name="create_date"/>
+                <field name="event_type"/>
+                <field name="channel"/>
+                <field name="customer_id"/>
+                <field name="partner_id"/>
+                <field name="mobile"/>
+                <field name="state" widget="badge"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_utility_notification_log_form" model="ir.ui.view">
+        <field name="name">utility.notification.log.form</field>
+        <field name="model">utility.notification.log</field>
+        <field name="arch" type="xml">
+            <form string="سجل إشعار">
+                <header>
+                    <button name="action_dispatch" type="object" string="إرسال SMS" class="btn-primary"
+                            attrs="{'invisible': ['|', ('channel', '!=', 'sms'), ('state', '!=', 'queued')]}"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="event_type"/>
+                            <field name="channel"/>
+                            <field name="state"/>
+                        </group>
+                        <group>
+                            <field name="customer_id"/>
+                            <field name="partner_id"/>
+                            <field name="mobile"/>
+                            <field name="sent_date"/>
+                        </group>
+                    </group>
+                    <group string="المرجع">
+                        <field name="model_name"/>
+                        <field name="res_id"/>
+                    </group>
+                    <group string="الرسالة">
+                        <field name="subject"/>
+                        <field name="body" nolabel="1"/>
+                        <field name="error_message" attrs="{'invisible': [('error_message', '=', False)]}"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_utility_notification_log_search" model="ir.ui.view">
+        <field name="name">utility.notification.log.search</field>
+        <field name="model">utility.notification.log</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="customer_id"/>
+                <field name="partner_id"/>
+                <field name="mobile"/>
+                <filter name="queued" string="في الانتظار" domain="[('state','=','queued')]"/>
+                <filter name="failed" string="فشل" domain="[('state','=','failed')]"/>
+                <group expand="0" string="تجميع حسب">
+                    <filter name="group_event" string="نوع الحدث" context="{'group_by':'event_type'}"/>
+                    <filter name="group_channel" string="القناة" context="{'group_by':'channel'}"/>
+                    <filter name="group_state" string="الحالة" context="{'group_by':'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_utility_notification_log" model="ir.actions.act_window">
+        <field name="name">سجل الإشعارات</field>
+        <field name="res_model">utility.notification.log</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_utility_notification_log_search"/>
+    </record>
+
+    <menuitem id="menu_utility_notification_log" name="سجل الإشعارات" parent="utility_core.menu_utility_config" sequence="120" action="action_utility_notification_log" groups="utility_core.group_utility_admin"/>
+</odoo>

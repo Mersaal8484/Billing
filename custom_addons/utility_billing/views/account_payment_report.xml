@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="paperformat_utility_payment_receipt" model="report.paperformat">
+        <field name="name">إيصال دفع كهرباء (80mm)</field>
+        <field name="format">custom</field>
+        <field name="page_height">120</field>
+        <field name="page_width">80</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">4</field>
+        <field name="margin_bottom">4</field>
+        <field name="margin_left">3</field>
+        <field name="margin_right">3</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="action_report_utility_payment_receipt" model="ir.actions.report">
+        <field name="name">إيصال دفع كهرباء</field>
+        <field name="model">account.payment</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">utility_billing.report_utility_payment_receipt</field>
+        <field name="report_file">utility_billing.report_utility_payment_receipt</field>
+        <field name="print_report_name">'إيصال دفع - %s' % (object.name)</field>
+        <field name="binding_model_id" ref="account.model_account_payment"/>
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="utility_billing.paperformat_utility_payment_receipt"/>
+    </record>
+
+    <template id="report_utility_payment_receipt">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <div class="page" dir="rtl" style="font-family: Arial, sans-serif; font-size: 10px; color: #000;">
+                    <div style="text-align:center; margin-bottom:4px;">
+                        <div style="font-size:13px; font-weight:bold;">إيصال دفع كهرباء</div>
+                        <div t-esc="o.company_id.name or ''"/>
+                    </div>
+
+                    <table style="width:100%; border-collapse:collapse; margin-bottom:6px;">
+                        <tr>
+                            <td><strong>رقم الإيصال:</strong></td>
+                            <td style="text-align:left;"><span t-esc="o.name or ''"/></td>
+                        </tr>
+                        <tr>
+                            <td><strong>التاريخ:</strong></td>
+                            <td style="text-align:left;"><span t-esc="o.date or ''"/></td>
+                        </tr>
+                        <tr>
+                            <td><strong>الفاتورة:</strong></td>
+                            <td style="text-align:left;"><span t-esc="o.utility_sale_order_id.name or ''"/></td>
+                        </tr>
+                        <tr>
+                            <td><strong>المشترك:</strong></td>
+                            <td style="text-align:left;"><span t-esc="o.utility_sale_order_id.partner_id.name or o.partner_id.name or ''"/></td>
+                        </tr>
+                        <tr>
+                            <td><strong>رقم الحساب:</strong></td>
+                            <td style="text-align:left;"><span t-esc="o.utility_sale_order_id.customer_id.customer_number or ''"/></td>
+                        </tr>
+                        <tr>
+                            <td><strong>رقم العداد:</strong></td>
+                            <td style="text-align:left;"><span t-esc="o.utility_sale_order_id.meter_id.meter_number or ''"/></td>
+                        </tr>
+                        <tr>
+                            <td><strong>فترة الدفع:</strong></td>
+                            <td style="text-align:left;"><span t-esc="o.date_range_id.name or ''"/></td>
+                        </tr>
+                    </table>
+
+                    <div style="border-top:1px solid #000; border-bottom:1px solid #000; padding:5px 0; text-align:center; font-size:13px; font-weight:bold; margin-bottom:6px;">
+                        المبلغ: <span t-esc="'%.2f' % (o.amount or 0.0)"/> <span t-esc="o.currency_id.name or ''"/>
+                    </div>
+
+                    <div style="text-align:center; margin-bottom:5px;">
+                        <img t-if="o.qr_code_url" t-att-src="o.qr_code_url" style="width:24mm; height:24mm;" alt="QR Code"/>
+                    </div>
+
+                    <div style="font-size:9px; text-align:center; border-top:1px dashed #777; padding-top:4px;">
+                        احتفظ بهذا الإيصال للمراجعة والمطابقة.
+                    </div>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

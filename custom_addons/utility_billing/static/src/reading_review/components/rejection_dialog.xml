@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="utility_billing.ReadingRejectionDialog" owl="1">
+        <div class="modal d-block position-fixed top-0 start-0 w-100 h-100 o_utility_modal_backdrop" tabindex="-1" style="background: rgba(0, 0, 0, 0.6); z-index: 1060; direction: rtl;">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content shadow-lg border-0">
+                    <div class="modal-header bg-danger text-white">
+                        <h5 class="modal-title font-weight-bold">
+                            <i class="fa fa-times-circle me-2"/> رفض قراءة العداد: <t t-esc="props.reading.meter_number"/>
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" t-on-click="onCancel" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <div class="mb-3">
+                            <label class="form-label font-weight-bold text-dark">سبب الرفض المعتمد <span class="text-danger">*</span></label>
+                            <select class="form-select form-select-lg" t-model="state.reason">
+                                <t t-foreach="rejectionReasons" t-as="r" t-key="r.id">
+                                    <option t-att-value="r.label"><t t-esc="r.label"/></option>
+                                </t>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label font-weight-bold text-dark">ملاحظات المراجع التفصيلية</label>
+                            <textarea class="form-control" rows="3" t-model="state.customNotes" placeholder="أدخل أي ملاحظات إضافية للفني أو قارئ العداد..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light">
+                        <button type="button" class="btn btn-secondary px-4" t-on-click="onCancel">إلغاء</button>
+                        <button type="button" class="btn btn-danger px-4 font-weight-bold" t-on-click="onConfirm">
+                            <i class="fa fa-check me-1"/> تأكيد الرفض
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+</templates>

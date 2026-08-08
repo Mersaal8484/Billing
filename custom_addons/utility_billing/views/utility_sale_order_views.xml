@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_sale_order_tree" model="ir.ui.view">
+        <field name="name">sale.order.utility.tree</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_tree"/>
+        <field name="arch" type="xml">
+            <field name="name" position="after">
+                <field name="customer_id" optional="show"/>
+                <field name="meter_id" optional="show"/>
+                <field name="date_order" string="تاريخ الفاتورة"/>
+                <field name="period_end" optional="show"/>
+                <field name="consumption" optional="show"/>
+                <field name="amount_total" sum="الإجمالي"/>
+                <field name="total_due_amount" string="إجمالي المطلوب سداده" widget="monetary" sum="إجمالي المطلوب سداده" decoration-danger="total_due_amount &gt; 0" optional="show"/>
+                <field name="amount_paid" optional="show"/>
+                <field name="balance_due" optional="show"/>
+                <field name="bill_state" widget="badge" decoration-danger="bill_state in ('overdue','cancelled')" decoration-success="bill_state=='paid'" decoration-warning="bill_state=='draft'"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="view_utility_sale_order_form" model="ir.ui.view">
+        <field name="name">sale.order.utility.form</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="action_register_utility_payment" string="تسجيل تحصيل الفاتورة" type="object"
+                        class="btn-primary"
+                        attrs="{'invisible': [('bill_state', '=', 'paid')]}"/>
+                <button name="action_create_disconnection_order" string="إنشاء أمر فصل" type="object"
+                        class="btn-secondary"
+                        attrs="{'invisible': ['|', ('customer_id', '=', False), '|', ('balance_due', '&lt;=', 0), ('bill_state', '=', 'paid')]}"/>
+                <button name="action_create_reconnection_order" string="إنشاء أمر إعادة خدمة" type="object"
+                        class="btn-secondary"
+                        attrs="{'invisible': ['|', ('customer_id', '=', False), ('balance_due', '&gt;', 0)]}"/>
+            </xpath>
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_reading_components" type="object"
+                        class="oe_stat_button" icon="fa-tachometer"
+                        attrs="{'invisible': [('reading_component_count', '=', 0)]}">
+                    <field name="reading_component_count" widget="statinfo" string="مقاطع القراءة"/>
+                </button>
+            </xpath>
+            <field name="partner_id" position="after">
+                <field name="customer_id" options="{'no_create': True}" attrs="{'readonly': [('bill_state', '!=', 'draft')]}"/>
+                <field name="meter_id" options="{'no_create': True}" attrs="{'readonly': [('bill_state', '!=', 'draft')]}"/>
+                <field name="date_range_id" attrs="{'readonly': [('bill_state', '!=', 'draft')]}"/>
+            </field>
+            <xpath expr="//notebook" position="inside">
+                <page string="مقاطع استهلاك العدادات" attrs="{'invisible': [('reading_component_count', '=', 0)]}">
+                    <field name="reading_component_ids" nolabel="1" readonly="1">
+                        <tree create="0" edit="0" delete="0">
+                            <field name="company_id" invisible="1"/>
+                            <field name="reading_id"/>
+                            <field name="reading_purpose" widget="badge"/>
+                            <field name="meter_id"/>
+                            <field name="period_start"/>
+                            <field name="period_end"/>
+                            <field name="previous_reading"/>
+                            <field name="current_reading"/>
+                            <field name="meter_multiplier"/>
+                            <field name="consumption" sum="إجمالي الاستهلاك"/>
+                        </tree>
+                    </field>
+                </page>
+                <page string="تفاصيل فاتورة الكهرباء" attrs="{'invisible': [('customer_id', '=', False)]}">
+                    <div class="row">
+                        <!-- القسم الفني (قراءات) -->
+                        <div class="col-md-6">
+                            <group string="القراءات والاستهلاك">
+                                <label for="period_start" string="الفترة"/>
+                                <div class="o_row">
+                                    <field name="period_start" attrs="{'readonly': [('bill_state', '!=', 'draft')]}"/> 
+                                    <i class="fa fa-long-arrow-left mx-2" aria-label="Arrow icon" title="Arrow"/> 
+                                    <field name="period_end" attrs="{'readonly': [('bill_state', '!=', 'draft')]}"/>
+                                </div>
+                                <field name="previous_reading" attrs="{'readonly': [('bill_state', '!=', 'draft')]}"/>
+                                <field name="current_reading" decoration-bf="1" attrs="{'readonly': [('bill_state', '!=', 'draft')]}"/>
+                                <field name="consumption" decoration-bf="1" decoration-info="1" attrs="{'readonly': [('bill_state', '!=', 'draft')]}"/>
+                                <field name="contract_template_id" options="{'no_create': True}" attrs="{'readonly': [('bill_state', '!=', 'draft')]}"/>
+                                <field name="reading_id" readonly="1"/>
+                            </group>
+                        </div>
+                        <!-- القسم المالي (مبالغ) -->
+                        <div class="col-md-6">
+                            <group string="التفاصيل المالية">
+                                <field name="amount_energy" widget="monetary" attrs="{'readonly': [('bill_state', '!=', 'draft')]}"/>
+                                <field name="amount_service" widget="monetary" attrs="{'readonly': [('bill_state', '!=', 'draft')]}"/>
+                                <field name="amount_penalty" widget="monetary" decoration-danger="amount_penalty &gt; 0" attrs="{'readonly': [('bill_state', '!=', 'draft')]}"/>
+                                
+                                <field name="amount_untaxed" widget="monetary" attrs="{'readonly': [('bill_state', '!=', 'draft')]}"/>
+                                <field name="amount_total" class="oe_subtotal_footer_separator" widget="monetary" decoration-bf="1" attrs="{'readonly': [('bill_state', '!=', 'draft')]}"/>
+                                <field name="previous_balance" widget="monetary" decoration-danger="previous_balance &gt; 0" attrs="{'readonly': [('bill_state', '!=', 'draft')]}"/>
+                                <field name="total_due_amount" class="oe_subtotal_footer_separator" widget="monetary" decoration-bf="1" attrs="{'readonly': [('bill_state', '!=', 'draft')]}"/>
+                                <field name="amount_paid" widget="monetary" decoration-success="amount_paid &gt; 0" attrs="{'readonly': [('bill_state', '!=', 'draft')]}"/>
+                                <field name="balance_due" class="oe_subtotal_footer_separator" widget="monetary" decoration-danger="balance_due &gt; 0" attrs="{'readonly': [('bill_state', '!=', 'draft')]}"/>
+                                <field name="is_overdue" widget="boolean_toggle" readonly="1"/>
+                                <field name="disconnection_order_id" readonly="1" attrs="{'invisible': [('disconnection_order_id', '=', False)]}"/>
+                                <field name="reconnection_order_id" readonly="1" attrs="{'invisible': [('reconnection_order_id', '=', False)]}"/>
+                            </group>
+                        </div>
+                    </div>
+                    
+                    <group string="المرفقات والصور">
+                        <group>
+                            <field name="meter_image" widget="image" options="{'size': [300, 250]}"/>
+                            <field name="attachment_id" groups="base.group_no_one"/>
+                        </group>
+                        <group>
+                            <field name="transformer_reading_id" readonly="1"/>
+                            <field name="reading_reviewer" attrs="{'readonly': [('bill_state', '!=', 'draft')]}"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+            <xpath expr="//div[hasclass('oe_title')]" position="inside">
+                <h2>
+                    <span class="o_form_label">حالة الفاتورة: </span>
+                    <field name="bill_state" widget="badge" decoration-danger="bill_state in ('overdue','cancelled')" decoration-success="bill_state=='paid'" decoration-warning="bill_state=='draft'"/>
+                </h2>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_utility_sale_order_search" model="ir.ui.view">
+        <field name="name">sale.order.utility.search</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_sales_order_filter"/>
+        <field name="arch" type="xml">
+            <field name="name" position="after">
+                <field name="customer_id"/>
+                <field name="meter_id"/>
+            </field>
+            <filter name="my_sale_orders_filter" position="after">
+                <filter name="overdue" string="متأخرة" domain="[('is_overdue','=',True)]"/>
+                <filter name="paid" string="مدفوعة" domain="[('bill_state','=','paid')]"/>
+                <filter name="draft_bills" string="مسودة" domain="[('bill_state','=','draft')]"/>
+                <separator/>
+                <filter name="group_bill_state" string="حالة الفاتورة" context="{'group_by':'bill_state'}"/>
+            </filter>
+        </field>
+    </record>
+
+    <record id="action_server_recalculate_utility_bill" model="ir.actions.server">
+        <field name="name">إعادة احتساب الفاتورة (التسعيرة)</field>
+        <field name="model_id" ref="sale.model_sale_order"/>
+        <field name="binding_model_id" ref="sale.model_sale_order"/>
+        <field name="state">code</field>
+        <field name="code">
+            if records:
+                records.action_recalculate_bill()
+        </field>
+    </record>
+
+    <record id="action_utility_sale_order" model="ir.actions.act_window">
+        <field name="name">فواتير الكهرباء</field>
+        <field name="res_model">sale.order</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('customer_id','!=',False)]</field>
+        <field name="search_view_id" ref="view_utility_sale_order_search"/>
+        <field name="context">{
+            'search_default_my_sale_orders_filter': 0,
+            'default_bill_state': 'draft',
+        }</field>
+    </record>
+
+    <menuitem id="menu_utility_bills" name="الفواتير" parent="utility_billing.menu_utility_billing" sequence="20" action="action_utility_sale_order"/>
+</odoo>

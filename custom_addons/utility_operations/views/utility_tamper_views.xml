@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="view_utility_tamper_case_tree" model="ir.ui.view">
+            <field name="name">utility.tamper.case.tree</field>
+            <field name="model">utility.tamper.case</field>
+            <field name="arch" type="xml">
+                <tree>
+                    <field name="case_number"/>
+                    <field name="date_reported"/>
+                    <field name="customer_id"/>
+                    <field name="tamper_type"/>
+                    <field name="severity"/>
+                    <field name="assigned_to"/>
+                    <field name="state"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="view_utility_tamper_case_form" model="ir.ui.view">
+            <field name="name">utility.tamper.case.form</field>
+            <field name="model">utility.tamper.case</field>
+            <field name="arch" type="xml">
+                <form>
+                    <header>
+                        <field name="state" widget="statusbar"/>
+                    </header>
+                    <sheet>
+                        <h1>
+                            <field name="case_number" readonly="1"/>
+                        </h1>
+                        <group>
+                            <group>
+                                <field name="tamper_type" required="1"/>
+                                <field name="severity"/>
+                                <field name="date_reported"/>
+                                <field name="reported_by"/>
+                            </group>
+                            <group>
+                                <field name="assigned_to"/>
+                                <field name="customer_id"/>
+                                <field name="account_id"/>
+                                <field name="meter_id"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="الوصف">
+                                <field name="description" nolabel="1"/>
+                            </page>
+                            <page string="القرار">
+                                <group>
+                                    <group>
+                                        <field name="inspector_id"/>
+                                        <field name="resolution_date"/>
+                                    </group>
+                                    <group>
+                                        <field name="resolution_notes"/>
+                                    </group>
+                                </group>
+                            </page>
+                            <page string="الإثباتات">
+                                <field name="evidence_notes" nolabel="1"/>
+                            </page>
+                            <page string="المالية">
+                                <group>
+                                    <group>
+                                        <field name="estimated_loss"/>
+                                    </group>
+                                    <group>
+                                        <field name="penalty_amount"/>
+                                    </group>
+                                </group>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_utility_tamper_case" model="ir.actions.act_window">
+            <field name="name">حالات التلاعب</field>
+            <field name="res_model">utility.tamper.case</field>
+            <field name="view_mode">tree,form</field>
+        </record>
+
+    </data>
+</odoo>

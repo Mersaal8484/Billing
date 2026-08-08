@@ -1,0 +1,388 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+    <data noupdate="0">
+        <record id="config_meter_review_required" model="ir.config_parameter">
+            <field name="key">utility.meter_review_required</field>
+            <field name="value">True</field>
+        </record>
+        <record id="config_meter_image_mandatory" model="ir.config_parameter">
+            <field name="key">utility.meter_image_mandatory</field>
+            <field name="value">False</field>
+        </record>
+        <record id="config_meter_reading_validation" model="ir.config_parameter">
+            <field name="key">utility.meter_reading_validation</field>
+            <field name="value">both</field>
+        </record>
+        <record id="config_max_transformer_loss_tolerance" model="ir.config_parameter">
+            <field name="key">utility.max_transformer_loss_tolerance</field>
+            <field name="value">10.0</field>
+        </record>
+        <record id="config_consumption_variation_alert_percentage" model="ir.config_parameter">
+            <field name="key">utility.consumption_variation_alert_percentage</field>
+            <field name="value">50.0</field>
+        </record>
+        <record id="config_max_auto_pay_retries" model="ir.config_parameter">
+            <field name="key">utility.max_auto_pay_retries</field>
+            <field name="value">3</field>
+        </record>
+        <record id="base.YER" model="res.currency">
+            <field name="active" eval="True" />
+        </record>
+        <record id="deactivate_other_currencies" model="ir.actions.server">
+            <field name="name">Deactivate all currencies except YER</field>
+            <field name="model_id" ref="base.model_res_currency" />
+            <field name="state">code</field>
+            <field name="code">used_currency_ids = env['res.company'].with_context(active_test=False).search([]).mapped('currency_id').ids
+env['res.currency'].with_context(active_test=False).search([('name', '!=', 'YER'), ('id', 'not in', used_currency_ids)]).write({'active': False})
+            </field>
+        </record>
+        <function model="ir.actions.server" name="run">
+            <value eval="[ref('deactivate_other_currencies')]" />
+        </function>
+        <record id="deactivate_all_taxes" model="ir.actions.server">
+            <field name="name">Deactivate all taxes globally</field>
+            <field name="model_id" ref="base.model_res_company" />
+            <field name="state">code</field>
+            <field name="code"># 1. إزالة الضرائب الافتراضية للشركة
+env['res.company'].search([]).write({
+    'account_sale_tax_id': False,
+    'account_purchase_tax_id': False,
+})
+# 2. تعطيل جميع سجلات الضرائب
+taxes = env['account.tax'].with_context(active_test=False).search([])
+if taxes:
+    taxes.write({'active': False})
+# 3. إزالة الضرائب من جميع المنتجات
+products = env['product.template'].with_context(active_test=False).search([])
+if products:
+    products.write({'taxes_id': [(5, 0, 0)], 'supplier_taxes_id': [(5, 0, 0)]})
+            </field>
+        </record>
+        <function model="ir.actions.server" name="run">
+            <value eval="[ref('deactivate_all_taxes')]" />
+        </function>
+        <record id="base.main_company" model="res.company">
+            <field name="name">المؤسسة العامة للكهرباء - الجمهورية اليمنية (PEC)</field>
+            <field name="currency_id" ref="base.YER" />
+            <field name="country_id" ref="base.ye" />
+        </record>
+        <record id="demo_account_fine" model="account.account">
+            <field name="name">إيرادات الغرامات</field>
+            <field name="code">410001</field>
+            <field name="account_type">income</field>
+            <field name="company_id" ref="base.main_company" />
+        </record>
+        <record id="demo_account_discount" model="account.account">
+            <field name="name">الخصومات والإعفاءات المسموح بها</field>
+            <field name="code">420001</field>
+            <field name="account_type">expense</field>
+            <field name="company_id" ref="base.main_company" />
+        </record>
+        <record id="demo_account_deposit" model="account.account">
+            <field name="name">التأمينات والودائع</field>
+            <field name="code">210001</field>
+            <field name="account_type">liability_payable</field>
+            <field name="company_id" ref="base.main_company" />
+        </record>
+        <record id="demo_account_settlement" model="account.account">
+            <field name="name">تسويات مالية</field>
+            <field name="code">410002</field>
+            <field name="account_type">income_other</field>
+            <field name="company_id" ref="base.main_company" />
+        </record>
+        <record id="demo_journal_writeoff" model="account.journal">
+            <field name="name">يومية الإعفاءات والتسويات</field>
+            <field name="code">WRT</field>
+            <field name="type">general</field>
+            <field name="company_id" ref="base.main_company" />
+        </record>
+        <record id="demo_journal_deposit" model="account.journal">
+            <field name="name">يومية التأمينات</field>
+            <field name="code">DEP</field>
+            <field name="type">general</field>
+            <field name="company_id" ref="base.main_company" />
+        </record>
+        <record id="demo_journal_settlement" model="account.journal">
+            <field name="name">يومية التسويات العامة</field>
+            <field name="code">SETL</field>
+            <field name="type">general</field>
+            <field name="company_id" ref="base.main_company" />
+        </record>
+        <record id="utility_product_kwh" model="product.product">
+            <field name="name">استهلاك كهرباء (kWh)</field>
+            <field name="type">service</field>
+            <field name="list_price">350.00</field>
+        </record>
+        <record id="utility_product_fixed_fee" model="product.product">
+            <field name="name">رسوم اشتراك العداد</field>
+            <field name="type">service</field>
+            <field name="list_price">1500.00</field>
+        </record>
+        <record id="utility_product_service_charge" model="product.product">
+            <field name="name">رسوم خدمات وصيانة</field>
+            <field name="type">service</field>
+            <field name="list_price">1000.00</field>
+        </record>
+        <record id="utility_product_discount" model="product.product">
+            <field name="name">خصم استهلاك مدعوم</field>
+            <field name="type">service</field>
+            <field name="list_price">-350.00</field>
+            <field name="property_account_income_id" ref="demo_account_discount" />
+        </record>
+        <record id="utility_product_mu_allim" model="product.product">
+            <field name="name">رسم المعلم</field>
+            <field name="type">service</field>
+            <field name="list_price">0.00</field>
+        </record>
+        <record id="utility_product_cleaning" model="product.product">
+            <field name="name">رسم النظافة</field>
+            <field name="type">service</field>
+            <field name="list_price">0.00</field>
+        </record>
+        <record id="utility_product_municipality" model="product.product">
+            <field name="name">رسم المجالس المحلية</field>
+            <field name="type">service</field>
+            <field name="list_price">0.00</field>
+        </record>
+        <record id="utility_product_penalty" model="product.product">
+            <field name="name">غرامة</field>
+            <field name="type">service</field>
+            <field name="list_price">0.00</field>
+        </record>
+        <record id="utility_product_meter_single" model="product.product">
+            <field name="name">عداد ذكي طور واحد (Single Phase Smart Meter)</field>
+            <field name="type">product</field>
+            <field name="list_price">15000.00</field>
+            <field name="default_code">MTR-1PH-SMART</field>
+        </record>
+        <record id="utility_product_meter_three" model="product.product">
+            <field name="name">عداد ذكي ثلاثة أطوار (Three Phase Smart Meter)</field>
+            <field name="type">product</field>
+            <field name="list_price">45000.00</field>
+            <field name="default_code">MTR-3PH-SMART</field>
+        </record>
+        <record id="demo_meter_type_smart_single" model="utility.meter.type">
+            <field name="name">عداد ذكي طور واحد</field>
+            <field name="code">SMART-1PH</field>
+            <field name="phase">single</field>
+        </record>
+        <record id="demo_meter_type_smart_three" model="utility.meter.type">
+            <field name="name">عداد ذكي ثلاثة أطوار</field>
+            <field name="code">SMART-3PH</field>
+            <field name="phase">three</field>
+        </record>
+        <record id="demo_meter_model_single" model="utility.meter.model">
+            <field name="name">HEXING Single Phase Smart</field>
+            <field name="manufacturer">Hexing Electrical</field>
+            <field name="meter_type_id" ref="demo_meter_type_smart_single" />
+            <field name="sts_supported" eval="True" />
+            <field name="communication_types">PLC, GPRS</field>
+            <field name="product_id" ref="utility_product_meter_single" />
+        </record>
+        <record id="demo_meter_model_three" model="utility.meter.model">
+            <field name="name">HEXING Three Phase Smart</field>
+            <field name="manufacturer">Hexing Electrical</field>
+            <field name="meter_type_id" ref="demo_meter_type_smart_three" />
+            <field name="sts_supported" eval="True" />
+            <field name="communication_types">PLC, 4G</field>
+            <field name="product_id" ref="utility_product_meter_three" />
+        </record>
+        <record id="utility_product_meter_mech_single" model="product.product">
+            <field name="name">عداد ميكانيكي طور واحد (Single Phase Mechanical)</field>
+            <field name="type">product</field>
+            <field name="list_price">5000.00</field>
+            <field name="default_code">MTR-1PH-MECH</field>
+        </record>
+        <record id="utility_product_meter_mech_three" model="product.product">
+            <field name="name">عداد ميكانيكي ثلاثة أطوار (Three Phase Mechanical)</field>
+            <field name="type">product</field>
+            <field name="list_price">12000.00</field>
+            <field name="default_code">MTR-3PH-MECH</field>
+        </record>
+        <record id="utility_product_meter_ct_three" model="product.product">
+            <field name="name">عداد ذكي محولات تيار ثلاثة أطوار (CT Operated Smart Meter)</field>
+            <field name="type">product</field>
+            <field name="list_price">85000.00</field>
+            <field name="default_code">MTR-3PH-CT</field>
+        </record>
+        <record id="demo_meter_type_mech_single" model="utility.meter.type">
+            <field name="name">عداد ميكانيكي طور واحد</field>
+            <field name="code">MECH-1PH</field>
+            <field name="phase">single</field>
+        </record>
+        <record id="demo_meter_type_mech_three" model="utility.meter.type">
+            <field name="name">عداد ميكانيكي ثلاثة أطوار</field>
+            <field name="code">MECH-3PH</field>
+            <field name="phase">three</field>
+        </record>
+        <record id="demo_meter_model_mech_single" model="utility.meter.model">
+            <field name="name">L&amp;T Single Phase Mechanical</field>
+            <field name="manufacturer">L&amp;T</field>
+            <field name="meter_type_id" ref="demo_meter_type_mech_single" />
+            <field name="sts_supported" eval="False" />
+            <field name="product_id" ref="utility_product_meter_mech_single" />
+        </record>
+        <record id="demo_meter_model_mech_three" model="utility.meter.model">
+            <field name="name">L&amp;T Three Phase Mechanical</field>
+            <field name="manufacturer">L&amp;T</field>
+            <field name="meter_type_id" ref="demo_meter_type_mech_three" />
+            <field name="sts_supported" eval="False" />
+            <field name="product_id" ref="utility_product_meter_mech_three" />
+        </record>
+        <record id="demo_meter_model_smart_ct" model="utility.meter.model">
+            <field name="name">HEXING Three Phase CT Smart</field>
+            <field name="manufacturer">Hexing Electrical</field>
+            <field name="meter_type_id" ref="demo_meter_type_smart_three" />
+            <field name="sts_supported" eval="True" />
+            <field name="communication_types">PLC, 4G, RS485</field>
+            <field name="product_id" ref="utility_product_meter_ct_three" />
+        </record>
+        <function model="res.company" name="write">
+            <value eval="[ref('base.main_company')]" />
+            <value eval="{                 'fine_account_id': ref('demo_account_fine'),                 'discount_account_id': ref('demo_account_discount'),                 'deposit_account_id': ref('demo_account_deposit'),                 'settlement_account_id': ref('demo_account_settlement'),                 'writeoff_journal_id': ref('demo_journal_writeoff'),                 'deposit_journal_id': ref('demo_journal_deposit'),                 'settlement_journal_id': ref('demo_journal_settlement'),                 'penalty_product_id': ref('utility_product_penalty'),                 'mu_allim_product_id': ref('utility_product_mu_allim'),                 'cleaning_product_id': ref('utility_product_cleaning'),                 'local_fee_product_id': ref('utility_product_municipality'),                 'writeoff_account_id': ref('demo_account_discount'),                 'collection_journal_id': ref('demo_journal_writeoff'),             }" />
+        </function>
+        <record id="demo_region_1" model="utility.region">
+            <field name="name">المنطقة الأولى</field>
+            <field name="code">REGION_1</field>
+            <field name="type">region</field>
+            <field name="recurring_rule_type">biweekly</field>
+        </record>
+        <record id="demo_region_2" model="utility.region">
+            <field name="name">المنطقة الثانية</field>
+            <field name="code">REGION_2</field>
+            <field name="type">region</field>
+            <field name="recurring_rule_type">biweekly</field>
+        </record>
+        <record id="demo_region_3" model="utility.region">
+            <field name="name">المنطقة الثالثة</field>
+            <field name="code">REGION_3</field>
+            <field name="type">region</field>
+            <field name="recurring_rule_type">biweekly</field>
+        </record>
+        <record id="demo_region_4" model="utility.region">
+            <field name="name">المنطقة الرابعة</field>
+            <field name="code">REGION_4</field>
+            <field name="type">region</field>
+            <field name="recurring_rule_type">biweekly</field>
+        </record>
+        <record id="demo_region_hodeidah" model="utility.region">
+            <field name="name">الحديدة</field>
+            <field name="code">REGION_HUD</field>
+            <field name="type">region</field>
+            <field name="recurring_rule_type">biweekly</field>
+        </record>
+        <record id="demo_area_2" model="utility.region">
+            <field name="name">فرع المنطقة الثانية</field>
+            <field name="code">AREA_2</field>
+            <field name="type">area</field>
+            <field name="parent_id" ref="demo_region_2" />
+            <field name="recurring_rule_type">biweekly</field>
+        </record>
+        <record id="demo_zone_2" model="utility.region">
+            <field name="name">نطاق المنطقة الثانية</field>
+            <field name="code">ZONE_2</field>
+            <field name="type">zone</field>
+            <field name="parent_id" ref="demo_area_2" />
+            <field name="recurring_rule_type">biweekly</field>
+        </record>
+        <record id="demo_substation_2" model="utility.substation">
+            <field name="name">محطة المنطقة الثانية</field>
+            <field name="code">SUB_2</field>
+            <field name="area_id" ref="demo_area_2" />
+            <field name="voltage_level">mv</field>
+        </record>
+        <record id="demo_feeder_2" model="utility.feeder">
+            <field name="name">فيدر المنطقة الثانية</field>
+            <field name="code">FEEDER_2</field>
+            <field name="substation_id" ref="demo_substation_2" />
+            <field name="voltage_level">lv</field>
+            <field name="rated_capacity">500.0</field>
+        </record>
+        <record id="demo_transformer_2" model="utility.transformer">
+            <field name="name">محول المنطقة الثانية</field>
+            <field name="code">TRANS_2</field>
+            <field name="feeder_id" ref="demo_feeder_2" />
+            <field name="substation_id" ref="demo_substation_2" />
+            <field name="capacity">250.0</field>
+            <field name="phase">three</field>
+            <field name="status">active</field>
+        </record>
+        <record id="demo_route_2" model="utility.route">
+            <field name="name">مسار المنطقة الثانية</field>
+            <field name="code">ROUTE_2</field>
+            <field name="area_id" ref="demo_area_2" />
+            <field name="zone_id" ref="demo_zone_2" />
+        </record>
+        <record id="demo_staff_inspector" model="utility.staff">
+            <field name="name">سالم السقاف (مفتش ميداني - Inspector)</field>
+            <field name="employee_code">EMP_INSP_YE01</field>
+            <field name="user_role_id" ref="role_inspector" />
+            <field name="mobile">771122334</field>
+        </record>
+        <record id="demo_staff_cashier" model="utility.staff">
+            <field name="name">عبد الله الحروي (صراف الإيرادات - Cashier)</field>
+            <field name="employee_code">EMP_CASH_YE01</field>
+            <field name="user_role_id" ref="role_cashier" />
+            <field name="mobile">772233445</field>
+        </record>
+        <record id="demo_staff_supervisor" model="utility.staff">
+            <field name="name">أحمد العولقي (مشرف هندسي - Supervisor)</field>
+            <field name="employee_code">EMP_SUPER_YE01</field>
+            <field name="user_role_id" ref="role_supervisor" />
+            <field name="mobile">773344556</field>
+        </record>
+        <record id="demo_tmpl_general_biweekly" model="utility.contract.template">
+            <field name="name">تعرفة عامة - نصف شهري (شرائح استهلاكية)</field>
+            <field name="code">TMPL_GENERAL_BI</field>
+            <field name="pricing_mode">tier</field>
+            <field name="recurring_rule_type">bi_monthly</field>
+            <field name="recurring_invoicing_type">postpaid</field>
+            <field name="recurring_interval">1</field>
+            <field name="service_charge">1000</field>
+            <field name="subscriber_category_ids" eval="[(6, 0, [ref('utility_core.cat_public'), ref('utility_core.cat_large'), ref('utility_core.cat_government')])]" />
+            <field name="subscriber_ids" eval="[(6, 0, [ref('utility_core.sub_category_public'), ref('utility_core.sub_public_tenant'), ref('utility_core.sub_public_commercial'), ref('utility_core.sub_public_mosque'), ref('utility_core.sub_public_doctor'), ref('utility_core.sub_public_pasture'), ref('utility_core.sub_public_martyr'), ref('utility_core.sub_category_large'), ref('utility_core.sub_category_government_new'), ref('utility_core.sub_gov_b')])]" />
+            <field name="scope">global</field>
+            <field name="sale_autoconfirm" eval="True" />
+            <field name="create_invoice_automatically" eval="True" />
+            <field name="active" eval="True" />
+        </record>
+
+        <record id="demo_tmpl_general_biweekly_line1" model="utility.contract.template.line">
+            <field name="template_id" ref="demo_tmpl_general_biweekly" />
+            <field name="sequence">10</field>
+            <field name="product_id" ref="utility_product_service_charge" />
+            <field name="name">رسم خدمة ثابت</field>
+            <field name="price_type">fixed</field>
+            <field name="specific_price">1000</field>
+            <field name="meter_line_type">service_charge</field>
+        </record>
+        <record id="action_update_general_biweekly_blocks" model="ir.actions.server">
+            <field name="name">Update General Biweekly Template Blocks</field>
+            <field name="model_id" ref="utility_core.model_utility_contract_template" />
+            <field name="state">code</field>
+            <field name="code">template = env.ref('utility_core.demo_tmpl_general_biweekly', raise_if_not_found=False)
+if not template:
+    template = env['utility.contract.template'].browse(1)
+if template:
+    old_blocks = template.block_ids
+    blocks_data = [
+        {'sequence': 10, 'name': 'الشريحة الأولى (0-2,999)', 'from_kwh': 0, 'to_kwh': 3000, 'price_per_kwh': 230},
+        {'sequence': 20, 'name': 'الشريحة الثانية (3,000-9,999)', 'from_kwh': 3000, 'to_kwh': 10000, 'price_per_kwh': 220},
+        {'sequence': 30, 'name': 'الشريحة الثالثة (10,000-19,999)', 'from_kwh': 10000, 'to_kwh': 20000, 'price_per_kwh': 200},
+        {'sequence': 40, 'name': 'الشريحة الرابعة (20,000-29,999)', 'from_kwh': 20000, 'to_kwh': 30000, 'price_per_kwh': 190},
+        {'sequence': 50, 'name': 'الشريحة الخامسة (30,000-99,999)', 'from_kwh': 30000, 'to_kwh': 100000, 'price_per_kwh': 185},
+        {'sequence': 60, 'name': 'الشريحة السادسة (100,000-199,999)', 'from_kwh': 100000, 'to_kwh': 200000, 'price_per_kwh': 180},
+        {'sequence': 70, 'name': 'الشريحة السابعة (200,000-299,999)', 'from_kwh': 200000, 'to_kwh': 300000, 'price_per_kwh': 175},
+        {'sequence': 80, 'name': 'الشريحة الثامنة (300,000+)', 'from_kwh': 300000, 'to_kwh': 0, 'price_per_kwh': 170},
+    ]
+    env.cr.execute("DELETE FROM utility_contract_template_block WHERE template_id = %s", [template.id])
+    for b in blocks_data:
+        b['template_id'] = template.id
+    env['utility.contract.template.block'].create(blocks_data)
+            </field>
+        </record>
+        <function model="ir.actions.server" name="run">
+            <value eval="[ref('action_update_general_biweekly_blocks')]" />
+        </function>
+    </data>
+</odoo>

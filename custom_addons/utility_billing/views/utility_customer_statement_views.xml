@@ -1,0 +1,301 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 1. Wizard Form View (Organized 2-Column Card Layout) -->
+    <record id="view_utility_customer_statement_wizard_form" model="ir.ui.view">
+        <field name="name">utility.customer.statement.wizard.form</field>
+        <field name="model">utility.customer.statement.wizard</field>
+        <field name="arch" type="xml">
+            <form string="كشف حساب المشترك">
+                <sheet>
+                    <div class="row">
+                        <div class="col-12 col-lg-6 mb-3">
+                            <div class="card o_settings_card h-100">
+                                <div class="card-header bg-light">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fa fa-user fa-2x text-primary me-3" title="المشترك"/>
+                                        <div>
+                                            <h4 class="mb-0">بيانات المشترك</h4>
+                                            <small class="text-muted">اختر الحساب وتحديد الخيارات</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label for="customer_id" class="o_light_label"/>
+                                        <field name="customer_id" options="{'no_create': True}"/>
+                                    </div>
+                                    <div class="form-check mt-3">
+                                        <field name="include_draft" class="form-check-input" id="include_draft"/>
+                                        <label for="include_draft" class="form-check-label ms-2">تضمين الفواتير والسدادات المسودة</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 mb-3">
+                            <div class="card o_settings_card h-100">
+                                <div class="card-header bg-light">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fa fa-calendar fa-2x text-info me-3" title="الفترة"/>
+                                        <div>
+                                            <h4 class="mb-0">فترة الكشف</h4>
+                                            <small class="text-muted">تحديد نطاق التواريخ</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label for="date_from" class="o_light_label"/>
+                                        <field name="date_from"/>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="date_to" class="o_light_label"/>
+                                        <field name="date_to"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </sheet>
+                <footer>
+                    <button name="action_print_statement" type="object" string="طباعة كشف الحساب (PDF)" class="btn-primary" icon="fa-print"/>
+                    <button string="إلغاء" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- 2. Wizard Action -->
+    <record id="action_utility_customer_statement_wizard" model="ir.actions.act_window">
+        <field name="name">كشف حساب المشترك</field>
+        <field name="res_model">utility.customer.statement.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_utility_customer_statement_wizard_form"/>
+        <field name="target">new</field>
+    </record>
+
+    <!-- 3. Smart Button on Customer Form -->
+    <record id="view_utility_customer_form_statement_button" model="ir.ui.view">
+        <field name="name">utility.customer.form.statement.button</field>
+        <field name="model">utility.customer</field>
+        <field name="inherit_id" ref="utility_core.view_utility_customer_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="%(action_utility_customer_statement_wizard)d"
+                        type="action"
+                        class="oe_stat_button"
+                        icon="fa-file-text-o"
+                        context="{'default_customer_id': active_id}">
+                    <div class="o_stat_info">
+                        <span class="o_stat_text">كشف الحساب</span>
+                    </div>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- 4. Report Action -->
+    <record id="action_report_customer_statement" model="ir.actions.report">
+        <field name="name">كشف حساب المشترك</field>
+        <field name="model">utility.customer.statement.wizard</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">utility_billing.report_customer_statement</field>
+        <field name="report_file">utility_billing.report_customer_statement</field>
+        <field name="print_report_name">'كشف_حساب_%s' % (object.customer_id.customer_number or 'مشترك')</field>
+        <field name="binding_model_id" ref="model_utility_customer_statement_wizard"/>
+        <field name="binding_type">report</field>
+    </record>
+
+    <!-- 5. QWeb Report Template with Full Arabic RTL Support -->
+    <template id="report_customer_statement">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="doc">
+                <t t-call="web.external_layout">
+                    <t t-set="statement" t-value="doc._prepare_report_values()"/>
+                    <t t-set="totals" t-value="statement['totals']"/>
+                    <t t-set="lines" t-value="statement['lines']"/>
+                    <t t-set="customer" t-value="statement['customer']"/>
+                    <t t-set="partner" t-value="statement['partner']"/>
+
+                    <div class="page" dir="rtl" style="font-family: 'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif; font-size: 11px; color: #222;">
+                        
+                        <!-- Header Title -->
+                        <div style="text-align: center; border-bottom: 2.5px solid #0056b3; padding-bottom: 6px; margin-bottom: 12px;">
+                            <h2 style="margin: 0; color: #0056b3; font-weight: bold; font-size: 20px;">كشف حساب مشترك كهرباء</h2>
+                            <span style="font-size: 11px; color: #555;">Customer Account Statement</span>
+                        </div>
+
+                        <!-- Subscriber & Period Information Cards -->
+                        <table style="width: 100%; margin-bottom: 12px; border-collapse: collapse; background-color: #f8f9fa; border: 1px solid #dee2e6;">
+                            <tr>
+                                <td style="width: 50%; padding: 8px; vertical-align: top; border-left: 1px solid #dee2e6;">
+                                    <div style="font-size: 12px; font-weight: bold; color: #0056b3; margin-bottom: 4px;">بيانات المشترك</div>
+                                    <table style="width: 100%; border-collapse: collapse;">
+                                        <tr>
+                                            <td style="padding: 2px 0; width: 35%; font-weight: bold;">رقم الحساب:</td>
+                                            <td style="padding: 2px 0;"><span t-esc="customer.customer_number or '--'"/></td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 2px 0; font-weight: bold;">اسم المشترك:</td>
+                                            <td style="padding: 2px 0;"><span t-esc="partner.name or '--'"/></td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 2px 0; font-weight: bold;">رقم العداد:</td>
+                                            <td style="padding: 2px 0;"><span t-esc="customer.meter_id.meter_number or '--'"/></td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 2px 0; font-weight: bold;">رقم الهاتف:</td>
+                                            <td style="padding: 2px 0;"><span t-esc="partner.phone or partner.mobile or '--'"/></td>
+                                        </tr>
+                                    </table>
+                                </td>
+                                <td style="width: 50%; padding: 8px; vertical-align: top;">
+                                    <div style="font-size: 12px; font-weight: bold; color: #0056b3; margin-bottom: 4px;">تفاصيل الفترة والمنطقة</div>
+                                    <table style="width: 100%; border-collapse: collapse;">
+                                        <tr>
+                                            <td style="padding: 2px 0; width: 35%; font-weight: bold;">من تاريخ:</td>
+                                            <td style="padding: 2px 0;"><span t-esc="doc.date_from or 'البداية'"/></td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 2px 0; font-weight: bold;">إلى تاريخ:</td>
+                                            <td style="padding: 2px 0;"><span t-esc="doc.date_to or 'اليوم'"/></td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 2px 0; font-weight: bold;">الفئة / العقد:</td>
+                                            <td style="padding: 2px 0;"><span t-esc="customer.category_id.name or customer.contract_template_id.name or '--'"/></td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 2px 0; font-weight: bold;">خط السير:</td>
+                                            <td style="padding: 2px 0;"><span t-esc="customer.route_id.name or '--'"/></td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- Summary Cards (KPIs) -->
+                        <table style="width: 100%; border-collapse: collapse; margin-bottom: 14px; text-align: center;">
+                            <tr>
+                                <td style="width: 25%; padding: 8px; background-color: #e9ecef; border: 1px solid #ced4da;">
+                                    <div style="font-size: 10px; color: #495057;">الرصيد الافتتاحي</div>
+                                    <div style="font-size: 13px; font-weight: bold; color: #212529;">
+                                        <span t-esc="'{:,.2f}'.format(totals['opening'])"/>
+                                    </div>
+                                </td>
+                                <td style="width: 25%; padding: 8px; background-color: #fff3cd; border: 1px solid #ffeeba;">
+                                    <div style="font-size: 10px; color: #856404;">إجمالي الفواتير (مدين)</div>
+                                    <div style="font-size: 13px; font-weight: bold; color: #856404;">
+                                        <span t-esc="'{:,.2f}'.format(totals['debit'])"/>
+                                    </div>
+                                </td>
+                                <td style="width: 25%; padding: 8px; background-color: #d4edda; border: 1px solid #c3e6cb;">
+                                    <div style="font-size: 10px; color: #155724;">إجمالي السدادات (دائن)</div>
+                                    <div style="font-size: 13px; font-weight: bold; color: #155724;">
+                                        <span t-esc="'{:,.2f}'.format(totals['credit'])"/>
+                                    </div>
+                                </td>
+                                <td style="width: 25%; padding: 8px; background-color: #d1ecf1; border: 1px solid #bee5eb;">
+                                    <div style="font-size: 10px; color: #0c5460;">الرصيد النهائي المستحق</div>
+                                    <div style="font-size: 13px; font-weight: bold; color: #0c5460;">
+                                        <span t-esc="'{:,.2f}'.format(totals['closing'])"/>
+                                    </div>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- Main Statement Table -->
+                        <table style="width: 100%; border-collapse: collapse; margin-bottom: 14px; border: 1px solid #dee2e6;" border="1">
+                            <thead>
+                                <tr style="background-color: #0056b3; color: white; text-align: center; font-size: 11px;">
+                                    <th style="width: 12%; padding: 6px;">التاريخ</th>
+                                    <th style="width: 18%; padding: 6px;">المرجع / المستند</th>
+                                    <th style="width: 34%; padding: 6px;">البيان والتفاصيل</th>
+                                    <th style="width: 12%; padding: 6px;">مدين (فاتورة)</th>
+                                    <th style="width: 12%; padding: 6px;">دائن (سداد/إعفاء)</th>
+                                    <th style="width: 12%; padding: 6px;">الرصيد التراكمي</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Opening Balance Row -->
+                                <tr style="background-color: #e9ecef; font-weight: bold;">
+                                    <td style="text-align: center; padding: 5px;"><span t-esc="doc.date_from or '--'"/></td>
+                                    <td style="text-align: center; padding: 5px;">--</td>
+                                    <td style="padding: 5px;"><strong>الرصيد الافتتاحي (Opening Balance)</strong></td>
+                                    <td style="text-align: left; padding: 5px;">--</td>
+                                    <td style="text-align: left; padding: 5px;">--</td>
+                                    <td style="text-align: left; padding: 5px; color: #0056b3;">
+                                        <span t-esc="'{:,.2f}'.format(totals['opening'])"/>
+                                    </td>
+                                </tr>
+
+                                <!-- Transaction Lines -->
+                                <t t-foreach="lines" t-as="line">
+                                    <tr>
+                                        <td style="text-align: center; padding: 5px;">
+                                            <span t-esc="line['date'] or '--'"/>
+                                        </td>
+                                        <td style="text-align: center; padding: 5px;">
+                                            <span t-esc="line['ref'] or '--'"/>
+                                        </td>
+                                        <td style="padding: 5px;">
+                                            <span t-esc="line['description']"/>
+                                        </td>
+                                        <td style="text-align: left; padding: 5px;">
+                                            <span t-if="line['debit'] &gt; 0" t-esc="'{:,.2f}'.format(line['debit'])"/>
+                                            <span t-else="">--</span>
+                                        </td>
+                                        <td style="text-align: left; padding: 5px;">
+                                            <span t-if="line['credit'] &gt; 0" t-esc="'{:,.2f}'.format(line['credit'])"/>
+                                            <span t-else="">--</span>
+                                        </td>
+                                        <td style="text-align: left; padding: 5px; font-weight: bold;">
+                                            <span t-esc="'{:,.2f}'.format(line['balance'])"/>
+                                        </td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                            <tfoot>
+                                <tr style="background-color: #f1f3f5; font-weight: bold; font-size: 11px;">
+                                    <td colspan="3" style="text-align: right; padding: 6px;">الإجمالي العام للفترة</td>
+                                    <td style="text-align: left; padding: 6px; color: #856404;">
+                                        <span t-esc="'{:,.2f}'.format(totals['debit'])"/>
+                                    </td>
+                                    <td style="text-align: left; padding: 6px; color: #155724;">
+                                        <span t-esc="'{:,.2f}'.format(totals['credit'])"/>
+                                    </td>
+                                    <td style="text-align: left; padding: 6px; color: #0056b3; font-size: 12px;">
+                                        <span t-esc="'{:,.2f}'.format(totals['closing'])"/>
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        </table>
+
+                        <!-- Footer Notice & Signature Blocks -->
+                        <div style="margin-top: 15px; font-size: 10px; color: #555;">
+                            <div style="border-top: 1px dashed #ccc; padding-top: 5px; text-align: center; margin-bottom: 15px;">
+                                تنبيه: كشف الحساب هذا يعتبر إشعاراً رسمياً بالرصيد المستحق. يرجى مراجعته وموافاتنا بأي ملاحظات خلال 15 يوماً من تاريخه.
+                            </div>
+                            <table style="width: 100%; border-collapse: collapse; text-align: center; margin-top: 10px;">
+                                <tr>
+                                    <td style="width: 33%;"><strong>توقيع المحصل / الموظف المختص</strong></td>
+                                    <td style="width: 33%;"><strong>توقيع رئيس قسم الفوترة</strong></td>
+                                    <td style="width: 33%;"><strong>توقيع المشترك بالاستلام</strong></td>
+                                </tr>
+                                <tr>
+                                    <td style="height: 35px;"></td>
+                                    <td></td>
+                                    <td></td>
+                                </tr>
+                                <tr>
+                                    <td>........................................</td>
+                                    <td>........................................</td>
+                                    <td>........................................</td>
+                                </tr>
+                            </table>
+                        </div>
+
+                    </div>
+                </t>
+            </t>
+        </t>
+    </template>
+</odoo>

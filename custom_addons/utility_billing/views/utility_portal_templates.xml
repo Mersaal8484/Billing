@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="portal_my_home_menu" inherit_id="portal.portal_my_home" name="Utility Portal Menu">
+        <xpath expr="//div[hasclass('o_portal_my_home')]" position="inside">
+            <t t-if="request.env.user.partner_id">
+                <div class="row">
+                    <div class="col-lg-6">
+                        <a href="/my/utility/accounts" class="btn btn-primary">
+                            حسابات الكهرباء
+                        </a>
+                    </div>
+                </div>
+            </t>
+        </xpath>
+    </template>
+
+    <template id="portal_utility_accounts" name="Utility Accounts">
+        <t t-call="portal.portal_layout">
+            <div class="container">
+                <h2>حسابات الكهرباء الخاصة بي</h2>
+                <t t-if="accounts">
+                    <t t-foreach="accounts" t-as="acc">
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <h5 t-esc="acc.customer_number"/>
+                                <p>الرصيد: <span t-esc="acc.accounting_balance"/></p>
+                                <a href="#" class="btn btn-sm btn-primary">شراء كهرباء</a>
+                                <a href="#" class="btn btn-sm btn-secondary">عرض الفواتير</a>
+                            </div>
+                        </div>
+                    </t>
+                </t>
+                <t t-else="">
+                    <p>لا توجد حسابات كهرباء.</p>
+                </t>
+            </div>
+        </t>
+    </template>
+</odoo>

@@ -1,0 +1,140 @@
+from odoo import api, fields, models, _
+
+
+class UtilityRoute(models.Model):
+    _name = 'utility.route'
+    _description = 'مسار / خط'
+    _order = 'name'
+
+    active = fields.Boolean('نشط', default=True)
+    company_id = fields.Many2one('res.company', 'الشركة', default=lambda self: self.env.company)
+    name = fields.Char('اسم المسار', required=True)
+    code = fields.Char('رمز المسار', required=True)
+
+    # ===== التسلسل التجاري: region → area → zone → route =====
+    area_id = fields.Many2one('utility.region', 'المنطقة الفرعية', domain="[('type', '=', 'area')]")
+    zone_id = fields.Many2one('utility.region', 'المنطقة التفصيلية', domain="[('type', '=', 'zone')]")
+    region_id = fields.Many2one('utility.region', 'المنطقة', related='area_id.parent_id', store=True)
+
+    # ===== تسلسل التوزيع: substation → feeder → transformer → route =====
+    transformer_id = fields.Many2one('utility.transformer', 'المحول', index=True)
+    feeder_id = fields.Many2one('utility.feeder', 'الفيدر / الخلية', related='transformer_id.feeder_id', store=True)
+    substation_id = fields.Many2one('utility.substation', 'المحطة الفرعية', related='transformer_id.substation_id', store=True)
+
+    customer_ids = fields.One2many('utility.customer', 'route_id', string='عقود المشتركين')
+    customer_count = fields.Integer('عدد المشتركين', compute='_compute_customer_count', store=True)
+    inspector_ids = fields.Many2many(
+        'utility.staff', 'route_inspector_rel', 'route_id', 'staff_id',
+        string='الكشافون',
+        domain="[('user_role_id.code', '=', 'inspector')]",
+    )
+    cashier_ids = fields.Many2many(
+        'utility.staff', 'route_cashier_rel', 'route_id', 'staff_id',
+        string='المحصلون الميدانيون',
+        domain="['|', ('user_role_id.code', '=', 'collector'), ('user_role_id.code', '=', 'cashier')]",
+    )
+    supervisor_id = fields.Many2one('utility.staff', string='المشرف', domain="[('user_role_id.code', '=', 'supervisor')]")
+
+    _sql_constraints = [
+        ('unique_route_code_area', 'unique(code, area_id)', 'رمز المسار يجب أن يكون فريداً لكل منطقة!'),
+    ]
+
+    @api.onchange('transformer_id')
+    def _onchange_transformer_set_distribution(self):
+        for rec in self:
+            if rec.transformer_id:
+                rec.zone_id = rec.transformer_id.zone_region_id.id
+                if rec.transformer_id.zone_region_id:
+                    rec.area_id = rec.transformer_id.zone_region_id.parent_id.id
+                    if rec.transformer_id.zone_region_id.parent_id:
+                        rec.region_id = rec.transformer_id.zone_region_id.parent_id.parent_id.id
+
+    @api.depends('customer_ids')
+    def _compute_customer_count(self):
+        for rec in self:
+            rec.customer_count = len(rec.customer_ids)
+
+    def action_add_customers_wizard(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'إضافة مشتركين',
+            'res_model': 'utility.route.add.customer.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_route_id': self.id},
+        }
+
+    def action_remove_customers_wizard(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'حذف مشتركين',
+            'res_model': 'utility.route.remove.customer.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_route_id': self.id},
+        }
+
+
+class UtilityRouteAddCustomerWizard(models.TransientModel):
+    _name = 'utility.route.add.customer.wizard'
+    _description = 'إضافة مشتركين إلى مسار'
+
+    route_id = fields.Many2one('utility.route', 'المسار', required=True, readonly=True)
+    filter_same_area = fields.Boolean('تصفية حسب نطاق المسار فقط', default=True, help='عرض المشتركين التابعين لنفس الفرع/المنطقة للمسار فقط')
+    customer_ids = fields.Many2many(
+        'utility.customer', 'wizard_add_customer_rel', 'wizard_id', 'customer_id',
+        string='المشتركين',
+    )
+    selected_count = fields.Integer('عدد المشتركين المحددين للإضافة', compute='_compute_counts')
+
+    @api.onchange('route_id', 'filter_same_area')
+    def _onchange_filter_same_area(self):
+        domain = [('route_id', '=', False)]
+        if self.filter_same_area and self.route_id:
+            if self.route_id.area_id:
+                domain.append(('area_id', '=', self.route_id.area_id.id))
+            elif self.route_id.region_id:
+                domain.append(('region_id', '=', self.route_id.region_id.id))
+        return {'domain': {'customer_ids': domain}}
+
+    @api.depends('customer_ids')
+    def _compute_counts(self):
+        for wizard in self:
+            wizard.selected_count = len(wizard.customer_ids)
+
+    def action_add(self):
+        self.ensure_one()
+        if self.customer_ids and self.route_id:
+            self.customer_ids.write({'route_id': self.route_id.id})
+        return {'type': 'ir.actions.act_window_close'}
+
+
+class UtilityRouteRemoveCustomerWizard(models.TransientModel):
+    _name = 'utility.route.remove.customer.wizard'
+    _description = 'حذف مشتركين من مسار'
+
+    route_id = fields.Many2one('utility.route', 'المسار', required=True, readonly=True)
+    customer_ids = fields.Many2many(
+        'utility.customer', 'wizard_remove_customer_rel', 'wizard_id', 'customer_id',
+        string='المشتركين',
+    )
+    selected_count = fields.Integer('عدد المشتركين المحددين للاستبعاد', compute='_compute_counts')
+
+    @api.onchange('route_id')
+    def _onchange_route_id(self):
+        if self.route_id:
+            return {'domain': {'customer_ids': [('route_id', '=', self.route_id.id)]}}
+        return {'domain': {'customer_ids': [('id', '=', False)]}}
+
+    @api.depends('customer_ids')
+    def _compute_counts(self):
+        for wizard in self:
+            wizard.selected_count = len(wizard.customer_ids)
+
+    def action_remove(self):
+        self.ensure_one()
+        if self.customer_ids:
+            self.customer_ids.write({'route_id': False})
+        return {'type': 'ir.actions.act_window_close'}

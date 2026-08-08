@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- ====== الفئات الجديدة ====== -->
+    <record id="cat_public" model="utility.subscriber.category">
+        <field name="name">أهالي</field>
+        <field name="code">CAT_PUB</field>
+        <field name="sequence">5</field>
+    </record>
+
+    <record id="cat_large" model="utility.subscriber.category">
+        <field name="name">كبار مستهلكين</field>
+        <field name="code">CAT_LARGE</field>
+        <field name="sequence">15</field>
+    </record>
+
+    <record id="cat_government" model="utility.subscriber.category">
+        <field name="name">حكومي</field>
+        <field name="code">CAT_GOV</field>
+        <field name="sequence">25</field>
+    </record>
+
+    <!-- ====== المشتركين للفئات الجديدة ====== -->
+    <!-- أهالي ملاك -->
+    <record id="sub_category_public" model="utility.subscriber">
+        <field name="name">اهالي ملاك</field>
+        <field name="code">PUB_OWNER</field>
+        <field name="sequence">5</field>
+        <field name="category_id" ref="cat_public"/>
+        <field name="subsidized_enabled" eval="True"/>
+        <field name="subsidized_max_units">100</field>
+        <field name="subsidized_percentage">100</field>
+    </record>
+
+    <!-- اهالي مستاجر -->
+    <record id="sub_public_tenant" model="utility.subscriber">
+        <field name="name">اهالي مستاجر</field>
+        <field name="code">PUB_TENANT</field>
+        <field name="sequence">6</field>
+        <field name="category_id" ref="cat_public"/>
+        <field name="subsidized_enabled" eval="True"/>
+        <field name="subsidized_max_units">100</field>
+        <field name="subsidized_percentage">100</field>
+    </record>
+
+    <!-- تجاري -->
+    <record id="sub_public_commercial" model="utility.subscriber">
+        <field name="name">تجاري</field>
+        <field name="code">COM</field>
+        <field name="sequence">7</field>
+        <field name="category_id" ref="cat_public"/>
+        <field name="subsidized_enabled" eval="False"/>
+    </record>
+
+    <!-- جوامع -->
+    <record id="sub_public_mosque" model="utility.subscriber">
+        <field name="name">جوامع</field>
+        <field name="code">MOSQUE</field>
+        <field name="sequence">8</field>
+        <field name="category_id" ref="cat_public"/>
+        <field name="subsidized_enabled" eval="False"/>
+    </record>
+
+    <!-- دكاتره -->
+    <record id="sub_public_doctor" model="utility.subscriber">
+        <field name="name">دكاتره</field>
+        <field name="code">DOCTOR</field>
+        <field name="sequence">9</field>
+        <field name="category_id" ref="cat_public"/>
+        <field name="subsidized_enabled" eval="False"/>
+    </record>
+
+    <!-- مرعي -->
+    <record id="sub_public_pasture" model="utility.subscriber">
+        <field name="name">مرعي</field>
+        <field name="code">PASTURE</field>
+        <field name="sequence">10</field>
+        <field name="category_id" ref="cat_public"/>
+        <field name="subsidized_enabled" eval="False"/>
+    </record>
+
+    <!-- شهداء -->
+    <record id="sub_public_martyr" model="utility.subscriber">
+        <field name="name">شهداء</field>
+        <field name="code">MARTYR</field>
+        <field name="sequence">11</field>
+        <field name="category_id" ref="cat_public"/>
+        <field name="subsidized_enabled" eval="False"/>
+    </record>
+
+    <!-- حكومي أ -->
+    <record id="sub_category_government_new" model="utility.subscriber">
+        <field name="name">حكومي أ</field>
+        <field name="code">GOV_A</field>
+        <field name="sequence">25</field>
+        <field name="category_id" ref="cat_government"/>
+        <field name="subsidized_enabled" eval="False"/>
+    </record>
+
+    <!-- حكومي ب -->
+    <record id="sub_gov_b" model="utility.subscriber">
+        <field name="name">حكومي ب</field>
+        <field name="code">GOV_B</field>
+        <field name="sequence">26</field>
+        <field name="category_id" ref="cat_government"/>
+        <field name="subsidized_enabled" eval="False"/>
+    </record>
+
+    <!-- الاتصالات -->
+    <record id="sub_category_large" model="utility.subscriber">
+        <field name="name">الاتصالات</field>
+        <field name="code">TELECOM</field>
+        <field name="sequence">35</field>
+        <field name="category_id" ref="cat_large"/>
+        <field name="subsidized_enabled" eval="False"/>
+    </record>
+
+    <!-- ====== معادلات افتراضية ====== -->
+    <record id="formula_fixed_fee" model="utility.formula">
+        <field name="name">رسوم اشتراك ثابت</field>
+        <field name="code"><![CDATA[# إذا كان الاستهلاك صفر → رسوم الاشتراك صفر
+if consumption > 0:
+    result = 1.0
+else:
+    result = 0.0]]></field>
+    </record>
+
+    <record id="formula_consumption" model="utility.formula">
+        <field name="name">استهلاك كهرباء</field>
+        <field name="code">result = consumption</field>
+    </record>
+
+    <record id="formula_discount" model="utility.formula">
+        <field name="name">خصم استهلاك مدعوم (نظام PEC)</field>
+        <field name="code"><![CDATA[# خصم أول N وحدة مدعومة (حسب شرائح الخصم في قالب العقد، وتتحول افتراضياً لـ 100)
+units = consumption or 0.0
+limit = discount_first_units or 100.0
+if units > 0:
+    if units < limit:
+        result = units
+        name = "خصم استهلاك مدعوم - %.0f وحدة" % units
+    else:
+        result = limit
+        name = "خصم استهلاك مدعوم - %.0f وحدة" % limit
+else:
+    result = 0.0]]></field>
+    </record>
+</odoo>

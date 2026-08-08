@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="ir_cron_generate_recurring_invoices" model="ir.cron">
+        <field name="name">ERP الكهرباء: توليد الفواتير المتكررة للعقود</field>
+        <field name="model_id" ref="utility_core.model_utility_contract_template"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_generate_recurring_invoices()</field>
+        <field name="user_id" ref="base.user_root"/>
+        <field name="interval_number">1</field>
+        <field name="interval_type">hours</field>
+        <field name="numbercall">-1</field>
+        <field name="active">True</field>
+    </record>
+
+    <record id="ir_cron_check_low_credit" model="ir.cron">
+        <field name="name">ERP الكهرباء: مراقبة وتنبيه الأرصدة المنخفضة</field>
+        <field name="model_id" ref="utility_core.model_utility_customer"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_check_low_credit()</field>
+        <field name="user_id" ref="base.user_root"/>
+        <field name="interval_number">30</field>
+        <field name="interval_type">minutes</field>
+        <field name="numbercall">-1</field>
+        <field name="active">False</field>
+    </record>
+
+    <record id="ir_cron_update_overdue_orders" model="ir.cron">
+        <field name="name">ERP الكهرباء: تحديث حالة الفواتير المتأخرة</field>
+        <field name="model_id" ref="sale.model_sale_order"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_update_overdue_orders()</field>
+        <field name="user_id" ref="base.user_root"/>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="numbercall">-1</field>
+        <field name="active">True</field>
+    </record>
+
+    <record id="ir_cron_retry_auto_pay" model="ir.cron">
+        <field name="name">ERP الكهرباء: إعادة محاولة الدفع التلقائي للمشتركين</field>
+        <field name="model_id" ref="utility_core.model_utility_customer"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_retry_auto_pay()</field>
+        <field name="user_id" ref="base.user_root"/>
+        <field name="interval_number">30</field>
+        <field name="interval_type">minutes</field>
+        <field name="numbercall">-1</field>
+        <field name="active">False</field>
+    </record>
+
+    <record id="ir_cron_batch_reading_invoicing" model="ir.cron">
+        <field name="name">ERP الكهرباء: الفوترة الجماعية للقراءات المعتمدة</field>
+        <field name="model_id" ref="utility_billing.model_utility_reading"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_queue_approved_readings()</field>
+        <field name="user_id" ref="base.user_root"/>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="numbercall">-1</field>
+        <field name="active">True</field>
+    </record>
+
+    <record id="ir_cron_calculate_late_penalties" model="ir.cron">
+        <field name="name">ERP الكهرباء: احتساب غرامات التأخير للفواتير المستحقة</field>
+        <field name="model_id" ref="utility_billing.model_utility_penalty"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_calculate_late_penalties()</field>
+        <field name="user_id" ref="base.user_root"/>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="numbercall">-1</field>
+        <field name="active">True</field>
+    </record>
+
+    <record id="ir_cron_send_due_bill_reminders" model="ir.cron">
+        <field name="name">ERP الكهرباء: إرسال تذكير بالفواتير المستحقة</field>
+        <field name="model_id" ref="sale.model_sale_order"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_send_due_reminders()</field>
+        <field name="user_id" ref="base.user_root"/>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="numbercall">-1</field>
+        <field name="active">True</field>
+    </record>
+
+    <record id="ir_cron_create_disconnection_orders" model="ir.cron">
+        <field name="name">ERP الكهرباء: إنشاء أوامر الفصل للمتأخرات</field>
+        <field name="model_id" ref="sale.model_sale_order"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_create_disconnection_orders()</field>
+        <field name="user_id" ref="base.user_root"/>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="numbercall">-1</field>
+        <field name="active">True</field>
+    </record>
+
+    <record id="ir_cron_dispatch_sms_notifications" model="ir.cron">
+        <field name="name">ERP الكهرباء: إرسال إشعارات SMS المعلقة</field>
+        <field name="model_id" ref="utility_core.model_utility_notification_log"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_dispatch_sms_notifications()</field>
+        <field name="user_id" ref="base.user_root"/>
+        <field name="interval_number">10</field>
+        <field name="interval_type">minutes</field>
+        <field name="numbercall">-1</field>
+        <field name="active">True</field>
+    </record>
+</odoo>

@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Meter Types -->
+        <record id="meter_type_em_single" model="utility.meter.type">
+            <field name="name">عداد إلكتروميكانيكي (حثي) أحادي الطور</field>
+            <field name="code">EM_SP</field>
+            <field name="phase">single</field>
+            <field name="description">الأكثر انتشاراً في المنازل القديمة - عداد حثي تقليدي</field>
+        </record>
+        <record id="meter_type_em_three" model="utility.meter.type">
+            <field name="name">عداد إلكتروميكانيكي (حثي) ثلاثي الطور</field>
+            <field name="code">EM_TP</field>
+            <field name="phase">three</field>
+            <field name="description">للمنشآت الصغيرة والمتوسطة - عداد حثي تقليدي</field>
+        </record>
+        <record id="meter_type_sts_single_prepaid" model="utility.meter.type">
+            <field name="name">عداد STS مسبق الدفع - أحادي الطور</field>
+            <field name="code">STS_SP_PRE</field>
+            <field name="phase">single</field>
+            <field name="description">عداد إلكتروني مسبق الدفع بنظام STS للمنازل</field>
+        </record>
+        <record id="meter_type_sts_three_prepaid" model="utility.meter.type">
+            <field name="name">عداد STS مسبق الدفع - ثلاثي الطور</field>
+            <field name="code">STS_TP_PRE</field>
+            <field name="phase">three</field>
+            <field name="description">عداد إلكتروني مسبق الدفع بنظام STS للمنشآت التجارية</field>
+        </record>
+        <record id="meter_type_smart_single_postpaid" model="utility.meter.type">
+            <field name="name">عداد ذكي آجل الدفع - أحادي الطور</field>
+            <field name="code">SMART_SP_POST</field>
+            <field name="phase">single</field>
+            <field name="description">عداد إلكتروني ذكي للقراءة عن بُعد - آجل الدفع</field>
+        </record>
+        <record id="meter_type_smart_three_postpaid" model="utility.meter.type">
+            <field name="name">عداد ذكي آجل الدفع - ثلاثي الطور</field>
+            <field name="code">SMART_TP_POST</field>
+            <field name="phase">three</field>
+            <field name="description">عداد إلكتروني ذكي للقراءة عن بُعد - آجل الدفع</field>
+        </record>
+        <record id="meter_type_smart_single_gsm" model="utility.meter.type">
+            <field name="name">عداد ذكي GSM/GPRS - أحادي الطور</field>
+            <field name="code">SMART_SP_GSM</field>
+            <field name="phase">single</field>
+            <field name="description">عداد ذكي مع اتصال GSM/GPRS للقراءة التلقائية</field>
+        </record>
+        <record id="meter_type_smart_three_gsm" model="utility.meter.type">
+            <field name="name">عداد ذكي GSM/GPRS - ثلاثي الطور</field>
+            <field name="code">SMART_TP_GSM</field>
+            <field name="phase">three</field>
+            <field name="description">عداد ذكي مع اتصال GSM/GPRS للقراءة التلقائية</field>
+        </record>
+        <record id="meter_type_coupling_single" model="utility.meter.type">
+            <field name="name">عداد ربط - أحادي الطور</field>
+            <field name="code">COUPLING_SP</field>
+            <field name="phase">single</field>
+            <field name="description">عداد ربط للمحولات الصغيرة والفيدرات</field>
+        </record>
+        <record id="meter_type_coupling_three" model="utility.meter.type">
+            <field name="name">عداد ربط - ثلاثي الطور</field>
+            <field name="code">COUPLING_TP</field>
+            <field name="phase">three</field>
+            <field name="description">عداد ربط للمحولات والفيدرات الرئيسية</field>
+        </record>
+        <record id="meter_type_check" model="utility.meter.type">
+            <field name="name">عداد معايرة (اختبار)</field>
+            <field name="code">CHECK_METER</field>
+            <field name="phase">single</field>
+            <field name="description">للتحقق من دقة العدادات الأخرى</field>
+        </record>
+        <record id="meter_type_dc_solar" model="utility.meter.type">
+            <field name="name">عداد تيار مستمر (DC) للطاقة الشمسية</field>
+            <field name="code">DC_SOLAR</field>
+            <field name="phase">single</field>
+            <field name="description">لنظم الطاقة الشمسية المرتبطة بالشبكة</field>
+        </record>
+
+        <!-- Meter Statuses -->
+        <record id="meter_status_active" model="utility.meter.status">
+            <field name="name">نشط</field>
+            <field name="code">ACTIVE</field>
+            <field name="sequence">10</field>
+        </record>
+        <record id="meter_status_inactive" model="utility.meter.status">
+            <field name="name">غير نشط</field>
+            <field name="code">INACTIVE</field>
+            <field name="sequence">20</field>
+        </record>
+        <record id="meter_status_faulty" model="utility.meter.status">
+            <field name="name">معطل</field>
+            <field name="code">FAULTY</field>
+            <field name="sequence">30</field>
+        </record>
+        <record id="meter_status_tampered" model="utility.meter.status">
+            <field name="name">تم العبث به</field>
+            <field name="code">TAMPERED</field>
+            <field name="sequence">40</field>
+        </record>
+        <record id="meter_status_decommissioned" model="utility.meter.status">
+            <field name="name">خارج الخدمة</field>
+            <field name="code">DECOMM</field>
+            <field name="sequence">50</field>
+        </record>
+
+        <!-- Connection Types -->
+        <record id="connection_type_new" model="utility.connection.type">
+            <field name="name">توصيلة جديدة</field>
+            <field name="code">NEW</field>
+            <field name="voltage_level">lv</field>
+            <field name="phase">single</field>
+        </record>
+        <record id="connection_type_residential" model="utility.connection.type">
+            <field name="name">سكني</field>
+            <field name="code">RES</field>
+            <field name="voltage_level">lv</field>
+            <field name="phase">single</field>
+        </record>
+        <record id="connection_type_commercial" model="utility.connection.type">
+            <field name="name">تجاري</field>
+            <field name="code">COM</field>
+            <field name="voltage_level">lv</field>
+            <field name="phase">three</field>
+        </record>
+        <record id="connection_type_industrial" model="utility.connection.type">
+            <field name="name">صناعي</field>
+            <field name="code">IND</field>
+            <field name="voltage_level">mv</field>
+            <field name="phase">three</field>
+        </record>
+        <record id="connection_type_agricultural" model="utility.connection.type">
+            <field name="name">زراعي</field>
+            <field name="code">AGR</field>
+            <field name="voltage_level">lv</field>
+            <field name="phase">single</field>
+        </record>
+
+        <!-- Opening Balance Journal -->
+        <record id="journal_opening_balance" model="account.journal">
+            <field name="name">يومية الأرصدة الافتتاحية</field>
+            <field name="code">UOPEN</field>
+            <field name="type">general</field>
+            <field name="sequence">99</field>
+        </record>
+
+        <!-- Utility Sales Journal -->
+        <record id="journal_utility_sales" model="account.journal">
+            <field name="name">يومية مبيعات الكهرباء (فواتير المشتركين)</field>
+            <field name="code">UBILL</field>
+            <field name="type">sale</field>
+            <field name="sequence">5</field>
+        </record>
+
+        <!-- Fee & Sales Revenue Accounts -->
+        <record id="account_income_electricity" model="account.account">
+            <field name="name">إيرادات مبيعات استهلاك الكهرباء</field>
+            <field name="code">400099</field>
+            <field name="account_type">income</field>
+        </record>
+        <record id="account_income_mu_allim" model="account.account">
+            <field name="name">إيرادات رسوم المعلم</field>
+            <field name="code">400109</field>
+            <field name="account_type">income</field>
+        </record>
+        <record id="account_income_cleaning" model="account.account">
+            <field name="name">إيرادات رسوم النظافة</field>
+            <field name="code">400209</field>
+            <field name="account_type">income</field>
+        </record>
+        <record id="account_income_municipality" model="account.account">
+            <field name="name">إيرادات رسوم المجالس المحلية</field>
+            <field name="code">400309</field>
+            <field name="account_type">income</field>
+        </record>
+
+        <record id="account_discount_utility" model="account.account">
+            <field name="name">خصومات وإعفاءات استهلاك الكهرباء</field>
+            <field name="code">490099</field>
+            <field name="account_type">income</field>
+        </record>
+
+        <!-- Fee & Sales Products -->
+        <record id="utility_product_consumption" model="product.product">
+            <field name="name">استهلاك طاقة كهربائية</field>
+            <field name="type">service</field>
+            <field name="list_price">0.00</field>
+            <field name="property_account_income_id" ref="account_income_electricity"/>
+        </record>
+        <record id="utility_product_discount" model="product.product">
+            <field name="name">خصم استهلاك مدعوم</field>
+            <field name="type">service</field>
+            <field name="list_price">0.00</field>
+            <field name="property_account_income_id" ref="account_discount_utility"/>
+        </record>
+        <record id="utility_product_mu_allim" model="product.product">
+            <field name="name">رسم المعلم</field>
+            <field name="type">service</field>
+            <field name="list_price">0.00</field>
+            <field name="property_account_income_id" ref="account_income_mu_allim"/>
+        </record>
+        <record id="utility_product_cleaning" model="product.product">
+            <field name="name">رسم النظافة</field>
+            <field name="type">service</field>
+            <field name="list_price">0.00</field>
+            <field name="property_account_income_id" ref="account_income_cleaning"/>
+        </record>
+        <record id="utility_product_municipality" model="product.product">
+            <field name="name">رسم المجالس المحلية</field>
+            <field name="type">service</field>
+            <field name="list_price">0.00</field>
+            <field name="property_account_income_id" ref="account_income_municipality"/>
+        </record>
+
+        <!-- Auto-initialize defaults on Company -->
+        <function model="res.company" name="_init_utility_company_defaults"/>
+
+    </data>
+</odoo>

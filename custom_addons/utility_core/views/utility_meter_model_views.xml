@@ -1,0 +1,68 @@
+<?xml version='1.0' encoding='utf-8'?>
+<odoo>
+    <record id="view_utility_meter_model_tree" model="ir.ui.view">
+        <field name="name">utility.meter.model.tree</field>
+        <field name="model">utility.meter.model</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name" />
+                <field name="manufacturer" optional="show" />
+                <field name="meter_type_id" />
+                <field name="sts_supported" widget="boolean_toggle" />
+                <field name="product_id" optional="show" />
+            </tree>
+        </field>
+    </record>
+    <record id="view_utility_meter_model_search" model="ir.ui.view">
+        <field name="name">utility.meter.model.search</field>
+        <field name="model">utility.meter.model</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name" string="Meter Model" />
+                <field name="manufacturer" />
+                <field name="meter_type_id" />
+                <separator />
+                <filter string="تدعم نظام STS" name="filter_sts_supported" domain="[('sts_supported', '=', True)]" />
+                <group expand="0" string="تجميع حسب">
+                    <filter string="الشركة المصنعة" name="group_by_manufacturer" context="{'group_by': 'manufacturer'}" />
+                    <filter string="نوع العداد" name="group_by_meter_type" context="{'group_by': 'meter_type_id'}" />
+                </group>
+            </search>
+        </field>
+    </record>
+    <record id="view_utility_meter_model_form" model="ir.ui.view">
+        <field name="name">utility.meter.model.form</field>
+        <field name="model">utility.meter.model</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_product" type="object" class="oe_stat_button" icon="fa-cube" attrs="{'invisible': [('product_id', '=', False)]}">
+                            <span class="o_stat_text">فتح المنتج</span>
+                        </button>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="name" />
+                            <field name="manufacturer" />
+                            <field name="meter_type_id" />
+                        </group>
+                        <group>
+                            <field name="sts_supported" />
+                            <field name="communication_types" />
+                            <field name="product_id" options="{'no_create': True}" />
+                        </group>
+                    </group>
+                    <group>
+                        <field name="description" />
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="action_utility_meter_model" model="ir.actions.act_window">
+        <field name="name">موديلات العدادات</field>
+        <field name="res_model">utility.meter.model</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

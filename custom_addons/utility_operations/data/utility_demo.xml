@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+
+        <record id="utility_service_order_demo_1" model="utility.service.order">
+            <field name="order_number">SO000001</field>
+            <field name="service_type">new_connection</field>
+            <field name="priority">high</field>
+            <field name="description">New connection for residential building at district 4. Requires 3-phase meter installation with underground cabling.</field>
+            <field name="state">draft</field>
+        </record>
+
+
+        <record id="utility_tamper_case_demo_1" model="utility.tamper.case">
+            <field name="case_number">TC000001</field>
+            <field name="tamper_type">meter_bypass</field>
+            <field name="severity">high</field>
+            <field name="description">Suspected meter bypass detected during routine inspection. Seal broken and jumper wires found between meter terminals.</field>
+            <field name="state">reported</field>
+        </record>
+
+        <record id="utility_work_order_demo_1" model="utility.work.order">
+            <field name="work_order_number">WO000001</field>
+            <field name="work_type">installation</field>
+            <field name="description">Install new 3-phase meter at residential building. Includes mounting, wiring, sealing and testing.</field>
+            <field name="priority">high</field>
+            <field name="state">draft</field>
+        </record>
+
+    </data>
+</odoo>

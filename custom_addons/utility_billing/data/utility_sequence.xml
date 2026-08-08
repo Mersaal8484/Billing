@@ -1,0 +1,53 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <record id="seq_utility_reading" model="ir.sequence">
+            <field name="name">تسلسل قراءات العدادات</field>
+            <field name="code">utility.reading</field>
+            <field name="prefix">RD/%(year)s/</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <record id="seq_utility_writeoff" model="ir.sequence">
+            <field name="name">تسلسل الإعفاءات</field>
+            <field name="code">utility.writeoff</field>
+            <field name="prefix">WO/%(year)s/</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <record id="seq_utility_deposit" model="ir.sequence">
+            <field name="name">تسلسل التأمينات</field>
+            <field name="code">utility.deposit</field>
+            <field name="prefix">DEP/%(year)s/</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <record id="seq_utility_financial_settlement" model="ir.sequence">
+            <field name="name">تسلسل التسويات المالية</field>
+            <field name="code">utility.financial.settlement</field>
+            <field name="prefix">FS/%(year)s/</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <record id="seq_utility_service_charge" model="ir.sequence">
+            <field name="name">تسلسل رسوم الخدمات</field>
+            <field name="code">utility.service.charge</field>
+            <field name="prefix">SC/%(year)s/</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+
+        <record id="seq_utility_payment_gateway_transaction" model="ir.sequence">
+            <field name="name">تسلسل معاملات بوابة الدفع</field>
+            <field name="code">utility.payment.gateway.transaction</field>
+            <field name="prefix">PG/%(year)s/</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
+    </data>
+</odoo>

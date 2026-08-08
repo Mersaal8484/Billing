@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Form View: معالج إنشاء الفترات التلقائي -->
+    <record id="view_utility_period_generator_form" model="ir.ui.view">
+        <field name="name">utility.period.generator.form</field>
+        <field name="model">utility.period.generator</field>
+        <field name="arch" type="xml">
+            <form string="معالج إنشاء فترات الفوترة والتحصيل">
+                <sheet>
+                    <div class="oe_title">
+                        <h2>توليد الدورات التشغيلية المزدوجة (Reading &amp; Review + Payment)</h2>
+                        <p class="text-muted">يقوم المعالج بتوليد فترات القراءة والسداد المرتبطة في Transaction واحدة بمرجعية cycle_key موحدة.</p>
+                    </div>
+
+                    <div class="row">
+                        <!-- Card 1: النطاق الزمني والتكرار -->
+                        <div class="col-12 col-lg-6">
+                            <div class="card o_settings_card mb-3">
+                                <div class="card-header">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fa fa-calendar fa-2x text-primary me-3" title="النطاق والدورية"/>
+                                        <div>
+                                            <h4 class="mb-0">النطاق والدورية</h4>
+                                            <small class="text-muted">تحديد السنة والشهر ونوع دورة الفوترة</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label for="year" class="o_light_label"/>
+                                        <field name="year"/>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="month" class="o_light_label"/>
+                                        <field name="month"/>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="billing_cadence" class="o_light_label"/>
+                                        <field name="billing_cadence"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card 2: قواعد الإزاحة والنوافذ التشغيلية -->
+                        <div class="col-12 col-lg-6">
+                            <div class="card o_settings_card mb-3">
+                                <div class="card-header">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fa fa-clock-o fa-2x text-success me-3" title="النوافذ التشغيلية"/>
+                                        <div>
+                                            <h4 class="mb-0">إعدادات النوافذ التشغيلية</h4>
+                                            <small class="text-muted">إزاحات بداية ونهاية القراءة والتحصيل بالنسبة لنهاية الاستهلاك</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <field name="override_offsets"/>
+                                        <label for="override_offsets" class="ms-2"/>
+                                    </div>
+                                    <div attrs="{'invisible': [('override_offsets', '=', False)]}">
+                                        <div class="mb-3">
+                                            <label for="reading_start_offset_days" class="o_light_label"/>
+                                            <field name="reading_start_offset_days"/>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="reading_end_offset_days" class="o_light_label"/>
+                                            <field name="reading_end_offset_days"/>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="payment_start_offset_days" class="o_light_label"/>
+                                            <field name="payment_start_offset_days"/>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="payment_end_offset_days" class="o_light_label"/>
+                                            <field name="payment_end_offset_days"/>
+                                        </div>
+                                    </div>
+                                    <div class="text-muted" attrs="{'invisible': [('override_offsets', '=', True)]}">
+                                        <i class="fa fa-info-circle"/> يتم اعتماد إزاحات النوافذ التشغيلية الافتراضية المحددة على أنواع الفترات الزمنيّة.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <footer>
+                        <button string="توليد الدورات التشغيلية الآن" name="action_generate_periods" type="object" class="btn-primary"/>
+                        <button string="إلغاء" class="btn-secondary" special="cancel"/>
+                    </footer>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_utility_period_generator" model="ir.actions.act_window">
+        <field name="name">توليد الفترات التلقائي</field>
+        <field name="res_model">utility.period.generator</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>

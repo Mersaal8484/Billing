@@ -1,0 +1,162 @@
+from odoo import api, fields, models
+
+
+class ResCompany(models.Model):
+    _inherit = 'res.company'
+
+    # --- Accounting ---
+    fine_account_id = fields.Many2one(
+        'account.account',
+        string='حساب إيرادات الغرامات',
+        check_company=True)
+    discount_account_id = fields.Many2one(
+        'account.account',
+        string='حساب الخصومات / الإعفاءات',
+        check_company=True)
+    deposit_account_id = fields.Many2one(
+        'account.account',
+        string='حساب التأمينات',
+        check_company=True)
+    settlement_account_id = fields.Many2one(
+        'account.account',
+        string='حساب التسويات المالية',
+        check_company=True)
+    
+    writeoff_journal_id = fields.Many2one(
+        'account.journal',
+        string='يومية الإعفاءات',
+        check_company=True)
+    deposit_journal_id = fields.Many2one(
+        'account.journal',
+        string='يومية التأمينات والودائع',
+        check_company=True)
+    settlement_journal_id = fields.Many2one(
+        'account.journal',
+        string='يومية التسويات',
+        check_company=True)
+    opening_journal_id = fields.Many2one(
+        'account.journal',
+        string='يومية الأرصدة الافتتاحية',
+        domain="[('type', '=', 'general')]",
+        check_company=True)
+    
+    penalty_product_id = fields.Many2one(
+        'product.product',
+        string='منتج الغرامات',
+        check_company=True)
+    mu_allim_product_id = fields.Many2one(
+        'product.product',
+        string='منتج المعلم',
+        check_company=True)
+    cleaning_product_id = fields.Many2one(
+        'product.product',
+        string='منتج النظافة',
+        check_company=True)
+    local_fee_product_id = fields.Many2one(
+        'product.product',
+        string='منتج المجالس المحلية',
+        check_company=True)
+
+    writeoff_account_id = fields.Many2one(
+        'account.account',
+        string='حساب الإعفاءات',
+        check_company=True)
+    collection_journal_id = fields.Many2one(
+        'account.journal',
+        string='يومية التحصيل الافتراضية',
+        check_company=True)
+
+    sales_journal_id = fields.Many2one(
+        'account.journal',
+        string='يومية مبيعات الكهرباء',
+        domain="[('type', '=', 'sale')]",
+        check_company=True)
+    electricity_income_account_id = fields.Many2one(
+        'account.account',
+        string='حساب إيرادات مبيعات الكهرباء',
+        check_company=True)
+    electricity_product_id = fields.Many2one(
+        'product.product',
+        string='منتج طاقة الكهرباء الرئيسي',
+        check_company=True)
+    discount_product_id = fields.Many2one(
+        'product.product',
+        string='منتج الخصم والإعفاءات',
+        check_company=True)
+
+    @api.model
+    def _init_utility_company_defaults(self):
+        """Auto-configure default fee products and journals on company if not set."""
+        companies = self.search([])
+        for company in companies:
+            vals = {}
+            if not company.opening_journal_id:
+                j_open = self.env.ref('utility_core.journal_opening_balance', raise_if_not_found=False)
+                if j_open and j_open.company_id.id in (False, company.id):
+                    vals['opening_journal_id'] = j_open.id
+            if not company.sales_journal_id:
+                j_sale = self.env.ref('utility_core.journal_utility_sales', raise_if_not_found=False)
+                if j_sale and j_sale.company_id.id in (False, company.id):
+                    vals['sales_journal_id'] = j_sale.id
+            if not company.electricity_income_account_id:
+                acc = self.env.ref('utility_core.account_income_electricity', raise_if_not_found=False)
+                if acc and acc.company_id.id in (False, company.id):
+                    vals['electricity_income_account_id'] = acc.id
+            if not company.electricity_product_id:
+                prod = self.env.ref('utility_core.utility_product_consumption', raise_if_not_found=False)
+                if prod and prod.company_id.id in (False, company.id):
+                    vals['electricity_product_id'] = prod.id
+            if not company.discount_account_id:
+                acc = self.env.ref('utility_core.account_discount_utility', raise_if_not_found=False)
+                if acc and acc.company_id.id in (False, company.id):
+                    vals['discount_account_id'] = acc.id
+            if not company.discount_product_id:
+                prod = self.env.ref('utility_core.utility_product_discount', raise_if_not_found=False)
+                if prod and prod.company_id.id in (False, company.id):
+                    vals['discount_product_id'] = prod.id
+            if not company.mu_allim_product_id:
+                prod = self.env.ref('utility_core.utility_product_mu_allim', raise_if_not_found=False)
+                if prod and prod.company_id.id in (False, company.id):
+                    vals['mu_allim_product_id'] = prod.id
+            if not company.cleaning_product_id:
+                prod = self.env.ref('utility_core.utility_product_cleaning', raise_if_not_found=False)
+                if prod and prod.company_id.id in (False, company.id):
+                    vals['cleaning_product_id'] = prod.id
+            if not company.local_fee_product_id:
+                prod = self.env.ref('utility_core.utility_product_municipality', raise_if_not_found=False)
+                if prod and prod.company_id.id in (False, company.id):
+                    vals['local_fee_product_id'] = prod.id
+
+            if not company.account_journal_payment_debit_account_id or not company.account_journal_payment_credit_account_id:
+                outstanding_acc = self.env['account.account'].search([
+                    ('name', 'ilike', 'مستحق'),
+                    ('company_id', 'in', (company.id, False))
+                ], limit=1) or self.env['account.account'].search([
+                    ('account_type', 'in', ('asset_current', 'asset_cash')),
+                    ('company_id', 'in', (company.id, False))
+                ], limit=1)
+                if not outstanding_acc:
+                    outstanding_acc = self.env['account.account'].create({
+                        'name': 'حساب الإيصالات والدفعات المستحقة',
+                        'code': '101200',
+                        'account_type': 'asset_current',
+                        'company_id': company.id,
+                    })
+                if not company.account_journal_payment_debit_account_id:
+                    vals['account_journal_payment_debit_account_id'] = outstanding_acc.id
+                if not company.account_journal_payment_credit_account_id:
+                    vals['account_journal_payment_credit_account_id'] = outstanding_acc.id
+
+            if vals:
+                company.write(vals)
+
+        # ضمان منح صلاحيات مدير النظام للكهرباء لمستخدمي Admin تلقائياً
+        admin_group = self.env.ref('utility_core.group_utility_admin', raise_if_not_found=False)
+        if admin_group:
+            admin_users = self.env['res.users'].sudo().search([
+                '|', ('id', '=', 2),
+                '|', ('groups_id', 'in', [self.env.ref('base.group_system').id]),
+                ('groups_id', 'in', [self.env.ref('base.group_erp_manager').id])
+            ])
+            if admin_users:
+                admin_group.sudo().write({'users': [(4, u.id) for u in admin_users]})

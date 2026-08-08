@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_customer_wizard_form" model="ir.ui.view">
+        <field name="name">utility.customer.wizard.form</field>
+        <field name="model">utility.customer.wizard</field>
+        <field name="arch" type="xml">
+            <form string="تسجيل مشترك وعداد جديد">
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name" class="oe_edit_only" string="اسم المشترك / الجهة"/>
+                        <h1>
+                            <field name="name" placeholder="مثال: محمد اليماني"/>
+                        </h1>
+                    </div>
+                    <notebook>
+                        <page name="subscriber_contract" string="المشترك والعقد">
+                            <group>
+                                <group string="بيانات الهوية والاتصال">
+                                    <field name="national_id" placeholder="الرقم الوطني أو السجل التجاري"/>
+                                    <field name="mobile" placeholder="777xxxxxx"/>
+                                    <field name="street" placeholder="اسم الشارع / الحي"/>
+                                </group>
+                                <group string="تصنيف المشترك">
+                                    <field name="category_id" options="{'no_create': True}"/>
+                                    <field name="subscriber_id" options="{'no_create': True}"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page name="network_meter" string="الموقع والعداد">
+                            <group string="الموقع التشغيلي">
+                                <group>
+                                    <field name="utility_region_id" options="{'no_create': True}"/>
+                                    <field name="utility_area_id" options="{'no_create': True}"/>
+                                    <field name="contract_template_id" options="{'no_create': True}"/>
+                                    <field name="route_id" options="{'no_create': True}"/>
+                                </group>
+                                <group>
+                                    <field name="transformer_zone_id" options="{'no_create': True}"/>
+                                </group>
+                            </group>
+
+                            <group string="بيانات العداد">
+                                <group>
+                                    <field name="create_meter"/>
+                                    <field name="payment_type" attrs="{'invisible': [('create_meter', '=', False)]}"/>
+                                    <field name="meter_product_id" options="{'no_create': True, 'no_open': True}" attrs="{'invisible': [('create_meter', '=', False)], 'required': [('create_meter', '=', True)]}"/>
+                                    <field name="meter_model_id" options="{'no_create': True, 'no_open': True}" attrs="{'invisible': [('create_meter', '=', False)]}"/>
+                                    <field name="meter_type_id" options="{'no_create': True, 'no_open': True}" attrs="{'invisible': [('create_meter', '=', False)]}"/>
+                                    <field name="serial_number" attrs="{'invisible': [('create_meter', '=', False)], 'required': [('create_meter', '=', True)]}"/>
+                                    <field name="meter_number" readonly="1" attrs="{'invisible': [('create_meter', '=', False)]}"/>
+                                </group>
+                                <group attrs="{'invisible': [('create_meter', '=', False)]}">
+                                    <field name="phase"/>
+                                    <field name="manufacturer"/>
+                                    <field name="sts_key_revision" attrs="{'invisible': [('payment_type', '!=', 'prepaid')], 'required': [('payment_type', '=', 'prepaid')]}"/>
+                                    <field name="communication_type" attrs="{'invisible': [('payment_type', '!=', 'postpaid')], 'required': [('payment_type', '=', 'postpaid')]}"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page name="private_transformer" string="المحول الخاص">
+                            <group string="اختيار المحول">
+                                <group>
+                                    <field name="use_private_transformer"/>
+                                    <field name="private_transformer_existing_id" options="{'no_create': True}" attrs="{'invisible': [('use_private_transformer', '=', False)]}"/>
+                                </group>
+                            </group>
+
+                            <group string="بيانات المحول الجديد" attrs="{'invisible': ['|', ('use_private_transformer', '=', False), ('private_transformer_existing_id', '!=', False)]}">
+                                <group>
+                                    <field name="transformer_name" attrs="{'required': [('use_private_transformer', '=', True), ('private_transformer_existing_id', '=', False)]}"/>
+                                    <field name="transformer_code" attrs="{'required': [('use_private_transformer', '=', True), ('private_transformer_existing_id', '=', False)]}"/>
+                                    <field name="transformer_capacity"/>
+                                    <field name="transformer_phase"/>
+                                    <field name="transformer_manufacturer"/>
+                                </group>
+                                <group>
+                                    <field name="transformer_serial"/>
+                                    <field name="voltage_primary"/>
+                                    <field name="voltage_secondary"/>
+                                    <field name="transformer_substation_id" options="{'no_create': True}"/>
+                                    <field name="transformer_feeder_id" options="{'no_create': True}"/>
+                                </group>
+                            </group>
+
+                            <div class="alert alert-info" role="alert" attrs="{'invisible': [('use_private_transformer', '=', False)]}">
+                                <strong>ملاحظة:</strong>
+                                سيتم اعتماد عداد المشترك الحالي كعداد الربط الرئيسي لهذا المحول تلقائياً لمنع التكرار.
+                            </div>
+                        </page>
+                    </notebook>
+                </sheet>
+                <footer>
+                    <button name="action_create_customer" type="object" string="حفظ وتوليد السجلات" class="btn-primary" icon="fa-check"/>
+                    <button string="إلغاء" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_utility_customer_wizard" model="ir.actions.act_window">
+        <field name="name">تسجيل مشترك وعداد جديد</field>
+        <field name="res_model">utility.customer.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

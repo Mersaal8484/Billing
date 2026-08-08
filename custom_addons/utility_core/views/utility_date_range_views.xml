@@ -1,0 +1,428 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- =====================================================================
+         DATE RANGE TYPE — Views
+         ===================================================================== -->
+
+    <!-- Tree View: أنواع الفترات -->
+    <record id="view_utility_date_range_type_tree" model="ir.ui.view">
+        <field name="name">date.range.type.utility.tree</field>
+        <field name="model">date.range.type</field>
+        <field name="priority" eval="5"/>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="parent_type_id" optional="show"/>
+                <field name="default_billing_period" optional="show"/>
+                <field name="reading_start_offset_days" optional="show"/>
+                <field name="reading_end_offset_days" optional="show"/>
+                <field name="payment_start_offset_days" optional="show"/>
+                <field name="payment_end_offset_days" optional="show"/>
+                <field name="fiscal_year" widget="boolean_toggle"/>
+                <field name="allow_overlap" widget="boolean_toggle"/>
+                <field name="active" widget="boolean_toggle"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View: نوع الفترة -->
+    <record id="view_utility_date_range_type_form" model="ir.ui.view">
+        <field name="name">date.range.type.utility.form</field>
+        <field name="model">date.range.type</field>
+        <field name="priority" eval="5"/>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <group string="معلومات النوع">
+                            <field name="name"/>
+                            <field name="parent_type_id" options="{'no_create': True}"/>
+                            <field name="default_billing_period"/>
+                        </group>
+                        <group string="الإعدادات العامة">
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="fiscal_year"/>
+                            <field name="allow_overlap"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                    <group string="إعدادات الإزاحة الافتراضية للنوافذ التشغيلية (بالأيام بالنسبة لنهاية الاستهلاك)">
+                        <group>
+                            <field name="reading_start_offset_days"/>
+                            <field name="reading_end_offset_days"/>
+                        </group>
+                        <group>
+                            <field name="payment_start_offset_days"/>
+                            <field name="payment_end_offset_days"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search: أنواع الفترات -->
+    <record id="view_utility_date_range_type_search" model="ir.ui.view">
+        <field name="name">date.range.type.utility.search</field>
+        <field name="model">date.range.type</field>
+        <field name="priority" eval="5"/>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <filter string="السنوات المالية" name="fiscal" domain="[('fiscal_year', '=', True)]"/>
+                <separator/>
+                <filter string="مؤرشف" name="inactive" domain="[('active', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
+    <!-- =====================================================================
+         DATE RANGE — Views (Redesigned & Simplified)
+         ===================================================================== -->
+
+    <!-- Tree View: الفترات الزمنية -->
+    <record id="view_utility_date_range_tree" model="ir.ui.view">
+        <field name="name">date.range.utility.tree</field>
+        <field name="model">date.range</field>
+        <field name="priority" eval="5"/>
+        <field name="arch" type="xml">
+            <tree decoration-success="state == 'open'"
+                  decoration-info="state == 'closing'"
+                  decoration-warning="state == 'closed'"
+                  decoration-muted="state == 'locked'">
+                <field name="period_code"/>
+                <field name="cycle_key" optional="show"/>
+                <field name="name"/>
+                <field name="period_role" widget="badge"
+                       decoration-warning="period_role == 'reading'"
+                       decoration-info="period_role == 'payment'"/>
+                <field name="billing_cadence" widget="badge"
+                       decoration-success="billing_cadence == 'monthly'"
+                       decoration-primary="billing_cadence == 'semi_monthly'"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'open'"
+                       decoration-info="state == 'closing'"
+                       decoration-warning="state == 'reconciled'"
+                       decoration-muted="state in ('closed', 'locked')"/>
+                <field name="date_start" string="تاريخ البداية"/>
+                <field name="date_end" string="تاريخ النهاية"/>
+                <field name="received_readings" string="القراءات" optional="show"/>
+                <field name="bills_generated" string="الفواتير" optional="show"/>
+                <field name="collection_rate" string="نسبة التحصيل %" widget="progressbar" optional="show"/>
+                <field name="active" widget="boolean_toggle"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View: الفترة الزمنية المتطورة -->
+    <record id="view_utility_date_range_form" model="ir.ui.view">
+        <field name="name">date.range.utility.form</field>
+        <field name="model">date.range</field>
+        <field name="priority" eval="5"/>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_open_period" type="object" string="فتح الفترة للعمليات" class="oe_highlight"
+                            attrs="{'invisible': [('state', '!=', 'planned')]}"/>
+                    <button name="action_start_closing" type="object" string="بدء الإغلاق والمطابقة" class="btn-info"
+                            attrs="{'invisible': [('state', '!=', 'open')]}"/>
+                    <button name="action_close_period" type="object" string="إغلاق الفترة" class="btn-danger"
+                            confirm="هل أنت تأكد من إغلاق الفترة بعد استكمال كافة القراءات والمطابقات؟"
+                            attrs="{'invisible': ['|', ('period_role', '!=', 'reading'), ('state', 'not in', ('open', 'closing'))]}"/>
+                    <button name="action_reconcile_payment" type="object" string="مطابقة التحصيل" class="btn-success"
+                            attrs="{'invisible': ['|', ('period_role', '!=', 'payment'), ('state', 'not in', ('open', 'closing', 'closed'))]}"/>
+                    <button name="action_lock_period" type="object" string="إقفال تاريخي" class="btn-outline-dark"
+                            attrs="{'invisible': [('state', 'not in', ('closed', 'reconciled'))]}"/>
+
+                    <!-- زر التعديل والتمديد المنضبط -->
+                    <button name="%(action_utility_period_adjust_wizard)d" type="action"
+                            string="تعديل / تمديد الفترة" class="btn-secondary"
+                            context="{'default_period_id': active_id}"
+                            attrs="{'invisible': [('state', '=', 'locked')]}"/>
+
+                    <button name="action_sync_regions_by_cadence" type="object"
+                            string="مزامنة المناطق حسب الدورية"
+                            class="btn-outline-info"
+                            icon="fa-refresh"
+                            attrs="{'invisible': [('state', '!=', 'planned')]}"
+                            confirm="سيتم تحديث المناطق المشتركة في هذه الفترة بناءً على دوريتها. هل تريد المتابعة؟"/>
+
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="planned,open,closing,closed,locked"
+                           attrs="{'invisible': [('period_role', '=', 'payment')]}"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="planned,open,closing,reconciled,locked"
+                           attrs="{'invisible': [('period_role', '=', 'reading')]}"/>
+                </header>
+
+                <sheet>
+                    <field name="company_id" invisible="1"/>
+                    <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button" icon="fa-tachometer">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_value"><field name="received_readings"/></span>
+                                <span class="o_stat_text">قراءة مستلمة</span>
+                            </div>
+                        </button>
+                        <button class="oe_stat_button" icon="fa-file-text-o">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_value"><field name="bills_generated"/></span>
+                                <span class="o_stat_text">فاتورة منشأة</span>
+                            </div>
+                        </button>
+                        <button class="oe_stat_button" icon="fa-money">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_value"><field name="billed_amount"/></span>
+                                <span class="o_stat_text">إجمالي المطلوب</span>
+                            </div>
+                        </button>
+                        <button class="oe_stat_button" icon="fa-check-circle text-success">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_value"><field name="collected_in_window"/></span>
+                                <span class="o_stat_text">تم تحصيله</span>
+                            </div>
+                        </button>
+                    </div>
+
+                    <div class="oe_title">
+                        <label for="period_code" string="رمز الفترة الفريد"/>
+                        <h1><field name="period_code" placeholder="مثال: READ-SEMI-2026-08-H1"/></h1>
+                        <label for="name" string="اسم الفترة الوصفي"/>
+                        <h2><field name="name" placeholder="مثال: النصف الأول أغسطس 2026 (قراءة ومراجعة)"/></h2>
+                    </div>
+
+                    <!-- 2-Column Card Layout -->
+                    <div class="row">
+                        <div class="col-12 col-lg-6">
+                            <div class="card o_settings_card mb-3">
+                                <div class="card-header">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fa fa-tag fa-2x text-primary me-3" title="الدورة والنوع"/>
+                                        <div>
+                                            <h4 class="mb-0">نوع والدورية والتصنيف</h4>
+                                            <small class="text-muted">تحديد الدور ورمز الدورة والدورية الرئيسية</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label for="cycle_key" class="o_light_label"/>
+                                        <field name="cycle_key" placeholder="مثال: SEMI-2026-08-H1"/>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="period_role" class="o_light_label"/>
+                                        <field name="period_role"/>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="billing_cadence" class="o_light_label"/>
+                                        <field name="billing_cadence"
+                                               attrs="{'readonly': [('period_role', '=', 'payment')]}"/>
+                                        <small class="text-muted"
+                                               attrs="{'invisible': [('period_role', '!=', 'payment')]}"
+                                        >مشتقة من فترة القراءة المرتبطة</small>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="type_id" class="o_light_label"/>
+                                        <field name="type_id" options="{'no_create': True}"/>
+                                    </div>
+                                    <div class="mb-3" attrs="{'invisible': [('period_role', '!=', 'payment')]}">
+                                        <label for="reading_period_id" class="o_light_label"/>
+                                        <field name="reading_period_id" options="{'no_create': True}"/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12 col-lg-6">
+                            <div class="card o_settings_card mb-3">
+                                <div class="card-header">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fa fa-calendar fa-2x text-success me-3" title="التواريخ والنوافذ"/>
+                                        <div>
+                                            <h4 class="mb-0">التواريخ والنوافذ التشغيلية</h4>
+                                            <small class="text-muted">فترات الاستهلاك ونوافذ القراءة والتحصيل</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-6 mb-3">
+                                            <label for="date_start" class="o_light_label"/>
+                                            <field name="date_start"/>
+                                        </div>
+                                        <div class="col-6 mb-3">
+                                            <label for="date_end" class="o_light_label"/>
+                                            <field name="date_end"/>
+                                        </div>
+                                    </div>
+                                    <div class="row" attrs="{'invisible': [('period_role', '!=', 'reading')]}">
+                                        <div class="col-6 mb-3">
+                                            <label for="consumption_start" class="o_light_label"/>
+                                            <field name="consumption_start"/>
+                                        </div>
+                                        <div class="col-6 mb-3">
+                                            <label for="consumption_end" class="o_light_label"/>
+                                            <field name="consumption_end"/>
+                                        </div>
+                                    </div>
+                                    <div class="row" attrs="{'invisible': [('period_role', '!=', 'reading')]}">
+                                        <div class="col-6 mb-3">
+                                            <label for="reading_window_start" class="o_light_label"/>
+                                            <field name="reading_window_start"/>
+                                        </div>
+                                        <div class="col-6 mb-3">
+                                            <label for="reading_window_end" class="o_light_label"/>
+                                            <field name="reading_window_end"/>
+                                        </div>
+                                    </div>
+                                    <div class="row" attrs="{'invisible': [('period_role', '!=', 'payment')]}">
+                                        <div class="col-6 mb-3">
+                                            <label for="payment_window_start" class="o_light_label"/>
+                                            <field name="payment_window_start"/>
+                                        </div>
+                                        <div class="col-6 mb-3">
+                                            <label for="payment_window_end" class="o_light_label"/>
+                                            <field name="payment_window_end"/>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <notebook>
+                        <page string="المناطق المشتركة">
+                            <field name="region_ids" widget="many2many_tags" options="{'no_create': True}" readonly="1"/>
+                            <div class="text-muted mt-2">
+                                <i class="fa fa-info-circle"/> المناطق snapshot مشتقة تلقائياً من الدورية أو من فترة القراءة المرتبطة، وتعديلها يدوياً غير مسموح.
+                            </div>
+                        </page>
+
+                        <page string="فترات التحصيل المرتبطة" attrs="{'invisible': [('period_role', '!=', 'reading')]}">
+                            <field name="payment_period_ids" readonly="1">
+                                <tree>
+                                    <field name="period_code"/>
+                                    <field name="name"/>
+                                    <field name="state"/>
+                                    <field name="payment_window_start"/>
+                                    <field name="payment_window_end"/>
+                                    <field name="collected_in_window"/>
+                                </tree>
+                            </field>
+                        </page>
+
+                        <page string="سجل التدقيق والتغييرات">
+                            <field name="log_ids" readonly="1">
+                                <tree>
+                                    <field name="timestamp"/>
+                                    <field name="user_id"/>
+                                    <field name="action_type" optional="show"/>
+                                    <field name="old_state" optional="show"/>
+                                    <field name="new_state" optional="show"/>
+                                    <field name="changed_fields" optional="show"/>
+                                    <field name="reason"/>
+                                </tree>
+                            </field>
+                        </page>
+
+                        <page string="ملاحظات">
+                            <field name="notes" placeholder="ملاحظات إضافية عن هذه الفترة..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View: الفترات الزمنية -->
+    <record id="view_utility_date_range_search" model="ir.ui.view">
+        <field name="name">date.range.utility.search</field>
+        <field name="model">date.range</field>
+        <field name="priority" eval="5"/>
+        <field name="arch" type="xml">
+            <search string="بحث في الفترات الزمنية">
+                <field name="period_code"/>
+                <field name="cycle_key"/>
+                <field name="name"/>
+                <field name="type_id"/>
+
+                <!-- فلاتر الدور -->
+                <filter string="فترات القراءة والمراجعة" name="reading_roles" domain="[('period_role', '=', 'reading')]"/>
+                <filter string="فترات السداد والتحصيل" name="payment_roles" domain="[('period_role', '=', 'payment')]"/>
+                <separator/>
+
+                <!-- فلاتر الحالة -->
+                <filter string="الفترات المفتوحة" name="open_periods" domain="[('state', '=', 'open')]"/>
+                <filter string="قيد الإغلاق والمطابقة" name="closing_periods" domain="[('state', '=', 'closing')]"/>
+                <filter string="المغلقة والمطابقة" name="closed_periods" domain="[('state', 'in', ('closed', 'reconciled'))]"/>
+                <separator/>
+
+                <!-- فلاتر الدورية -->
+                <filter string="شهري"      name="monthly"      domain="[('billing_cadence', '=', 'monthly')]"/>
+                <filter string="نصف شهري"  name="semi_monthly" domain="[('billing_cadence', '=', 'semi_monthly')]"/>
+                <separator/>
+
+                <filter string="مؤرشف" name="inactive" domain="[('active', '=', False)]"/>
+
+                <group expand="0" string="تجميع حسب">
+                    <filter string="رمز الدورة التشغيلية" name="group_cycle" context="{'group_by': 'cycle_key'}"/>
+                    <filter string="دور الفترة"      name="group_role"     context="{'group_by': 'period_role'}"/>
+                    <filter string="دورية الفوترة"   name="group_cadence"  context="{'group_by': 'billing_cadence'}"/>
+                    <filter string="حالة الفترة"     name="group_state"    context="{'group_by': 'state'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- =====================================================================
+         ACTIONS & MENUS
+         ===================================================================== -->
+
+    <record id="action_utility_date_range" model="ir.actions.act_window">
+        <field name="name">الفترات الزمنية</field>
+        <field name="res_model">date.range</field>
+        <field name="view_mode">tree,form</field>
+        <field name="view_ids" eval="[
+            (5, 0, 0),
+            (0, 0, {'view_mode': 'tree', 'view_id': ref('view_utility_date_range_tree')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('view_utility_date_range_form')}),
+        ]"/>
+        <field name="search_view_id" ref="view_utility_date_range_search"/>
+    </record>
+
+    <record id="action_utility_date_range_type" model="ir.actions.act_window">
+        <field name="name">أنواع الفترات الزمنية</field>
+        <field name="res_model">date.range.type</field>
+        <field name="view_mode">tree,form</field>
+        <field name="view_ids" eval="[
+            (5, 0, 0),
+            (0, 0, {'view_mode': 'tree', 'view_id': ref('view_utility_date_range_type_tree')}),
+            (0, 0, {'view_mode': 'form', 'view_id': ref('view_utility_date_range_type_form')}),
+        ]"/>
+    </record>
+
+    <menuitem id="menu_utility_date_range_root"
+              name="الفترات الزمنية"
+              parent="utility_core.menu_utility_config"
+              sequence="85"/>
+
+    <menuitem id="menu_utility_date_range"
+              name="جميع الفترات"
+              parent="menu_utility_date_range_root"
+              action="action_utility_date_range"
+              sequence="10"/>
+
+    <menuitem id="menu_utility_period_generator_wizard"
+              name="توليد الفترات التلقائي"
+              parent="menu_utility_date_range_root"
+              action="action_utility_period_generator"
+              sequence="15"/>
+
+    <menuitem id="menu_utility_date_range_type"
+              name="أنواع الفترات"
+              parent="menu_utility_date_range_root"
+              action="action_utility_date_range_type"
+              sequence="20"/>
+
+</odoo>

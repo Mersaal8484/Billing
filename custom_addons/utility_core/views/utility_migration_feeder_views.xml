@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_download_feeder_migration_template" model="ir.actions.act_url">
+        <field name="name">تحميل قالب الفيدرات والخلايا</field>
+        <field name="url">/utility_core/static/src/Feeder_Migration_Template.xlsx</field>
+        <field name="target">new</field>
+    </record>
+
+    <record id="view_utility_migration_feeder_tree" model="ir.ui.view">
+        <field name="name">utility.migration.feeder.tree</field>
+        <field name="model">utility.migration.feeder</field>
+        <field name="arch" type="xml">
+            <tree string="بيانات تهيئة الفيدرات والخلايا"
+                  decoration-info="state=='draft'"
+                  decoration-success="state=='imported'"
+                  decoration-danger="state=='error'">
+                <header>
+                    <button name="%(action_download_feeder_migration_template)d"
+                            string="⬇ تحميل قالب الفيدرات"
+                            type="action"
+                            class="btn-primary"/>
+                    <button name="action_map_codes"
+                            string="🔗 مطابقة الترميز"
+                            type="object"
+                            class="btn-secondary"/>
+                    <button name="action_import_data"
+                            string="✅ اعتماد ورفع البيانات"
+                            type="object"
+                            class="btn-success"/>
+                </header>
+                <field name="feeder_code"/>
+                <field name="name"/>
+                <field name="is_active"/>
+                <field name="meter_number"/>
+                <field name="meter_multiplier"/>
+                <field name="current_reading"/>
+                <field name="is_calculation_cell"/>
+                <field name="region_id"/>
+                <field name="state" widget="badge"
+                       decoration-info="state=='draft'"
+                       decoration-success="state=='imported'"
+                       decoration-danger="state=='error'"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_utility_migration_feeder_form" model="ir.ui.view">
+        <field name="name">utility.migration.feeder.form</field>
+        <field name="model">utility.migration.feeder</field>
+        <field name="arch" type="xml">
+            <form string="تهيئة الفيدر / الخلية">
+                <header>
+                    <button name="action_map_codes"
+                            string="🔗 مطابقة الترميز"
+                            type="object"
+                            class="btn-secondary"
+                            attrs="{'invisible': [('state', '=', 'imported')]}"/>
+                    <button name="action_import_data"
+                            string="✅ رفع وتوليد البيانات"
+                            type="object"
+                            class="oe_highlight"
+                            attrs="{'invisible': [('state', '=', 'imported')]}"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,imported,error"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_feeder"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-bolt"
+                                attrs="{'invisible': [('created_feeder_id', '=', False)]}">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">الفيدر المنشأ</span>
+                            </div>
+                        </button>
+                        <button name="action_open_meter"
+                                type="object"
+                                class="oe_stat_button"
+                                icon="fa-tachometer"
+                                attrs="{'invisible': [('created_meter_id', '=', False)]}">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">العداد المنشأ</span>
+                            </div>
+                        </button>
+                    </div>
+
+                    <div class="oe_title">
+                        <label for="name" string="اسم الفيدر / الخلية"/>
+                        <h1><field name="name" placeholder="اسم الخلية أو الفيدر..."/></h1>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-12 col-lg-6">
+                            <div class="card o_settings_card mb-3">
+                                <div class="card-header">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fa fa-bolt fa-2x text-primary me-3" title="الفيدر والترميز"/>
+                                        <div>
+                                            <h4 class="mb-0">بيانات الفيدر والترميز</h4>
+                                            <small class="text-muted">المعلومات الأساسية للفيدر والمنطقة</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <group>
+                                        <field name="feeder_code"/>
+                                        <field name="feeder_name"/>
+                                        <field name="is_active"/>
+                                        <field name="legacy_region"/>
+                                        <field name="region_id"/>
+                                        <field name="legacy_area"/>
+                                        <field name="area_id"/>
+                                        <field name="legacy_analytic_id"/>
+                                        <field name="is_calculation_cell"/>
+                                    </group>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6">
+                            <div class="card o_settings_card mb-3">
+                                <div class="card-header">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fa fa-tachometer fa-2x text-success me-3" title="العداد والقراءات"/>
+                                        <div>
+                                            <h4 class="mb-0">العداد والقراءة الافتتاحية</h4>
+                                            <small class="text-muted">تفاصيل العداد والقراءة الحالية</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <group>
+                                        <field name="meter_number"/>
+                                        <field name="meter_multiplier"/>
+                                        <field name="current_reading"/>
+                                        <field name="opening_reading"/>
+                                        <field name="cell_meter_number"/>
+                                        <field name="cell_meter_multiplier"/>
+                                    </group>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <group string="الوصف والملاحظات">
+                        <field name="description" nolabel="1" placeholder="أدخل الوصف أو ملاحظات النظام السابق..."/>
+                    </group>
+
+                    <notebook>
+                        <page string="رسالة الخطأ" attrs="{'invisible': [('state', '!=', 'error')]}">
+                            <field name="error_message" style="color: red;"/>
+                        </page>
+                        <page string="الارتباطات المنشأة" attrs="{'invisible': [('state', '!=', 'imported')]}">
+                            <group>
+                                <field name="created_feeder_id"/>
+                                <field name="created_meter_id"/>
+                                <field name="created_reading_id"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_utility_migration_feeder_search" model="ir.ui.view">
+        <field name="name">utility.migration.feeder.search</field>
+        <field name="model">utility.migration.feeder</field>
+        <field name="arch" type="xml">
+            <search string="بحث تهيئة الفيدرات">
+                <field name="name"/>
+                <field name="feeder_code"/>
+                <field name="meter_number"/>
+                <field name="legacy_region"/>
+                <filter string="مسودة" name="filter_draft" domain="[('state', '=', 'draft')]"/>
+                <filter string="تم الرفع" name="filter_imported" domain="[('state', '=', 'imported')]"/>
+                <filter string="خطأ" name="filter_error" domain="[('state', '=', 'error')]"/>
+                <filter string="خلايا إحتساب" name="filter_calc_cell" domain="[('is_calculation_cell', '=', True)]"/>
+                <group expand="0" string="تجميع حسب...">
+                    <filter string="الحالة" name="group_by_state" context="{'group_by': 'state'}"/>
+                    <filter string="المنطقة" name="group_by_region" context="{'group_by': 'region_id'}"/>
+                    <filter string="خلية إحتساب" name="group_by_calc_cell" context="{'group_by': 'is_calculation_cell'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_utility_migration_feeder" model="ir.actions.act_window">
+        <field name="name">تهيئة الفيدرات والخلايا</field>
+        <field name="res_model">utility.migration.feeder</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <menuitem id="menu_utility_migration_feeder"
+              name="بيانات الفيدرات / الخلايا (Staging)"
+              parent="menu_utility_migration_root"
+              action="action_utility_migration_feeder"
+              sequence="15"/>
+
+    <menuitem id="menu_utility_migration_download_feeder_template"
+              name="تحميل قالب الفيدرات والخلايا"
+              parent="menu_utility_migration_root"
+              action="action_download_feeder_migration_template"
+              sequence="32"/>
+</odoo>

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="paperformat_utility_meter_qr_label" model="report.paperformat">
+        <field name="name">ملصق QR للعداد (50mm)</field>
+        <field name="format">custom</field>
+        <field name="page_height">50</field>
+        <field name="page_width">50</field>
+        <field name="orientation">Portrait</field>
+        <field name="margin_top">2</field>
+        <field name="margin_bottom">2</field>
+        <field name="margin_left">2</field>
+        <field name="margin_right">2</field>
+        <field name="header_line" eval="False"/>
+        <field name="header_spacing">0</field>
+        <field name="dpi">90</field>
+    </record>
+
+    <record id="action_report_utility_meter_qr_label" model="ir.actions.report">
+        <field name="name">ملصق QR للعداد</field>
+        <field name="model">utility.meter</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">utility_core.report_utility_meter_qr_label</field>
+        <field name="report_file">utility_core.report_utility_meter_qr_label</field>
+        <field name="print_report_name">'QR عداد - %s' % (object.meter_number)</field>
+        <field name="binding_model_id" ref="model_utility_meter"/>
+        <field name="binding_type">report</field>
+        <field name="paperformat_id" ref="utility_core.paperformat_utility_meter_qr_label"/>
+    </record>
+
+    <template id="report_utility_meter_qr_label">
+        <t t-call="web.html_container">
+            <t t-foreach="docs" t-as="o">
+                <div class="page" dir="rtl"
+                     style="font-family: Tahoma, Arial, sans-serif; text-align:center; color:#000; font-size:8px; padding:2px; margin:0;">
+                    <div style="font-weight:bold; font-size:10px; margin-bottom:2px;">
+METER                    </div>
+                    <img t-if="o.qr_code_image"
+                         t-attf-src="data:image/png;base64,{{o.qr_code_image.decode('utf-8')}}"
+                         style="width:26mm; height:26mm; display:block; margin:2px auto;" alt="Meter QR"/>
+                    <div style="font-weight:bold; margin-top:1px; font-size:9px;" t-esc="o.meter_number or ''"/>
+                    <div t-if="o.customer_id" style="font-size:7px;" t-esc="o.customer_id.customer_number or ''"/>
+                    <div t-if="o.serial_number" style="font-size:7px;">S/N: <span t-esc="o.serial_number"/></div>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

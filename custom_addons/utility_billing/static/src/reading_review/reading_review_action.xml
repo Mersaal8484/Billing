@@ -1,0 +1,401 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="utility_billing.ReadingReviewWorkspaceAction" owl="1">
+        <div class="o_utility_review_workspace d-flex flex-column h-100 bg-light" style="direction: rtl;">
+            <!-- Control Panel Header & Toolbar -->
+            <div class="o_control_panel bg-white border-bottom shadow-sm px-3 py-2">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <!-- Title & Context Tabs Navigation -->
+                    <div class="d-flex align-items-center">
+                        <h4 class="mb-0 font-weight-bold text-primary me-4">
+                            <i class="fa fa-th-list me-2"/> كونسول مراجعة القراءات
+                        </h4>
+                        <!-- Context Navigation Tabs -->
+                        <ul class="nav nav-pills nav-fill bg-light p-1 rounded-3 border">
+                            <li class="nav-item">
+                                <button type="button" class="nav-link px-3 py-1 font-weight-bold" t-att-class="state.filters.review_tab === 'commercial' ? 'active bg-primary text-white shadow-sm' : 'text-dark'" t-on-click="() => this.onSelectTab('commercial')">
+                                    <i class="fa fa-shopping-cart me-1"/> تجاري (فوترة)
+                                </button>
+                            </li>
+                            <li class="nav-item">
+                                <button type="button" class="nav-link px-3 py-1 font-weight-bold" t-att-class="state.filters.review_tab === 'network' ? 'active bg-info text-white shadow-sm' : 'text-dark'" t-on-click="() => this.onSelectTab('network')">
+                                    <i class="fa fa-sitemap me-1"/> شبكي ومحولات
+                                </button>
+                            </li>
+                            <li class="nav-item">
+                                <button type="button" class="nav-link px-3 py-1 font-weight-bold" t-att-class="state.filters.review_tab === 'replacements' ? 'active bg-warning text-dark shadow-sm' : 'text-dark'" t-on-click="() => this.onSelectTab('replacements')">
+                                    <i class="fa fa-refresh me-1"/> استبدال العدادات (عمليات مزدوجة)
+                                </button>
+                            </li>
+                            <li class="nav-item">
+                                <button type="button" class="nav-link px-3 py-1 font-weight-bold" t-att-class="state.filters.review_tab === 'exceptions' ? 'active bg-danger text-white shadow-sm' : 'text-dark'" t-on-click="() => this.onSelectTab('exceptions')">
+                                    <i class="fa fa-exclamation-triangle me-1"/> تنبيهات واستثناءات VEE
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <!-- Statistics Summary Progress Badges -->
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="card card-body py-1 px-3 border-warning bg-warning bg-opacity-10 text-dark">
+                            <small class="text-muted d-block" style="font-size: 0.75rem;">قيد المراجعة</small>
+                            <strong class="h6 mb-0 text-warning"><t t-esc="state.stats.pending"/></strong>
+                        </div>
+                        <div class="card card-body py-1 px-3 border-success bg-success bg-opacity-10 text-dark">
+                            <small class="text-muted d-block" style="font-size: 0.75rem;">معتمدة</small>
+                            <strong class="h6 mb-0 text-success"><t t-esc="state.stats.approved"/></strong>
+                        </div>
+                        <div class="card card-body py-1 px-3 border-danger bg-danger bg-opacity-10 text-dark">
+                            <small class="text-muted d-block" style="font-size: 0.75rem;">مرفوضة</small>
+                            <strong class="h6 mb-0 text-danger"><t t-esc="state.stats.rejected"/></strong>
+                        </div>
+                        <div class="card card-body py-1 px-3 border-info bg-info bg-opacity-10 text-dark">
+                            <small class="text-muted d-block" style="font-size: 0.75rem;">استثناءات / تنبيهات</small>
+                            <strong class="h6 mb-0 text-info"><t t-esc="state.stats.exceptions"/></strong>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filters & Search Toolbar Bar -->
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-2 pt-2 border-top">
+                    <!-- Dropdown Filters -->
+                    <div class="d-flex align-items-center flex-wrap gap-2">
+                        <!-- Period Filter -->
+                        <div class="input-group input-group-sm" style="width: 180px;">
+                            <span class="input-group-text"><i class="fa fa-calendar"/></span>
+                            <select class="form-select form-select-sm" t-model="state.filters.period_id" t-on-change="onFilterChange">
+                                <option value="">كل الفترات</option>
+                                <t t-foreach="state.masterData.periods" t-as="p" t-key="p.id">
+                                    <option t-att-value="p.id"><t t-esc="p.name"/></option>
+                                </t>
+                            </select>
+                        </div>
+
+                        <!-- Region Filter -->
+                        <div class="input-group input-group-sm" style="width: 160px;">
+                            <span class="input-group-text"><i class="fa fa-map-marker"/></span>
+                            <select class="form-select form-select-sm" t-model="state.filters.region_id" t-on-change="onFilterChange">
+                                <option value="">كل المناطق</option>
+                                <t t-foreach="state.masterData.regions" t-as="r" t-key="r.id">
+                                    <option t-att-value="r.id"><t t-esc="r.name"/></option>
+                                </t>
+                            </select>
+                        </div>
+
+                        <!-- Status Filter -->
+                        <div class="input-group input-group-sm" style="width: 160px;">
+                            <span class="input-group-text"><i class="fa fa-filter"/></span>
+                            <select class="form-select form-select-sm" t-model="state.filters.status" t-on-change="onFilterChange">
+                                <option value="under_review">قيد المراجعة</option>
+                                <option value="approved">معتمدة</option>
+                                <option value="rejected">مرفوضة</option>
+                                <option value="exceptions">استثناءات الفحص</option>
+                                <option value="all">كل الحالات</option>
+                            </select>
+                        </div>
+
+                        <!-- VEE Anomaly Filter -->
+                        <div class="input-group input-group-sm" style="width: 170px;">
+                            <span class="input-group-text"><i class="fa fa-flag"/></span>
+                            <select class="form-select form-select-sm" t-model="state.filters.anomaly_filter" t-on-change="onFilterChange">
+                                <option value="all">كل القراءات</option>
+                                <option value="anomalies">كافة التنبيهات للشذوذ</option>
+                                <option value="high_consumption">استهلاك مرتفع جدًا</option>
+                                <option value="negative_consumption">استهلاك سلبي</option>
+                                <option value="zero_consumption">استهلاك صفر</option>
+                                <option value="image_issues">مشاكل في الصور</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Search Input & Actions -->
+                    <div class="d-flex align-items-center gap-2 me-auto">
+                        <!-- Debounced Search -->
+                        <div class="input-group input-group-sm" style="width: 220px;">
+                            <span class="input-group-text"><i class="fa fa-search"/></span>
+                            <input type="text" class="form-control form-control-sm" placeholder="بحث برقم العداد أو اسم العميل..." t-att-value="state.filters.search" t-on-input="onSearchInput"/>
+                        </div>
+
+                        <!-- Page Size Selector -->
+                        <select class="form-select form-select-sm" style="width: 90px;" t-model="state.filters.page_size" t-on-change="onFilterChange">
+                            <option value="20">20 صف</option>
+                            <option value="40">40 صف</option>
+                        </select>
+
+                        <!-- Bulk Approve Button -->
+                        <button type="button" class="btn btn-sm btn-success px-3" t-att-disabled="!state.selectedIds.length" t-on-click="onBulkApprove">
+                            <i class="fa fa-check-circle me-1"/> اعتماد جماعي (<t t-esc="state.selectedIds.length"/>)
+                        </button>
+
+                        <!-- Refresh Button -->
+                        <button type="button" class="btn btn-sm btn-outline-secondary px-3" t-on-click="() => this.loadQueue(this.state.pagination.offset, true)" title="تحديث القائمة">
+                            <i class="fa fa-refresh" t-att-class="state.loading ? 'fa-spin' : ''"/>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main High-Density 40-Row Review Grid -->
+            <div class="flex-grow-1 overflow-auto p-3">
+                <t t-if="state.loading">
+                    <div class="text-center p-5 my-5">
+                        <i class="fa fa-spinner fa-spin fa-3x text-primary mb-3"/>
+                        <h5 class="text-muted">جاري تحميل القراءات والصور من الخادم...</h5>
+                    </div>
+                </t>
+                <t t-elif="!state.items or !state.items.length">
+                    <div class="text-center p-5 bg-white shadow-sm rounded-3 my-4">
+                        <i class="fa fa-check-circle fa-4x text-success mb-3"/>
+                        <h4 class="font-weight-bold text-dark">لا توجد قراءات تنتظر المراجعة</h4>
+                        <p class="text-muted">تمت مراجعة كافة القراءات في هذا التبويب أو الفلتر المحدد.</p>
+                        <button type="button" class="btn btn-outline-primary px-4 mt-2" t-on-click="() => { this.state.filters.anomaly_filter='all'; this.state.filters.status='all'; this.onFilterChange(); }">
+                            إعادة ضبط الفلاتر
+                        </button>
+                    </div>
+                </t>
+                <!-- Custom View for Meter Replacement Tab (Side-by-side Pairs) -->
+                <t t-elif="state.isReplacementTab">
+                    <div class="row g-3">
+                        <t t-foreach="state.items" t-as="repl" t-key="repl.id">
+                            <div class="col-12 col-xl-6">
+                                <div class="card shadow-sm border-secondary h-100">
+                                    <div class="card-header bg-dark text-white d-flex align-items-center justify-content-between py-2">
+                                        <div>
+                                            <strong class="text-warning me-2"><i class="fa fa-refresh me-1"/> <t t-esc="repl.name"/></strong>
+                                            <span class="badge bg-secondary"><t t-esc="repl.target_name"/></span>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted me-2"><t t-esc="repl.replace_date"/></small>
+                                            <t t-if="repl.state !== 'done'">
+                                                <button type="button" class="btn btn-sm btn-success px-3" t-on-click="() => this.onApproveReplacementPair(repl)">
+                                                    <i class="fa fa-check me-1"/> اعتماد عملية الاستبدال (Pair)
+                                                </button>
+                                            </t>
+                                            <t t-else="">
+                                                <span class="badge bg-success"><i class="fa fa-check me-1"/> تم الاعتماد</span>
+                                            </t>
+                                        </div>
+                                    </div>
+                                    <div class="card-body p-3 bg-light">
+                                        <div class="row g-2">
+                                            <!-- Old Meter Closing Side -->
+                                            <div class="col-6 border-end pe-3">
+                                                <div class="p-2 rounded bg-white border border-danger">
+                                                    <span class="badge bg-danger mb-2 d-block text-start">العداد القديم (قراءة إغلاق)</span>
+                                                    <div class="d-flex align-items-center mb-2">
+                                                        <t t-if="repl.old_meter.thumbnail_url">
+                                                            <img t-att-src="repl.old_meter.thumbnail_url" alt="صورة القديم" class="rounded border me-2" style="width: 55px; height: 55px; object-fit: cover;"/>
+                                                        </t>
+                                                        <div>
+                                                            <div class="fw-bold text-dark"><t t-esc="repl.old_meter.meter_number"/></div>
+                                                            <small class="text-muted">الختامية: <strong class="text-danger"><t t-esc="repl.old_meter.closing_reading"/></strong></small>
+                                                        </div>
+                                                    </div>
+                                                    <div class="text-xs text-muted">
+                                                        استهلاك مرحل: <strong class="text-info"><t t-esc="repl.old_meter.uninvoiced_consumption"/> kWh</strong>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!-- New Meter Opening Side -->
+                                            <div class="col-6 ps-3">
+                                                <div class="p-2 rounded bg-white border border-success">
+                                                    <span class="badge bg-success mb-2 d-block text-start">العداد الجديد (قراءة افتتاحية)</span>
+                                                    <div class="d-flex align-items-center mb-2">
+                                                        <t t-if="repl.new_meter.thumbnail_url">
+                                                            <img t-att-src="repl.new_meter.thumbnail_url" alt="صورة الجديد" class="rounded border me-2" style="width: 55px; height: 55px; object-fit: cover;"/>
+                                                        </t>
+                                                        <div>
+                                                            <div class="fw-bold text-dark"><t t-esc="repl.new_meter.meter_number"/></div>
+                                                            <small class="text-muted">الافتتاحية: <strong class="text-success"><t t-esc="repl.new_meter.opening_reading"/></strong></small>
+                                                        </div>
+                                                    </div>
+                                                    <div class="text-xs text-muted">
+                                                        معامل الضرب: <strong><t t-esc="repl.new_meter.multiplier"/></strong>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </t>
+                    </div>
+                </t>
+                <!-- Standard High-Density Table for Commercial, Network, Exceptions -->
+                <t t-else="">
+                    <div class="table-responsive bg-white shadow-sm rounded-3 border">
+                        <table class="table table-hover table-striped align-middle mb-0 text-sm">
+                            <thead class="bg-black text-white sticky-top">
+                                <tr>
+                                    <th style="width: 40px;" class="text-center">
+                                        <input type="checkbox" class="form-check-input" t-on-change="toggleSelectAll"/>
+                                    </th>
+                                    <th style="width: 50px;" class="text-center">#</th>
+                                    <th style="width: 90px;" class="text-center">صورة العداد</th>
+                                    <th style="width: 120px;">رقم العداد</th>
+                                    <th style="width: 180px;">اسم الحساب / العميل</th>
+                                    <th style="width: 100px;">المنطقة</th>
+                                    <th style="width: 110px;" class="text-end">القراءة السابقة</th>
+                                    <th style="width: 110px;" class="text-end">القراءة الحالية</th>
+                                    <th style="width: 110px;" class="text-end">الاستهلاك</th>
+                                    <th style="width: 140px;">تاريخ القراءة</th>
+                                    <th style="width: 180px;" class="text-center">السياق</th>
+                                    <th style="width: 150px;">التنبيهات الفنية VEE</th>
+                                    <th style="width: 100px;" class="text-center">الحالة</th>
+                                    <th style="width: 160px;" class="text-center">إجراءات المراجعة</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <t t-foreach="state.items" t-as="item" t-key="item.id">
+                                    <tr t-att-class="item.state === 'approved' ? 'table-success bg-opacity-25' : (item.state === 'draft' and item.rejection_reason ? 'table-danger bg-opacity-25' : '')">
+                                        <!-- Selection Checkbox -->
+                                        <td class="text-center">
+                                            <input type="checkbox" class="form-check-input" t-att-checked="state.selectedIds.includes(item.id)" t-on-change="() => this.toggleSelectRow(item.id)"/>
+                                        </td>
+
+                                        <!-- Row Index -->
+                                        <td class="text-center text-muted fw-bold">
+                                            <t t-esc="item_index + 1 + state.pagination.offset"/>
+                                        </td>
+
+                                        <!-- Thumbnail Image -->
+                                        <td class="text-center p-1 position-relative">
+                                            <t t-if="item.thumbnail_url">
+                                                <img t-att-src="item.thumbnail_url" loading="lazy" alt="صورة العداد" class="rounded border shadow-sm cursor-pointer hover-zoom" style="width: 60px; height: 60px; object-fit: cover;" t-on-click="() => this.onOpenLightbox(item)"/>
+                                            </t>
+                                            <t t-else="">
+                                                <div class="rounded border bg-light text-muted d-flex align-items-center justify-content-center mx-auto" style="width: 60px; height: 60px;">
+                                                    <i class="fa fa-camera-retro fa-lg opacity-50"/>
+                                                </div>
+                                            </t>
+                                        </td>
+
+                                        <!-- Meter Number -->
+                                        <td class="fw-bold text-primary">
+                                            <t t-esc="item.meter_number"/>
+                                        </td>
+
+                                        <!-- Account Name & Code -->
+                                        <td>
+                                            <div class="fw-bold text-dark text-truncate" style="max-width: 170px;"><t t-esc="item.account_name"/></div>
+                                            <small class="text-muted"><t t-esc="item.subscriber_code"/></small>
+                                        </td>
+
+                                        <!-- Region -->
+                                        <td>
+                                            <span class="badge bg-light text-dark border"><t t-esc="item.region_name"/></span>
+                                        </td>
+
+                                        <!-- Previous Reading -->
+                                        <td class="text-end fw-bold text-muted">
+                                            <t t-esc="item.previous_reading"/>
+                                        </td>
+
+                                        <!-- Current Reading -->
+                                        <td class="text-end fw-bold text-dark">
+                                            <t t-esc="item.current_reading"/>
+                                        </td>
+
+                                        <!-- Consumption -->
+                                        <td class="text-end fw-bold" t-att-class="item.consumption_alert === 'high' ? 'text-danger' : (item.consumption_alert === 'negative' ? 'text-warning' : 'text-success')">
+                                            <t t-esc="item.consumption"/> kWh
+                                        </td>
+
+                                        <!-- Reading Date -->
+                                        <td>
+                                            <small class="text-muted"><t t-esc="item.reading_date"/></small>
+                                        </td>
+
+                                        <!-- Reading Context Badge -->
+                                        <td class="text-center">
+                                            <span t-if="item.reading_purpose === 'periodic'" class="badge bg-primary">دورية</span>
+                                            <span t-elif="item.reading_purpose === 'opening'" class="badge bg-info">افتتاحية</span>
+                                            <span t-elif="item.reading_purpose === 'replacement_closing'" class="badge bg-warning text-dark">إغلاق استبدال</span>
+                                            <span t-elif="item.reading_purpose === 'closing'" class="badge bg-danger">ختامية</span>
+                                            <span t-if="item.reading_event === 'replacement'" class="badge bg-secondary ms-1">استبدال</span>
+                                            <span t-elif="item.reading_event === 'installation'" class="badge bg-secondary ms-1">تركيب</span>
+                                            <span t-if="item.reading_category === 'feeder' || (item.reading_category === 'transformer' &amp;&amp; !item.is_private_transformer)" class="badge bg-dark ms-1">شبكي</span>
+                                        </td>
+
+                                        <!-- VEE Anomaly Badges -->
+                                        <td>
+                                            <t t-if="item.vee_flags and item.vee_flags.length">
+                                                <t t-foreach="item.vee_flags" t-as="flag" t-key="flag.code">
+                                                    <span t-att-class="'badge bg-' + flag.level + ' me-1 mb-1 d-inline-block'">
+                                                        <t t-esc="flag.label"/>
+                                                    </span>
+                                                </t>
+                                            </t>
+                                            <t t-else="">
+                                                <span class="badge bg-success bg-opacity-10 text-success border border-success">سليمة ✓</span>
+                                            </t>
+                                        </td>
+
+                                        <!-- State Badge -->
+                                        <td class="text-center">
+                                            <span t-if="item.state === 'under_review'" class="badge bg-warning text-dark">قيد المراجعة</span>
+                                            <span t-if="item.state === 'approved'" class="badge bg-success">معتمدة</span>
+                                            <span t-if="item.state === 'draft' and item.rejection_reason" class="badge bg-danger" t-att-title="item.rejection_reason">مرفوضة</span>
+                                            <span t-if="item.state === 'billed'" class="badge bg-info">مفوترة</span>
+                                        </td>
+
+                                        <!-- Action Buttons -->
+                                        <td class="text-center">
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <!-- Lightbox Zoom Button -->
+                                                <button type="button" class="btn btn-outline-dark" t-on-click="() => this.onOpenLightbox(item)" title="معاينة الصورة وتكبيرها">
+                                                    <i class="fa fa-search-plus"/>
+                                                </button>
+
+                                                <!-- Approve Button -->
+                                                <button type="button" class="btn btn-success" t-att-disabled="item.state === 'approved'" t-on-click="() => this.onApproveRow(item)" title="اعتماد القراءة (A)">
+                                                    <i class="fa fa-check"/>
+                                                </button>
+
+                                                <!-- Reject Button -->
+                                                <button type="button" class="btn btn-danger" t-att-disabled="item.state === 'billed'" t-on-click="() => this.onRejectRow(item)" title="رفض القراءة (R)">
+                                                    <i class="fa fa-times"/>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </t>
+                            </tbody>
+                        </table>
+                    </div>
+                </t>
+            </div>
+
+            <!-- Footer Pagination Controls Bar -->
+            <div class="bg-white border-top shadow-sm px-3 py-2 d-flex align-items-center justify-content-between">
+                <div class="text-muted small">
+                    عرض الصفحة <strong class="text-dark"><t t-esc="state.pagination.page"/></strong> من <strong class="text-dark"><t t-esc="state.pagination.pages"/></strong> (إجمالي القراءات: <strong class="text-primary"><t t-esc="state.pagination.total"/></strong>)
+                </div>
+
+                <div class="btn-group btn-group-sm" role="group">
+                    <button type="button" class="btn btn-outline-secondary" t-att-disabled="state.pagination.page &lt;= 1" t-on-click="() => this.changePage(1)" title="الصفحة الأولى">
+                        <i class="fa fa-angle-double-right"/>
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" t-att-disabled="state.pagination.page &lt;= 1" t-on-click="() => this.changePage(state.pagination.page - 1)">
+                        السابقة
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" t-att-disabled="state.pagination.page &gt;= state.pagination.pages" t-on-click="() => this.changePage(state.pagination.page + 1)">
+                        التالية
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" t-att-disabled="state.pagination.page &gt;= state.pagination.pages" t-on-click="() => this.changePage(state.pagination.pages)" title="الصفحة الأخيرة">
+                        <i class="fa fa-angle-double-left"/>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Sub-Components: Rejection Dialog & Lightbox -->
+            <t t-if="state.activeRejectionReading">
+                <ReadingRejectionDialog reading="state.activeRejectionReading" onConfirm="onConfirmRejection.bind(this)" onCancel="onCloseRejectionDialog.bind(this)"/>
+            </t>
+            <t t-if="state.activeLightboxReading">
+                <ReadingImageLightbox reading="state.activeLightboxReading" items="state.items" currentIndex="state.activeLightboxIndex" onClose="onCloseLightbox.bind(this)" onNext="onNextLightboxReading.bind(this)" onPrevious="onPreviousLightboxReading.bind(this)" onApprove="onApproveRow.bind(this)" onReject="onRejectRow.bind(this)"/>
+            </t>
+        </div>
+    </t>
+</templates>

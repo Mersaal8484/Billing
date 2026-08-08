@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="utility_billing.UtilityMediaImageField" owl="1">
+        <div class="o_utility_media_image_field">
+            <t t-if="props.value">
+                <img t-att-src="props.value"
+                     t-att-alt="props.name || 'Meter image'"
+                     class="img-fluid rounded border shadow-sm"
+                     style="max-width:100%;
+                            max-height:320px;
+                            object-fit:contain;"/>
+            </t>
+
+            <t t-else="">
+                <div class="text-center text-muted py-5 px-3 border rounded bg-light">
+                    <i class="fa fa-image fa-3x mb-2"/>
+                    <div>لا توجد صورة متاحة</div>
+                </div>
+            </t>
+        </div>
+    </t>
+</templates>

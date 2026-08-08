@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_staff_tree" model="ir.ui.view">
+        <field name="name">utility.staff.tree</field>
+        <field name="model">utility.staff</field>
+        <field name="arch" type="xml">
+            <tree decoration-success="active == True" decoration-muted="active == False">
+                <field name="employee_code"/>
+                <field name="name"/>
+                <field name="user_role_id" widget="badge" optional="show"/>
+                <field name="region_id" optional="show"/>
+                <field name="area_id" optional="show"/>
+                <field name="team_id" optional="show"/>
+                <field name="mobile" optional="show"/>
+                <field name="collection_journal_id" optional="show"/>
+                <field name="user_id" optional="hide"/>
+                <field name="active" invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_utility_staff_form" model="ir.ui.view">
+        <field name="name">utility.staff.form</field>
+        <field name="model">utility.staff</field>
+        <field name="arch" type="xml">
+            <form string="الموظف الميداني">
+                <header>
+                    <button name="action_create_cash_journal" type="object"
+                            string="إنشاء/ربط اليومية النقدية" class="btn-primary" icon="fa-calculator"/>
+                    <field name="active" invisible="1"/>
+                    <button name="toggle_active" type="object"
+                            attrs="{'invisible': [('active', '=', True)]}"
+                            string="تفعيل" class="btn-success" icon="fa-check"/>
+                    <button name="toggle_active" type="object"
+                            attrs="{'invisible': [('active', '=', False)]}"
+                            string="تعطيل" class="btn-danger" icon="fa-ban"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_collection_journal" type="object"
+                                class="oe_stat_button" icon="fa-money"
+                                attrs="{'invisible': [('collection_journal_id', '=', False)]}">
+                            <span class="o_stat_text">اليومية النقدية</span>
+                        </button>
+                        <button name="action_view_assigned_routes" type="object"
+                                class="oe_stat_button" icon="fa-map-signs">
+                            <field name="route_count" widget="statinfo" string="المسارات"/>
+                        </button>
+                    </div>
+
+                    <widget name="web_ribbon" title="مُعطَّل" bg_color="bg-danger" attrs="{'invisible': [('active', '=', True)]}"/>
+
+                    <div class="oe_title">
+                        <label for="name" string="اسم الموظف / المتحصل"/>
+                        <h1>
+                            <field name="name" placeholder="مثال: محمد أحمد علي"/>
+                        </h1>
+                        <h3>
+                            <field name="employee_code" placeholder="رمز الموظف (مثال: EMP001)" class="oe_inline me-2"/>
+                            <field name="user_role_id" widget="badge" options="{'no_create': True}" class="oe_inline"/>
+                        </h3>
+                    </div>
+
+                    <group>
+                        <group name="identity" string="بيانات الهوية والعمل والجغرافيا">
+                            <field name="user_role_id" options="{'no_create': True}"/>
+                            <field name="region_id" options="{'no_create': True}"/>
+                            <field name="area_id" options="{'no_create': True}" domain="[('type', '=', 'area')]"/>
+                            <field name="team_id" options="{'no_create': True}"/>
+                            <field name="company_id" groups="base.group_multi_company" options="{'no_create': True}"/>
+                        </group>
+                        <group name="contact" string="بيانات الاتصال والحساب">
+                            <field name="mobile" placeholder="77XXXXXXX"/>
+                            <field name="phone" placeholder="01XXXXXX"/>
+                            <field name="user_id" options="{'no_create': True}"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page name="account" string="الفوترة والتحصيل المالي">
+                            <group>
+                                <group string="إعدادات اليومية النقدية">
+                                    <field name="collection_journal_id" options="{'no_create': True}"/>
+                                </group>
+                                <group string="حالة الحساب">
+                                    <field name="active"/>
+                                </group>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_utility_staff_search" model="ir.ui.view">
+        <field name="name">utility.staff.search</field>
+        <field name="model">utility.staff</field>
+        <field name="arch" type="xml">
+            <search string="بحث الموظفين">
+                <field name="name" string="اسم الموظف"/>
+                <field name="employee_code"/>
+                <field name="user_role_id"/>
+                <field name="region_id"/>
+                <field name="area_id"/>
+                <field name="team_id"/>
+                <field name="collection_journal_id"/>
+                <separator/>
+                <filter name="active" string="النشطون فقط" domain="[('active','=',True)]"/>
+                <filter name="inactive" string="المعطلون" domain="[('active','=',False)]"/>
+                <group expand="0" string="تجميع حسب">
+                    <filter name="group_user_role_id" string="الدور" context="{'group_by':'user_role_id'}"/>
+                    <filter name="group_region_id" string="المنطقة" context="{'group_by':'region_id'}"/>
+                    <filter name="group_area_id" string="الفرع / المنطقة الفرعية" context="{'group_by':'area_id'}"/>
+                    <filter name="group_team" string="الفريق" context="{'group_by':'team_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_utility_staff" model="ir.actions.act_window">
+        <field name="name">الموظفون الميدانيون والمحصلون</field>
+        <field name="res_model">utility.staff</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_utility_staff_search"/>
+    </record>
+</odoo>

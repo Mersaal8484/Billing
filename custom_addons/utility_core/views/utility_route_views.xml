@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_route_tree" model="ir.ui.view">
+        <field name="name">utility.route.tree</field>
+        <field name="model">utility.route</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="region_id" optional="show"/>
+                <field name="area_id"/>
+                <field name="zone_id"/>
+                <field name="substation_id" optional="show"/>
+                <field name="feeder_id" optional="show"/>
+                <field name="transformer_id"/>
+                <field name="inspector_ids" widget="many2many_tags" optional="show"/>
+                <field name="cashier_ids" string="المحصلون الميدانيون" widget="many2many_tags" optional="show"/>
+                <field name="supervisor_id" optional="show"/>
+                <field name="customer_count" string="مشتركون" optional="show"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_utility_route_form" model="ir.ui.view">
+        <field name="name">utility.route.form</field>
+        <field name="model">utility.route</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button" icon="fa-users" type="object" name="action_add_customers_wizard" help="عدد المشتركين بالمسار">
+                            <div class="o_stat_info">
+                                <field name="customer_count" widget="statinfo"/>
+                                <span class="o_stat_text">مشتركو المسار</span>
+                            </div>
+                        </button>
+                        <button name="action_add_customers_wizard" type="object"
+                                class="oe_stat_button" icon="fa-user-plus"
+                                help="إضافة مشتركين جدد لهذا المسار">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">إضافة مشتركين</span>
+                            </div>
+                        </button>
+                        <button name="action_remove_customers_wizard" type="object"
+                                class="oe_stat_button" icon="fa-user-times"
+                                help="إزالة مشتركين من هذا المسار">
+                            <div class="o_stat_info">
+                                <span class="o_stat_text">إزالة مشتركين</span>
+                            </div>
+                        </button>
+                    </div>
+
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group string="التسلسل التجاري: region → area → zone → route">
+                            <field name="code"/>
+                            <field name="region_id"/>
+                            <field name="area_id"/>
+                            <field name="zone_id"/>
+                        </group>
+                        <group string="تسلسل التوزيع: substation → feeder → transformer → route">
+                            <field name="transformer_id" options="{'no_create': True}"/>
+                            <field name="feeder_id"/>
+                            <field name="substation_id"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="إعدادات إضافية">
+                            <field name="active"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group string="طاقم العمل">
+                            <field name="inspector_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                            <field name="cashier_ids" string="المحصلون الميدانيون" widget="many2many_tags" options="{'no_create': True}"/>
+                            <field name="supervisor_id" options="{'no_create': True}"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page name="customers" string="عقود المشتركين">
+                            <field name="customer_ids" readonly="1">
+                                <tree>
+                                    <field name="customer_number"/>
+                                    <field name="partner_id"/>
+                                    <field name="mobile"/>
+                                    <field name="state"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="view_utility_route_search" model="ir.ui.view">
+        <field name="name">utility.route.search</field>
+        <field name="model">utility.route</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="region_id"/>
+                <field name="area_id"/>
+                <field name="zone_id"/>
+                <field name="transformer_id"/>
+                <field name="substation_id"/>
+                <filter name="active" string="نشط" domain="[('active','=',True)]"/>
+                <group expand="0" string="تجميع حسب">
+                    <filter name="group_region" string="المنطقة" context="{'group_by':'region_id'}"/>
+                    <filter name="group_area" string="المنطقة الفرعية" context="{'group_by':'area_id'}"/>
+                    <filter name="group_zone" string="المنطقة التفصيلية" context="{'group_by':'zone_id'}"/>
+                    <filter name="group_transformer" string="المحول" context="{'group_by':'transformer_id'}"/>
+                    <filter name="group_substation" string="المحطة" context="{'group_by':'substation_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    <record id="action_utility_route" model="ir.actions.act_window">
+        <field name="name">مسارات القراءة</field>
+        <field name="res_model">utility.route</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_utility_route_search"/>
+    </record>
+
+    <!-- ===================== WIZARD: Add Customers to Route ===================== -->
+    <record id="view_utility_route_add_customer_wizard_form" model="ir.ui.view">
+        <field name="name">utility.route.add.customer.wizard.form</field>
+        <field name="model">utility.route.add.customer.wizard</field>
+        <field name="arch" type="xml">
+            <form string="إضافة مشتركين إلى المسار">
+                <sheet>
+                    <div class="card mb-3 border-primary">
+                        <div class="card-header bg-primary text-white d-flex align-items-center">
+                            <i class="fa fa-user-plus fa-2x me-3" title="إضافة مشتركين"/>
+                            <div>
+                                <h4 class="mb-0 text-white">إضافة مشتركين إلى المسار</h4>
+                                <small>اختر المشتركين غير المربوطين بمسارات لإضافتهم إلى هذا المسار</small>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <group>
+                                <group>
+                                    <field name="route_id" options="{'no_open': True}"/>
+                                    <field name="filter_same_area" widget="boolean_toggle"/>
+                                </group>
+                                <group>
+                                    <field name="selected_count" readonly="1"/>
+                                </group>
+                            </group>
+                        </div>
+                    </div>
+                    <notebook>
+                        <page string="قائمة المشتركين المتاحين">
+                            <field name="customer_ids" options="{'no_create': True}">
+                                <tree limit="15">
+                                    <field name="customer_number"/>
+                                    <field name="partner_id"/>
+                                    <field name="mobile"/>
+                                    <field name="meter_id"/>
+                                    <field name="area_id" optional="show"/>
+                                    <field name="state" widget="badge"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <footer>
+                    <button name="action_add" string="تأكيد إضافة المشتركين للمسار" type="object" class="btn-primary" icon="fa-check"/>
+                    <button string="إلغاء" class="btn-secondary" special="cancel" icon="fa-times"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- ===================== WIZARD: Remove Customers from Route ===================== -->
+    <record id="view_utility_route_remove_customer_wizard_form" model="ir.ui.view">
+        <field name="name">utility.route.remove.customer.wizard.form</field>
+        <field name="model">utility.route.remove.customer.wizard</field>
+        <field name="arch" type="xml">
+            <form string="إزالة مشتركين من المسار">
+                <sheet>
+                    <div class="card mb-3 border-danger">
+                        <div class="card-header bg-danger text-white d-flex align-items-center">
+                            <i class="fa fa-user-times fa-2x me-3" title="إزالة مشتركين"/>
+                            <div>
+                                <h4 class="mb-0 text-white">إزالة مشتركين من المسار</h4>
+                                <small>حدد المشتركين المراد إزالتهم من هذا المسار وفك ربطهم</small>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <group>
+                                <group>
+                                    <field name="route_id" options="{'no_open': True}"/>
+                                </group>
+                                <group>
+                                    <field name="selected_count" readonly="1"/>
+                                </group>
+                            </group>
+                        </div>
+                    </div>
+                    <notebook>
+                        <page string="المشتركون المسجلون بالمسار حالياً">
+                            <field name="customer_ids" options="{'no_create': True}">
+                                <tree limit="15">
+                                    <field name="customer_number"/>
+                                    <field name="partner_id"/>
+                                    <field name="mobile"/>
+                                    <field name="meter_id"/>
+                                    <field name="state" widget="badge"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <footer>
+                    <button name="action_remove" string="تأكيد إزالة المشتركين المحددين" type="object" class="btn-danger" icon="fa-trash"/>
+                    <button string="إلغاء" class="btn-secondary" special="cancel" icon="fa-times"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_customer_form_service_charge" model="ir.ui.view">
+        <field name="name">utility.customer.form.service.charge</field>
+        <field name="model">utility.customer</field>
+        <field name="inherit_id" ref="utility_core.view_utility_customer_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_service_charges" type="object"
+                        class="oe_stat_button" icon="fa-plug"
+                        attrs="{'invisible': [('service_charge_count', '=', 0)]}">
+                    <field name="service_charge_count" string="رسم إدخال الخدمة" widget="statinfo"/>
+                </button>
+            </xpath>
+        </field>
+    </record>
+</odoo>

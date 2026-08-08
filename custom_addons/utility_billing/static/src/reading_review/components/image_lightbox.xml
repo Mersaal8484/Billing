@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="utility_billing.ReadingImageLightbox" owl="1">
+        <div class="modal d-block position-fixed top-0 start-0 w-100 h-100 o_utility_lightbox_backdrop" tabindex="-1" style="background: rgba(0, 0, 0, 0.85); z-index: 1050; direction: rtl;">
+            <div class="modal-dialog modal-xl modal-dialog-centered h-100 my-0">
+                <div class="modal-content h-90 bg-dark text-white border-0 shadow-lg" style="max-height: 90vh;">
+                    <!-- Lightbox Header -->
+                    <div class="modal-header border-secondary py-2 px-3 bg-black">
+                        <div class="d-flex align-items-center">
+                            <h6 class="modal-title mb-0 font-weight-bold text-warning me-3">
+                                <i class="fa fa-tachometer me-1"/> عداد: <t t-esc="props.reading.meter_number"/>
+                            </h6>
+                            <span class="badge bg-secondary me-2"><t t-esc="props.reading.account_name"/></span>
+                            <span t-if="props.reading.has_anomaly" class="badge bg-danger ms-2">
+                                <i class="fa fa-exclamation-triangle me-1"/> تنبيه فني
+                            </span>
+                        </div>
+                        <div class="d-flex align-items-center me-auto">
+                            <!-- Image Variant Controls -->
+                            <div class="btn-group btn-group-sm me-3" role="group">
+                                <button type="button" class="btn" t-att-class="state.variant === 'thumbnail' ? 'btn-primary' : 'btn-outline-secondary'" t-on-click="() => this.setVariant('thumbnail')">مصغرة</button>
+                                <button type="button" class="btn" t-att-class="state.variant === 'review' ? 'btn-primary' : 'btn-outline-secondary'" t-on-click="() => this.setVariant('review')">معاينة (1024px)</button>
+                                <button type="button" class="btn" t-att-class="state.variant === 'original' ? 'btn-warning' : 'btn-outline-secondary'" t-on-click="() => this.setVariant('original')">الدليل الأصلي</button>
+                            </div>
+                            <button type="button" class="btn-close btn-close-white ms-3" t-on-click="props.onClose" aria-label="Close"></button>
+                        </div>
+                    </div>
+
+                    <!-- Lightbox Body -->
+                    <div class="modal-body p-0 d-flex overflow-hidden position-relative">
+                        <!-- Navigation Buttons -->
+                        <button type="button" class="btn btn-dark position-absolute top-50 start-0 translate-middle-y z-index-10 p-3 bg-black border-secondary opacity-75" style="z-index: 10;" t-on-click="props.onPrevious" title="السابق (←)">
+                            <i class="fa fa-chevron-right fa-2x"/>
+                        </button>
+                        <button type="button" class="btn btn-dark position-absolute top-50 end-0 translate-middle-y z-index-10 p-3 bg-black border-secondary opacity-75" style="z-index: 10;" t-on-click="props.onNext" title="التالي (→)">
+                            <i class="fa fa-chevron-left fa-2x"/>
+                        </button>
+
+                        <!-- Central Image Display Canvas -->
+                        <div class="flex-grow-1 d-flex align-items-center justify-content-center overflow-auto position-relative p-3" style="background: #121212;">
+                            <t t-if="getImageUrl()">
+                                <img t-att-src="getImageUrl()" alt="صورة العداد" class="img-fluid transition-all" style="max-height: 75vh; object-fit: contain;" t-att-style="'transform: scale(' + state.zoom + ') rotate(' + state.rotation + 'deg); transition: transform 0.2s ease;'"/>
+                            </t>
+                            <t t-else="">
+                                <div class="text-center text-muted p-5">
+                                    <i class="fa fa-image fa-4x mb-3 opacity-50"/>
+                                    <p class="mb-0">صورة العداد غير متاحة لهذه القراءة</p>
+                                </div>
+                            </t>
+                        </div>
+
+                        <!-- Side Inspection Details Panel -->
+                        <div class="border-start border-secondary p-3 bg-dark" style="width: 320px; min-width: 320px; overflow-y: auto;">
+                            <h6 class="text-info border-bottom border-secondary pb-2 mb-3 font-weight-bold">
+                                <i class="fa fa-info-circle me-1"/> بيانات القراءة والتحقق
+                            </h6>
+                            <table class="table table-dark table-sm table-borderless text-sm mb-3">
+                                <tbody>
+                                    <tr>
+                                        <td class="text-muted">رقم العداد:</td>
+                                        <td class="font-weight-bold text-warning"><t t-esc="props.reading.meter_number"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted">اسم المشترك:</td>
+                                        <td><t t-esc="props.reading.account_name"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted">كود المشترك:</td>
+                                        <td><t t-esc="props.reading.subscriber_code"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted">المنطقة:</td>
+                                        <td><t t-esc="props.reading.region_name"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted">تاريخ القراءة:</td>
+                                        <td><t t-esc="props.reading.reading_date"/></td>
+                                    </tr>
+                                    <tr class="border-top border-secondary">
+                                        <td class="text-muted">القراءة السابقة:</td>
+                                        <td class="font-weight-bold"><t t-esc="props.reading.previous_reading"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted">القراءة الحالية:</td>
+                                        <td class="font-weight-bold text-success"><t t-esc="props.reading.current_reading"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted">الاستهلاك المفلتر:</td>
+                                        <td class="font-weight-bold text-info"><t t-esc="props.reading.consumption"/> kWh</td>
+                                    </tr>
+                                    <tr class="border-top border-secondary">
+                                        <td class="text-muted">غرض القراءة:</td>
+                                        <td class="font-weight-bold"><t t-esc="props.reading.reading_purpose_label || props.reading.reading_purpose"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted">حدث القراءة:</td>
+                                        <td><t t-esc="props.reading.reading_event_label || props.reading.reading_event"/></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="text-muted">قابلة للفوترة:</td>
+                                        <td>
+                                            <t t-if="props.reading.is_billable">
+                                                <span class="badge bg-success">نعم</span>
+                                            </t>
+                                            <t t-elif="props.reading.reading_category === 'feeder' || (props.reading.reading_category === 'transformer' &amp;&amp; !props.reading.is_private_transformer)">
+                                                <span class="badge bg-secondary">شبكي</span>
+                                            </t>
+                                            <t t-else="">
+                                                <span class="badge bg-secondary">غير فوتر</span>
+                                            </t>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+
+                            <t t-if="props.reading.vee_flags and props.reading.vee_flags.length">
+                                <h6 class="text-warning border-bottom border-secondary pb-2 mb-2 font-weight-bold">
+                                    <i class="fa fa-flag me-1"/> مؤشرات VEE / التنبيهات
+                                </h6>
+                                <div class="mb-3">
+                                    <t t-foreach="props.reading.vee_flags" t-as="f" t-key="f.code">
+                                        <span t-att-class="'badge bg-' + f.level + ' text-wrap text-start d-block p-2 mb-1'">
+                                            <t t-esc="f.label"/>
+                                        </span>
+                                    </t>
+                                </div>
+                            </t>
+
+                            <t t-if="props.reading.rejection_reason">
+                                <div class="alert alert-danger p-2 text-xs mb-3">
+                                    <strong>سبب الرفض السابق:</strong><br/>
+                                    <t t-esc="props.reading.rejection_reason"/>
+                                </div>
+                            </t>
+                        </div>
+                    </div>
+
+                    <!-- Lightbox Footer Controls -->
+                    <div class="modal-footer border-secondary py-2 px-3 bg-black justify-content-between">
+                        <!-- Image Zoom/Rotate Toolbar -->
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-outline-light" t-on-click="zoomIn" title="تكبير (+)"><i class="fa fa-search-plus"/></button>
+                            <button type="button" class="btn btn-outline-light" t-on-click="zoomOut" title="تصغير (-)"><i class="fa fa-search-minus"/></button>
+                            <button type="button" class="btn btn-outline-light" t-on-click="rotateLeft" title="تدوير يسار"><i class="fa fa-undo"/></button>
+                            <button type="button" class="btn btn-outline-light" t-on-click="rotateRight" title="تدوير يمين"><i class="fa fa-repeat"/></button>
+                            <button type="button" class="btn btn-outline-light" t-on-click="resetTransform" title="إعادة ضبط"><i class="fa fa-refresh"/></button>
+                        </div>
+
+                        <!-- Decision Actions -->
+                        <div class="d-flex align-items-center">
+                            <button type="button" class="btn btn-danger btn-sm me-2 px-3" t-on-click="() => props.onReject(props.reading)">
+                                <i class="fa fa-times me-1"/> رفض (R)
+                            </button>
+                            <button type="button" class="btn btn-success btn-sm px-4 font-weight-bold" t-on-click="() => props.onApprove(props.reading)">
+                                <i class="fa fa-check me-1"/> اعتماد (A)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </t>
+</templates>

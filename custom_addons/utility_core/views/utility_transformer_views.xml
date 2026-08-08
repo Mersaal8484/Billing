@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ===================== TREE VIEW ===================== -->
+    <record id="view_utility_transformer_tree" model="ir.ui.view">
+        <field name="name">utility.transformer.tree</field>
+        <field name="model">utility.transformer</field>
+        <field name="arch" type="xml">
+            <tree decoration-muted="active == False">
+                <field name="name"/>
+                <field name="code"/>
+                <field name="feeder_id"/>
+                <field name="substation_id" optional="show"/>
+                <field name="capacity" optional="show"/>
+                <field name="phase" optional="show"/>
+                <field name="status" widget="badge"
+                       decoration-success="status == 'active'"
+                       decoration-warning="status == 'maintenance'"
+                       decoration-danger="status == 'fault'"
+                       decoration-muted="status == 'inactive'"/>
+                <field name="customer_count" string="مشتركون" optional="show"/>
+                <field name="active" widget="boolean_toggle"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- ===================== FORM VIEW ===================== -->
+    <record id="view_utility_transformer_form" model="ir.ui.view">
+        <field name="name">utility.transformer.form</field>
+        <field name="model">utility.transformer</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                        <button name="action_create_coupling_meter" type="object"
+                                string="إضافة عداد ربط" class="btn-secondary"/>
+                        <button name="action_open_transformer_balance" type="object"
+                                string="توازن المحول" class="oe_highlight"/>
+                    <field name="status" widget="statusbar" options="{'clickable': '1'}"/>
+                </header>
+                <sheet>
+                    <widget name="web_ribbon" title="مؤرشف" bg_color="bg-danger"
+                            attrs="{'invisible': [('active', '=', True)]}"/>
+
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_customers" type="object"
+                                class="oe_stat_button" icon="fa-users">
+                            <field name="customer_count" string="المشتركون" widget="statinfo"/>
+                        </button>
+                        <button name="toggle_active" type="object"
+                                class="oe_stat_button" icon="fa-archive">
+                            <field name="active" widget="boolean_button"
+                                   options="{'terminology': 'archive'}"/>
+                        </button>
+                    </div>
+
+                    <div class="oe_title">
+                        <label for="name" string="اسم المحول"/>
+                        <h1><field name="name" placeholder="اسم المحول..."/></h1>
+                    </div>
+
+                    <group>
+                        <group string="معلومات الشبكة">
+                            <field name="code"/>
+                            <field name="feeder_id" options="{'no_create': True}"/>
+                            <field name="substation_id" options="{'no_create': True}"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group string="الموقع الجغرافي">
+                            <field name="zone_region_id" readonly="1"/>
+                            <field name="area_id" readonly="1"/>
+                            <field name="region_id" readonly="1"/>
+                            <field name="address"/>
+                        </group>
+                    </group>
+
+                    <group string="المواصفات الفنية">
+                        <group>
+                            <field name="capacity"/>
+                            <field name="phase"/>
+                            <field name="manufacturer"/>
+                        </group>
+                        <group>
+                            <field name="serial_number"/>
+                            <field name="voltage_primary"/>
+                            <field name="voltage_secondary"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <!-- العدادات -->
+                        <page name="meters" string="العدادات">
+                            <group>
+                                <group string="عداد الربط">
+                                    <field name="coupling_meter_id" options="{'no_create': True, 'no_open': True}"/>
+                                    <button name="action_create_coupling_meter" type="object"
+                                            string="إضافة عداد ربط" class="btn-secondary"/>
+                                </group>
+                            </group>
+                            <field name="meter_ids">
+                                <tree>
+                                    <field name="meter_number"/>
+                                    <field name="serial_number"/>
+                                    <field name="meter_type_id"/>
+                                    <field name="payment_type" widget="badge"/>
+                                    <field name="status_id"/>
+                                    <field name="customer_id"/>
+                                </tree>
+                            </field>
+                        </page>
+
+                        <!-- عقود المشتركين -->
+                        <page name="customers" string="عقود المشتركين">
+                            <field name="customer_ids" readonly="1">
+                                <tree>
+                                    <field name="customer_number"/>
+                                    <field name="partner_id"/>
+                                    <field name="meter_id"/>
+                                    <field name="state" widget="badge"
+                                           decoration-success="state == 'active'"
+                                           decoration-warning="state in ('suspended', 'disconnected')"
+                                           decoration-danger="state == 'closed'"/>
+                                </tree>
+                            </field>
+                        </page>
+
+                        <!-- ملاحظات -->
+                        <page name="notes" string="ملاحظات">
+                            <field name="notes" nolabel="1"
+                                   placeholder="ملاحظات تقنية عن المحول..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- ===================== SEARCH VIEW ===================== -->
+    <record id="view_utility_transformer_search" model="ir.ui.view">
+        <field name="name">utility.transformer.search</field>
+        <field name="model">utility.transformer</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="feeder_id"/>
+                <field name="substation_id"/>
+                <field name="status"/>
+
+                <filter name="active" string="نشط" domain="[('active', '=', True)]"/>
+                <separator/>
+                <filter name="fault" string="معطل"
+                        domain="[('status', '=', 'fault')]"/>
+                <filter name="maintenance" string="صيانة"
+                        domain="[('status', '=', 'maintenance')]"/>
+
+                <group expand="0" string="تجميع حسب">
+                    <filter name="group_feeder"     string="الفيدر"    context="{'group_by': 'feeder_id'}"/>
+                    <filter name="group_substation" string="المحطة"   context="{'group_by': 'substation_id'}"/>
+                    <filter name="group_status"     string="الحالة"   context="{'group_by': 'status'}"/>
+                    <filter name="group_phase"      string="الفاز"    context="{'group_by': 'phase'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ===================== ACTION ===================== -->
+    <record id="action_utility_transformer" model="ir.actions.act_window">
+        <field name="name">المحولات</field>
+        <field name="res_model">utility.transformer</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_utility_transformer_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                إضافة محول جديد
+            </p>
+        </field>
+    </record>
+
+</odoo>

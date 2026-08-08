@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="view_utility_transaction_tree" model="ir.ui.view">
+    <field name="name">utility.transaction.tree</field>
+    <field name="model">utility.transaction</field>
+    <field name="arch" type="xml">
+      <tree>
+        <field name="reference"/>
+        <field name="date"/>
+        <field name="transaction_type"/>
+        <field name="customer_id"/>
+        <field name="account_id"/>
+        <field name="amount" widget="monetary"/>
+        <field name="balance_before" widget="monetary"/>
+        <field name="balance_after" widget="monetary"/>
+        <field name="operator_id"/>
+        <field name="notes"/>
+      </tree>
+    </field>
+  </record>
+
+  <record id="action_utility_transaction" model="ir.actions.act_window">
+    <field name="name">المعاملات</field>
+    <field name="res_model">utility.transaction</field>
+    <field name="view_mode">tree</field>
+  </record>
+</odoo>

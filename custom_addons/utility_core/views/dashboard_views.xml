@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Action for the Dashboard OWL component -->
+    <record id="action_utility_dashboard" model="ir.actions.client">
+        <field name="name">لوحة القيادة</field>
+        <field name="tag">utility_dashboard_action</field>
+        <field name="target">current</field>
+    </record>
+
+    <!-- Top Menu for Utility Application -->
+    <menuitem id="menu_utility_dashboard_root"
+              name="لوحة القيادة"
+              action="action_utility_dashboard"
+              parent="utility_core.menu_utility_root"
+              sequence="1"
+              groups="utility_core.group_utility_admin,utility_core.group_utility_supervisor"/>
+</odoo>

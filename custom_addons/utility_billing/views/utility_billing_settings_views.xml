@@ -1,0 +1,247 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_billing_config_settings" model="ir.ui.view">
+        <field name="name">إعدادات الفوترة الآجلة</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="base.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[hasclass('settings')]" position="inside">
+                <div class="app_settings_block" data-string="الفوترة الآجلة" string="الفوترة الآجلة"
+                     data-key="utility_billing" groups="utility_core.group_utility_admin">
+
+                    <!-- ══════════════════════════════════════════════════════ -->
+                    <!-- القسم 1: إعدادات الفوترة العامة + الغرامات            -->
+                    <!-- ══════════════════════════════════════════════════════ -->
+                    <div class="row mt16">
+                        <!-- بطاقة الفوترة العامة -->
+                        <div class="col-12 col-lg-6">
+                            <div class="card o_settings_card">
+                                <div class="card-header">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fa fa-file-text fa-2x text-primary me-3" title="الفوترة العامة"/>
+                                        <div>
+                                            <h4 class="mb-0">الفوترة العامة</h4>
+                                            <small class="text-muted">إعدادات إنشاء وتأكيد الفواتير</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row mt8">
+                                        <div class="col-12 col-lg-6 o_setting_box">
+                                            <div class="o_setting_left_pane">
+                                                <field name="auto_generate_bills"/>
+                                            </div>
+                                            <div class="o_setting_right_pane">
+                                                <label for="auto_generate_bills"/>
+                                                <div class="text-muted">توليد الفواتير تلقائياً من القراءات المعتمدة</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-12 col-lg-6 o_setting_box">
+                                            <div class="o_setting_left_pane">
+                                                <field name="enable_auto_invoice_confirm"/>
+                                            </div>
+                                            <div class="o_setting_right_pane">
+                                                <label for="enable_auto_invoice_confirm"/>
+                                                <div class="text-muted">تأكيد الفواتير تلقائياً فور إنشائها</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-12 o_setting_box">
+                                            <div class="o_setting_right_pane">
+                                                <label for="billing_due_days" class="o_light_label"/>
+                                                <div class="text-muted">عدد أيام الاستحقاق من تاريخ الفاتورة</div>
+                                                <field name="billing_due_days"/>
+                                            </div>
+                                        </div>
+                                        <div class="col-12 o_setting_box">
+                                            <div class="o_setting_right_pane">
+                                                <label for="billing_batch_size" class="o_light_label"/>
+                                                <div class="text-muted">حجم الدفعة في كرون تحديث حالة الفواتير</div>
+                                                <field name="billing_batch_size"/>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- بطاقة الغرامات -->
+                        <div class="col-12 col-lg-6">
+                            <div class="card o_settings_card">
+                                <div class="card-header">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fa fa-exclamation-triangle fa-2x text-danger me-3" title="الغرامات"/>
+                                        <div>
+                                            <h4 class="mb-0">الغرامات والتأخير</h4>
+                                            <small class="text-muted">معدلات ولوجيك احتساب غرامات السداد</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row mt8">
+                                        <div class="col-12 o_setting_box">
+                                            <div class="o_setting_right_pane">
+                                                <label for="late_penalty_percentage" class="o_light_label"/>
+                                                <div class="text-muted">نسبة الغرامة اليومية على الرصيد المتبقي</div>
+                                                <field name="late_penalty_percentage"/>
+                                            </div>
+                                        </div>
+                                        <div class="col-12 o_setting_box">
+                                            <div class="o_setting_right_pane">
+                                                <label for="max_penalty_percentage" class="o_light_label"/>
+                                                <div class="text-muted">الحد الأقصى للغرامات المتراكمة كنسبة من الفاتورة</div>
+                                                <field name="max_penalty_percentage"/>
+                                            </div>
+                                        </div>
+                                        <div class="col-12 o_setting_box">
+                                            <div class="o_setting_right_pane">
+                                                <label for="penalty_batch_size" class="o_light_label"/>
+                                                <div class="text-muted">عدد الفواتير التي يحتسب لها الكرون الغرامات دفعة واحدة</div>
+                                                <field name="penalty_batch_size"/>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ══════════════════════════════════════════════════════ -->
+                    <!-- القسم 2: الفصل التلقائي + التذكيرات                   -->
+                    <!-- ══════════════════════════════════════════════════════ -->
+                    <div class="row mt16">
+                        <!-- بطاقة الفصل التلقائي -->
+                        <div class="col-12 col-lg-6">
+                            <div class="card o_settings_card">
+                                <div class="card-header">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fa fa-plug fa-2x text-warning me-3" title="التكامل"/>
+                                        <div>
+                                            <h4 class="mb-0">الفصل التلقائي</h4>
+                                            <small class="text-muted">أتمتة أوامر الفصل للمتأخرين</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row mt8">
+                                        <div class="col-12 o_setting_box">
+                                            <div class="o_setting_right_pane">
+                                                <label for="auto_disconnection_days" class="o_light_label"/>
+                                                <div class="text-muted">عدد أيام التأخر قبل إنشاء أمر الفصل آلياً</div>
+                                                <field name="auto_disconnection_days"/>
+                                            </div>
+                                        </div>
+                                        <div class="col-12 o_setting_box">
+                                            <div class="o_setting_right_pane">
+                                                <label for="disconnection_batch_size" class="o_light_label"/>
+                                                <div class="text-muted">عدد أوامر الفصل التي يُنشئها الكرون في كل دورة</div>
+                                                <field name="disconnection_batch_size"/>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- بطاقة التذكيرات والإشعارات -->
+                        <div class="col-12 col-lg-6">
+                            <div class="card o_settings_card">
+                                <div class="card-header">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fa fa-bell fa-2x text-info me-3" title="الإشعارات"/>
+                                        <div>
+                                            <h4 class="mb-0">التذكيرات</h4>
+                                            <small class="text-muted">إعدادات إرسال التذكيرات للمشتركين المتأخرين</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row mt8">
+                                        <div class="col-12 o_setting_box">
+                                            <div class="o_setting_right_pane">
+                                                <label for="reminder_batch_size" class="o_light_label"/>
+                                                <div class="text-muted">عدد الفواتير التي يُرسَل لها التذكير في كل دورة</div>
+                                                <field name="reminder_batch_size"/>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ══════════════════════════════════════════════════════ -->
+                    <!-- القسم 3: أداء الدفعات والمعالجة                        -->
+                    <!-- ══════════════════════════════════════════════════════ -->
+                    <div class="row mt16">
+                        <!-- بطاقة دفعات القراءات -->
+                        <div class="col-12 col-lg-6">
+                            <div class="card o_settings_card">
+                                <div class="card-header">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fa fa-tachometer fa-2x text-success me-3" title="لوحة القيادة"/>
+                                        <div>
+                                            <h4 class="mb-0">أداء معالجة القراءات</h4>
+                                            <small class="text-muted">أحجام الدفعات في كرون رفع ومعالجة القراءات</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row mt8">
+                                        <div class="col-12 o_setting_box">
+                                            <div class="o_setting_right_pane">
+                                                <label for="reading_upload_batch_size" class="o_light_label"/>
+                                                <div class="text-muted">عدد القراءات التي تُعالَج في كل دورة من كرون الدفعات</div>
+                                                <field name="reading_upload_batch_size"/>
+                                            </div>
+                                        </div>
+                                        <div class="col-12 o_setting_box">
+                                            <div class="o_setting_right_pane">
+                                                <label for="billing_reading_batch_size" class="o_light_label"/>
+                                                <div class="text-muted">عدد القراءات المعتمدة التي يُفوتَر عليها الكرون دفعة واحدة</div>
+                                                <field name="billing_reading_batch_size"/>
+                                            </div>
+                                        </div>
+                                        <div class="col-12 o_setting_box">
+                                            <div class="o_setting_right_pane">
+                                                <label for="reading_batch_cleanup_days" class="o_light_label"/>
+                                                <div class="text-muted">عدد الأيام قبل حذف دفعات القراءات المكتملة</div>
+                                                <field name="reading_batch_cleanup_days"/>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- بطاقة الفواتير المتكررة -->
+                        <div class="col-12 col-lg-6">
+                            <div class="card o_settings_card">
+                                <div class="card-header">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fa fa-refresh fa-2x text-purple me-3" title="التكرار"/>
+                                        <div>
+                                            <h4 class="mb-0">الفواتير المتكررة</h4>
+                                            <small class="text-muted">إعدادات أداء توليد العقود المتكررة</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row mt8">
+                                        <div class="col-12 o_setting_box">
+                                            <div class="o_setting_right_pane">
+                                                <label for="recurring_invoice_batch_size" class="o_light_label"/>
+                                                <div class="text-muted">عدد العقود التي يُولّد لها الكرون فواتير في كل تشغيل</div>
+                                                <field name="recurring_invoice_batch_size"/>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>

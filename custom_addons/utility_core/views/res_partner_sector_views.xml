@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Tree View -->
+    <record id="view_res_partner_sector_tree" model="ir.ui.view">
+        <field name="name">res.partner.sector.tree</field>
+        <field name="model">res.partner.sector</field>
+        <field name="arch" type="xml">
+            <tree string="قطاعات المشتركين">
+                <field name="name"/>
+                <field name="code"/>
+                <field name="active" widget="boolean_toggle"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_res_partner_sector_form" model="ir.ui.view">
+        <field name="name">res.partner.sector.form</field>
+        <field name="model">res.partner.sector</field>
+        <field name="arch" type="xml">
+            <form string="قطاع المشترك">
+                <sheet>
+                    <widget name="web_ribbon" title="مؤرشف" bg_color="bg-danger" attrs="{'invisible': [('active', '=', True)]}"/>
+                    <div class="oe_title">
+                        <label for="name" class="oe_edit_only" string="اسم القطاع"/>
+                        <h1>
+                            <field name="name" placeholder="مثال: قطاع سكني، قطاع تجاري، حكومي..."/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="code" placeholder="الكود التعريفي..."/>
+                            <field name="active" invisible="1"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="view_res_partner_sector_search" model="ir.ui.view">
+        <field name="name">res.partner.sector.search</field>
+        <field name="model">res.partner.sector</field>
+        <field name="arch" type="xml">
+            <search string="البحث في قطاعات المشتركين">
+                <field name="name"/>
+                <field name="code"/>
+                <separator/>
+                <filter string="مؤرشف" name="inactive" domain="[('active', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
+    <!-- Window Action -->
+    <record id="action_res_partner_sector" model="ir.actions.act_window">
+        <field name="name">قطاعات المشتركين</field>
+        <field name="res_model">res.partner.sector</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_res_partner_sector_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                قم بإنشاء أول قطاع للمشتركين!
+            </p>
+            <p>
+                تُستخدم قطاعات المشتركين لتصنيف جهات الاتصال والمشتركين حسب القطاع الاقتصادي (سكني، تجاري، حكومي، زراعي، إلخ).
+            </p>
+        </field>
+    </record>
+
+    <!-- Menu Item -->
+    <menuitem id="menu_utility_res_partner_sector" name="قطاعات المشتركين" parent="menu_utility_config" action="action_res_partner_sector" sequence="86"/>
+</odoo>

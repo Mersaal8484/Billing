@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ======================== Subscriber Wizard ======================== -->
+    <record id="view_utility_meter_subscriber_wizard_form" model="ir.ui.view">
+        <field name="name">utility.meter.subscriber.wizard.form</field>
+        <field name="model">utility.meter.subscriber.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <group>
+                    <group string="بيانات المشترك">
+                        <field name="meter_id" readonly="1"/>
+                        <field name="partner_name"/>
+                        <field name="mobile"/>
+                        <field name="national_id"/>
+                        <field name="street"/>
+                    </group>
+                    <group string="تصنيف المشترك">
+                        <field name="category_id" options="{'no_create': True}"/>
+                        <field name="subscriber_id" options="{'no_create': True}"/>
+                        <field name="contract_template_id" options="{'no_create': True}"/>
+                        <field name="customer_number"/>
+                    </group>
+                </group>
+                <footer>
+                    <button name="action_create" string="إنشاء المشترك" type="object" class="btn-primary"/>
+                    <button string="إلغاء" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_utility_meter_subscriber_wizard" model="ir.actions.act_window">
+        <field name="name">إضافة مشترك جديد</field>
+        <field name="res_model">utility.meter.subscriber.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- ======================== Private Transformer Wizard (Subscriber + Transformer) ======================== -->
+    <record id="view_utility_meter_private_transformer_wizard_form" model="ir.ui.view">
+        <field name="name">utility.meter.private.transformer.wizard.form</field>
+        <field name="model">utility.meter.private.transformer.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <group>
+                    <group string="بيانات المشترك">
+                        <field name="meter_id" readonly="1"/>
+                        <field name="partner_name"/>
+                        <field name="mobile"/>
+                        <field name="national_id"/>
+                        <field name="street"/>
+                        <field name="category_id" options="{'no_create': True}"/>
+                        <field name="subscriber_id" options="{'no_create': True}"/>
+                        <field name="contract_template_id" options="{'no_create': True}"/>
+                        <field name="customer_number"/>
+                    </group>
+                    <group string="بيانات المحول الخاص">
+                        <field name="name"/>
+                        <field name="code"/>
+                        <field name="serial_number"/>
+                        <field name="capacity"/>
+                        <field name="phase"/>
+                        <field name="substation_id" options="{'no_create': True}"/>
+                        <field name="feeder_id" options="{'no_create': True}"/>
+                    </group>
+                </group>
+                <footer>
+                    <button name="action_create" string="إنشاء المشترك والمحول الخاص" type="object" class="btn-primary"/>
+                    <button string="إلغاء" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_utility_meter_private_transformer_wizard" model="ir.actions.act_window">
+        <field name="name">إضافة محول خاص</field>
+        <field name="res_model">utility.meter.private.transformer.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- ======================== Transformer Wizard ======================== -->
+    <record id="view_utility_meter_transformer_wizard_form" model="ir.ui.view">
+        <field name="name">utility.meter.transformer.wizard.form</field>
+        <field name="model">utility.meter.transformer.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <group>
+                    <group string="بيانات المحول">
+                        <field name="meter_id" readonly="1"/>
+                        <field name="name"/>
+                        <field name="code"/>
+                        <field name="serial_number"/>
+                        <field name="capacity"/>
+                        <field name="phase"/>
+                    </group>
+                    <group string="الموقع في الشبكة">
+                        <field name="substation_id" options="{'no_create': True}"/>
+                        <field name="feeder_id" options="{'no_create': True}"/>
+                    </group>
+                </group>
+                <footer>
+                    <button name="action_create" string="إنشاء المحول" type="object" class="btn-primary"/>
+                    <button string="إلغاء" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_utility_meter_transformer_wizard" model="ir.actions.act_window">
+        <field name="name">إضافة محول</field>
+        <field name="res_model">utility.meter.transformer.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- ======================== Feeder Wizard ======================== -->
+    <record id="view_utility_meter_feeder_wizard_form" model="ir.ui.view">
+        <field name="name">utility.meter.feeder.wizard.form</field>
+        <field name="model">utility.meter.feeder.wizard</field>
+        <field name="arch" type="xml">
+            <form>
+                <group>
+                    <group string="بيانات الفيدر / الخلية">
+                        <field name="meter_id" readonly="1"/>
+                        <field name="name"/>
+                        <field name="code"/>
+                        <field name="voltage_level"/>
+                        <field name="rated_capacity"/>
+                    </group>
+                    <group string="الموقع في الشبكة">
+                        <field name="substation_id" options="{'no_create': True}"/>
+                    </group>
+                </group>
+                <footer>
+                    <button name="action_create" string="إنشاء الفيدر" type="object" class="btn-primary"/>
+                    <button string="إلغاء" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_utility_meter_feeder_wizard" model="ir.actions.act_window">
+        <field name="name">إضافة فيدر / خلية</field>
+        <field name="res_model">utility.meter.feeder.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>
