@@ -1,0 +1,32 @@
+{
+  "architecture_version": "2.0",
+  "date": "2026-08-09",
+  "baseline_commit": "13df4c5263abe2e211fc12dc0c3c62f86e87a048",
+  "requested_documents": [
+    "MASTER_SPECIFICATION.md",
+    "SRS.md",
+    "TECHNICAL_ARCHITECTURE.md",
+    "BILLING_ENGINE.md",
+    "PERIOD_LIFECYCLE.md",
+    "READING_BATCH_ARCHITECTURE.md",
+    "MEDIA_ARCHITECTURE.md",
+    "PAYMENT_ALLOCATION.md",
+    "ACCOUNTING_FLOWS.md",
+    "METER_REPLACEMENT.md",
+    "INVENTORY_CUSTODY.md",
+    "SECURITY_MATRIX.md",
+    "API_SPECIFICATION.md",
+    "INTEGRATION_ARCHITECTURE.md",
+    "CAPACITY_AND_PERFORMANCE.md",
+    "DATA_MIGRATION.md",
+    "DEPLOYMENT.md",
+    "BACKUP_RESTORE.md",
+    "OBSERVABILITY.md",
+    "UAT_PLAN.md",
+    "GO_LIVE_RUNBOOK.md"
+  ],
+  "included_additional_documents": [
+    "DOCUMENT_INDEX.md",
+    "UTILITY_ERP_MASTER_ARCHITECTURE_V2.md"
+  ]
+}

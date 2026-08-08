@@ -1,0 +1,40 @@
+# Utility ERP Architecture V2 — Documentation Index
+
+**Platform:** Odoo 16 Community  
+**Architecture Baseline:** `UTILITY_ERP_MASTER_ARCHITECTURE_V2.md`  
+**Repository Baseline Commit:** `13df4c5263abe2e211fc12dc0c3c62f86e87a048`  
+**Target Scale:** Up to 1,000,000 subscribers (capacity-planning baseline)  
+**Architecture Version:** 2.0  
+**Date:** 2026-08-09  
+**Status:** Target / Production-Hardening  
+
+هذه الحزمة مشتقة من `UTILITY_ERP_MASTER_ARCHITECTURE_V2.md`، وتفصل المرجع الأعلى إلى وثائق تنفيذ/اختبار/تشغيل متخصصة.
+
+## Documents
+
+1. [MASTER_SPECIFICATION.md](MASTER_SPECIFICATION.md)
+2. [SRS.md](SRS.md)
+3. [TECHNICAL_ARCHITECTURE.md](TECHNICAL_ARCHITECTURE.md)
+4. [BILLING_ENGINE.md](BILLING_ENGINE.md)
+5. [PERIOD_LIFECYCLE.md](PERIOD_LIFECYCLE.md)
+6. [READING_BATCH_ARCHITECTURE.md](READING_BATCH_ARCHITECTURE.md)
+7. [MEDIA_ARCHITECTURE.md](MEDIA_ARCHITECTURE.md)
+8. [PAYMENT_ALLOCATION.md](PAYMENT_ALLOCATION.md)
+9. [ACCOUNTING_FLOWS.md](ACCOUNTING_FLOWS.md)
+10. [METER_REPLACEMENT.md](METER_REPLACEMENT.md)
+11. [INVENTORY_CUSTODY.md](INVENTORY_CUSTODY.md)
+12. [SECURITY_MATRIX.md](SECURITY_MATRIX.md)
+13. [API_SPECIFICATION.md](API_SPECIFICATION.md)
+14. [INTEGRATION_ARCHITECTURE.md](INTEGRATION_ARCHITECTURE.md)
+15. [CAPACITY_AND_PERFORMANCE.md](CAPACITY_AND_PERFORMANCE.md)
+16. [DATA_MIGRATION.md](DATA_MIGRATION.md)
+17. [DEPLOYMENT.md](DEPLOYMENT.md)
+18. [BACKUP_RESTORE.md](BACKUP_RESTORE.md)
+19. [OBSERVABILITY.md](OBSERVABILITY.md)
+20. [UAT_PLAN.md](UAT_PLAN.md)
+21. [GO_LIVE_RUNBOOK.md](GO_LIVE_RUNBOOK.md)
+22. [UTILITY_ERP_MASTER_ARCHITECTURE_V2.md](UTILITY_ERP_MASTER_ARCHITECTURE_V2.md) — المرجع الأعلى.
+
+## Precedence
+
+عند التعارض: `UTILITY_ERP_MASTER_ARCHITECTURE_V2.md` له الأولوية، ثم الوثيقة التخصصية الأحدث بعد اعتماد Architecture Change Request.

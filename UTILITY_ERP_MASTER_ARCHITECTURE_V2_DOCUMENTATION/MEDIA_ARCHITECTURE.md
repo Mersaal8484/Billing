@@ -1,0 +1,235 @@
+# MEDIA ARCHITECTURE
+
+**Platform:** Odoo 16 Community  
+**Architecture Baseline:** `UTILITY_ERP_MASTER_ARCHITECTURE_V2.md`  
+**Repository Baseline Commit:** `13df4c5263abe2e211fc12dc0c3c62f86e87a048`  
+**Target Scale:** Up to 1,000,000 subscribers (capacity-planning baseline)  
+**Architecture Version:** 2.0  
+**Date:** 2026-08-09  
+**Status:** Target / Production-Hardening  
+
+**Document Type:** Canonical Evidence & Media Storage Specification
+
+> تحديد Media Asset، التخزين، variants، security، delivery، revisions، repair والأداء.
+
+---
+
+
+## المبادئ المعمارية الملزمة
+
+- Odoo 16 Community هو **System of Record** للـUtility Domain والمحاسبة.
+- التشغيل المستهدف لمؤسسة تشغيلية واحدة؛ النطاق الأمني والتشغيلي يعتمد على Geography وليس Business Multi-Company.
+- لا توجد Customer Wallet في Postpaid Utility.
+- لا توجد Taxes في Utility Billing Flow الحالي.
+- Reading + Review مرحلة تشغيلية واحدة.
+- لكل Cycle فترة Reading وفترة Payment مستقلة مرتبطة بنفس `cycle_key`.
+- `utility.bill.reading.component` هو Immutable Billing Segment Snapshot ولا يعاد تصميمه.
+- `periodic` هو Billing Anchor، و`replacement_closing` و`opening` يحتفظان بدلالتهما.
+- عدة عمليات Replacement داخل نفس Cycle تنتهي إلى **فاتورة واحدة** للحساب/الفترة مع عدة Reading Components.
+- `utility.media.asset` هو Canonical Media Model.
+- Payment Reconciliation يجب أن يكون Targeted/Explicit، وليس Partner-wide.
+- التصحيحات التاريخية تتم بواسطة Correction/Reversal Documents، وليس بتعديل السجل التاريخي المنشور.
+- Hybrid Workflow: المعاملات القصيرة داخل Odoo؛ Temporal للعمليات الطويلة وReading Batch orchestration عند Target Scale.
+- Redis مساعد للـRate Limiting/Cache فقط، وليس Source of Truth.
+- PgBouncer جزء من Target Production Scale عند تعدد العقد والـWorkers.
+- Persistent Staging + Idempotency + Partial Failure هي القاعدة لدفعات القراءات.
+
+
+## 1. Canonical Model
+
+```text
+utility.media.asset
+```
+
+يحفظ identity/metadata/business linkage.
+
+`ir.attachment` Backend توافق حالي، وليس Source of Truth النهائي.
+
+---
+
+## 2. Variants
+
+- Original: evidence master.
+- Review: optimized reviewer image.
+- Thumbnail: queues/lists.
+
+Rule:
+```text
+List → Thumbnail
+Reviewer → Review
+Full-resolution → Original on explicit request only
+```
+
+---
+
+## 3. Internal Contract
+
+```python
+store_media(raw_bytes, ...)
+```
+
+Media Service accepts raw bytes only.
+
+Boundary adapters are responsible for:
+- Base64 decode.
+- HTTP multipart extraction.
+- API payload decode.
+
+---
+
+## 4. Validation
+
+Before ready:
+- decode successful.
+- supported image format.
+- Pillow verify.
+- MIME detection from bytes.
+- max size/dimensions policy.
+- optional rotation/orientation normalization.
+- generate variants.
+
+Invalid bytes never become Ready.
+
+---
+
+## 5. Revision
+
+Evidence replacement:
+```text
+Asset v1
+ → New Upload
+ → Asset v2
+```
+
+No destructive overwrite of historical evidence.
+
+Store:
+- revision number.
+- previous asset/revision linkage or auditable history.
+- replaced_by/replaced_at/reason where required.
+
+---
+
+## 6. Target Storage
+
+Current:
+```text
+Attachment Adapter
+```
+
+Target:
+```text
+Organized Filesystem outside Odoo
+ + NGINX delivery
+```
+
+Future:
+```text
+S3-compatible adapter
+```
+
+Business/UI do not change.
+
+---
+
+## 7. Authorized Delivery
+
+```text
+Browser
+ → /utility/media/<asset_uuid>/<variant>
+ → auth=user
+ → asset lookup
+ → geographic/business access
+ → internal storage reference
+ → X-Accel-Redirect
+ → NGINX bytes
+```
+
+Never expose filesystem path directly.
+
+---
+
+## 8. Geographic Security
+
+Media access follows linked reading/replacement/service geography.
+
+- Admin unrestricted.
+- non-admin requires assigned region.
+- unresolved region defaults deny.
+- unlinked/orphan asset cannot silently become public.
+
+---
+
+## 9. ETag & Cache
+
+- ETag based on asset UUID/revision/variant.
+- auth/security before disclosure.
+- 304 supported.
+- `private` cache policy.
+- revision in URL/query may bust stale cache.
+
+---
+
+## 10. Legacy Repair
+
+Scanner classification:
+- VALID
+- DOUBLE_BASE64
+- INVALID_IMAGE
+- MISSING_VARIANT
+- ORPHAN
+- BROKEN_ATTACHMENT
+
+Repair:
+1. dry run.
+2. identify recoverable.
+3. decode once if double base64.
+4. validate.
+5. regenerate variants.
+6. preserve asset identity/audit.
+7. report unrecoverable.
+
+---
+
+## 11. Performance
+
+Do not read binary to calculate `has_image`.
+
+Use:
+- image_asset_id.
+- state.
+- variant presence.
+
+Reviewer prefetch:
+```text
+current ±1 ±2 Review
+```
+
+No Original prefetch.
+
+---
+
+## 12. Retention
+
+Retention policy must be approved by business/legal before destructive deletion.
+
+Architecture supports:
+- hot review storage.
+- historical archive.
+- checksum/integrity verification.
+- restoration of archived evidence.
+
+---
+
+## 13. Acceptance
+
+- JPEG/PNG/WebP upload.
+- raw-byte validation.
+- Base64 boundary normalize.
+- re-upload revision.
+- 403 outside region.
+- 404 missing asset.
+- 200 valid image body.
+- ETag 304.
+- legacy double-base64 repair.
+- NGINX/X-Accel target delivery.

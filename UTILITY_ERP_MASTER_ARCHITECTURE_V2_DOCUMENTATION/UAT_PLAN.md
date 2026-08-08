@@ -1,0 +1,214 @@
+# UAT PLAN
+
+**Platform:** Odoo 16 Community  
+**Architecture Baseline:** `UTILITY_ERP_MASTER_ARCHITECTURE_V2.md`  
+**Repository Baseline Commit:** `13df4c5263abe2e211fc12dc0c3c62f86e87a048`  
+**Target Scale:** Up to 1,000,000 subscribers (capacity-planning baseline)  
+**Architecture Version:** 2.0  
+**Date:** 2026-08-09  
+**Status:** Target / Production-Hardening  
+
+**Document Type:** User Acceptance Test Plan
+
+> خطة قبول أعمال شاملة لكل المسارات الحرجة قبل Release Candidate وGo-Live.
+
+---
+
+
+## المبادئ المعمارية الملزمة
+
+- Odoo 16 Community هو **System of Record** للـUtility Domain والمحاسبة.
+- التشغيل المستهدف لمؤسسة تشغيلية واحدة؛ النطاق الأمني والتشغيلي يعتمد على Geography وليس Business Multi-Company.
+- لا توجد Customer Wallet في Postpaid Utility.
+- لا توجد Taxes في Utility Billing Flow الحالي.
+- Reading + Review مرحلة تشغيلية واحدة.
+- لكل Cycle فترة Reading وفترة Payment مستقلة مرتبطة بنفس `cycle_key`.
+- `utility.bill.reading.component` هو Immutable Billing Segment Snapshot ولا يعاد تصميمه.
+- `periodic` هو Billing Anchor، و`replacement_closing` و`opening` يحتفظان بدلالتهما.
+- عدة عمليات Replacement داخل نفس Cycle تنتهي إلى **فاتورة واحدة** للحساب/الفترة مع عدة Reading Components.
+- `utility.media.asset` هو Canonical Media Model.
+- Payment Reconciliation يجب أن يكون Targeted/Explicit، وليس Partner-wide.
+- التصحيحات التاريخية تتم بواسطة Correction/Reversal Documents، وليس بتعديل السجل التاريخي المنشور.
+- Hybrid Workflow: المعاملات القصيرة داخل Odoo؛ Temporal للعمليات الطويلة وReading Batch orchestration عند Target Scale.
+- Redis مساعد للـRate Limiting/Cache فقط، وليس Source of Truth.
+- PgBouncer جزء من Target Production Scale عند تعدد العقد والـWorkers.
+- Persistent Staging + Idempotency + Partial Failure هي القاعدة لدفعات القراءات.
+
+
+## 1. UAT Objectives
+
+إثبات أن النظام:
+- صحيح وظيفيًا.
+- صحيح ماليًا.
+- قابل للتشغيل.
+- آمن حسب الأدوار.
+- قابل للتتبع.
+- يتحمل السيناريوهات الاستثنائية الأساسية.
+
+---
+
+## 2. Entry Criteria
+
+- P0 defects مغلقة.
+- migration rehearsal complete.
+- test environment production-like.
+- accounting configuration approved.
+- tariff test data approved.
+- users/roles configured.
+- backup/restore drill complete or scheduled before exit.
+- Golden Billing tests pass.
+
+---
+
+## 3. Test Data
+
+Include:
+- monthly account.
+- semi-monthly H1/H2.
+- flat tariff.
+- tier.
+- progressive.
+- discounted/sponsored.
+- account with replacement(s).
+- overdue.
+- deposit.
+- multiple regions/roles.
+- AMI/manual.
+- media variants.
+- concurrent payment target.
+
+---
+
+## 4. Core UAT Scenarios
+
+### UAT-001 Account & Meter
+create/activate account and meter.
+
+### UAT-002 Period Generation
+monthly and semi-monthly pair.
+
+### UAT-003 Manual Reading
+upload image, review, approve.
+
+### UAT-004 Batch Reading
+10k-style functional subset with partial errors.
+
+### UAT-005 AMI
+authenticated callback, duplicate prevention.
+
+### UAT-006 Billing Normal
+periodic → one bill → accounting invoice.
+
+### UAT-007 Replacement
+old closing + new opening + next periodic → combined one bill.
+
+### UAT-008 Multiple Replacements
+multiple components same cycle.
+
+### UAT-009 Tariff Modes
+flat/tier/block/discount/min/max.
+
+### UAT-010 Payment Full
+explicit allocation/reconciliation.
+
+### UAT-011 Payment Partial
+correct residual.
+
+### UAT-012 Concurrent Payment
+no over-allocation.
+
+### UAT-013 Gateway Duplicate
+callback idempotency.
+
+### UAT-014 Penalty
+eligibility/apply/waive/reversal policy.
+
+### UAT-015 Deposit
+receive/release/forfeit.
+
+### UAT-016 Writeoff/Settlement
+approval and accounting.
+
+### UAT-017 Reading Correction
+original immutable; debit/credit correction.
+
+### UAT-018 Disconnection/Reconnection
+service order and account status.
+
+### UAT-019 Inventory Custody
+warehouse→technician→installed→removed.
+
+### UAT-020 Security
+other region denied in UI/API/media.
+
+### UAT-021 Period Close/Reopen/Lock
+audit and guards.
+
+### UAT-022 Portal
+own account only.
+
+---
+
+## 5. Financial Acceptance
+
+For selected scenarios validate:
+```text
+Utility amount
+= Accounting invoice amount
+= Residual before payment
+- allocated payment
+= Residual after payment
+```
+
+Trace each amount back to reading/components.
+
+---
+
+## 6. Defect Severity
+
+- P0: data loss/financial/security/history corruption.
+- P1: critical business flow unusable.
+- P2: significant workaround.
+- P3: cosmetic/minor.
+
+UAT exit:
+- zero open P0.
+- zero open unaccepted P1.
+- P2 only with signed workaround/plan.
+
+---
+
+## 7. Performance UAT
+
+Business validates:
+- review queue usability.
+- image responsiveness.
+- batch progress visibility.
+- billing operational window.
+- report responsiveness under agreed scope.
+
+Technical Load Test remains separate but contributes to exit.
+
+---
+
+## 8. Sign-Off
+
+Required sign-off representatives:
+- Billing.
+- Accounting/Revenue.
+- Operations.
+- Inventory/Warehouse.
+- IT/Security.
+- Data Migration.
+- Business Owner.
+
+---
+
+## 9. Exit Criteria
+
+- scenarios pass.
+- financial reconciliation signed.
+- security matrix signed.
+- migration validation signed.
+- backup restore signed.
+- go-live rollback decision path approved.
