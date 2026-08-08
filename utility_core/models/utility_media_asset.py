@@ -89,11 +89,11 @@ class UtilityMediaAsset(models.Model):
         self.ensure_one()
         if self.storage_backend == 'attachment':
             if variant == 'thumbnail' and self.thumbnail_attachment_id:
-                return f"/web/image/{self.thumbnail_attachment_id.id}"
+                return f"/utility/media/{self.asset_uuid}/thumbnail"
             elif variant == 'review' and self.review_attachment_id:
-                return f"/web/image/{self.review_attachment_id.id}"
+                return f"/utility/media/{self.asset_uuid}/review"
             elif self.original_attachment_id:
-                return f"/web/image/{self.original_attachment_id.id}"
+                return f"/utility/media/{self.asset_uuid}/original"
             return ''
         elif self.storage_backend == 'filesystem':
             ref = getattr(self, f"external_{variant}_reference", False) or self.external_original_reference
