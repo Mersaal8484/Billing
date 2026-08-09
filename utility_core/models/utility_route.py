@@ -79,6 +79,7 @@ class UtilityRoute(models.Model):
 
 class UtilityRouteAddCustomerWizard(models.TransientModel):
     _name = 'utility.route.add.customer.wizard'
+    _inherit = ['utility.dropdown.mixin']
     _description = 'إضافة مشتركين إلى مسار'
 
     route_id = fields.Many2one('utility.route', 'المسار', required=True, readonly=True)
@@ -93,10 +94,11 @@ class UtilityRouteAddCustomerWizard(models.TransientModel):
     def _onchange_filter_same_area(self):
         domain = [('route_id', '=', False)]
         if self.filter_same_area and self.route_id:
-            if self.route_id.area_id:
-                domain.append(('area_id', '=', self.route_id.area_id.id))
-            elif self.route_id.region_id:
-                domain.append(('region_id', '=', self.route_id.region_id.id))
+            domain.extend(self._get_route_domain(
+                region_id=self.route_id.region_id.id if self.route_id.region_id else False,
+                area_id=self.route_id.area_id.id if self.route_id.area_id else False,
+                zone_id=self.route_id.zone_id.id if self.route_id.zone_id else False,
+            ))
         return {'domain': {'customer_ids': domain}}
 
     @api.depends('customer_ids')
@@ -113,6 +115,7 @@ class UtilityRouteAddCustomerWizard(models.TransientModel):
 
 class UtilityRouteRemoveCustomerWizard(models.TransientModel):
     _name = 'utility.route.remove.customer.wizard'
+    _inherit = ['utility.dropdown.mixin']
     _description = 'حذف مشتركين من مسار'
 
     route_id = fields.Many2one('utility.route', 'المسار', required=True, readonly=True)

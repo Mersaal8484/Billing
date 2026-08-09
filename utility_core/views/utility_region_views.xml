@@ -37,6 +37,9 @@
                             <field name="parent_id" string="Parent Location" 
                                    domain="[('type', 'in', ['region', 'area'])]"
                                    attrs="{'invisible': [('type', '=', 'region')], 'required': [('type', '!=', 'region')], 'readonly': [('transformer_origin_id', '!=', False)]}"/>
+                            <field name="private_transformer_id"
+                                   domain="[('is_private', '=', True)]"
+                                   attrs="{'invisible': [('type', '!=', 'zone')]}"/>
                             <field name="active"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>

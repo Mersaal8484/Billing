@@ -65,6 +65,10 @@ class ResCompany(models.Model):
         'account.journal',
         string='يومية التحصيل الافتراضية',
         check_company=True)
+    collector_receivable_account_id = fields.Many2one('account.account', string='حساب ذمم المحصلين', check_company=True)
+    collection_clearing_account_id = fields.Many2one('account.account', string='حساب مقاصة التحصيل', check_company=True)
+    deposit_clearing_account_id = fields.Many2one('account.account', string='حساب مقاصة الإيداع البنكي', check_company=True)
+    collection_surplus_account_id = fields.Many2one('account.account', string='حساب فائض التحصيل', check_company=True)
 
     sales_journal_id = fields.Many2one(
         'account.journal',

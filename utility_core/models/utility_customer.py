@@ -56,9 +56,35 @@ class UtilityCustomer(models.Model):
     zone_id = fields.Many2one(related='partner_id.zone_id', store=True, string='المنطقة التفصيلية')
 
     route_id = fields.Many2one('utility.route', string='خط السير', index=True)
+    available_route_ids = fields.Many2many(
+        'utility.route', compute='_compute_available_route_ids',
+        string='المسارات المتاحة')
 
     meter_id = fields.Many2one('utility.meter', 'العداد', tracking=True)
     payment_type = fields.Selection(related='meter_id.payment_type', store=True, string='نظام الدفع (آجل/مسبق)', readonly=True)
+
+    @api.depends('region_id', 'area_id', 'zone_id')
+    def _compute_available_route_ids(self):
+        for customer in self:
+            domain = customer._get_route_domain(
+                region_id=customer.region_id.id if customer.region_id else False,
+                area_id=customer.area_id.id if customer.area_id else False,
+                zone_id=customer.zone_id.id if customer.zone_id else False,
+            )
+            customer.available_route_ids = self.env['utility.route'].search(domain)
+
+    @api.constrains('route_id', 'region_id', 'area_id', 'zone_id')
+    def _check_route_geographic_consistency(self):
+        for customer in self.filtered('route_id'):
+            domain = customer._get_route_domain(
+                region_id=customer.region_id.id if customer.region_id else False,
+                area_id=customer.area_id.id if customer.area_id else False,
+                zone_id=customer.zone_id.id if customer.zone_id else False,
+            )
+            if customer.route_id not in self.env['utility.route'].search(domain):
+                raise ValidationError(_(
+                    'المسار المختار لا ينتمي إلى النطاق الجغرافي المحدد للحساب الكهربائي.'
+                ))
 
     # ── الحساب التجميعي (كبار المشتركين / الجهات الحكومية) ─────────────────
     is_master_account = fields.Boolean(

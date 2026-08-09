@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_collection_tree" model="ir.ui.view">
+        <field name="name">utility.collection.tree</field><field name="model">utility.collection</field>
+        <field name="arch" type="xml"><tree string="تحصيلات الكهرباء">
+            <field name="name"/><field name="collection_date"/><field name="utility_customer_id"/>
+            <field name="collector_id"/><field name="amount" widget="monetary"/><field name="settled_amount" widget="monetary"/>
+            <field name="remaining_amount" widget="monetary"/><field name="state" widget="badge"/>
+        </tree></field>
+    </record>
+    <record id="view_utility_collection_form" model="ir.ui.view">
+        <field name="name">utility.collection.form</field><field name="model">utility.collection</field>
+        <field name="arch" type="xml"><form string="تحصيل كهرباء">
+            <header><button name="action_confirm" type="object" string="تأكيد" class="btn-primary" attrs="{'invisible': [('state', '!=', 'draft')]}"/>
+                <button name="action_post" type="object" string="ترحيل الحيازة" class="btn-primary" attrs="{'invisible': [('state', '!=', 'confirmed')]}"/>
+                <button name="action_cancel" type="object" string="إلغاء" attrs="{'invisible': [('state', 'not in', ('draft', 'confirmed'))]}"/>
+                <field name="state" widget="statusbar" statusbar_visible="draft,confirmed,posted,included_in_settlement,settled"/></header>
+            <sheet><group><group><field name="name"/><field name="payment_id"/><field name="allocation_id"/><field name="utility_customer_id"/><field name="invoice_id"/></group>
+                <group><field name="collector_id"/><field name="collection_date"/><field name="collection_method"/><field name="amount"/><field name="settled_amount"/><field name="remaining_amount"/></group></group>
+                <notebook><page string="تسوية المحصل"><field name="settlement_line_ids" readonly="1"/></page><page string="المحاسبة"><field name="account_move_id"/><field name="journal_id"/></page></notebook>
+            </sheet>
+        </form></field>
+    </record>
+    <record id="view_utility_collection_search" model="ir.ui.view"><field name="name">utility.collection.search</field><field name="model">utility.collection</field><field name="arch" type="xml"><search>
+        <field name="name"/><field name="utility_customer_id"/><field name="collector_id"/><field name="payment_id"/><field name="state"/>
+        <filter name="unsettled" string="غير مسدد" domain="[('remaining_amount', '>', 0), ('state', '=', 'posted')]"/>
+        <group expand="0" string="تجميع حسب"><filter name="collector" string="المحصل" context="{'group_by': 'collector_id'}"/><filter name="state" string="الحالة" context="{'group_by': 'state'}"/></group>
+    </search></field></record>
+    <record id="action_utility_collection" model="ir.actions.act_window"><field name="name">تحصيلات الكهرباء</field><field name="res_model">utility.collection</field><field name="view_mode">tree,form</field><field name="search_view_id" ref="view_utility_collection_search"/></record>
+    <record id="action_utility_collection_settlement" model="ir.actions.act_window"><field name="name">تسويات المحصلين</field><field name="res_model">utility.collection.settlement</field><field name="view_mode">tree,form</field></record>
+    <menuitem id="menu_utility_collections" name="التحصيلات" parent="menu_utility_accounting" action="action_utility_collection" sequence="36"/>
+    <menuitem id="menu_utility_collection_settlements" name="تسويات المحصلين" parent="menu_utility_accounting" action="action_utility_collection_settlement" sequence="37"/>
+</odoo>

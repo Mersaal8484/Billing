@@ -49,6 +49,11 @@ class UtilityRegion(models.Model):
     transformer_origin_id = fields.Many2one('utility.transformer', 'منشأ من محول',
         readonly=True, copy=False,
         help='إذا كان هذا الـ zone منشأً تلقائياً من محول، لا يمكن تعديله يدوياً')
+    private_transformer_id = fields.Many2one(
+        'utility.transformer', 'المحول الخاص',
+        domain="[('is_private', '=', True), ('company_id', '=', company_id)]",
+        ondelete='restrict',
+        help='ربط جغرافي وصفي لا ينقل ملكية الحساب الكهربائي.')
 
     _sql_constraints = [
         ('unique_code_parent_company', 'unique(code, parent_id, company_id)', 'الرمز يجب أن يكون فريداً لكل عنصر أب/شركة!'),
@@ -80,6 +85,19 @@ class UtilityRegion(models.Model):
                     raise ValidationError(_(
                         "دورية الفوترة للمنطقة الفرعية '%s' (%s) يجب أن تطابق دورية المنطقة الرئيسية '%s' (%s)."
                     ) % (r.name, r.recurring_rule_type, root.name, root.recurring_rule_type))
+
+    @api.constrains('type', 'private_transformer_id')
+    def _check_private_transformer_context(self):
+        for region in self.filtered('private_transformer_id'):
+            if region.type != 'zone':
+                raise ValidationError(_('المحول الخاص يمكن ربطه بالناحية من نوع zone فقط.'))
+            transformer = region.private_transformer_id
+            if not transformer.is_private:
+                raise ValidationError(_('لا يمكن اختيار إلا محول مصنفًا كمحول خاص.'))
+            if transformer.company_id != region.company_id:
+                raise ValidationError(_('شركة المحول الخاص يجب أن تطابق شركة الناحية.'))
+            if transformer.zone_region_id and transformer.zone_region_id != region:
+                raise ValidationError(_('المحول الخاص لا ينتمي إلى الناحية المحددة.'))
 
     def action_migrate_biweekly_to_semi_monthly(self):
         """ميجريشن تصحيحي لجميع المناطق الفرعية والرئيسية لتحويل biweekly إلى semi_monthly"""

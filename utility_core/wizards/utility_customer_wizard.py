@@ -49,6 +49,17 @@ class UtilityCustomerWizard(models.TransientModel):
     available_route_ids = fields.Many2many('utility.route', compute='_compute_available_route_ids')
     route_id = fields.Many2one('utility.route', string='مسار القراءة الميداني')
 
+    @api.constrains('route_id', 'utility_region_id', 'utility_area_id', 'transformer_zone_id')
+    def _check_route_geographic_consistency(self):
+        for wizard in self.filtered('route_id'):
+            domain = wizard._get_route_domain(
+                region_id=wizard.utility_region_id.id if wizard.utility_region_id else False,
+                area_id=wizard.utility_area_id.id if wizard.utility_area_id else False,
+                zone_id=wizard.transformer_zone_id.id if wizard.transformer_zone_id else False,
+            )
+            if wizard.route_id not in self.env['utility.route'].search(domain):
+                raise ValidationError(_('المسار المختار لا ينتمي إلى النطاق الجغرافي المحدد.'))
+
     utility_region_id = fields.Many2one('utility.region', string="المنطقة التشغيلية", domain="[('type', '=', 'region')]")
     available_area_ids = fields.Many2many('utility.region', compute='_compute_available_area_ids')
     utility_area_id = fields.Many2one('utility.region', string="الفرع التشغيلي")

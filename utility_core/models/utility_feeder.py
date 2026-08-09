@@ -12,6 +12,11 @@ class UtilityFeeder(models.Model):
     company_id = fields.Many2one('res.company', 'الشركة', default=lambda self: self.env.company)
     name = fields.Char('اسم الفيدر / الخلية', required=True, tracking=True)
     code = fields.Char('الرمز', required=True)
+    feeder_type = fields.Selection([
+        ('distribution', 'توزيع'),
+        ('production_area', 'منطقة إنتاج'),
+    ], string='نوع الفيدر', required=True, default='distribution', index=True,
+       tracking=True)
 
     # ===== الموقع في الشبكة =====
     substation_id = fields.Many2one('utility.substation', 'المحطة', index=True)

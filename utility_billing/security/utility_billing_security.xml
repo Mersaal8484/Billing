@@ -57,5 +57,24 @@
             <field name="domain_force">[(1, '=', 1)] if user.has_group('utility_core.group_utility_admin') else ['|', ('utility_customer_id.route_id', '=', False), ('utility_customer_id.route_id', 'in', user.assigned_route_ids.ids)]</field>
             <field name="groups" eval="[(4, ref('utility_core.group_utility_cashier')), (4, ref('utility_core.group_utility_collector')), (4, ref('utility_core.group_utility_technician')), (4, ref('utility_core.group_utility_billing_manager'))]"/>
         </record>
+
+        <record id="utility_collection_company_rule" model="ir.rule">
+            <field name="name">Collection Multi-Company Rule</field>
+            <field name="model_id" ref="model_utility_collection"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+            <field name="global" eval="True"/>
+        </record>
+        <record id="utility_collection_settlement_company_rule" model="ir.rule">
+            <field name="name">Collection Settlement Multi-Company Rule</field>
+            <field name="model_id" ref="model_utility_collection_settlement"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+            <field name="global" eval="True"/>
+        </record>
+        <record id="utility_bank_settlement_company_rule" model="ir.rule">
+            <field name="name">Bank Settlement Multi-Company Rule</field>
+            <field name="model_id" ref="model_utility_bank_settlement"/>
+            <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
+            <field name="global" eval="True"/>
+        </record>
     </data>
 </odoo>
