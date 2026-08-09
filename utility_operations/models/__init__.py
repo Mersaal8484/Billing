@@ -6,4 +6,4 @@ from . import utility_alarm
 from . import utility_work_order
 from . import utility_meter_replacement
 from . import utility_readings_settlement
-
+from . import utility_customer_lifecycle

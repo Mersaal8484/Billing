@@ -198,14 +198,18 @@ class UtilityServiceOrder(models.Model):
                 ref_record=self)
 
         elif self.service_type == 'disconnection' and self.customer_id:
-            self.customer_id.write({'state': 'disconnected'})
+            self.customer_id.with_context(
+                lifecycle_service_order=True).action_disconnect(
+                    reason=self.description, service_order=self)
             if self.meter_id:
                 self.env['utility.meter.log'].with_context(ctx)._create_log(
                     self.meter_id, 'disconnection',
                     _('فصل العداد عبر أمر خدمة %s: %s') % (self.order_number, self.description),
                     ref_record=self)
         elif self.service_type == 'reconnection' and self.customer_id:
-            self.customer_id.write({'state': 'active'})
+            self.customer_id.with_context(
+                lifecycle_service_order=True).action_reconnect(
+                    reason=self.description, service_order=self)
             if self.meter_id:
                 self.env['utility.meter.log'].with_context(ctx)._create_log(
                     self.meter_id, 'reconnection',

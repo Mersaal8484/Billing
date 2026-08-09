@@ -34,7 +34,7 @@
             <form>
                 <header>
                     <field name="state" widget="statusbar"
-                           statusbar_visible="draft,active,suspended,disconnected,closed" options="{'clickable': '1'}"/>
+                           statusbar_visible="draft,active,suspended,disconnected,closed"/>
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
@@ -222,6 +222,12 @@
                 <filter name="suspended_state" string="موقوف" domain="[('state','=','suspended')]"/>
                 <filter name="disconnected_state" string="مفصول" domain="[('state','=','disconnected')]"/>
                 <filter name="closed_state" string="مغلق" domain="[('state','=','closed')]"/>
+                <filter name="postpaid" string="آجل" domain="[('payment_type','=','postpaid')]"/>
+                <filter name="prepaid" string="مسبق" domain="[('payment_type','=','prepaid')]"/>
+                <filter name="private_transformer" string="محول خاص" domain="[('is_private_transformer','=',True)]"/>
+                <filter name="without_meter" string="بدون عداد" domain="[('meter_id','=',False)]"/>
+                <filter name="without_route" string="بدون مسار" domain="[('route_id','=',False)]"/>
+                <filter name="master_accounts" string="حسابات رئيسية" domain="[('is_master_account','=',True)]"/>
                 <separator/>
                 
                 <group expand="0" string="تصنيف حسب">
@@ -230,6 +236,9 @@
                     <filter name="group_area" string="المنطقة الفرعية" context="{'group_by':'area_id'}"/>
                     <filter name="group_route" string="المسار" context="{'group_by':'route_id'}"/>
                     <filter name="group_subscriber" string="نوع المشترك" context="{'group_by':'subscriber_id'}"/>
+                    <filter name="group_zone" string="المنطقة التفصيلية" context="{'group_by':'zone_id'}"/>
+                    <filter name="group_transformer" string="المحول" context="{'group_by':'transformer_id'}"/>
+                    <filter name="group_payment_type" string="نظام الدفع" context="{'group_by':'payment_type'}"/>
                 </group>
             </search>
         </field>

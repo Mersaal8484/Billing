@@ -448,7 +448,7 @@ class UtilityCustomerWizard(models.TransientModel):
             'subscriber_id': self.subscriber_id.id,
             'contract_template_id': self.contract_template_id.id,
             'route_id': self.route_id.id if self.route_id else False,
-            'state': 'active',
+            'state': 'draft',
             'meter_id': meter.id if meter else False,
             'transformer_id': transformer.id if transformer else False,
             'cell_id': transformer.feeder_id.id if transformer and transformer.feeder_id else False,
@@ -456,7 +456,10 @@ class UtilityCustomerWizard(models.TransientModel):
         customer = self.env['utility.customer'].create(customer_vals)
         
         if meter:
+            customer.with_context(lifecycle_operation=True).write({'meter_id': meter.id})
             meter.write({'customer_id': customer.id})
+
+        customer.action_activate()
 
         # 5. Link meter as coupling meter for the private transformer
         if transformer and meter:

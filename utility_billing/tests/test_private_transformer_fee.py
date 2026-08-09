@@ -3,7 +3,17 @@ from odoo.tests.common import TransactionCase
 
 
 class TestPrivateTransformerFee(TransactionCase):
-    """Deterministic tests for the recurring private transformer net fee."""
+    """Deterministic tests for the recurring private transformer fee.
+
+    Architecture under test:
+      - General Settings (company) defines the PRODUCT used for the fee line
+        (``company.private_transformer_fee_product_id``).
+      - ``utility.customer.private_transformer_fee`` defines HOW MUCH that
+        specific customer pays. There is no global/default fee amount.
+      - The billing engine reads the fee strictly from the customer and the
+        product strictly from the company, and raises a ValidationError when
+        the company product is not configured.
+    """
 
     @classmethod
     def setUpClass(cls):
@@ -30,6 +40,10 @@ class TestPrivateTransformerFee(TransactionCase):
             'name': 'كيلوواط/ساعة (اختبار)',
             'type': 'service',
         })
+        cls.fee_product = cls.Product.create({
+            'name': 'منتج رسوم المحول الخاص (اختبار)',
+            'type': 'service',
+        })
         cls.template = cls.Template.create({
             'name': 'قالب اختبار المحول الخاص',
             'code': 'PTF-FEE-TPL',
@@ -44,6 +58,9 @@ class TestPrivateTransformerFee(TransactionCase):
             'name': 'استهلاك',
             'meter_line_type': 'consumption',
         })
+
+        cls.company = cls.env.company
+        cls.company.private_transformer_fee_product_id = cls.fee_product
 
         cls.period = cls._create_reading_period()
 
@@ -80,17 +97,7 @@ class TestPrivateTransformerFee(TransactionCase):
                 'code': 'PRV-PTF-%s' % suffix,
                 'is_private': is_private,
             })
-        print("DEBUG transformer created:", transformer.id if transformer else None,
-              "is_private:", transformer.is_private if transformer else None)
-        print("DEBUG user:", self.env.user.id, self.env.user.login,
-              "sudo:", self.env.su)
-        print("DEBUG has access group:", self.env.user.has_group('utility_core.group_utility_admin'))
-        print("DEBUG sudo search:", self.env['utility.transformer'].sudo().search(
-            [('code', '=', 'PRV-PTF-%s' % suffix)], limit=1).id)
-        print("DEBUG search:", self.Transformer.search_count([('code', '=', 'PRV-PTF-%s' % suffix)]))
-        print("DEBUG search no active:", self.env['utility.transformer'].with_context(active_test=False).search_count([('code', '=', 'PRV-PTF-%s' % suffix)]))
-        print("DEBUG all transformers:", self.Transformer.search([], order='id desc', limit=5).ids)
-        customer = self.Customer.create({
+        return self.Customer.create({
             'customer_number': 'PTF-%s' % suffix,
             'partner_id': owner.id,
             'category_id': self.category.id,
@@ -99,9 +106,6 @@ class TestPrivateTransformerFee(TransactionCase):
             'private_transformer_fee': fee,
             'transformer_id': transformer.id if transformer else False,
         })
-        print("DEBUG customer created:", customer.id,
-              "transformer_id:", customer.transformer_id.id)
-        return customer
 
     def _create_order(self, customer, consumption=1000.0):
         order = self.env['sale.order'].create({
@@ -122,50 +126,86 @@ class TestPrivateTransformerFee(TransactionCase):
         return order.order_line.filtered(
             lambda line: line.meter_line_type == 'private_transformer_fee')
 
-    def test_private_transformer_with_fee_adds_exactly_one_fee_line(self):
-        customer = self._create_customer('001', is_private=True, fee=2500.0)
-        order = self._create_order(customer, consumption=1000.0)
+    def test_different_fees_same_product(self):
+        """Customer A (2,000) and Customer B (5,000) use the same configured
+        company product but each bill carries its own customer fee amount."""
+        customer_a = self._create_customer('001', is_private=True, fee=2000.0)
+        customer_b = self._create_customer('002', is_private=True, fee=5000.0)
 
-        print("DEBUG2 pub create:",
-              self.Transformer.sudo().create({
-                  'name': 'محول عام 001', 'code': 'PUB-PTF-001',
-              }).id)
-        print("DEBUG2 priv create:",
-              self.Transformer.sudo().create({
-                  'name': 'محول خاص 002', 'code': 'PRV-PTF-002', 'is_private': True,
-              }).id)
-        print("DEBUG2 after:", self.Transformer.sudo().search([], order='id desc', limit=5).ids)
+        order_a = self._create_order(customer_a, consumption=1000.0)
+        order_b = self._create_order(customer_b, consumption=1000.0)
 
-        print("DEBUG cust.transformer_id:", customer.transformer_id.id,
-              "is_private:", customer.transformer_id.is_private,
-              "fee:", customer.private_transformer_fee)
-        print("DEBUG order.customer_id:", order.customer_id.id)
-        print("DEBUG lines:", [(l.meter_line_type, l.price_unit) for l in order.order_line])
-        print("DEBUG company product:", order.company_id.private_transformer_fee_product_id)
+        fee_lines_a = self._fee_lines(order_a)
+        fee_lines_b = self._fee_lines(order_b)
 
-        fee_lines = self._fee_lines(order)
-        self.assertEqual(len(fee_lines), 1)
-        self.assertAlmostEqual(fee_lines.price_unit, 2500.0, places=2)
-        self.assertAlmostEqual(fee_lines.price_subtotal, 2500.0, places=2)
-        self.assertAlmostEqual(order.amount_private_transformer_fee, 2500.0, places=2)
-        self.assertEqual(fee_lines.private_transformer_id, customer.transformer_id)
+        self.assertEqual(len(fee_lines_a), 1)
+        self.assertEqual(len(fee_lines_b), 1)
 
-    def test_private_transformer_with_zero_fee_adds_no_fee_line(self):
-        customer = self._create_customer('002', is_private=True, fee=0.0)
+        self.assertEqual(fee_lines_a.product_id, self.company.private_transformer_fee_product_id)
+        self.assertEqual(fee_lines_b.product_id, self.company.private_transformer_fee_product_id)
+        self.assertEqual(fee_lines_a.product_id, fee_lines_b.product_id)
+
+        self.assertAlmostEqual(fee_lines_a.price_unit, 2000.0, places=2)
+        self.assertAlmostEqual(fee_lines_a.price_subtotal, 2000.0, places=2)
+        self.assertAlmostEqual(order_a.amount_private_transformer_fee, 2000.0, places=2)
+        self.assertAlmostEqual(fee_lines_b.price_unit, 5000.0, places=2)
+        self.assertAlmostEqual(fee_lines_b.price_subtotal, 5000.0, places=2)
+        self.assertAlmostEqual(order_b.amount_private_transformer_fee, 5000.0, places=2)
+
+        self.assertEqual(fee_lines_a.private_transformer_id, customer_a.transformer_id)
+        self.assertEqual(fee_lines_b.private_transformer_id, customer_b.transformer_id)
+
+    def test_fee_amount_not_exposed_at_company_or_settings(self):
+        """The fee AMOUNT must live only on utility.customer — never on the
+        company, settings, or transformer. Only the PRODUCT is global."""
+        self.assertFalse(hasattr(self.env['res.company'], 'private_transformer_fee'))
+        self.assertFalse(hasattr(self.env['res.config.settings'], 'private_transformer_fee'))
+        self.assertFalse(hasattr(self.env['utility.transformer'], 'private_transformer_fee'))
+        self.assertFalse(hasattr(self.env['utility.customer'], 'default_private_transformer_fee'))
+
+        defaults = self.Customer.default_get(['private_transformer_fee'])
+        self.assertAlmostEqual(defaults.get('private_transformer_fee', 0.0), 0.0, places=2)
+
+    def test_customers_have_independent_fee_values(self):
+        customer_a = self._create_customer('003', is_private=True, fee=2000.0)
+        customer_b = self._create_customer('004', is_private=True, fee=7000.0)
+
+        self.assertAlmostEqual(customer_a.private_transformer_fee, 2000.0, places=2)
+        self.assertAlmostEqual(customer_b.private_transformer_fee, 7000.0, places=2)
+        self.assertNotAlmostEqual(customer_a.private_transformer_fee,
+                                  customer_b.private_transformer_fee, places=2)
+
+    def test_zero_customer_fee_creates_no_line(self):
+        customer = self._create_customer('005', is_private=True, fee=0.0)
         order = self._create_order(customer, consumption=1000.0)
 
         self.assertEqual(len(self._fee_lines(order)), 0)
         self.assertAlmostEqual(order.amount_private_transformer_fee, 0.0, places=2)
 
-    def test_regular_transformer_with_stale_fee_adds_no_fee_line(self):
-        customer = self._create_customer('003', is_private=False, fee=2500.0)
+    def test_regular_transformer_with_stale_fee_creates_no_line(self):
+        customer = self._create_customer('006', is_private=False, fee=2500.0)
         order = self._create_order(customer, consumption=1000.0)
 
         self.assertEqual(len(self._fee_lines(order)), 0)
         self.assertAlmostEqual(order.amount_private_transformer_fee, 0.0, places=2)
+
+    def test_no_transformer_creates_no_line(self):
+        customer = self._create_customer('007', is_private=True, fee=2500.0,
+                                         with_transformer=False)
+        order = self._create_order(customer, consumption=1000.0)
+
+        self.assertEqual(len(self._fee_lines(order)), 0)
+        self.assertAlmostEqual(order.amount_private_transformer_fee, 0.0, places=2)
+
+    def test_missing_company_product_raises_validation_error(self):
+        self.company.private_transformer_fee_product_id = False
+        customer = self._create_customer('008', is_private=True, fee=2500.0)
+
+        with self.assertRaises(ValidationError):
+            self._create_order(customer, consumption=1000.0)
 
     def test_regeneration_does_not_duplicate_fee_line(self):
-        customer = self._create_customer('004', is_private=True, fee=2500.0)
+        customer = self._create_customer('009', is_private=True, fee=2500.0)
         order = self._create_order(customer, consumption=1000.0)
 
         order._calculate_amounts()
@@ -176,12 +216,12 @@ class TestPrivateTransformerFee(TransactionCase):
         self.assertAlmostEqual(fee_lines.price_unit, 2500.0, places=2)
 
     def test_negative_fee_raises_validation_error(self):
-        customer = self._create_customer('005', is_private=True, fee=100.0)
+        customer = self._create_customer('010', is_private=True, fee=100.0)
         with self.assertRaises(ValidationError):
             customer.private_transformer_fee = -1.0
 
     def test_fee_increases_total_without_changing_tariff(self):
-        customer = self._create_customer('006', is_private=True, fee=2500.0)
+        customer = self._create_customer('011', is_private=True, fee=2500.0)
         order = self._create_order(customer, consumption=1000.0)
 
         consumption_lines = order.order_line.filtered(
@@ -190,3 +230,18 @@ class TestPrivateTransformerFee(TransactionCase):
         self.assertAlmostEqual(order.consumption, 1000.0, places=2)
         self.assertAlmostEqual(order.amount_energy, 5000.0, places=2)
         self.assertAlmostEqual(order.amount_total, 7500.0, places=2)
+
+    def test_posted_historical_invoice_remains_unchanged(self):
+        """The fee amount is snapshotted on the sale order at billing time.
+        Later changes to the customer fee must not alter an existing bill."""
+        customer = self._create_customer('012', is_private=True, fee=2000.0)
+        order = self._create_order(customer, consumption=1000.0)
+
+        self.assertAlmostEqual(order.amount_private_transformer_fee, 2000.0, places=2)
+        self.assertAlmostEqual(self._fee_lines(order).price_unit, 2000.0, places=2)
+
+        order.bill_state = 'paid'
+        customer.private_transformer_fee = 5000.0
+
+        self.assertAlmostEqual(order.amount_private_transformer_fee, 2000.0, places=2)
+        self.assertAlmostEqual(self._fee_lines(order).price_unit, 2000.0, places=2)

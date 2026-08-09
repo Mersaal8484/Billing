@@ -396,7 +396,7 @@ class UtilityMigrationCustomer(models.Model):
             'partner_id': partner.id,
             'category_id': self.category_id.id,
             'subscriber_id': self.subscriber_type_id.id,
-            'state': 'active',
+            'state': 'draft',
             'contract_template_id': self.contract_template_id.id,
             'company_id': company_id,
         }
@@ -447,7 +447,7 @@ class UtilityMigrationCustomer(models.Model):
             meter.write(meter_vals)
 
         self.created_meter_id = meter.id
-        customer.meter_id = meter.id
+        customer.with_context(lifecycle_operation=True).write({'meter_id': meter.id})
 
         if transformer and meter:
             transformer.write({'coupling_meter_id': meter.id})
@@ -475,6 +475,7 @@ class UtilityMigrationCustomer(models.Model):
                 })
 
         # 4. Create opening balance journal entry
+        customer.action_activate()
         self._create_opening_balance_entry(account_partner, customer)
 
     # -------------------------------------------------------------------------

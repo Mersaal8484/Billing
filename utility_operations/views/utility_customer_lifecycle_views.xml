@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_customer_meter_assignment_operations" model="ir.ui.view">
+        <field name="name">utility.customer.meter.assignment.operations</field>
+        <field name="model">utility.customer.meter.assignment</field>
+        <field name="inherit_id" ref="utility_core.view_utility_customer_meter_assignment_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='state']" position="before">
+                <field name="service_order_id" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+    <record id="view_utility_customer_lifecycle_event_operations" model="ir.ui.view">
+        <field name="name">utility.customer.lifecycle.event.operations</field>
+        <field name="model">utility.customer.lifecycle.event</field>
+        <field name="inherit_id" ref="utility_core.view_utility_customer_lifecycle_event_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='user_id']" position="after">
+                <field name="service_order_id" optional="show"/>
+            </xpath>
+        </field>
+    </record>
+    <record id="view_utility_customer_lifecycle_wizard_operations" model="ir.ui.view">
+        <field name="name">utility.customer.lifecycle.wizard.operations</field>
+        <field name="model">utility.customer.lifecycle.wizard</field>
+        <field name="inherit_id" ref="utility_core.view_utility_customer_lifecycle_wizard_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='reason']" position="after">
+                <field name="service_order_id" attrs="{'invisible': [('action_type', 'not in', ['disconnect', 'reconnect'])]}"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

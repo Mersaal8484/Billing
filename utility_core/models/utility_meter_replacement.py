@@ -344,7 +344,29 @@ class UtilityMeterReplacement(models.Model):
             if rec.target_type == 'subscriber':
                 old_meter.write({'customer_id': False, 'active': False})
                 new_meter.write({'customer_id': account.id, 'multiplier': rec.new_meter_val, 'active': True, 'connection_type': 'subscriber'})
-                account.write({'meter_id': new_meter.id, 'last_reading_value': rec.new_opening_reading})
+                old_assignment = account.current_meter_assignment_id
+                if old_assignment:
+                    old_assignment.action_close(
+                        final_reading=rec.old_closing_reading,
+                        reason=rec.reason,
+                        notes=rec.notes)
+                account.with_context(lifecycle_operation=True).write({
+                    'meter_id': new_meter.id,
+                    'last_reading_value': rec.new_opening_reading,
+                })
+                self.env['utility.customer.meter.assignment'].create({
+                    'customer_id': account.id,
+                    'meter_id': new_meter.id,
+                    'company_id': account.company_id.id,
+                    'date_from': rec.replace_date,
+                    'initial_reading': rec.new_opening_reading,
+                    'assignment_type': 'replacement',
+                    'reason': rec.reason,
+                    'notes': rec.notes,
+                })
+                account._log_lifecycle_event(
+                    'meter_replaced', reason=rec.reason, notes=rec.notes,
+                    old_meter=old_meter, new_meter=new_meter)
             elif rec.target_type == 'feeder':
                 old_meter.write({'linked_feeder_id': False, 'active': False})
                 new_meter.write({'linked_feeder_id': feeder.id, 'multiplier': rec.new_meter_val, 'active': True, 'connection_type': 'feeder', 'is_coupling_meter': True})

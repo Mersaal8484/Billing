@@ -9,6 +9,8 @@ from . import utility_substation
 from . import utility_transformer
 from . import utility_route
 from . import utility_customer
+from . import utility_customer_lifecycle
+from . import utility_customer_lifecycle
 
 from . import utility_connection
 from . import utility_meter

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_customer_lifecycle_wizard_form" model="ir.ui.view">
+        <field name="name">utility.customer.lifecycle.wizard.form</field>
+        <field name="model">utility.customer.lifecycle.wizard</field>
+        <field name="arch" type="xml">
+            <form string="إجراء دورة حياة الحساب"><group string="الحساب">
+                <field name="customer_id"/><field name="current_state"/><field name="current_meter_id"/>
+            </group><group string="تفاصيل الإجراء"><field name="action_type"/><field name="reason"/>
+                <field name="effective_date" attrs="{'invisible': [('action_type', 'in', ['reactivate', 'reconnect'])]}"/>
+                <field name="administrative_override" groups="utility_core.group_utility_admin" attrs="{'invisible': [('action_type', 'not in', ['disconnect', 'reconnect'])]}"/>
+                <field name="notes"/></group><footer>
+                <button name="action_confirm" type="object" string="تأكيد الإجراء" class="btn-primary"/>
+                <button string="إلغاء" special="cancel" class="btn-secondary"/>
+            </footer></form>
+        </field>
+    </record>
+    <record id="action_utility_customer_lifecycle_wizard" model="ir.actions.act_window">
+        <field name="name">إجراء دورة حياة الحساب</field><field name="res_model">utility.customer.lifecycle.wizard</field>
+        <field name="view_mode">form</field><field name="target">new</field>
+        <field name="view_id" ref="view_utility_customer_lifecycle_wizard_form"/>
+    </record>
+</odoo>

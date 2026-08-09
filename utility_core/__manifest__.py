@@ -31,6 +31,7 @@ User Role.
         'views/utility_transformer_views.xml',
         'views/utility_route_views.xml',
         'views/utility_customer_views.xml',
+        'views/utility_customer_lifecycle_views.xml',
 
         'views/utility_connection_views.xml',
         'views/utility_connection_type_views.xml',
@@ -48,6 +49,7 @@ User Role.
         'views/utility_meter_replacement_views.xml',
         'views/utility_meter_menu.xml',
         'views/utility_customer_wizard_views.xml',
+        'wizards/utility_customer_lifecycle_wizard_views.xml',
         'views/utility_customer_menu.xml',
         'data/utility_subscriber_data.xml',
         'data/utility_sample_data.xml',

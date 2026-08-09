@@ -31,6 +31,7 @@ Maintenance, Alarm, Work Order.
         'views/utility_work_order_views.xml',
         'views/meter_replace_views.xml',
         'views/reading_settlement_views.xml',
+        'views/utility_customer_lifecycle_views.xml',
         'views/utility_operations_menu.xml',
     ],
     'demo': ['data/utility_demo.xml'],
