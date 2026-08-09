@@ -204,6 +204,7 @@ class UtilityPaymentGatewayTransaction(models.Model):
                 'electronic_doc_no': provider_reference or tx.provider_reference or tx.name,
                 'date': fields.Date.context_today(tx_company),
             })
+            payment._validate_utility_payment_amount()
             payment.action_post()
             tx.write({
                 'state': 'done',

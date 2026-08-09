@@ -113,6 +113,35 @@ class AccountPayment(models.Model):
             if linked_reading_period != order_period:
                 raise ValidationError(_('فترة التحصيل يجب أن تكون فترة الدفع المرتبطة مباشرة بفترة قراءة الفاتورة "%s".') % order_period.display_name)
 
+    def _validate_utility_payment_amount(self):
+        """Validate and lock the exact utility invoice before posting payment."""
+        self.ensure_one()
+        order = self.utility_sale_order_id
+        if not order:
+            return
+        if self.payment_type != 'inbound':
+            raise ValidationError(_(
+                'الدفعات الصادرة لا تستخدم مسار تحصيل فواتير الكهرباء.'
+            ))
+        invoice = self.utility_invoice_id
+        if (not invoice or invoice.utility_sale_order_id != order
+                or invoice.partner_id != order.customer_id.partner_id
+                or invoice.move_type != 'out_invoice'):
+            raise ValidationError(_('يجب تحديد فاتورة كهرباء مدينة صحيحة للدفع.'))
+        self.env.flush_all()
+        self.env.cr.execute(
+            'SELECT id FROM account_move WHERE id = %s FOR UPDATE',
+            [invoice.id],
+        )
+        invoice.invalidate_cache([
+            'state', 'partner_id', 'move_type', 'amount_residual', 'payment_state'])
+        if invoice.state != 'posted':
+            raise ValidationError(_('لا يمكن الدفع إلا لفاتورة محاسبية مرحلة.'))
+        if self.amount > invoice.amount_residual:
+            raise ValidationError(_(
+                'مبلغ الدفعة %.2f يتجاوز المتبقي %.2f في الفاتورة المحددة.'
+            ) % (self.amount, invoice.amount_residual))
+
     @api.onchange('utility_sale_order_id')
     def _onchange_utility_sale_order_id(self):
         if self.utility_sale_order_id:
@@ -238,6 +267,7 @@ class AccountPayment(models.Model):
                 else:
                     raise ValidationError(_('لا توجد فترة دفع مرتبطة بفترة قراءة هذه الفاتورة.'))
             payment._validate_utility_payment_period()
+            payment._validate_utility_payment_amount()
             if order.state == 'cancel':
                 raise ValidationError(
                     'لا يمكن تسجيل دفعة على فاتورة ملغاة [%s]. يُرجى التحقق من رقم الفاتورة.' % order.name

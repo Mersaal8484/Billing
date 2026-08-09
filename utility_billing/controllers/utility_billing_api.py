@@ -15,20 +15,12 @@ class UtilityBillingAPI(http.Controller):
         لمستخدمي البوابة: الحسابات المرتبطة بـ partner الخاص بهم فقط.
         """
         user = request.env.user
-        privileged_groups = (
-            'base.group_system',
-            'utility_core.group_utility_admin',
-            'utility_core.group_utility_auditor',
-            'utility_core.group_utility_billing_manager',
-            'utility_core.group_utility_revenue_manager',
-        )
-        if any(user.has_group(group) for group in privileged_groups):
-            return request.env['utility.customer'].sudo().search([])
-        if user.has_group('base.group_user') and user.partner_id.region_id:
-            return request.env['utility.customer'].sudo().search([
-                ('region_id', '=', user.partner_id.region_id.id),
-            ])
-        return request.env['utility.customer'].sudo().search([
+        Customer = request.env['utility.customer']
+        if user.has_group('base.group_user'):
+            # Internal calls deliberately use the normal environment so ACLs
+            # and ir.rules remain the single authorization source of truth.
+            return Customer.search([])
+        return Customer.sudo().search([
             ('owner_partner_id', '=', user.partner_id.id),
         ])
 
@@ -39,12 +31,14 @@ class UtilityBillingAPI(http.Controller):
 
     def _authorize_order(self, order_id):
         """التحقق من ملكية الفاتورة وإرجاعها إن وجدت."""
-        order = request.env['sale.order'].sudo().browse(int(order_id))
+        user = request.env.user
+        Order = request.env['sale.order'] if user.has_group('base.group_user') else request.env['sale.order'].sudo()
+        order = Order.browse(int(order_id))
         if not order.exists():
-            return request.env['sale.order']
+            return Order
         if order.customer_id in self._get_authorized_accounts():
             return order
-        return request.env['sale.order']
+        return Order.browse()
 
     @http.route('/api/v1/utility/billing/balance', type='json', auth='user', methods=['POST'])
     def billing_balance(self, **kwargs):
@@ -280,26 +274,38 @@ class UtilityBillingAPI(http.Controller):
         user = request.env.user
         if not user.has_group('base.group_user'):
             return {'error': 'Access denied. Reports are for internal users only.'}
+        allowed_accounts = self._get_authorized_accounts()
+        allowed_ids = allowed_accounts.ids
+        if not allowed_ids:
+            return {'total_bills': 0, 'total_collections': 0.0, 'active_alarms': 0}
         start_dt = '%s 00:00:00' % report_date
         end_dt = '%s 23:59:59' % report_date
 
-        bills_domain = [('date_order', '>=', start_dt), ('date_order', '<=', end_dt)]
+        bills_domain = [
+            ('customer_id', 'in', allowed_ids),
+            ('date_order', '>=', start_dt),
+            ('date_order', '<=', end_dt),
+        ]
         if region_id:
             bills_domain.append(('customer_id.region_id', '=', int(region_id)))
         if area_id:
             bills_domain.append(('customer_id.area_id', '=', int(area_id)))
-        total_bills = request.env['sale.order'].sudo().search_count(bills_domain)
+        total_bills = request.env['sale.order'].search_count(bills_domain)
 
-        payments_domain = [('date', '=', report_date), ('utility_sale_order_id', '!=', False)]
-        pay_data = request.env['account.payment'].sudo().read_group(
+        payments_domain = [
+            ('date', '=', report_date),
+            ('utility_sale_order_id.customer_id', 'in', allowed_ids),
+        ]
+        pay_data = request.env['account.payment'].read_group(
             payments_domain, ['amount:sum'], [])
         total_collections = pay_data[0].get('amount', 0) if pay_data else 0.0
 
         alarms_domain = [
+            ('customer_id', 'in', allowed_ids),
             ('alarm_date', '>=', start_dt), ('alarm_date', '<=', end_dt),
             ('state', 'not in', ('resolved', 'closed')),
         ]
-        active_alarms = request.env['utility.alarm'].sudo().search_count(alarms_domain)
+        active_alarms = request.env['utility.alarm'].search_count(alarms_domain)
 
         return {
             'total_bills': total_bills,

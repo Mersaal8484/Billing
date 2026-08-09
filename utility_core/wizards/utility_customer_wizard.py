@@ -260,13 +260,11 @@ class UtilityCustomerWizard(models.TransientModel):
         if self.route_id and self.route_id not in self.available_route_ids:
             self.route_id = False
 
-    @api.onchange('use_private_transformer', 'name', 'national_id')
+    @api.onchange('use_private_transformer', 'name')
     def _onchange_use_private_transformer(self):
         if self.use_private_transformer:
             if not self.transformer_name and self.name:
                 self.transformer_name = f"محول خاص - {self.name}"
-            if not self.transformer_code and self.national_id:
-                self.transformer_code = f"PRV-{self.national_id}"
 
     @api.onchange('transformer_feeder_id')
     def _onchange_transformer_feeder_id(self):
