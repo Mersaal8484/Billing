@@ -458,7 +458,11 @@ class DateRange(models.Model):
         Payment Period: يرث النطاق من reading_period_id إذا لم تُحدَّد مناطق."""
         for vals in vals_list:
             role = vals.get('period_role', 'reading')
-            cadence = vals.get('billing_cadence', 'monthly')
+            raw_cadence = vals.get('billing_cadence') or vals.get('billing_period') or 'monthly'
+            cadence = normalize_billing_cadence(raw_cadence)
+            if 'billing_cadence' not in vals:
+                vals['billing_cadence'] = cadence
+
             if not vals.get('type_id'):
                 period_type = self.env['date.range.type']._resolve_period_type(cadence, role)
                 vals['type_id'] = period_type.id
@@ -485,11 +489,8 @@ class DateRange(models.Model):
 
             if role == 'reading' and not is_fiscal and 'region_ids' not in vals:
                 regions = self._get_regions_for_billing_cadence(cadence)
-                if not regions:
-                    raise ValidationError(_(
-                        "لا توجد مناطق نشطة تطابق دورة الفوترة '%s'."
-                    ) % cadence)
-                vals['region_ids'] = [(6, 0, regions.ids)]
+                if regions:
+                    vals['region_ids'] = [(6, 0, regions.ids)]
             elif role == 'payment' and 'region_ids' not in vals:
                 reading_period_id = vals.get('reading_period_id')
                 if reading_period_id:
