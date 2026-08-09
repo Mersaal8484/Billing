@@ -319,15 +319,20 @@ class UtilityCustomerWizard(models.TransientModel):
                 raise ValidationError('المحول المختار مرتبط بمشتركين مسبقاً.')
             return t
 
-        if not self.transformer_code:
-            raise ValidationError(_('يجب إدخال كود المحول الخاص.'))
+        transformer_code = self.transformer_code or self.env['ir.sequence'].next_by_code(
+            'utility.transformer.private')
+        if not transformer_code:
+            raise ValidationError(_('تعذر توليد كود المحول الخاص.'))
 
-        if self.env['utility.transformer'].search([('code', '=', self.transformer_code)], limit=1):
+        if self.env['utility.transformer'].search([
+            ('company_id', '=', self.env.company.id),
+            ('code', '=', transformer_code),
+        ], limit=1):
             raise ValidationError(_('كود المحول مستخدم بالفعل.'))
 
         return self.env['utility.transformer'].create({
             'name': self.transformer_name or f"محول خاص - {partner.name}",
-            'code': self.transformer_code,
+            'code': transformer_code,
             'capacity': self.transformer_capacity,
             'phase': self.transformer_phase or (self.phase if self.phase else 'single'),
             'manufacturer': self.transformer_manufacturer,

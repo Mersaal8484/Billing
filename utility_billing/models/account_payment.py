@@ -259,6 +259,10 @@ class AccountPayment(models.Model):
             else:
                 payment.timing_classification = 'late'
         res = super().action_post()
+        utility_payments = self.filtered('utility_customer_id')
+        for payment in utility_payments:
+            if payment.move_id and 'utility_customer_id' in payment.move_id._fields:
+                payment.move_id.write({'utility_customer_id': payment.utility_customer_id.id})
         self.filtered('service_charge_id').mapped('service_charge_id').action_mark_paid_from_payment()
         for payment in self:
             payment._reconcile_utility_sale_order()

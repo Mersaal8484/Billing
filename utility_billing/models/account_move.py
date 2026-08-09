@@ -7,8 +7,8 @@ class AccountMove(models.Model):
 
     utility_sale_order_id = fields.Many2one('sale.order', string='فاتورة الكهرباء', index=True)
     utility_customer_id = fields.Many2one(
-        'utility.customer', related='utility_sale_order_id.customer_id',
-        string='حساب الكهرباء', store=True, index=True, readonly=True)
+        'utility.customer', string='حساب الكهرباء', index=True,
+        copy=False, readonly=True)
     service_charge_id = fields.Many2one('utility.service.charge', string='رسم الخدمة', index=True, copy=False, check_company=True)
     meter_number = fields.Char(related='utility_sale_order_id.meter_id.meter_number', string='رقم العداد', store=True)
     current_meter_reading = fields.Float(related='utility_sale_order_id.current_reading', string='القراءة الحالية', store=True)
@@ -27,12 +27,25 @@ class AccountMove(models.Model):
                 if vals.get('partner_id') and vals['partner_id'] != expected_partner_id:
                     raise ValidationError(_('شريك الفاتورة يجب أن يطابق شريك الحساب الكهربائي.'))
                 vals['partner_id'] = expected_partner_id
+                vals['utility_customer_id'] = order.customer_id.id
+            customer_id = vals.get('utility_customer_id')
+            if customer_id and not order_id:
+                customer = self.env['utility.customer'].browse(customer_id).exists()
+                if not customer:
+                    raise ValidationError(_('حساب الكهرباء المحدد غير موجود.'))
+                if vals.get('partner_id') and vals['partner_id'] != customer.partner_id.id:
+                    raise ValidationError(_('شريك القيد يجب أن يطابق شريك الحساب الكهربائي.'))
+                vals['partner_id'] = customer.partner_id.id
         return super().create(vals_list)
 
-    @api.constrains('utility_sale_order_id', 'partner_id')
+    @api.constrains('utility_sale_order_id', 'utility_customer_id', 'partner_id')
     def _check_utility_invoice_partner(self):
-        for move in self.filtered('utility_sale_order_id'):
-            expected = move.utility_sale_order_id.customer_id.partner_id
+        for move in self.filtered(lambda record: record.utility_sale_order_id or record.utility_customer_id):
+            customer = move.utility_customer_id or move.utility_sale_order_id.customer_id
+            expected = customer.partner_id
+            if (move.utility_sale_order_id
+                    and move.utility_sale_order_id.customer_id != customer):
+                raise ValidationError(_('حساب القيد لا يطابق فاتورة الكهرباء المرتبطة.'))
             if move.partner_id != expected:
                 raise ValidationError(_(
                     'شريك الفاتورة %s لا يطابق الشريك المحاسبي للحساب الكهربائي %s.'

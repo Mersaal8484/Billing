@@ -142,6 +142,7 @@ class UtilityMigrationImportWizard(models.TransientModel):
             phase = 'three' if '3' in phase_val or 'three' in phase_val or 'ثلاث' in phase_val else 'single'
             
             is_private_transformer = self.parse_bool(row[18] if len(row) > 18 else False, default=False)
+            owner_reference = str(row[19] or '').strip() if len(row) > 19 else ''
             
             if not name:
                 continue
@@ -169,6 +170,7 @@ class UtilityMigrationImportWizard(models.TransientModel):
                 'current_balance': current_balance,
                 'phase': phase,
                 'is_private_transformer': is_private_transformer,
+                'owner_reference': owner_reference,
                 'state': 'draft'
             }
             

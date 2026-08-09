@@ -147,7 +147,9 @@ class UtilityMigrationTransformer(models.Model):
 
                     # 1. Search or create utility.transformer
                     transformer = self.env['utility.transformer'].search([
-                        '|', ('code', '=', code), ('name', '=', trans_name)
+                        ('company_id', '=', self.env.company.id),
+                        ('is_private', '=', False),
+                        ('code', '=', code),
                     ], limit=1)
 
                     trans_vals = {

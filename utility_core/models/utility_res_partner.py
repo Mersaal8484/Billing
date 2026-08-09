@@ -148,6 +148,9 @@ class ResPartner(models.Model):
     char_code = fields.Char(string="الحرف")
     subscriber_no = fields.Char(string="الرقم الجديد")
     national_id = fields.Char(string="الهوية الوطنية")
+    utility_owner_reference = fields.Char(
+        string='مرجع المالك القديم', index=True,
+        help='معرف ثابت من النظام السابق لربط عدة حسابات كهرباء بنفس المالك.')
     meter_number = fields.Char(string="رقم العداد")
     meter_reading = fields.Integer(string="قراءة العداد في النظام")
     opening_reading = fields.Integer(string="قراءة الافتتاح")
@@ -188,20 +191,32 @@ class ResPartner(models.Model):
         self.ensure_one()
 
         # 1. حساب مشترك موجود بالفعل
-        customer = self.env['utility.customer'].search([
-            '|',
+        customers = self.env['utility.customer'].search([
             ('owner_partner_id', '=', self.id),
-            ('partner_id', '=', self.id),
-        ], limit=1)
-        if customer:
+        ])
+        if not customers:
+            customers = self.env['utility.customer'].search([
+                ('partner_id', '=', self.id),
+            ])
+        if len(customers) == 1:
             return {
                 'name': _('حساب المشترك'),
                 'type': 'ir.actions.act_window',
                 'res_model': 'utility.customer',
                 'views': [(False, 'form')],
                 'view_mode': 'form',
-                'res_id': customer.id,
+                'res_id': customers.id,
                 'target': 'current',
+            }
+        if len(customers) > 1:
+            return {
+                'name': _('حسابات الكهرباء المملوكة'),
+                'type': 'ir.actions.act_window',
+                'res_model': 'utility.customer',
+                'view_mode': 'tree,form',
+                'domain': [('id', 'in', customers.ids)],
+                'target': 'current',
+                'context': {'default_owner_partner_id': self.id},
             }
 
         # 2. سجل تهيئة مرتبط وبانتظار التفعيل — تفعيل تلقائي بدون wizard
@@ -269,10 +284,16 @@ class ResPartner(models.Model):
             partner.last_payment_date = False
             if not partner.id:
                 continue
+            customers = self.env['utility.customer'].search([
+                ('owner_partner_id', '=', partner.id),
+            ])
+            partner_ids = customers.mapped('partner_id').ids
+            if not partner_ids:
+                partner_ids = [partner.id]
             payment = self.env['account.payment'].search([
-                ('partner_id', '=', partner.id),
-                ('state', '=', 'posted')
-            ], order='date desc', limit=1)
+                ('partner_id', 'in', partner_ids),
+                ('state', '=', 'posted'),
+            ], order='date desc, id desc', limit=1)
             if payment:
                 partner.last_payment = payment.amount
                 partner.last_payment_date = payment.date
@@ -283,11 +304,17 @@ class ResPartner(models.Model):
             partner.last_invoice_date = False
             if not partner.id:
                 continue
+            customers = self.env['utility.customer'].search([
+                ('owner_partner_id', '=', partner.id),
+            ])
+            partner_ids = customers.mapped('partner_id').ids
+            if not partner_ids:
+                partner_ids = [partner.id]
             invoice = self.env['account.move'].search([
-                ('partner_id', '=', partner.id),
+                ('partner_id', 'in', partner_ids),
                 ('move_type', 'in', ('out_invoice', 'out_refund')),
                 ('state', '=', 'posted')
-            ], order='invoice_date desc', limit=1)
+            ], order='invoice_date desc, id desc', limit=1)
             if invoice:
                 partner.last_invoice = invoice.amount_total
                 partner.last_invoice_date = invoice.invoice_date

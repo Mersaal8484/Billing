@@ -220,6 +220,7 @@ class UtilitySaleOrder(models.Model):
     def _prepare_invoice(self):
         res = super(UtilitySaleOrder, self)._prepare_invoice()
         res['utility_sale_order_id'] = self.id
+        res['utility_customer_id'] = self.customer_id.id if self.customer_id else False
         if self.workflow_process_id:
             res['workflow_process_id'] = self.workflow_process_id.id
         if self.current_reading:

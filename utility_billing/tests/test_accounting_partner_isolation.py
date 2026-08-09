@@ -62,6 +62,18 @@ class TestUtilityAccountingPartnerIsolation(TransactionCase):
         with self.assertRaises(ValidationError):
             second.write({'partner_id': first.partner_id.id})
 
+    def test_private_transformer_belongs_to_one_account(self):
+        transformer = self.env['utility.transformer'].create({
+            'name': 'محول خاص لاختبار الملكية',
+            'code': 'PRV-ISO-001',
+            'is_private': True,
+        })
+        _, first = self._create_customer('PRIVATE-001')
+        first.write({'transformer_id': transformer.id})
+        _, second = self._create_customer('PRIVATE-002')
+        with self.assertRaises(ValidationError):
+            second.write({'transformer_id': transformer.id})
+
     def test_balances_are_isolated_by_account_partner(self):
         _, first = self._create_customer('005')
         _, second = self._create_customer('006')

@@ -167,8 +167,22 @@ class UtilitySaleOrderPayment(models.Model):
 
     def action_register_utility_payment(self):
         self.ensure_one()
-        journal = self._ensure_collector_journal()
-        journal = self._ensure_payment_accounts(journal)
+        journal = self.env.user.collection_journal_id
+        if not journal or journal.company_id != self.company_id:
+            raise ValidationError(_(
+                'لم يتم إعداد يومية التحصيل لهذا المستخدم والشركة. '
+                'يجب على المحاسب إعدادها قبل تسجيل الدفعات.'
+            ))
+        if (not journal.default_account_id
+                or not self.company_id.account_journal_payment_debit_account_id
+                or not self.company_id.account_journal_payment_credit_account_id):
+            raise ValidationError(_(
+                'إعدادات حسابات الدفعات غير مكتملة في الشركة أو اليومية. '
+                'لا يمكن إنشاؤها أثناء تسجيل التحصيل.'
+            ))
+        if not journal.inbound_payment_method_line_ids:
+            raise ValidationError(_('يجب إعداد طريقة دفع واردة في يومية التحصيل.'))
+        posted_moves = self._get_posted_utility_moves()
 
         return {
             'name': _('تسجيل تحصيل الفاتورة'),
@@ -180,11 +194,14 @@ class UtilitySaleOrderPayment(models.Model):
                 'default_payment_type': 'inbound',
                 'default_partner_type': 'customer',
                 'default_partner_id': self.partner_id.id,
-                'default_amount': self.balance_due if self.balance_due > 0 else self.amount_total,
+                'default_amount': (
+                    posted_moves.amount_residual
+                    if len(posted_moves) == 1 and posted_moves.amount_residual > 0
+                    else self.balance_due if self.balance_due > 0 else self.amount_total
+                ),
                 'default_utility_sale_order_id': self.id,
                 'default_utility_invoice_id': (
-                    self._get_posted_utility_moves().id
-                    if len(self._get_posted_utility_moves()) == 1 else False
+                    posted_moves.id if len(posted_moves) == 1 else False
                 ),
                 'default_journal_id': journal.id if journal else False,
             }

@@ -15,8 +15,19 @@ class UtilityBillingAPI(http.Controller):
         لمستخدمي البوابة: الحسابات المرتبطة بـ partner الخاص بهم فقط.
         """
         user = request.env.user
-        if user.has_group('base.group_user'):
+        privileged_groups = (
+            'base.group_system',
+            'utility_core.group_utility_admin',
+            'utility_core.group_utility_auditor',
+            'utility_core.group_utility_billing_manager',
+            'utility_core.group_utility_revenue_manager',
+        )
+        if any(user.has_group(group) for group in privileged_groups):
             return request.env['utility.customer'].sudo().search([])
+        if user.has_group('base.group_user') and user.partner_id.region_id:
+            return request.env['utility.customer'].sudo().search([
+                ('region_id', '=', user.partner_id.region_id.id),
+            ])
         return request.env['utility.customer'].sudo().search([
             ('owner_partner_id', '=', user.partner_id.id),
         ])
@@ -28,13 +39,10 @@ class UtilityBillingAPI(http.Controller):
 
     def _authorize_order(self, order_id):
         """التحقق من ملكية الفاتورة وإرجاعها إن وجدت."""
-        user = request.env.user
         order = request.env['sale.order'].sudo().browse(int(order_id))
         if not order.exists():
             return request.env['sale.order']
-        if user.has_group('base.group_user'):
-            return order
-        if order.customer_id and order.customer_id.owner_partner_id.id == user.partner_id.id:
+        if order.customer_id in self._get_authorized_accounts():
             return order
         return request.env['sale.order']
 
@@ -99,8 +107,8 @@ class UtilityBillingAPI(http.Controller):
         provider_id = params.get('provider_id')
         invoice_id = params.get('invoice_id')
         direction = params.get('payment_direction', 'inbound')
-        if direction not in ('inbound', 'outbound'):
-            return {'error': 'payment_direction must be "inbound" or "outbound"'}
+        if direction != 'inbound':
+            return {'error': 'Customer payment intents support inbound payments only'}
 
         if not order_id or not amount:
             return {'error': 'order_id and amount are required'}
@@ -125,8 +133,8 @@ class UtilityBillingAPI(http.Controller):
             return {'error': 'amount must be a positive number'}
 
         if direction == 'inbound':
-            if amount > order.balance_due:
-                return {'error': 'amount cannot exceed the outstanding balance'}
+            if amount > invoice.amount_residual:
+                return {'error': 'amount cannot exceed the selected invoice residual'}
             if order.bill_state in ('paid', 'cancelled'):
                 return {'error': 'Bill is not payable'}
 
@@ -212,8 +220,7 @@ class UtilityBillingAPI(http.Controller):
         account = request.env['utility.customer'].sudo().browse(int(customer_id))
         if not account.exists():
             return {'error': 'Customer account not found'}
-        user = request.env.user
-        if not user.has_group('base.group_user') and account.owner_partner_id.id != user.partner_id.id:
+        if account not in self._get_authorized_accounts():
             return {'error': 'Customer account not found'}
         try:
             order = request.env['utility.service.order'].sudo().create({

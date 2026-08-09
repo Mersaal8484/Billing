@@ -16,7 +16,7 @@ class UtilityCustomer(models.Model):
     company_id = fields.Many2one('res.company', 'الشركة', default=lambda self: self.env.company)
     customer_number = fields.Char('رقم العميل', required=True, index=True, default=lambda self: _('جديد'))
     owner_partner_id = fields.Many2one(
-        'res.partner', 'المالك القانوني', index=True,
+        'res.partner', 'المالك القانوني', required=True, index=True,
         help='الشخص أو الشركة الفعلية المالكة للحساب الكهربائي.')
     partner_id = fields.Many2one(
         'res.partner', 'الشريك المحاسبي', required=True, index=True,
@@ -184,13 +184,21 @@ class UtilityCustomer(models.Model):
     ]
 
     def _create_dedicated_accounting_partner(self, owner_partner, customer_number):
-        """Create a private accounting contact without changing the legal owner."""
-        copy_vals = owner_partner.copy_data()[0]
-        # Owner-level financial values must not be cloned into every utility
-        # account. Account opening balances require an explicit account-level
-        # allocation or opening journal entry.
-        for field_name in ('open_balance', 'pec_credit', 'is_credit_raised', 'credit_raise_date'):
-            copy_vals.pop(field_name, None)
+        """Create an accounting contact from an explicit identity whitelist."""
+        allowed_fields = (
+            'mobile', 'phone', 'street', 'street2', 'city', 'zip', 'email',
+            'vat', 'lang', 'country_id', 'state_id', 'region_id', 'area_id',
+            'zone_id', 'company_id', 'utility_owner_reference',
+        )
+        copy_vals = {}
+        for field_name in allowed_fields:
+            if field_name not in owner_partner._fields:
+                continue
+            value = owner_partner[field_name]
+            if not value:
+                continue
+            field = owner_partner._fields[field_name]
+            copy_vals[field_name] = value.id if field.type == 'many2one' else value
         copy_vals.update({
             'name': _('%s - حساب كهرباء %s') % (owner_partner.name, customer_number),
             'parent_id': False,
@@ -247,6 +255,13 @@ class UtilityCustomer(models.Model):
                 'customer_rank': max(customer.partner_id.customer_rank, 1),
                 'is_subscriber': True,
             })
+            if customer.transformer_id and customer.transformer_id.is_private:
+                owner = customer.transformer_id.private_customer_id
+                if owner and owner != customer:
+                    raise ValidationError(_(
+                        'المحول الخاص %s مرتبط مسبقًا بحساب كهرباء آخر.'
+                    ) % customer.transformer_id.display_name)
+                customer.transformer_id.sudo().write({'private_customer_id': customer.id})
         return customers
 
     def _get_effective_billing_period(self):
@@ -261,6 +276,18 @@ class UtilityCustomer(models.Model):
             recurring_type = self.contract_template_id.recurring_rule_type
         return {'bi_monthly': 'biweekly'}.get(recurring_type, recurring_type)
     def write(self, vals):
+        if 'partner_id' in vals and not self.env.context.get(
+                'allow_utility_account_partner_change'):
+            for customer in self:
+                if customer.partner_id and vals['partner_id'] != customer.partner_id.id:
+                    raise ValidationError(_(
+                        'لا يمكن تغيير الشريك المحاسبي بعد إنشاء الحساب. '
+                        'استخدم إجراء نقل حساب معتمد.'
+                    ))
+        old_private_transformers = {
+            customer.id: customer.transformer_id
+            for customer in self if customer.transformer_id and customer.transformer_id.is_private
+        }
         if 'partner_id' in vals:
             new_partner = self.env['res.partner'].browse(vals['partner_id']).exists()
             for customer in self:
@@ -282,7 +309,36 @@ class UtilityCustomer(models.Model):
                         'customer_rank': max(customer.partner_id.customer_rank, 1),
                         'is_subscriber': True,
                     })
+        if 'transformer_id' in vals:
+            for customer in self:
+                old_transformer = old_private_transformers.get(customer.id)
+                if old_transformer and old_transformer != customer.transformer_id:
+                    if old_transformer.private_customer_id == customer:
+                        old_transformer.sudo().write({'private_customer_id': False})
+                transformer = customer.transformer_id
+                if transformer and transformer.is_private:
+                    if (transformer.private_customer_id
+                            and transformer.private_customer_id != customer):
+                        raise ValidationError(_(
+                            'المحول الخاص %s مرتبط مسبقًا بحساب كهرباء آخر.'
+                        ) % transformer.display_name)
+                    transformer.sudo().write({'private_customer_id': customer.id})
         return res
+
+    @api.constrains('owner_partner_id')
+    def _check_owner_partner_required(self):
+        for customer in self:
+            if not customer.owner_partner_id:
+                raise ValidationError(_('يجب تحديد المالك القانوني للحساب الكهربائي.'))
+
+    @api.constrains('transformer_id')
+    def _check_private_transformer_assignment(self):
+        for customer in self.filtered(lambda rec: rec.transformer_id and rec.transformer_id.is_private):
+            other_accounts = customer.transformer_id.customer_ids - customer
+            if other_accounts:
+                raise ValidationError(_(
+                    'المحول الخاص %s مرتبط مسبقًا بحساب كهرباء آخر.'
+                ) % customer.transformer_id.display_name)
 
     @api.constrains('cell_id', 'meter_id')
     def _check_cell_meter_consistency(self):

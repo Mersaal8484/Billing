@@ -45,6 +45,15 @@ class UtilityPaymentGatewayTransaction(models.Model):
     callback_payload = fields.Text('رد المزود')
     error_message = fields.Text('رسالة الخطأ')
 
+    def init(self):
+        self.env.cr.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS utility_gateway_provider_ref_uniq
+                ON utility_payment_gateway_transaction (provider_id, provider_reference)
+             WHERE provider_reference IS NOT NULL AND provider_reference <> ''
+            """
+        )
+
     @api.onchange('provider_id')
     def _onchange_provider_id(self):
         if self.provider_id and self.provider_id.payment_direction in ('inbound', 'outbound'):
@@ -64,6 +73,10 @@ class UtilityPaymentGatewayTransaction(models.Model):
                 raise ValidationError(_('يمكن إرسال المعاملات المسودة فقط إلى مزود الدفع.'))
             if tx.amount <= 0:
                 raise ValidationError(_('مبلغ معاملة الدفع يجب أن يكون أكبر من صفر.'))
+            if tx.payment_direction != 'inbound':
+                raise ValidationError(_(
+                    'الدفع الصادر لا ينفذ من مسار دفع العميل؛ استخدم إجراء استرداد معتمد.'
+                ))
             if tx.payment_direction == 'inbound':
                 if tx.sale_order_id.bill_state in ('paid', 'cancelled'):
                     raise ValidationError(_('الفاتورة غير قابلة للدفع.'))
@@ -71,6 +84,10 @@ class UtilityPaymentGatewayTransaction(models.Model):
                     raise ValidationError(_('مبلغ الدفع لا يمكن أن يتجاوز الرصيد المستحق.'))
             if not tx.utility_invoice_id:
                 raise ValidationError(_('يجب تحديد الفاتورة المحاسبية المحددة قبل إرسال معاملة الدفع.'))
+            if tx.utility_invoice_id.move_type != 'out_invoice':
+                raise ValidationError(_('الفاتورة المحددة ليست فاتورة تحصيل قابلة للدفع.'))
+            if tx.amount > tx.utility_invoice_id.amount_residual:
+                raise ValidationError(_('مبلغ الدفع يتجاوز المتبقي في الفاتورة المحددة.'))
             if (tx.utility_invoice_id.utility_sale_order_id != tx.sale_order_id
                     or tx.utility_invoice_id.partner_id != tx.sale_order_id.partner_id
                     or tx.utility_invoice_id.state != 'posted'):
@@ -87,6 +104,7 @@ class UtilityPaymentGatewayTransaction(models.Model):
                 'currency': tx.currency_id.name,
                 'payment_direction': tx.payment_direction,
                 'bill': tx.sale_order_id.name,
+                'invoice': tx.utility_invoice_id.name,
                 'customer': tx.customer_id.customer_number if tx.customer_id else False,
                 'callback_token': tx.access_token,
             }
@@ -112,19 +130,34 @@ class UtilityPaymentGatewayTransaction(models.Model):
                 raise ValidationError(_('يمكن تأكيد معاملات الدفع المعلقة فقط.'))
 
             order = tx.sale_order_id
+            if tx.payment_direction != 'inbound':
+                raise ValidationError(_(
+                    'الدفع الصادر لا ينفذ من مسار دفع العميل؛ استخدم إجراء استرداد معتمد.'
+                ))
             if not tx.utility_invoice_id:
                 raise ValidationError(_('يجب تحديد الفاتورة المحاسبية المحددة قبل تأكيد معاملة الدفع.'))
             self.env.cr.execute(
                 "SELECT id FROM sale_order WHERE id = %s FOR UPDATE",
                 [order.id],
             )
+            self.env.cr.execute(
+                "SELECT id FROM account_move WHERE id = %s FOR UPDATE",
+                [tx.utility_invoice_id.id],
+            )
             order.invalidate_cache(['bill_state', 'balance_due'])
+            tx.utility_invoice_id.invalidate_cache([
+                'state', 'partner_id', 'amount_residual', 'payment_state', 'move_type'])
 
             if tx.payment_direction == 'inbound':
                 if order.bill_state in ('paid', 'cancelled'):
                     raise ValidationError(_('الفاتورة غير قابلة للدفع.'))
-                if tx.amount <= 0 or tx.amount > order.balance_due:
-                    raise ValidationError(_('مبلغ الدفع غير صالح أو يتجاوز الرصيد المستحق.'))
+                if (tx.utility_invoice_id.state != 'posted'
+                        or tx.utility_invoice_id.move_type != 'out_invoice'
+                        or tx.utility_invoice_id.utility_sale_order_id != order
+                        or tx.utility_invoice_id.partner_id != order.partner_id):
+                    raise ValidationError(_('الفاتورة المحاسبية المحددة لا تخص هذه الفاتورة الكهربائية.'))
+                if tx.amount <= 0 or tx.amount > tx.utility_invoice_id.amount_residual:
+                    raise ValidationError(_('مبلغ الدفع غير صالح أو يتجاوز متبقي الفاتورة المحددة.'))
             else:
                 if tx.amount <= 0:
                     raise ValidationError(_('مبلغ الصرف يجب أن يكون أكبر من صفر.'))

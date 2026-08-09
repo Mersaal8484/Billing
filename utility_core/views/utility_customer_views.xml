@@ -92,7 +92,7 @@
                     <group>
                         <group string="معلومات الهوية والنوع">
                             <field name="owner_partner_id"/>
-                            <field name="partner_id"/>
+                            <field name="partner_id" readonly="1"/>
                             <field name="category_id" options="{'no_create': True}"/>
                             <field name="subscriber_id" options="{'no_create': True}"/>
                             <field name="is_master_account"/>

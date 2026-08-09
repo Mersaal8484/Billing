@@ -8,6 +8,7 @@ class UtilityMigrationCustomer(models.Model):
     _order = 'id asc'
 
     name = fields.Char('الاسم', required=True)
+    owner_reference = fields.Char('مرجع المالك القديم', index=True)
     mobile = fields.Char('الموبايل')
     customer_number = fields.Char('رقم المشترك', required=True)
     national_id = fields.Char('الرقم الوطني')
@@ -143,23 +144,24 @@ class UtilityMigrationCustomer(models.Model):
         except (ValueError, TypeError):
             return 0.0
 
-    def _build_partner_vals(self):
-        """Build res.partner field values from migration record."""
+    def _build_owner_partner_vals(self):
+        """Build only legal-owner identity values for ``res.partner``."""
         self.ensure_one()
-        pec_credit = self._get_pec_credit()
-        vals = {
+        return {
             'name': self.name,
             'mobile': self.mobile,
             'national_id': self.national_id,
+            'utility_owner_reference': self.owner_reference,
+        }
+
+    def _build_account_partner_vals(self):
+        """Build account-specific identity/routing data for the dedicated partner."""
+        self.ensure_one()
+        vals = {
             'region_id': self.region_id.id if self.region_id else False,
             'area_id': self.area_id.id if self.area_id else False,
-            'pec_credit': pec_credit,
-            'is_credit_raised': True if (pec_credit > 0 or self.current_balance != 0) else False,
-            'credit_raise_date': fields.Date.today() if (pec_credit > 0 or self.current_balance != 0) else False,
-            'open_balance': self.current_balance,
             'subscriber_status': 'old',
             'is_subscriber': True,
-            # تعكس حالة التفعيل الفعلية للعميل في النظام القديم
             'subscriber_active_status': 'active' if self.is_active else 'inactive',
             'char_code': self.char_code,
             'subscriber_no': self.subscriber_no or self.customer_number,
@@ -170,6 +172,10 @@ class UtilityMigrationCustomer(models.Model):
         if self.subscriber_type_id:
             vals['subscriber_id'] = self.subscriber_type_id.id
         return vals
+
+    def _build_partner_vals(self):
+        """Backward-compatible alias for owner-only values."""
+        return self._build_owner_partner_vals()
 
     def _get_or_create_private_transformer(self, partner):
         """
@@ -183,7 +189,9 @@ class UtilityMigrationCustomer(models.Model):
         name = f"محول خاص - {partner.name}"
 
         transformer = self.env['utility.transformer'].search([
-            '|', ('code', '=', code), ('name', '=', name)
+            ('company_id', '=', self.env.company.id),
+            ('is_private', '=', True),
+            ('code', '=', code),
         ], limit=1)
 
         area_or_region = self.area_id or self.region_id
@@ -203,9 +211,16 @@ class UtilityMigrationCustomer(models.Model):
         """Create or update res.partner; return the partner record."""
         self.ensure_one()
         vals = self._build_partner_vals()
-        partner = self.env['res.partner'].search(
-            [('name', '=', self.name), ('mobile', '=', self.mobile)], limit=1
-        )
+        Partner = self.env['res.partner']
+        partner = Partner.search(
+            [('utility_owner_reference', '=', self.owner_reference)], limit=1
+        ) if self.owner_reference else Partner.browse()
+        if not partner and self.national_id:
+            partner = Partner.search([('national_id', '=', self.national_id)], limit=1)
+        if not partner:
+            partner = Partner.search(
+                [('name', '=', self.name), ('mobile', '=', self.mobile)], limit=1
+            )
         if partner:
             partner.write(vals)
         else:
@@ -327,13 +342,17 @@ class UtilityMigrationCustomer(models.Model):
             }))
 
         if line_ids:
-            move = self.env['account.move'].create({
+            move_vals = {
                 'move_type': 'entry',
                 'journal_id': journal.id,
+                'partner_id': partner.id if customer else False,
                 'date': fields.Date.today(),
                 'ref': 'رصيد افتتاحي - %s' % self.customer_number,
                 'line_ids': line_ids,
-            })
+            }
+            if customer and 'utility_customer_id' in self.env['account.move']._fields:
+                move_vals['utility_customer_id'] = customer.id
+            move = self.env['account.move'].create(move_vals)
             move.action_post()
             self.opening_move_id = move.id
             if customer:
@@ -396,11 +415,23 @@ class UtilityMigrationCustomer(models.Model):
                 customer_vals['cell_id'] = transformer.feeder_id.id
 
         if customer:
-            customer.with_context(skip_opening_entry=True).write(customer_vals)
+            if customer.partner_id == partner:
+                dedicated = customer._create_dedicated_accounting_partner(
+                    partner, customer.customer_number)
+                customer_vals['partner_id'] = dedicated.id
+            else:
+                customer_vals.pop('partner_id', None)
+            customer_vals['owner_partner_id'] = partner.id
+            customer.with_context(
+                skip_opening_entry=True,
+                allow_utility_account_partner_change=True,
+            ).write(customer_vals)
         else:
             customer = self.env['utility.customer'].with_context(skip_opening_entry=True).create(customer_vals)
 
         self.created_customer_id = customer.id
+        account_partner = customer.partner_id
+        account_partner.write(self._build_account_partner_vals())
 
         # 2. Create / link meter
         status_active = self.env['utility.meter.status'].search([('code', '=', 'ACTIVE')], limit=1)
@@ -455,7 +486,7 @@ class UtilityMigrationCustomer(models.Model):
                 })
 
         # 4. Create opening balance journal entry
-        self._create_opening_balance_entry(partner, customer)
+        self._create_opening_balance_entry(account_partner, customer)
 
     # -------------------------------------------------------------------------
     # Main Actions
@@ -525,22 +556,12 @@ class UtilityMigrationCustomer(models.Model):
                     'يرجى إعادة رفع البيانات أولاً.'
                 ) % rec.name)
 
-            # مزامنة أي تعديلات يدوية قام بها المستخدم على بطاقة جهة الاتصال (مثل الرصيد، رقم العداد) إلى سجل التهيئة
+            # The linked partner is the legal owner. Account-specific values
+            # must come from this migration row, never from the owner contact.
             partner = rec.created_partner_id
-            rec.write({
-                 'meter_number': partner.meter_number or rec.meter_number,
-                 'meter_reading': partner.meter_reading or rec.meter_reading,
-                 'opening_reading': partner.opening_reading or rec.opening_reading,
-                 'previous_balance': str(partner.pec_credit) if partner.pec_credit else rec.previous_balance,
-                 'current_balance': partner.open_balance if partner.open_balance else rec.current_balance,
-                 'customer_number': partner.subscriber_no or rec.customer_number,
-                 'name': partner.name or rec.name,
-                 'mobile': partner.mobile or rec.mobile,
-                 'national_id': partner.national_id or rec.national_id,
-            })
 
-            # تحديث بيانات الشريك وتعيين حالة التفعيل قبل إنشاء الحساب
-            partner.write(rec._build_partner_vals())
+            # Update only legal-owner identity before creating the account.
+            partner.write(rec._build_owner_partner_vals())
 
             rec._create_customer_account(partner)
             rec.is_active = True

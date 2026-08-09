@@ -1,4 +1,5 @@
 from odoo import api, fields, models, _
+from odoo.exceptions import ValidationError
 
 
 class UtilityTransformer(models.Model):
@@ -54,6 +55,10 @@ class UtilityTransformer(models.Model):
         string='عقود المشتركين',
         help='عقود المشتركين المغذاة من هذا المحول'
     )
+    private_customer_id = fields.Many2one(
+        'utility.customer', string='الحساب الخاص المالك', readonly=True,
+        index=True, copy=False,
+        help='المحول الخاص لا يجوز أن يرتبط بأكثر من حساب كهرباء واحد.')
     route_ids = fields.One2many(
         'utility.route', 'transformer_id',
         string='مسارات التوزيع',
@@ -71,6 +76,20 @@ class UtilityTransformer(models.Model):
         ('unique_transformer_code_company', 'unique(code, company_id)',
          'رمز المحول يجب أن يكون فريداً!'),
     ]
+
+    @api.constrains('is_private', 'private_customer_id', 'customer_ids')
+    def _check_private_transformer_owner(self):
+        for transformer in self:
+            if transformer.is_private and len(transformer.customer_ids) > 1:
+                raise ValidationError(
+                    _('المحول الخاص %s لا يمكن ربطه بأكثر من حساب كهرباء واحد.')
+                    % transformer.display_name
+                )
+            if (transformer.private_customer_id
+                    and transformer.private_customer_id not in transformer.customer_ids):
+                raise ValidationError(
+                    _('الحساب المحدد كمُالك للمحول الخاص غير مرتبط به فعليًا.')
+                )
 
     # ===== Compute =====
     @api.depends('customer_ids')
