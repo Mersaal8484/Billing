@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_reading_commercial_review_tree" model="ir.ui.view">
+        <field name="name">utility.reading.commercial.review.tree</field>
+        <field name="model">utility.reading</field>
+        <field name="arch" type="xml">
+            <tree string="مراجعة قراءات الفواتير التجارية"
+                  decoration-warning="state == 'under_review'"
+                  decoration-success="state == 'approved'"
+                  decoration-muted="state == 'draft'">
+                <field name="reading_id" string="رقم القراءة"/>
+                <field name="reading_date" string="تاريخ القراءة"/>
+                <field name="account_id" string="المشترك"/>
+                <field name="meter_id" string="العداد"/>
+                <field name="previous_reading" string="القراءة السابقة"/>
+                <field name="reading_value" string="القراءة الحالية"/>
+                <field name="consumption" string="الاستهلاك"/>
+                <field name="consumption_alert" string="تحليل الاستهلاك" widget="badge"/>
+                <field name="image_state" string="حالة الصورة" widget="badge"/>
+                <field name="state" string="الحالة" widget="badge"/>
+                <field name="reviewer_id" string="المراجع"/>
+                <button name="action_approve" type="object" string="اعتماد"
+                        icon="fa-check" class="text-success"
+                        groups="utility_core.group_utility_auditor"
+                        attrs="{'invisible': [('state', '!=', 'under_review')]}"/>
+                <button name="action_reject" type="object" string="رفض"
+                        icon="fa-times" class="text-danger"
+                        groups="utility_core.group_utility_auditor"
+                        attrs="{'invisible': [('state', '!=', 'under_review')]}"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_utility_reading_commercial_review_search" model="ir.ui.view">
+        <field name="name">utility.reading.commercial.review.search</field>
+        <field name="model">utility.reading</field>
+        <field name="arch" type="xml">
+            <search string="بحث في قراءات الفواتير التجارية">
+                <field name="reading_id"/>
+                <field name="account_id"/>
+                <field name="meter_id"/>
+                <filter name="pending" string="قيد المراجعة"
+                        domain="[('state', '=', 'under_review')]"/>
+                <filter name="approved" string="معتمدة"
+                        domain="[('state', '=', 'approved')]"/>
+                <filter name="rejected" string="مرفوضة"
+                        domain="[('state', '=', 'draft'), ('rejection_reason', '!=', False)]"/>
+                <filter name="high_consumption" string="استهلاك مرتفع"
+                        domain="[('consumption_alert', '=', 'high')]"/>
+                <filter name="without_image" string="بدون صورة"
+                        domain="[('image_state', '=', 'none')]"/>
+                <separator/>
+                <filter name="group_account" string="المشترك"
+                        context="{'group_by': 'account_id'}"/>
+                <filter name="group_state" string="الحالة"
+                        context="{'group_by': 'state'}"/>
+                <filter name="group_date" string="تاريخ القراءة"
+                        context="{'group_by': 'reading_date'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_utility_reading_commercial_review_form" model="ir.ui.view">
+        <field name="name">utility.reading.commercial.review.form</field>
+        <field name="model">utility.reading</field>
+        <field name="inherit_id" eval="False"/>
+        <field name="arch" type="xml">
+            <form string="مراجعة الفاتورة التجارية">
+                <field name="reading_purpose" invisible="1"/>
+                <header>
+                    <button name="action_approve" type="object" string="اعتماد القراءة"
+                            class="oe_highlight"
+                            attrs="{'invisible': [('state', '!=', 'under_review')]}"
+                            groups="utility_core.group_utility_auditor"/>
+                    <button name="action_reject" type="object" string="رفض القراءة"
+                            class="btn-danger"
+                            attrs="{'invisible': [('state', 'not in', ('under_review', 'approved'))]}"
+                            groups="utility_core.group_utility_auditor"/>
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,under_review,approved,billed"/>
+                </header>
+                <sheet>
+                    <div class="o_utility_commercial_review_image text-center mb-3"
+                         style="min-height: 230px; padding: 8px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px;">
+                        <field name="meter_image" widget="image" nolabel="1" readonly="1"
+                               class="o_utility_commercial_review_main_image"
+                               options="{'size': [450, 325]}"/>
+                        <div class="text-muted mt-2">صورة العداد المستخدمة في مراجعة الفاتورة التجارية</div>
+                    </div>
+                    <group string="ملخص القراءة">
+                        <group>
+                            <field name="reading_id" readonly="1"/>
+                            <field name="account_id" readonly="1"/>
+                            <field name="meter_id" readonly="1"/>
+                            <field name="reading_date" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="previous_reading" readonly="1"/>
+                            <field name="reading_value" readonly="1"/>
+                            <field name="consumption" readonly="1" class="text-success"/>
+                            <field name="consumption_alert" widget="badge" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="المراجعة">
+                        <group>
+                            <field name="image_state" widget="badge" readonly="1"/>
+                            <field name="reviewer_id" readonly="1"/>
+                            <field name="review_date" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="review_notes" readonly="1"/>
+                            <field name="rejection_reason" readonly="1"/>
+                        </group>
+                    </group>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" widget="mail_followers"/>
+                    <field name="activity_ids" widget="mail_activity"/>
+                    <field name="message_ids" widget="mail_thread"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_utility_reading_commercial_review" model="ir.actions.act_window">
+        <field name="name">مراجعة الفواتير التجارية</field>
+        <field name="res_model">utility.reading</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_utility_reading_commercial_review_search"/>
+        <field name="domain">[('is_billable', '=', True), ('state', 'in', ('under_review', 'approved', 'draft'))]</field>
+        <field name="context">{'search_default_pending': 1}</field>
+    </record>
+
+    <record id="action_utility_reading_commercial_review_tree" model="ir.actions.act_window.view">
+        <field name="sequence" eval="1"/>
+        <field name="view_mode">tree</field>
+        <field name="view_id" ref="view_utility_reading_commercial_review_tree"/>
+        <field name="act_window_id" ref="action_utility_reading_commercial_review"/>
+    </record>
+
+    <record id="action_utility_reading_commercial_review_form" model="ir.actions.act_window.view">
+        <field name="sequence" eval="2"/>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_utility_reading_commercial_review_form"/>
+        <field name="act_window_id" ref="action_utility_reading_commercial_review"/>
+    </record>
+
+    <menuitem id="menu_utility_reading_commercial_review"
+              name="مراجعة الفواتير التجارية"
+              parent="utility_billing.menu_utility_readings"
+              sequence="6"
+              action="action_utility_reading_commercial_review"
+              groups="utility_core.group_utility_auditor,utility_core.group_utility_billing_manager"/>
+</odoo>

@@ -31,6 +31,7 @@ debt management, collections, and online payment gateway integration.
         'views/utility_sale_order_report.xml',
         'views/utility_customer_views.xml',
         'views/account_move_views.xml',
+        'views/commercial_invoice_review_views.xml',
         'views/account_payment_views.xml',
         'views/account_payment_report.xml',
         'views/utility_customer_statement_views.xml',
@@ -64,4 +65,3 @@ debt management, collections, and online payment gateway integration.
         ],
     },
 }
-
