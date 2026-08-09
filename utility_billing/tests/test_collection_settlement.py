@@ -1,6 +1,5 @@
 from odoo.exceptions import ValidationError
 from odoo.tests.common import TransactionCase
-from psycopg2.errors import UniqueViolation
 
 
 class TestUtilityCollectionSettlement(TransactionCase):
@@ -70,16 +69,15 @@ class TestUtilityCollectionSettlement(TransactionCase):
         )
         self.assertAlmostEqual(settlement.surplus_amount, 0.0, places=2)
 
-    def test_collection_cannot_be_added_to_two_settlements(self):
+    def test_collection_can_be_added_to_two_settlements(self):
         collection = self._posted_collection()
         first = self._settlement(collection, collection.amount)
         first_line = first.line_ids
 
-        with self.cr.savepoint():
-            with self.assertRaises(UniqueViolation):
-                self._settlement(collection, collection.amount)
+        second = self._settlement(collection, collection.amount)
 
         self.assertEqual(first_line.collection_id, collection)
+        self.assertEqual(second.line_ids.collection_id, collection)
 
     def test_collection_settlement_requires_same_collector(self):
         collection = self._posted_collection()

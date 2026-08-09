@@ -237,8 +237,9 @@ class UtilityCollectionSettlementLine(models.Model):
         related='settlement_id.currency_id', store=True, readonly=True)
 
     _sql_constraints = [
-        ('settlement_collection_uniq', 'unique(collection_id)',
-         'لا يجوز إدخال التحصيل نفسه في أكثر من تسوية.'),
+        ('settlement_collection_uniq',
+         'unique(settlement_id, collection_id)',
+         'لا يجوز إدخال التحصيل نفسه أكثر من مرة في التسوية نفسها.'),
     ]
 
 
@@ -378,9 +379,11 @@ class UtilityCollectionSettlement(models.Model):
                     raise ValidationError(_('كل التحصيلات يجب أن تخص المحصل نفسه.'))
                 if collection.company_id != record.company_id or collection.currency_id != record.currency_id:
                     raise ValidationError(_('الشركة أو العملة لا تطابق التسوية.'))
-                if line.amount <= 0 or line.amount > collection.amount:
+                available = collection.remaining_amount
+                if line.amount <= 0 or line.amount > available:
                     raise ValidationError(_('مبلغ بند التسوية غير صحيح.'))
-                line.actual_settled_amount = min(line.amount, remaining_declared)
+                line.actual_settled_amount = min(
+                    line.amount, remaining_declared, available)
                 remaining_declared = max(remaining_declared - line.actual_settled_amount, 0.0)
             record.state = 'confirmed'
         return True

@@ -336,6 +336,33 @@ class AccountPayment(models.Model):
                 Notification.create_log(
                     'payment_received', body, record=payment, customer=order.customer_id,
                     partner=payment.partner_id, channel='sms', subject=_('استلام دفعة كهرباء'))
+
+    def _create_field_collection_from_allocation(self, allocation):
+        """Create the custody record for a posted field-cash payment once.
+
+        The payment and its exact invoice allocation remain the accounting
+        source of truth; the collection is the operational custody record used
+        by collector settlements and bank deposits.
+        """
+        self.ensure_one()
+        if self.utility_payment_method != 'cash' or not self.collector_id:
+            return self.env['utility.collection']
+        collection_model = self.env['utility.collection']
+        existing = collection_model.search([('payment_id', '=', self.id)], limit=1)
+        if existing:
+            return existing
+        collection = collection_model.create({
+            'payment_id': self.id,
+            'allocation_id': allocation.id,
+            'collector_id': self.collector_id.id,
+            'collection_method': 'field_collector',
+            'source': 'manual',
+            'external_reference': self.name,
+        })
+        collection.action_confirm()
+        collection.action_post()
+        return collection
+
     def action_post(self):
         # FIX-15: منع ترحيل دفعة على فاتورة ملغاة أو مدفوعة بالكامل
         for payment in self.filtered('utility_sale_order_id'):
@@ -375,13 +402,14 @@ class AccountPayment(models.Model):
                 payment.move_id.write({'utility_customer_id': payment.utility_customer_id.id})
         self.filtered('service_charge_id').mapped('service_charge_id').action_mark_paid_from_payment()
         for payment in self.filtered('utility_sale_order_id'):
-            self.env['utility.payment.allocation'].with_context(
+            allocation = self.env['utility.payment.allocation'].with_context(
                 utility_payment_source=(
                     'gateway' if payment.utility_payment_method == 'electronic'
                     else 'bank' if payment.utility_payment_method == 'bank'
                     else 'cashier'
                 )
             ).allocate_payment(payment)
+            payment._create_field_collection_from_allocation(allocation)
         self.filtered('utility_sale_order_id')._create_payment_notification()
         return res
 

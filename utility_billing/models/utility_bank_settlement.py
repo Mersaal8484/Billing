@@ -1,4 +1,4 @@
-from odoo import api, fields, models, _
+from odoo import api, fields, models, _, Command
 from odoo.exceptions import ValidationError
 from odoo.tools.float_utils import float_compare
 
@@ -189,6 +189,61 @@ class UtilityBankSettlement(models.Model):
             raise ValidationError(_('يجب أن يكون لحركة كشف البنك سطر مقابل وحيد.'))
         return liquidity, counterpart
 
+    def _create_exact_partial_reconcile(self, debit_line, credit_line, amount):
+        """Reconcile exactly ``amount`` between one source and the bank line.
+
+        ``account.move.line.reconcile()`` matches all available lines by order,
+        which is unsafe when one bank deposit is allocated to several source
+        settlements.  Creating the partial explicitly preserves the audit
+        allocation on the bank settlement line.
+        """
+        self.ensure_one()
+        rounding = self.currency_id.rounding
+        for move_line in (debit_line, credit_line):
+            if move_line.move_id.state != 'posted' or move_line.reconciled:
+                raise ValidationError(_('لا يمكن مطابقة سطر محاسبي مرحّل أو مسدد.'))
+            if move_line.account_id != debit_line.account_id:
+                raise ValidationError(_('سطرا المطابقة يجب أن يكونا على نفس الحساب.'))
+        if float_compare(amount, 0.0, precision_rounding=rounding) <= 0:
+            raise ValidationError(_('مبلغ المطابقة يجب أن يكون أكبر من صفر.'))
+        if float_compare(amount, debit_line.amount_residual,
+                         precision_rounding=rounding) > 0:
+            raise ValidationError(_('المبلغ المخصص أكبر من رصيد سطر المصدر.'))
+        if float_compare(amount, -credit_line.amount_residual,
+                         precision_rounding=rounding) > 0:
+            raise ValidationError(_('المبلغ المخصص أكبر من رصيد سطر البنك.'))
+
+        company_currency = self.company_id.currency_id
+        partial = self.env['account.partial.reconcile'].with_context(
+            check_move_validity=False,
+        ).create({
+            'debit_move_id': debit_line.id,
+            'credit_move_id': credit_line.id,
+            'amount': amount,
+            'debit_amount_currency': amount if debit_line.currency_id == company_currency else 0.0,
+            'credit_amount_currency': amount if credit_line.currency_id == company_currency else 0.0,
+        })
+        (debit_line | credit_line).invalidate_cache()
+
+        involved_lines = (debit_line | credit_line)._all_reconciled_lines()
+        if involved_lines and all(
+                company_currency.is_zero(line.amount_residual)
+                for line in involved_lines):
+            involved_partials = (
+                involved_lines.matched_debit_ids
+                | involved_lines.matched_credit_ids
+            )
+            self.env['account.full.reconcile'].with_context(
+                skip_invoice_sync=True,
+                skip_invoice_line_sync=True,
+                skip_account_move_synchronization=True,
+                check_move_validity=False,
+            ).create({
+                'partial_reconcile_ids': [Command.set(involved_partials.ids)],
+                'reconciled_line_ids': [Command.set(involved_lines.ids)],
+            })
+        return partial
+
     def action_reconcile(self):
         for record in self:
             if record.state != 'waiting_bank_match' or not record.statement_line_id:
@@ -215,24 +270,18 @@ class UtilityBankSettlement(models.Model):
             _liquidity, bank_counterpart = record._get_statement_counterpart(
                 line, clearing)
 
-            source_lines = self.env['account.move.line']
-            for source in record.line_ids.mapped('collection_settlement_id'):
+            if not record.line_ids:
+                raise ValidationError(_('لا توجد تخصيصات مصدر للإيداع.'))
+            for allocation in record.line_ids.sorted('id'):
+                source = allocation.collection_settlement_id
                 source_line = source.account_move_id.line_ids.filtered(
                     lambda aml: aml.account_id == clearing and not aml.reconciled)
-                if not source_line:
+                if len(source_line) != 1:
                     raise ValidationError(_(
-                        'لا يوجد رصيد مقاصة إيداع غير مسدد في تسوية المصدر %s.'
+                        'يجب أن يحتوي مصدر %s على سطر مقاصة إيداع غير مسدد واحد.'
                     ) % source.name)
-                source_lines |= source_line
-            if not source_lines:
-                raise ValidationError(_('لا توجد سطور مقاصة إيداع للتسوية.'))
-            if float_compare(
-                    sum(source_lines.mapped('amount_residual')),
-                    record.deposited_amount,
-                    precision_rounding=record.currency_id.rounding) < 0:
-                raise ValidationError(_('الرصيد المتبقي للمصادر أقل من مبلغ البنك.'))
-
-            (source_lines | bank_counterpart).reconcile()
+                record._create_exact_partial_reconcile(
+                    source_line, bank_counterpart, allocation.allocated_amount)
             line.invalidate_cache(['is_reconciled', 'amount_residual'])
             if not line.is_reconciled:
                 raise ValidationError(_('لم تكتمل تسوية سطر كشف البنك.'))
