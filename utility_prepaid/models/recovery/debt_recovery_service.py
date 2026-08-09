@@ -30,7 +30,7 @@ class UtilityPrepaidDebtRecovery(models.Model):
         ('draft', 'مسودة'),
         ('applied', 'مطبق'),
         ('cancelled', 'ملغى'),
-    ], 'الحالة', default='draft', tracking=True, index=True)
+    ], 'الحالة', default='draft', index=True)
 
     currency_id = fields.Many2one('res.currency', related='company_id.currency_id', store=True)
     notes = fields.Text('ملاحظات')
