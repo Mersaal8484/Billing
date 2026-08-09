@@ -21,7 +21,7 @@ class UtilityBillingAPI(http.Controller):
             # and ir.rules remain the single authorization source of truth.
             return Customer.search([])
         return Customer.sudo().search([
-            ('owner_partner_id', '=', user.partner_id.id),
+            ('partner_id', '=', user.partner_id.id),
         ])
 
     def _authorize_account(self, customer_number):

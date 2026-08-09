@@ -1,10 +1,6 @@
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
 
-import re
-
-PHONE_9_RE = re.compile(r'^\d{9}$')
-
 
 class UtilityCustomerWizard(models.TransientModel):
     _name = 'utility.customer.wizard'
@@ -30,7 +26,7 @@ class UtilityCustomerWizard(models.TransientModel):
         return res
 
     name = fields.Char(string='اسم المشترك / الجهة', required=True)
-    mobile = fields.Char(string='رقم الجوال', required=True, size=9)
+    mobile = fields.Char(string='رقم الجوال', size=9)
     national_id = fields.Char(string='الرقم الوطني / الهوية')
     
     street = fields.Char(string='العنوان (الشارع)')
@@ -282,14 +278,6 @@ class UtilityCustomerWizard(models.TransientModel):
         substation = self.transformer_feeder_id.substation_id
         if substation and substation.zone_id:
             self.transformer_zone_id = substation.zone_id
-
-    @api.constrains('mobile')
-    def _check_phone_9_digits(self):
-        for rec in self:
-            if rec.mobile and not PHONE_9_RE.match(rec.mobile):
-                raise ValidationError(
-                    'رقم الجوال يجب أن يتكون من 9 أرقام فقط، بدون مفتاح دولة (+967/00) أو شرطات.'
-                )
 
     @api.constrains('contract_template_id', 'category_id', 'subscriber_id', 'utility_region_id', 'utility_area_id')
     def _check_wizard_contract_template_compatibility(self):

@@ -31,6 +31,7 @@
                             <field name="mu_allim_product_id"/>
                             <field name="cleaning_product_id"/>
                             <field name="local_fee_product_id"/>
+                            <field name="private_transformer_fee_product_id"/>
                         </group>
                     </group>
                 </page>

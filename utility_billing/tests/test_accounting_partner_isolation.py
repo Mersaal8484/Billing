@@ -21,38 +21,37 @@ class TestUtilityAccountingPartnerIsolation(TransactionCase):
             'category_id': cls.category.id,
         })
 
-    def _create_customer(self, suffix, owner=None):
-        owner = owner or self.Partner.create({'name': 'مالك اختبار %s' % suffix})
+    def _create_customer(self, suffix, partner=None):
+        partner = partner or self.Partner.create({'name': 'مالك اختبار %s' % suffix})
         customer = self.Customer.create({
             'customer_number': 'ACC-ISO-%s' % suffix,
-            'partner_id': owner.id,
+            'partner_id': partner.id,
             'category_id': self.category.id,
             'subscriber_id': self.subscriber.id,
         })
-        return owner, customer
+        return partner, customer
 
     def test_accounts_get_distinct_accounting_partners(self):
-        owner = self.Partner.create({'name': 'مالك حسابين للاختبار'})
-        _, first = self._create_customer('001', owner)
-        _, second = self._create_customer('002', owner)
+        first_partner = self.Partner.create({'name': 'عبدالله', 'mobile': '711111111', 'national_id': '123'})
+        second_partner = self.Partner.create({'name': 'عبدالله', 'mobile': '711111111', 'national_id': '123'})
+        _, first = self._create_customer('001', first_partner)
+        _, second = self._create_customer('002', second_partner)
 
-        self.assertEqual(first.owner_partner_id, owner)
-        self.assertEqual(second.owner_partner_id, owner)
+        self.assertEqual(first.partner_id, first_partner)
+        self.assertEqual(second.partner_id, second_partner)
         self.assertNotEqual(first.partner_id, second.partner_id)
-        self.assertNotEqual(first.partner_id, owner)
-        self.assertNotEqual(second.partner_id, owner)
 
-    def test_owner_identity_and_opening_balance_are_not_cloned(self):
-        owner = self.Partner.create({
-            'name': 'مالك مع رصيد افتتاحي للاختبار',
+    def test_account_partner_is_the_single_identity_and_opening_balance(self):
+        partner = self.Partner.create({
+            'name': 'عميل مع رصيد افتتاحي للاختبار',
             'open_balance': 100000.0,
         })
-        _, customer = self._create_customer('009', owner)
+        _, customer = self._create_customer('009', partner)
 
-        self.assertEqual(customer.owner_partner_id, owner)
-        self.assertEqual(customer.partner_id.open_balance, 0.0)
-        self.assertTrue(owner.has_utility_customer)
-        action = owner.action_open_utility_customer_registration()
+        self.assertEqual(customer.partner_id, partner)
+        self.assertEqual(customer.partner_id.open_balance, 100000.0)
+        self.assertTrue(partner.has_utility_customer)
+        action = partner.action_open_utility_customer_registration()
         self.assertEqual(action.get('res_id'), customer.id)
 
     def test_existing_accounting_partner_cannot_be_reused(self):

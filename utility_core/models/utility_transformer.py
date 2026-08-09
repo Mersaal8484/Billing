@@ -138,6 +138,7 @@ class UtilityTransformer(models.Model):
     # ===== ORM Overrides =====
     @api.model_create_multi
     def create(self, vals_list):
+        print("DEBUG-TF create called, vals:", vals_list)
         # Auto-generate the code from dedicated, fully separated sequences:
         # private transformers (محول خاص) use utility.transformer.private
         # (PRV/...), regular transformers use utility.transformer (TRF/...).

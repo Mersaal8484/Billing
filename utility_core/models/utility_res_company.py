@@ -87,6 +87,10 @@ class ResCompany(models.Model):
         'product.product',
         string='منتج الخصم والإعفاءات',
         check_company=True)
+    private_transformer_fee_product_id = fields.Many2one(
+        'product.product',
+        string='منتج رسوم المحول الخاص',
+        check_company=True)
 
     @api.model
     def _init_utility_company_defaults(self):
@@ -130,6 +134,10 @@ class ResCompany(models.Model):
                 prod = self.env.ref('utility_core.utility_product_municipality', raise_if_not_found=False)
                 if prod:
                     vals['local_fee_product_id'] = prod.id
+            if not company.private_transformer_fee_product_id:
+                prod = self.env.ref('utility_core.utility_product_private_transformer_fee', raise_if_not_found=False)
+                if prod:
+                    vals['private_transformer_fee_product_id'] = prod.id
 
             if not company.account_journal_payment_debit_account_id or not company.account_journal_payment_credit_account_id:
                 outstanding_acc = self.env['account.account'].search([

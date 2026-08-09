@@ -1,9 +1,5 @@
 from odoo import api, fields, models, _
-from odoo.exceptions import UserError, ValidationError
-
-import re
-
-PHONE_9_RE = re.compile(r'^\d{9}$')
+from odoo.exceptions import UserError
 
 
 class SaleOrderType(models.Model):
@@ -105,8 +101,6 @@ class ResPartner(models.Model):
     def _compute_has_utility_customer(self):
         for partner in self:
             customer = self.env['utility.customer'].search([
-                '|',
-                ('owner_partner_id', '=', partner.id),
                 ('partner_id', '=', partner.id),
             ], limit=1)
             partner.has_utility_customer = bool(customer)
@@ -114,19 +108,14 @@ class ResPartner(models.Model):
     def _compute_utility_balances(self):
         for partner in self:
             customers = self.env['utility.customer'].search([
-                ('owner_partner_id', '=', partner.id),
+                ('partner_id', '=', partner.id),
             ])
-            if not customers:
-                customers = self.env['utility.customer'].search([
-                    ('partner_id', '=', partner.id),
-                ])
             if customers:
                 ledger_balance = sum(customers.mapped('accounting_balance'))
                 has_posted_opening = any(c.opening_move_id for c in customers)
                 if has_posted_opening:
                     partner.utility_postpaid_balance = ledger_balance
                 else:
-                    # Count the legal owner's legacy opening balance once.
                     partner.utility_postpaid_balance = ledger_balance + partner.open_balance
             else:
                 partner.utility_postpaid_balance = partner.open_balance
@@ -148,9 +137,6 @@ class ResPartner(models.Model):
     char_code = fields.Char(string="الحرف")
     subscriber_no = fields.Char(string="الرقم الجديد")
     national_id = fields.Char(string="الهوية الوطنية")
-    utility_owner_reference = fields.Char(
-        string='مرجع المالك القديم', index=True,
-        help='معرف ثابت من النظام السابق لربط عدة حسابات كهرباء بنفس المالك.')
     meter_number = fields.Char(string="رقم العداد")
     meter_reading = fields.Integer(string="قراءة العداد في النظام")
     opening_reading = fields.Integer(string="قراءة الافتتاح")
@@ -192,12 +178,8 @@ class ResPartner(models.Model):
 
         # 1. حساب مشترك موجود بالفعل
         customers = self.env['utility.customer'].search([
-            ('owner_partner_id', '=', self.id),
+            ('partner_id', '=', self.id),
         ])
-        if not customers:
-            customers = self.env['utility.customer'].search([
-                ('partner_id', '=', self.id),
-            ])
         if len(customers) == 1:
             return {
                 'name': _('حساب المشترك'),
@@ -216,7 +198,7 @@ class ResPartner(models.Model):
                 'view_mode': 'tree,form',
                 'domain': [('id', 'in', customers.ids)],
                 'target': 'current',
-                'context': {'default_owner_partner_id': self.id},
+                'context': {'default_partner_id': self.id},
             }
 
         # 2. سجل تهيئة مرتبط وبانتظار التفعيل — تفعيل تلقائي بدون wizard
@@ -284,12 +266,7 @@ class ResPartner(models.Model):
             partner.last_payment_date = False
             if not partner.id:
                 continue
-            customers = self.env['utility.customer'].search([
-                ('owner_partner_id', '=', partner.id),
-            ])
-            partner_ids = customers.mapped('partner_id').ids
-            if not partner_ids:
-                partner_ids = [partner.id]
+            partner_ids = [partner.id]
             payment = self.env['account.payment'].search([
                 ('partner_id', 'in', partner_ids),
                 ('state', '=', 'posted'),
@@ -304,12 +281,7 @@ class ResPartner(models.Model):
             partner.last_invoice_date = False
             if not partner.id:
                 continue
-            customers = self.env['utility.customer'].search([
-                ('owner_partner_id', '=', partner.id),
-            ])
-            partner_ids = customers.mapped('partner_id').ids
-            if not partner_ids:
-                partner_ids = [partner.id]
+            partner_ids = [partner.id]
             invoice = self.env['account.move'].search([
                 ('partner_id', 'in', partner_ids),
                 ('move_type', 'in', ('out_invoice', 'out_refund')),
@@ -364,15 +336,3 @@ class ResPartner(models.Model):
         self.env.cr.execute(query, params)
         res = self.env.cr.fetchone()
         return res[0] or 0.0
-
-    @api.constrains('phone', 'mobile')
-    def _check_phone_9_digits(self):
-        for partner in self:
-            if partner.phone and not PHONE_9_RE.match(partner.phone):
-                raise ValidationError(
-                    'رقم الهاتف يجب أن يتكون من 9 أرقام فقط، بدون مفتاح دولة (+967/00) أو شرطات.'
-                )
-            if partner.mobile and not PHONE_9_RE.match(partner.mobile):
-                raise ValidationError(
-                    'رقم الجوال يجب أن يتكون من 9 أرقام فقط، بدون مفتاح دولة (+967/00) أو شرطات.'
-                )

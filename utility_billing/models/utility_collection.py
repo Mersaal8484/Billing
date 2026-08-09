@@ -23,12 +23,9 @@ class UtilityCollection(models.Model):
     utility_customer_id = fields.Many2one(
         'utility.customer', related='payment_id.utility_customer_id',
         store=True, readonly=True)
-    owner_partner_id = fields.Many2one(
-        'res.partner', related='utility_customer_id.owner_partner_id',
-        store=True, readonly=True)
-    accounting_partner_id = fields.Many2one(
+    partner_id = fields.Many2one(
         'res.partner', related='utility_customer_id.partner_id',
-        store=True, readonly=True)
+        string='العميل / الشريك المحاسبي', store=True, readonly=True)
     sale_order_id = fields.Many2one(
         'sale.order', related='payment_id.utility_sale_order_id',
         store=True, readonly=True)

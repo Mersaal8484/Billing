@@ -50,7 +50,7 @@
                             <field name="allocation_id"/>
                             <field name="utility_customer_id"/>
                             <field name="invoice_id"/>
-                            <field name="accounting_partner_id"/>
+                            <field name="partner_id"/>
                         </group>
                     </group>
                     <group string="المبالغ">

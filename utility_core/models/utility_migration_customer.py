@@ -8,7 +8,9 @@ class UtilityMigrationCustomer(models.Model):
     _order = 'id asc'
 
     name = fields.Char('الاسم', required=True)
-    owner_reference = fields.Char('مرجع المالك القديم', index=True)
+    owner_reference = fields.Char(
+        'مرجع المالك القديم', index=True,
+        help='بيانات تاريخية للاستيراد فقط؛ لا تستخدم لمطابقة أو دمج حسابات.')
     mobile = fields.Char('الموبايل')
     customer_number = fields.Char('رقم المشترك', required=True)
     national_id = fields.Char('الرقم الوطني')
@@ -144,20 +146,13 @@ class UtilityMigrationCustomer(models.Model):
         except (ValueError, TypeError):
             return 0.0
 
-    def _build_owner_partner_vals(self):
-        """Build only legal-owner identity values for ``res.partner``."""
+    def _build_customer_partner_vals(self):
+        """Build the single dedicated partner for this electricity account."""
         self.ensure_one()
-        return {
+        vals = {
             'name': self.name,
             'mobile': self.mobile,
             'national_id': self.national_id,
-            'utility_owner_reference': self.owner_reference,
-        }
-
-    def _build_account_partner_vals(self):
-        """Build account-specific identity/routing data for the dedicated partner."""
-        self.ensure_one()
-        vals = {
             'region_id': self.region_id.id if self.region_id else False,
             'area_id': self.area_id.id if self.area_id else False,
             'subscriber_status': 'old',
@@ -174,8 +169,8 @@ class UtilityMigrationCustomer(models.Model):
         return vals
 
     def _build_partner_vals(self):
-        """Backward-compatible alias for owner-only values."""
-        return self._build_owner_partner_vals()
+        """Backward-compatible name for the canonical account-partner builder."""
+        return self._build_customer_partner_vals()
 
     def _get_or_create_private_transformer(self, partner):
         """
@@ -208,19 +203,15 @@ class UtilityMigrationCustomer(models.Model):
         return transformer
 
     def _upsert_partner(self):
-        """Create or update res.partner; return the partner record."""
+        """Create or update only this row's dedicated partner.
+
+        Identity fields are never used to find another account partner.  The
+        migration row itself is the idempotency boundary.
+        """
         self.ensure_one()
         vals = self._build_partner_vals()
         Partner = self.env['res.partner']
-        partner = Partner.search(
-            [('utility_owner_reference', '=', self.owner_reference)], limit=1
-        ) if self.owner_reference else Partner.browse()
-        if not partner and self.national_id:
-            partner = Partner.search([('national_id', '=', self.national_id)], limit=1)
-        if not partner:
-            partner = Partner.search(
-                [('name', '=', self.name), ('mobile', '=', self.mobile)], limit=1
-            )
+        partner = self.created_partner_id
         if partner:
             partner.write(vals)
         else:
@@ -415,13 +406,11 @@ class UtilityMigrationCustomer(models.Model):
                 customer_vals['cell_id'] = transformer.feeder_id.id
 
         if customer:
-            if customer.partner_id == partner:
-                dedicated = customer._create_dedicated_accounting_partner(
-                    partner, customer.customer_number)
-                customer_vals['partner_id'] = dedicated.id
-            else:
-                customer_vals.pop('partner_id', None)
-            customer_vals['owner_partner_id'] = partner.id
+            if customer.partner_id != partner:
+                raise UserError(_(
+                    'الحساب %s مرتبط بشريك مخصص مختلف؛ لم يتم تغيير تاريخه المحاسبي.'
+                ) % customer.customer_number)
+            customer_vals.pop('partner_id', None)
             customer.with_context(
                 skip_opening_entry=True,
                 allow_utility_account_partner_change=True,
@@ -431,7 +420,7 @@ class UtilityMigrationCustomer(models.Model):
 
         self.created_customer_id = customer.id
         account_partner = customer.partner_id
-        account_partner.write(self._build_account_partner_vals())
+        account_partner.write(self._build_customer_partner_vals())
 
         # 2. Create / link meter
         status_active = self.env['utility.meter.status'].search([('code', '=', 'ACTIVE')], limit=1)
@@ -556,12 +545,9 @@ class UtilityMigrationCustomer(models.Model):
                     'يرجى إعادة رفع البيانات أولاً.'
                 ) % rec.name)
 
-            # The linked partner is the legal owner. Account-specific values
-            # must come from this migration row, never from the owner contact.
             partner = rec.created_partner_id
 
-            # Update only legal-owner identity before creating the account.
-            partner.write(rec._build_owner_partner_vals())
+            partner.write(rec._build_customer_partner_vals())
 
             rec._create_customer_account(partner)
             rec.is_active = True

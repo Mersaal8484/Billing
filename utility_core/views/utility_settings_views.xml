@@ -338,6 +338,15 @@
                                 </div>
                             </div>
                         </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_right_pane">
+                                <label for="private_transformer_fee_product_id"/>
+                                <div class="text-muted">منتج رسوم المحول الخاص (يُضاف تلقائياً لكل دورة فوترة لحسابات المحولات الخاصة)</div>
+                                <div class="content-group">
+                                    <div class="mt16"><field name="private_transformer_fee_product_id" class="o_light_label"/></div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <h2>إعدادات البنية التحتية والمحولات (Infrastructure Adapters)</h2>

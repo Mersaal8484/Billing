@@ -30,6 +30,7 @@ class UtilitySaleOrderBilling(models.Model):
         self.amount_service = 0.0
         self.amount_discount = 0.0
         self.amount_local_fee = 0.0
+        self.amount_private_transformer_fee = 0.0
 
         Product = self.env['product.product']
         kwh_product = self.env.ref(
@@ -176,7 +177,42 @@ class UtilitySaleOrderBilling(models.Model):
                 }))
                 self.amount_discount += pre_total - template.max_charge
 
+        self._append_private_transformer_fee_line(lines)
+
         self.order_line = [(5, 0, 0)] + lines
+
+    def _append_private_transformer_fee_line(self, lines):
+        """أضف رسوم المحول الخاص كبند مستقل بعد احتساب الاستهلاك والتعرفة.
+
+        الرسوم تُضاف مرة واحدة فقط لكل دورة فوترة، وتنطبق فقط عندما:
+          - يكون الحساب مرتبطاً بمحول خاص (transformer_id.is_private = True)
+          - وتكون قيمة الرسوم أكبر من صفر
+        بند واحد فقط لكل (حساب + فترة)؛ إعادة الحساب تستبدل البنود ولا تكررها.
+        """
+        account = self.customer_id
+        if not account:
+            return
+        fee = account.private_transformer_fee or 0.0
+        transformer = account.transformer_id
+        if not (transformer and transformer.is_private) or fee <= 0:
+            return
+        company = self.company_id or self.env.company
+        fee_product = getattr(company, 'private_transformer_fee_product_id', False)
+        if not fee_product:
+            raise ValidationError(_(
+                'لا يمكن إضافة رسوم المحول الخاص للمشترك [%s] في فترة [%s] '
+                'لأنه لم يتم تحديد منتج رسوم المحول الخاص في إعدادات الشركة.'
+            ) % (account.customer_number, self.date_range_id.name or ''))
+        lines.append((0, 0, {
+            'product_id': fee_product.id,
+            'name': _('رسوم المحول الخاص'),
+            'product_uom_qty': 1,
+            'price_unit': fee,
+            'meter_line_type': 'private_transformer_fee',
+            'private_transformer_id': transformer.id,
+            'tax_id': [(5, 0, 0)],
+        }))
+        self.amount_private_transformer_fee += fee
 
     def _prepare_block_consumption_lines(self, template, consumption, kwh_product):
         self.ensure_one()
@@ -382,5 +418,7 @@ class UtilitySaleOrderBilling(models.Model):
             self.amount_service += amount
         elif meter_line_type in ('local_fee', 'mu_allim', 'cleaning', 'municipality'):
             self.amount_local_fee += amount
+        elif meter_line_type == 'private_transformer_fee':
+            self.amount_private_transformer_fee += amount
         elif meter_line_type == 'discount':
             self.amount_discount += abs(amount)

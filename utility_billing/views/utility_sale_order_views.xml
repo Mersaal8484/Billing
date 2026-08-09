@@ -88,6 +88,7 @@
                             <group string="التفاصيل المالية">
                                 <field name="amount_energy" widget="monetary" attrs="{'readonly': [('bill_state', '!=', 'draft')]}"/>
                                 <field name="amount_service" widget="monetary" attrs="{'readonly': [('bill_state', '!=', 'draft')]}"/>
+                                <field name="amount_private_transformer_fee" widget="monetary" attrs="{'readonly': [('bill_state', '!=', 'draft')]}"/>
                                 <field name="amount_penalty" widget="monetary" decoration-danger="amount_penalty &gt; 0" attrs="{'readonly': [('bill_state', '!=', 'draft')]}"/>
                                 
                                 <field name="amount_untaxed" widget="monetary" attrs="{'readonly': [('bill_state', '!=', 'draft')]}"/>

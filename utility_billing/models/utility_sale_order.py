@@ -61,6 +61,7 @@ class UtilitySaleOrder(models.Model):
     amount_service = fields.Monetary('رسم الخدمة الثابت', currency_field='currency_id')
     amount_discount = fields.Monetary('الخصومات', currency_field='currency_id')
     amount_local_fee = fields.Monetary('الرسوم المحلية', currency_field='currency_id')
+    amount_private_transformer_fee = fields.Monetary('رسوم المحول الخاص', currency_field='currency_id')
     amount_penalty = fields.Monetary('الغرامات', compute='_compute_amount_penalty', store=True, currency_field='currency_id')
     penalty_ids = fields.One2many('utility.penalty', 'sale_order_id', string='سجل الغرامات')
     utility_move_ids = fields.One2many(
@@ -353,7 +354,7 @@ class UtilitySaleOrder(models.Model):
         'period_start', 'period_end', 'previous_reading', 'current_reading',
         'consumption', 'contract_template_id', 'order_line',
         'amount_energy', 'amount_service', 'amount_discount',
-        'amount_local_fee', 'amount_penalty',
+        'amount_local_fee', 'amount_private_transformer_fee', 'amount_penalty',
     })
 
     def write(self, vals):
@@ -527,10 +528,15 @@ class UtilitySaleOrderLine(models.Model):
         ('mu_allim', 'رسم المعلم'),
         ('cleaning', 'رسم النظافة'),
         ('municipality', 'رسم المجلس المحلي'),
+        ('private_transformer_fee', 'رسوم المحول الخاص'),
         ('discount', 'خصم'),
         ('penalty', 'غرامة'),
         ('other', 'أخرى'),
     ], string='نوع البند')
+    private_transformer_id = fields.Many2one(
+        'utility.transformer', string='المحول الخاص',
+        readonly=True, copy=False, index=True,
+        help='المحول الخاص المرتبط عند إضافة بند رسوم المحول الخاص للفاتورة.')
 
     @api.depends(
         'qty_invoiced', 'qty_delivered', 'product_uom_qty', 'state',
@@ -591,6 +597,11 @@ class UtilitySaleOrderLine(models.Model):
             if hasattr(company, 'local_fee_product_id') and company.local_fee_product_id:
                 product_id = company.local_fee_product_id.id
             acc_id = self._get_company_config('local_fee_account_id', 'utility.local_fee_account_id')
+
+        elif self.meter_line_type == 'private_transformer_fee':
+            if hasattr(company, 'private_transformer_fee_product_id') and company.private_transformer_fee_product_id:
+                product_id = company.private_transformer_fee_product_id.id
+            acc_id = self._get_company_config('private_transformer_fee_account_id', 'utility.private_transformer_fee_account_id')
 
         elif self.meter_line_type == 'discount':
             if hasattr(company, 'discount_product_id') and company.discount_product_id:

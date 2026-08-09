@@ -197,6 +197,11 @@ class ResConfigSettings(models.TransientModel):
         related='company_id.discount_product_id',
         readonly=False,
         string='منتج الخصم والإعفاءات')
+    private_transformer_fee_product_id = fields.Many2one(
+        'product.product',
+        related='company_id.private_transformer_fee_product_id',
+        readonly=False,
+        string='منتج رسوم المحول الخاص')
 
     # --- Infrastructure Settings (إعدادات البنية التحتية — مسارات العمل والوسائط) ---
     workflow_backend = fields.Selection([

@@ -91,8 +91,7 @@
                     </div>
                     <group>
                         <group string="معلومات الهوية والنوع">
-                            <field name="owner_partner_id"/>
-                            <field name="partner_id" readonly="1"/>
+                            <field name="partner_id"/>
                             <field name="category_id" options="{'no_create': True}"/>
                             <field name="subscriber_id" options="{'no_create': True}"/>
                             <field name="is_master_account"/>
@@ -155,6 +154,9 @@
                                     <field name="cell_id" options="{'no_create': True}" attrs="{'invisible': [('is_private_transformer', '=', False)]}"/>
                                     <field name="transformer_id" options="{'no_create': True}"/>
                                     <field name="cell_coupling_meter_id" readonly="1" attrs="{'invisible': [('is_private_transformer', '=', False)]}"/>
+                                </group>
+                                <group string="رسوم المحول الخاص" attrs="{'invisible': [('is_private_transformer', '=', False)]}">
+                                    <field name="private_transformer_fee" widget="monetary" string="رسوم المحول الخاص لكل دورة"/>
                                 </group>
                             </group>
                         </page>

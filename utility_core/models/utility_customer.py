@@ -15,15 +15,13 @@ class UtilityCustomer(models.Model):
     active = fields.Boolean('نشط', default=True)
     company_id = fields.Many2one('res.company', 'الشركة', default=lambda self: self.env.company)
     customer_number = fields.Char('رقم العميل', required=True, index=True, default=lambda self: _('جديد'))
-    owner_partner_id = fields.Many2one(
-        'res.partner', 'المالك القانوني', required=True, index=True,
-        help='الشخص أو الشركة الفعلية المالكة للحساب الكهربائي.')
     partner_id = fields.Many2one(
-        'res.partner', 'الشريك المحاسبي', required=True, index=True,
-        help='شريك محاسبي مخصص لهذا الحساب الكهربائي فقط.')
+        'res.partner', 'العميل / الشريك المحاسبي', required=True,
+        index=True, ondelete='restrict',
+        help='شريك مستقل ومخصص لهذا الحساب الكهربائي ويستخدم للهوية والفوترة والتحصيل والمحاسبة.')
 
     category_id = fields.Many2one('utility.subscriber.category', string='فئة المشترك الرئيسية', required=True)
-    mobile = fields.Char(related='partner_id.mobile', string='رقم الجوال', readonly=False, size=9)
+    mobile = fields.Char(related='partner_id.mobile', string='رقم الجوال', readonly=False)
     subscriber_id = fields.Many2one('utility.subscriber', string='نوع المشترك', required=True, domain="[('category_id', '=', category_id)]")
     state = fields.Selection([
         ('draft', 'مسودة'),
@@ -48,6 +46,13 @@ class UtilityCustomer(models.Model):
     transformer_id = fields.Many2one('utility.transformer', string='المحول',
         domain="[('active', '=', True)]")
     is_private_transformer = fields.Boolean(related='transformer_id.is_private', readonly=True, string='هل المحول خاص؟')
+    private_transformer_fee = fields.Monetary(
+        string='رسوم المحول الخاص',
+        currency_field='company_currency_id',
+        default=0.0,
+        tracking=True,
+        help='رسوم دورية ثابتة للمحول الخاص تضاف تلقائيًا إلى فاتورة الكهرباء في كل دورة فوترة.'
+    )
     cell_coupling_meter_id = fields.Many2one('utility.meter', 'عداد الفيدر/الخلية',
         domain="[('feeder_id', '=', cell_id)]")
 
@@ -209,36 +214,12 @@ class UtilityCustomer(models.Model):
          'لا يمكن ربط أكثر من حساب كهرباء بنفس الشريك المحاسبي.'),
     ]
 
-    def _create_dedicated_accounting_partner(self, owner_partner, customer_number):
-        """Create an accounting contact from an explicit identity whitelist."""
-        allowed_fields = (
-            'mobile', 'phone', 'street', 'street2', 'city', 'zip', 'email',
-            'vat', 'lang', 'country_id', 'state_id', 'region_id', 'area_id',
-            'zone_id', 'company_id', 'utility_owner_reference',
-        )
-        copy_vals = {}
-        for field_name in allowed_fields:
-            if field_name not in owner_partner._fields:
-                continue
-            value = owner_partner[field_name]
-            if not value:
-                continue
-            field = owner_partner._fields[field_name]
-            copy_vals[field_name] = value.id if field.type == 'many2one' else value
-        copy_vals.update({
-            'name': _('%s - حساب كهرباء %s') % (owner_partner.name, customer_number),
-            'parent_id': False,
-            'is_subscriber': True,
-            'customer_rank': max(owner_partner.customer_rank, 1),
-        })
-        return self.env['res.partner'].create(copy_vals)
-
-    @api.constrains('partner_id', 'owner_partner_id')
-    def _check_accounting_partner_identity(self):
-        """Ensure the accounting partner belongs to exactly one utility account."""
+    @api.constrains('partner_id')
+    def _check_customer_partner_identity(self):
+        """Ensure the dedicated partner belongs to exactly one utility account."""
         for customer in self:
             if not customer.partner_id:
-                raise ValidationError(_('يجب تحديد شريك محاسبي للحساب الكهربائي.'))
+                raise ValidationError(_('يجب تحديد العميل / الشريك المحاسبي للحساب الكهربائي.'))
             duplicate = self.search([
                 ('partner_id', '=', customer.partner_id.id),
                 ('id', '!=', customer.id),
@@ -250,30 +231,25 @@ class UtilityCustomer(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        """Create a dedicated accounting partner for every new utility account."""
+        """Create one dedicated partner for every new utility account."""
         for vals in vals_list:
             if vals.get('customer_number', _('جديد')) == _('جديد'):
                 vals['customer_number'] = self.env['ir.sequence'].next_by_code('utility.customer') or _('جديد')
 
-            partner_id = vals.get('partner_id')
-            owner_id = vals.get('owner_partner_id') or partner_id
-            if not owner_id:
-                raise ValidationError(_('يجب تحديد المالك القانوني للحساب الكهربائي.'))
-
-            owner = self.env['res.partner'].browse(owner_id).exists()
-            if not owner:
-                raise ValidationError(_('المالك القانوني المحدد غير موجود.'))
-
-            if not self.env.context.get('utility_account_partner_ready'):
-                source_partner = self.env['res.partner'].browse(partner_id).exists() if partner_id else owner
-                if not source_partner:
-                    raise ValidationError(_('الشريك المحاسبي المحدد غير موجود.'))
-                dedicated = self._create_dedicated_accounting_partner(
-                    source_partner, vals['customer_number'])
-                vals['owner_partner_id'] = owner.id
-                vals['partner_id'] = dedicated.id
-            else:
-                vals['owner_partner_id'] = owner.id
+            partner = self.env['res.partner'].browse(vals.get('partner_id')).exists()
+            if not partner:
+                partner = self.env['res.partner'].create({
+                    'name': vals['customer_number'],
+                    'is_subscriber': True,
+                })
+                vals['partner_id'] = partner.id
+            duplicate = self.search([
+                ('partner_id', '=', partner.id),
+            ], limit=1)
+            if duplicate:
+                raise ValidationError(_(
+                    'الشريك %s مرتبط مسبقًا بالحساب الكهربائي %s.'
+                ) % (partner.display_name, duplicate.customer_number))
 
         customers = super().create(vals_list)
         for customer in customers:
@@ -351,11 +327,13 @@ class UtilityCustomer(models.Model):
                     transformer.sudo().write({'private_customer_id': customer.id})
         return res
 
-    @api.constrains('owner_partner_id')
-    def _check_owner_partner_required(self):
+    @api.constrains('private_transformer_fee')
+    def _check_private_transformer_fee_non_negative(self):
         for customer in self:
-            if not customer.owner_partner_id:
-                raise ValidationError(_('يجب تحديد المالك القانوني للحساب الكهربائي.'))
+            if customer.private_transformer_fee < 0:
+                raise ValidationError(_(
+                    'رسوم المحول الخاص يجب ألا تكون قيمة سالبة.'
+                ))
 
     @api.constrains('transformer_id')
     def _check_private_transformer_assignment(self):

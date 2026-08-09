@@ -172,6 +172,12 @@
             <field name="account_type">income</field>
         </record>
 
+        <record id="account_income_private_transformer" model="account.account">
+            <field name="name">إيرادات رسوم المحولات الخاصة</field>
+            <field name="code">400409</field>
+            <field name="account_type">income</field>
+        </record>
+
         <record id="account_discount_utility" model="account.account">
             <field name="name">خصومات وإعفاءات استهلاك الكهرباء</field>
             <field name="code">490099</field>
@@ -209,6 +215,13 @@
             <field name="type">service</field>
             <field name="list_price">0.00</field>
             <field name="property_account_income_id" ref="account_income_municipality"/>
+        </record>
+        <record id="utility_product_private_transformer_fee" model="product.product">
+            <field name="name">رسوم المحول الخاص</field>
+            <field name="type">service</field>
+            <field name="invoice_policy">order</field>
+            <field name="list_price">0.00</field>
+            <field name="property_account_income_id" ref="account_income_private_transformer"/>
         </record>
 
         <!-- Auto-initialize defaults on Company -->
