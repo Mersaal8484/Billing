@@ -9,7 +9,7 @@
                     <div class="oe_title">
                         <label for="name" class="oe_edit_only" string="اسم المشترك / الجهة"/>
                         <h1>
-                            <field name="name" placeholder="مثال: محمد اليماني"/>
+                            <field name="name" placeholder="أدخل اسم المشترك"/>
                         </h1>
                     </div>
                     <notebook>
