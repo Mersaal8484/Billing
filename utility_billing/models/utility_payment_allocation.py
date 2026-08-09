@@ -75,6 +75,12 @@ class UtilityPaymentAllocation(models.Model):
              WHERE external_reference IS NOT NULL AND external_reference <> ''
             """
         )
+        self.env.cr.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS utility_payment_allocation_payment_invoice_uniq
+                ON utility_payment_allocation (payment_id, invoice_id)
+            """
+        )
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -110,6 +116,37 @@ class UtilityPaymentAllocation(models.Model):
             'SELECT id FROM account_move WHERE id = %s FOR UPDATE', [invoice.id])
         invoice.invalidate_cache([
             'state', 'partner_id', 'move_type', 'amount_residual', 'payment_state'])
+
+    @api.model
+    def prevalidate_payment(self, payment, require_posted=False):
+        """Lock and validate the exact invoice before or after payment posting."""
+        payment.ensure_one()
+        order = payment.utility_sale_order_id
+        customer = payment.utility_customer_id
+        invoice = payment.utility_invoice_id
+        if not order or not customer or not invoice:
+            raise ValidationError(_('بيانات الدفعة الكهربائية غير مكتملة للتخصيص.'))
+        if payment.payment_type != 'inbound':
+            raise ValidationError(_('تخصيص الدفعات الصادرة خارج نطاق تحصيل الكهرباء.'))
+        if require_posted and payment.state != 'posted':
+            raise ValidationError(_('لا يمكن تخصيص دفعة غير مرحلة.'))
+        if (invoice.utility_sale_order_id != order
+                or invoice.utility_customer_id != customer
+                or payment.partner_id != customer.partner_id
+                or invoice.partner_id != customer.partner_id):
+            raise ValidationError(_('الدفعة والفاتورة لا تخصان نفس حساب الكهرباء.'))
+        if payment.currency_id != invoice.currency_id:
+            raise ValidationError(_('عملة الدفعة يجب أن تطابق عملة الفاتورة المحاسبية.'))
+        self._lock_invoice(invoice)
+        if invoice.state != 'posted' or invoice.move_type != 'out_invoice':
+            raise ValidationError(_('الفاتورة المحددة ليست فاتورة تحصيل مدينة ومرحلة.'))
+        if payment.amount <= 0:
+            raise ValidationError(_('يجب أن يكون مبلغ الدفعة أكبر من صفر.'))
+        if invoice.amount_residual <= 0:
+            raise ValidationError(_('الفاتورة المحددة مسددة بالكامل.'))
+        if payment.amount > invoice.amount_residual:
+            raise ValidationError(_('مبلغ الدفعة يتجاوز المتبقي الحالي للفواتير المحددة.'))
+        return invoice
 
     def _resolve_source(self, payment):
         source = self.env.context.get('utility_payment_source')
@@ -160,21 +197,10 @@ class UtilityPaymentAllocation(models.Model):
         if payment.payment_type != 'inbound':
             raise ValidationError(_('تخصيص الدفعات الصادرة خارج نطاق تحصيل الكهرباء.'))
 
-        self._lock_invoice(invoice)
-        if (invoice.utility_sale_order_id != order
-                or invoice.utility_customer_id != customer
-                or payment.partner_id != customer.partner_id
-                or invoice.partner_id != customer.partner_id):
-            raise ValidationError(_('الدفعة والفاتورة لا تخصان نفس حساب الكهرباء.'))
-        if invoice.state != 'posted' or invoice.move_type != 'out_invoice':
-            raise ValidationError(_('الفاتورة المحددة ليست فاتورة تحصيل مرحلة.'))
-        if invoice.amount_residual <= 0:
-            raise ValidationError(_('الفاتورة المحددة مسددة بالكامل.'))
-        if payment.amount <= 0 or payment.amount > invoice.amount_residual:
-            raise ValidationError(_('مبلغ الدفعة يتجاوز المتبقي الحالي للفواتير المحددة.'))
+        invoice = self.prevalidate_payment(payment, require_posted=True)
 
         residual_before = invoice.amount_residual
-        allocation = self.create({
+        allocation = self.sudo().create({
             'payment_id': payment.id,
             'invoice_id': invoice.id,
             'requested_amount': payment.amount,
@@ -229,17 +255,31 @@ class UtilityPaymentAllocation(models.Model):
             raise ValidationError(_('فشل التحقق من ثابت المبلغ بعد التسوية المحاسبية.'))
 
         partials = self._partial_ids(payment_lines | invoice_lines) - before_partials
-        allocation.write({
+        allocation.with_context(utility_allocation_internal=True).write({
             'allocated_amount': allocated_amount,
             'residual_after': residual_after,
             'partial_reconcile_ids': [(6, 0, partials.ids)],
-            'reconciliation_reference': ', '.join(partials.mapped('name')),
+            'reconciliation_reference': ', '.join(map(str, partials.ids)),
             'state': 'reconciled',
         })
         return allocation
 
     def action_cancel(self):
         for allocation in self:
-            if allocation.state == 'reconciled':
-                raise ValidationError(_('لا يمكن إلغاء تخصيص تمت تسويته؛ استخدم إجراء عكس معتمد.'))
-        self.write({'state': 'cancelled'})
+            raise ValidationError(_('لا يمكن حذف أو إلغاء سجل تخصيص مالي؛ استخدم إجراء عكس معتمد.'))
+
+    def write(self, vals):
+        protected = {
+            'payment_id', 'utility_customer_id', 'sale_order_id', 'invoice_id',
+            'partner_id', 'currency_id', 'requested_amount', 'allocated_amount',
+            'residual_before', 'residual_after', 'allocation_date', 'source',
+            'external_reference', 'state', 'partial_reconcile_ids',
+            'reconciliation_reference', 'created_by', 'error_message',
+        }
+        if protected.intersection(vals) and not self.env.context.get(
+                'utility_allocation_internal'):
+            raise ValidationError(_('سجل تخصيص الدفعة غير قابل للتعديل بعد إنشائه.'))
+        return super().write(vals)
+
+    def unlink(self):
+        raise ValidationError(_('لا يمكن حذف سجل تخصيص مالي؛ استخدم إجراء عكس معتمد.'))

@@ -137,31 +137,10 @@ class AccountPayment(models.Model):
     def _validate_utility_payment_amount(self):
         """Validate and lock the exact utility invoice before posting payment."""
         self.ensure_one()
-        order = self.utility_sale_order_id
-        if not order:
+        if not self.utility_sale_order_id:
             return
-        if self.payment_type != 'inbound':
-            raise ValidationError(_(
-                'الدفعات الصادرة لا تستخدم مسار تحصيل فواتير الكهرباء.'
-            ))
-        invoice = self.utility_invoice_id
-        if (not invoice or invoice.utility_sale_order_id != order
-                or invoice.partner_id != order.customer_id.partner_id
-                or invoice.move_type != 'out_invoice'):
-            raise ValidationError(_('يجب تحديد فاتورة كهرباء مدينة صحيحة للدفع.'))
-        self.env.flush_all()
-        self.env.cr.execute(
-            'SELECT id FROM account_move WHERE id = %s FOR UPDATE',
-            [invoice.id],
-        )
-        invoice.invalidate_cache([
-            'state', 'partner_id', 'move_type', 'amount_residual', 'payment_state'])
-        if invoice.state != 'posted':
-            raise ValidationError(_('لا يمكن الدفع إلا لفاتورة محاسبية مرحلة.'))
-        if self.amount > invoice.amount_residual:
-            raise ValidationError(_(
-                'مبلغ الدفعة %.2f يتجاوز المتبقي %.2f في الفاتورة المحددة.'
-            ) % (self.amount, invoice.amount_residual))
+        self.env['utility.payment.allocation'].prevalidate_payment(
+            self, require_posted=False)
 
     @api.onchange('utility_sale_order_id')
     def _onchange_utility_sale_order_id(self):

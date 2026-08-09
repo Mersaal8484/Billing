@@ -67,6 +67,22 @@ def migrate(cr, version):
                       AND invoice_line.partner_id = invoice.partner_id
                       AND payment_line.account_id = invoice_line.account_id
                )
+               AND invoice.amount_residual + payment.amount = invoice.amount_total
+               AND (
+                   SELECT COALESCE(SUM(partial.amount), 0)
+                     FROM account_move_line payment_line
+                     JOIN account_partial_reconcile partial
+                       ON partial.debit_move_id = payment_line.id
+                       OR partial.credit_move_id = payment_line.id
+                     JOIN account_move_line invoice_line
+                       ON (invoice_line.id = partial.debit_move_id
+                           OR invoice_line.id = partial.credit_move_id)
+                    WHERE payment_line.move_id = payment.move_id
+                      AND invoice_line.move_id = invoice.id
+                      AND payment_line.partner_id = invoice.partner_id
+                      AND invoice_line.partner_id = invoice.partner_id
+                      AND payment_line.account_id = invoice_line.account_id
+               ) = payment.amount
         )
         INSERT INTO utility_payment_allocation (
             name, company_id, payment_id, utility_customer_id, sale_order_id,
@@ -109,4 +125,50 @@ def migrate(cr, version):
         _logger.warning(
             'Skipped %s posted utility payments without an explicit invoice; '
             'they require manual audit and were not guessed.', ambiguous,
+        )
+    cr.execute(
+        """
+        SELECT COUNT(*)
+          FROM account_payment payment
+         JOIN account_move payment_move ON payment_move.id = payment.move_id
+         WHERE payment.utility_sale_order_id IS NOT NULL
+           AND payment_move.state = 'posted'
+           AND payment.utility_invoice_id IS NOT NULL
+           AND NOT EXISTS (
+               SELECT 1 FROM utility_payment_allocation allocation
+                WHERE allocation.payment_id = payment.id
+           )
+           AND payment.utility_invoice_id IN (
+               SELECT utility_invoice_id
+                 FROM account_payment
+                WHERE utility_invoice_id IS NOT NULL
+                GROUP BY utility_invoice_id
+               HAVING COUNT(*) > 1
+           )
+        """
+    )
+    multiple_payments = cr.fetchone()[0]
+    if multiple_payments:
+        _logger.warning(
+            'Skipped %s utility payments because their invoice has multiple '
+            'utility payments; residual history requires manual audit.',
+            multiple_payments,
+        )
+    cr.execute(
+        """
+        SELECT COUNT(*)
+          FROM account_payment payment
+         JOIN account_move payment_move ON payment_move.id = payment.move_id
+         JOIN account_move invoice ON invoice.id = payment.utility_invoice_id
+         WHERE payment.utility_sale_order_id IS NOT NULL
+           AND payment_move.state = 'posted'
+           AND payment.utility_invoice_id IS NOT NULL
+           AND invoice.amount_residual + payment.amount <> invoice.amount_total
+        """
+    )
+    unsafe_residual = cr.fetchone()[0]
+    if unsafe_residual:
+        _logger.warning(
+            'Skipped %s utility payments because invoice residual history '
+            'does not prove a clean direct allocation.', unsafe_residual,
         )
