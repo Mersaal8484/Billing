@@ -60,11 +60,8 @@
 ## ملاحظات معمارية تحتاج قرار المالك
 
 ### 1. utility.media.asset - التخزين
-- البرومبت §4 يطلب: Filesystem مباشر، لا ir.attachment
-- الواقع: النموذج يدعم 3 backends (filesystem/attachment/s3)
-  لكن الحقول الفعلية original_attachment_id / thumbnail_attachment_id
-  هي Many2one لـ ir.attachment حتى في وضع filesystem
-- القرار المطلوب: هل هذا مقبول أم يجب إعادة هيكلة التخزين؟
+- الحل الفعلي: تم اعتماد التخزين المباشر على مسارات نصية (`original_path` / `thumbnail_path` / `review_path`) دون `ir.attachment` كمسار أساسي، مع Adapter Storage-Agnostic يدعم Filesystem لاحقاً وS3-Compatible بدون تغيير النموذج.
+- الواقع الحالي في الكود: النموذج يستخدم `utility.media.asset` مع حقول مسار نصية مباشرة، ويسترد الملفات عبر Media Adapter بدل الاعتماد على مرفقات Odoo.
 
 ### 2. شاشة المراجعة - OWL بدلاً من Tree بسيط
 - البرومبت §3 يطلب: Tree عادي يكفي الآن، ليس OWL المخصص الكامل
@@ -73,7 +70,11 @@
 - Tree View بسيطة موجودة لكنها ليست الافتراضية
 - القرار المطلوب: هل نقبل هذا لأغراض §6 أم نستبدل بـ Tree؟
 
-### 3. الاختبار الطرف-لطرف
+### 3. Row Locking لمسار التحصيل الميداني العادي
+- تم إكمال القفل الصفّي في `account.payment` لمسار التحصيل الميداني العادي عبر `utility_sale_order_id` باستخدام `SELECT ... FOR UPDATE` قبل قراءة/حساب `balance_due` وقبل إتمام `action_post()`.
+- الهدف: منع سيناريو الدفع المتزامن المزدوج على نفس الفاتورة (مثلاً 600 + 600 على رصيد 1000) من قبول كلا التدفقين دون رؤية بعضهما الآخر.
+
+### 4. الاختبار الطرف-لطرف
 البنية الكاملة موجودة لكن لم يُجرَ اختبار فعلي بعد:
 - utility.reading.batch + utility.reading.batch.line (staging)
 - utility.media.asset + utility.media.service (معالجة الصورة)

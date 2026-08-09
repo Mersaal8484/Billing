@@ -116,12 +116,23 @@ class AccountPayment(models.Model):
     def _check_utility_payment_period_matches_bill(self):
         self._validate_utility_payment_period()
 
+    def _lock_utility_sale_order_for_payment(self, order):
+        if not order or not order.exists():
+            return
+        self.env.flush_all()
+        self.env.cr.execute(
+            "SELECT id FROM sale_order WHERE id = %s FOR UPDATE",
+            [order.id],
+        )
+        order.invalidate_cache(['bill_state', 'balance_due'])
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
             order_id = vals.get('utility_sale_order_id')
             if order_id:
                 order = self.env['sale.order'].browse(order_id)
+                self._lock_utility_sale_order_for_payment(order)
                 payment_period = self._get_payment_period_for_order(order)
                 if not payment_period:
                     raise ValidationError(
@@ -196,6 +207,7 @@ class AccountPayment(models.Model):
         # FIX-15: منع ترحيل دفعة على فاتورة ملغاة أو مدفوعة بالكامل
         for payment in self.filtered('utility_sale_order_id'):
             order = payment.utility_sale_order_id
+            self._lock_utility_sale_order_for_payment(order)
             if not payment.date_range_id:
                 payment_period = payment._get_payment_period_for_order(order)
                 if payment_period:
