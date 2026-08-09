@@ -19,3 +19,4 @@ from . import utility_sale_workflow
 from . import utility_billing_settings
 from . import utility_bill_reading_component
 from . import utility_payment_gateway_transaction
+from . import utility_payment_allocation

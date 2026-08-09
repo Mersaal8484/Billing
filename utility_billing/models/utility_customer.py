@@ -9,6 +9,11 @@ class UtilityCustomer(models.Model):
         'utility.service.charge', 'account_id', string='رسوم إدخال الخدمة')
     service_charge_count = fields.Integer(
         'عدد رسوم إدخال الخدمة', compute='_compute_service_charge_count')
+    payment_allocation_ids = fields.One2many(
+        'utility.payment.allocation', 'utility_customer_id',
+        string='تخصيصات التحصيل', readonly=True)
+    payment_allocation_count = fields.Integer(
+        'عدد تخصيصات التحصيل', compute='_compute_payment_allocation_count')
 
     @api.depends('service_charge_ids')
     def _compute_service_charge_count(self):
@@ -17,6 +22,11 @@ class UtilityCustomer(models.Model):
         count_map = {item['account_id'][0]: item['account_id_count'] for item in counts}
         for customer in self:
             customer.service_charge_count = count_map.get(customer.id, 0)
+
+    @api.depends('payment_allocation_ids')
+    def _compute_payment_allocation_count(self):
+        for customer in self:
+            customer.payment_allocation_count = len(customer.payment_allocation_ids)
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -67,4 +77,15 @@ class UtilityCustomer(models.Model):
             'res_model': 'utility.service.charge', 'view_mode': 'tree,form',
             'domain': [('account_id', '=', self.id)],
             'context': {'default_account_id': self.id},
+        }
+
+    def action_view_payment_allocations(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('تخصيصات التحصيل'),
+            'res_model': 'utility.payment.allocation',
+            'view_mode': 'tree,form',
+            'domain': [('utility_customer_id', '=', self.id)],
+            'context': {'default_utility_customer_id': self.id, 'create': False},
         }

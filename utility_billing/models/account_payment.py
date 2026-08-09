@@ -36,6 +36,27 @@ class AccountPayment(models.Model):
     ], string='تصنيف توقيت السداد', default='on_time', index=True)
     qr_code_value = fields.Char('بيانات QR', compute='_compute_utility_qr_code', readonly=True)
     qr_code_url = fields.Char('رابط QR', compute='_compute_utility_qr_code', readonly=True)
+    allocation_ids = fields.One2many(
+        'utility.payment.allocation', 'payment_id', string='تخصيصات الدفعة',
+        readonly=True, copy=False)
+    allocation_count = fields.Integer(
+        'عدد التخصيصات', compute='_compute_allocation_count')
+
+    @api.depends('allocation_ids')
+    def _compute_allocation_count(self):
+        for payment in self:
+            payment.allocation_count = len(payment.allocation_ids)
+
+    def action_view_utility_allocations(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('تخصيصات الدفعة'),
+            'res_model': 'utility.payment.allocation',
+            'view_mode': 'tree,form',
+            'domain': [('payment_id', '=', self.id)],
+            'context': {'default_payment_id': self.id, 'create': False},
+        }
 
     @api.onchange('utility_payment_method')
     def _onchange_utility_payment_method(self):
@@ -294,32 +315,19 @@ class AccountPayment(models.Model):
             if payment.move_id and 'utility_customer_id' in payment.move_id._fields:
                 payment.move_id.write({'utility_customer_id': payment.utility_customer_id.id})
         self.filtered('service_charge_id').mapped('service_charge_id').action_mark_paid_from_payment()
-        for payment in self:
-            payment._reconcile_utility_sale_order()
+        for payment in self.filtered('utility_sale_order_id'):
+            self.env['utility.payment.allocation'].with_context(
+                utility_payment_source=(
+                    'gateway' if payment.utility_payment_method == 'electronic'
+                    else 'bank' if payment.utility_payment_method == 'bank'
+                    else 'cashier'
+                )
+            ).allocate_payment(payment)
         self.filtered('utility_sale_order_id')._create_payment_notification()
         return res
 
     def _reconcile_utility_sale_order(self):
+        """Backward-compatible entry point delegating to the single allocator."""
         self.ensure_one()
-        if not self.move_id:
-            return
-
-        order = self.utility_sale_order_id
-        invoice = self.utility_invoice_id
-        if not order or not invoice:
-            return
-        if invoice.utility_sale_order_id != order or invoice.partner_id != order.customer_id.partner_id:
-            raise ValidationError(_('لا يمكن مطابقة الدفعة مع فاتورة لا تخص الحساب الكهربائي المحدد.'))
-        invoices = invoice.filtered(
-            lambda m: m.state == 'posted' and m.payment_state in ('not_paid', 'partial', 'in_payment'))
-
-        payment_lines = self.move_id.line_ids.filtered(
-            lambda line: not line.reconciled and line.account_id.account_type == 'asset_receivable'
-        )
-        invoice_lines = invoices.mapped('line_ids').filtered(
-            lambda line: not line.reconciled and line.account_id.account_type == 'asset_receivable'
-        )
-        lines = payment_lines | invoice_lines
-        if len(lines) >= 2:
-            lines.reconcile()
+        return self.env['utility.payment.allocation'].allocate_payment(self)
 

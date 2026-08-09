@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_payment_allocation_tree" model="ir.ui.view">
+        <field name="name">utility.payment.allocation.tree</field>
+        <field name="model">utility.payment.allocation</field>
+        <field name="arch" type="xml">
+            <tree string="تخصيصات دفعات الكهرباء" create="false" delete="false">
+                <field name="name"/>
+                <field name="allocation_date"/>
+                <field name="payment_id"/>
+                <field name="utility_customer_id"/>
+                <field name="sale_order_id"/>
+                <field name="invoice_id"/>
+                <field name="requested_amount" widget="monetary"/>
+                <field name="allocated_amount" widget="monetary"/>
+                <field name="residual_after" widget="monetary"/>
+                <field name="source"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'reconciled'"
+                       decoration-warning="state == 'allocated'"
+                       decoration-danger="state in ('error', 'cancelled')"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_utility_payment_allocation_form" model="ir.ui.view">
+        <field name="name">utility.payment.allocation.form</field>
+        <field name="model">utility.payment.allocation</field>
+        <field name="arch" type="xml">
+            <form string="تخصيص دفعة كهرباء" create="false" delete="false">
+                <header>
+                    <button name="action_cancel" type="object" string="إلغاء التخصيص"
+                            class="btn-secondary" attrs="{'invisible': [('state', 'in', ('cancelled', 'reconciled'))]}"/>
+                    <field name="state" widget="statusbar" statusbar_visible="allocated,reconciled,cancelled"/>
+                </header>
+                <sheet>
+                    <field name="company_id" invisible="1"/>
+                    <group>
+                        <group string="المستندات">
+                            <field name="name"/>
+                            <field name="payment_id"/>
+                            <field name="utility_customer_id"/>
+                            <field name="sale_order_id"/>
+                            <field name="invoice_id"/>
+                            <field name="partner_id"/>
+                        </group>
+                        <group string="التخصيص">
+                            <field name="allocation_date"/>
+                            <field name="source"/>
+                            <field name="external_reference"/>
+                            <field name="currency_id"/>
+                            <field name="requested_amount"/>
+                            <field name="allocated_amount"/>
+                            <field name="residual_before"/>
+                            <field name="residual_after"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="التسوية المحاسبية">
+                            <group>
+                                <field name="reconciliation_reference"/>
+                                <field name="partial_reconcile_ids" widget="many2many_tags"/>
+                                <field name="created_by"/>
+                                <field name="notes"/>
+                                <field name="error_message" attrs="{'invisible': [('error_message', '=', False)]}"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_utility_payment_allocation_search" model="ir.ui.view">
+        <field name="name">utility.payment.allocation.search</field>
+        <field name="model">utility.payment.allocation</field>
+        <field name="arch" type="xml">
+            <search string="بحث في تخصيصات التحصيل">
+                <field name="name"/>
+                <field name="payment_id"/>
+                <field name="utility_customer_id"/>
+                <field name="invoice_id"/>
+                <field name="external_reference"/>
+                <filter name="reconciled" string="تمت التسوية" domain="[('state', '=', 'reconciled')]"/>
+                <filter name="gateway" string="بوابة الدفع" domain="[('source', '=', 'gateway')]"/>
+                <group expand="0" string="تجميع حسب">
+                    <filter name="group_state" string="الحالة" context="{'group_by': 'state'}"/>
+                    <filter name="group_source" string="المصدر" context="{'group_by': 'source'}"/>
+                    <filter name="group_customer" string="حساب الكهرباء" context="{'group_by': 'utility_customer_id'}"/>
+                    <filter name="group_date" string="تاريخ التخصيص" context="{'group_by': 'allocation_date:day'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_utility_payment_allocation" model="ir.actions.act_window">
+        <field name="name">تخصيصات دفعات الكهرباء</field>
+        <field name="res_model">utility.payment.allocation</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_utility_payment_allocation_search"/>
+        <field name="context">{'create': False, 'delete': False}</field>
+    </record>
+
+    <menuitem id="menu_utility_payment_allocations" name="تخصيصات التحصيل"
+              parent="menu_utility_accounting" action="action_utility_payment_allocation"
+              sequence="35" groups="utility_core.group_utility_cashier,utility_core.group_utility_billing_manager,utility_core.group_utility_auditor,utility_core.group_utility_admin"/>
+</odoo>

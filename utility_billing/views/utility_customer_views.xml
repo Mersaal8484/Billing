@@ -11,6 +11,11 @@
                         attrs="{'invisible': [('service_charge_count', '=', 0)]}">
                     <field name="service_charge_count" string="رسم إدخال الخدمة" widget="statinfo"/>
                 </button>
+                <button name="action_view_payment_allocations" type="object"
+                        class="oe_stat_button" icon="fa-money"
+                        attrs="{'invisible': [('payment_allocation_count', '=', 0)]}">
+                    <field name="payment_allocation_count" string="تخصيصات التحصيل" widget="statinfo"/>
+                </button>
             </xpath>
         </field>
     </record>

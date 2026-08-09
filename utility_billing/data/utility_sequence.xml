@@ -49,5 +49,13 @@
             <field name="padding">5</field>
             <field name="company_id" eval="False"/>
         </record>
+
+        <record id="seq_utility_payment_allocation" model="ir.sequence">
+            <field name="name">تسلسل تخصيصات دفعات الكهرباء</field>
+            <field name="code">utility.payment.allocation</field>
+            <field name="prefix">ALLOC/%(year)s/</field>
+            <field name="padding">5</field>
+            <field name="company_id" eval="False"/>
+        </record>
     </data>
 </odoo>
