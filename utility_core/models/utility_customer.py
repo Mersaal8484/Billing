@@ -186,6 +186,11 @@ class UtilityCustomer(models.Model):
     def _create_dedicated_accounting_partner(self, owner_partner, customer_number):
         """Create a private accounting contact without changing the legal owner."""
         copy_vals = owner_partner.copy_data()[0]
+        # Owner-level financial values must not be cloned into every utility
+        # account. Account opening balances require an explicit account-level
+        # allocation or opening journal entry.
+        for field_name in ('open_balance', 'pec_credit', 'is_credit_raised', 'credit_raise_date'):
+            copy_vals.pop(field_name, None)
         copy_vals.update({
             'name': _('%s - حساب كهرباء %s') % (owner_partner.name, customer_number),
             'parent_id': False,

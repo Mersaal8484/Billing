@@ -42,6 +42,19 @@ class TestUtilityAccountingPartnerIsolation(TransactionCase):
         self.assertNotEqual(first.partner_id, owner)
         self.assertNotEqual(second.partner_id, owner)
 
+    def test_owner_identity_and_opening_balance_are_not_cloned(self):
+        owner = self.Partner.create({
+            'name': 'مالك مع رصيد افتتاحي للاختبار',
+            'open_balance': 100000.0,
+        })
+        _, customer = self._create_customer('009', owner)
+
+        self.assertEqual(customer.owner_partner_id, owner)
+        self.assertEqual(customer.partner_id.open_balance, 0.0)
+        self.assertTrue(owner.has_utility_customer)
+        action = owner.action_open_utility_customer_registration()
+        self.assertEqual(action.get('res_id'), customer.id)
+
     def test_existing_accounting_partner_cannot_be_reused(self):
         _, first = self._create_customer('003')
         _, second = self._create_customer('004')

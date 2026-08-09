@@ -104,18 +104,29 @@ class ResPartner(models.Model):
 
     def _compute_has_utility_customer(self):
         for partner in self:
-            customer = self.env['utility.customer'].search([('partner_id', '=', partner.id)], limit=1)
+            customer = self.env['utility.customer'].search([
+                '|',
+                ('owner_partner_id', '=', partner.id),
+                ('partner_id', '=', partner.id),
+            ], limit=1)
             partner.has_utility_customer = bool(customer)
 
     def _compute_utility_balances(self):
         for partner in self:
-            customers = self.env['utility.customer'].search([('partner_id', '=', partner.id)])
+            customers = self.env['utility.customer'].search([
+                ('owner_partner_id', '=', partner.id),
+            ])
+            if not customers:
+                customers = self.env['utility.customer'].search([
+                    ('partner_id', '=', partner.id),
+                ])
             if customers:
                 ledger_balance = sum(customers.mapped('accounting_balance'))
                 has_posted_opening = any(c.opening_move_id for c in customers)
                 if has_posted_opening:
                     partner.utility_postpaid_balance = ledger_balance
                 else:
+                    # Count the legal owner's legacy opening balance once.
                     partner.utility_postpaid_balance = ledger_balance + partner.open_balance
             else:
                 partner.utility_postpaid_balance = partner.open_balance
@@ -177,9 +188,11 @@ class ResPartner(models.Model):
         self.ensure_one()
 
         # 1. حساب مشترك موجود بالفعل
-        customer = self.env['utility.customer'].search(
-            [('partner_id', '=', self.id)], limit=1
-        )
+        customer = self.env['utility.customer'].search([
+            '|',
+            ('owner_partner_id', '=', self.id),
+            ('partner_id', '=', self.id),
+        ], limit=1)
         if customer:
             return {
                 'name': _('حساب المشترك'),

@@ -26,23 +26,40 @@ def _column_exists(cr, table_name, column_name):
 
 
 def _create_partner_copy(cr, source_partner_id, customer_number):
+    # Copy identity and routing data, but never copy owner-level financial
+    # fields. Their allocation to several utility accounts is ambiguous.
+    copyable_columns = [
+        'mobile', 'phone', 'street', 'street2', 'city', 'zip', 'email',
+        'vat', 'lang', 'country_id', 'state_id', 'region_id', 'area_id',
+        'zone_id', 'utility_region_id', 'utility_area_id', 'direct_branch_id',
+        'transformer_zone_id', 'residential_compound_id', 'national_id',
+        'register_number',
+    ]
+    copyable_columns = [
+        column for column in copyable_columns
+        if _column_exists(cr, 'res_partner', column)
+    ]
+    insert_columns = ['name']
+    select_expressions = ["COALESCE(name, '') || ' - حساب كهرباء ' || %s"]
+    if _column_exists(cr, 'res_partner', 'parent_id'):
+        insert_columns.append('parent_id')
+        select_expressions.append('NULL')
+    if _column_exists(cr, 'res_partner', 'company_id'):
+        insert_columns.append('company_id')
+        select_expressions.append('company_id')
+    insert_columns.extend(['active', 'is_company', 'customer_rank'])
+    select_expressions.extend(['active', 'is_company', 'GREATEST(customer_rank, 1)'])
+    insert_columns.extend(copyable_columns)
+    select_expressions.extend(copyable_columns)
+    if _column_exists(cr, 'res_partner', 'is_subscriber'):
+        insert_columns.append('is_subscriber')
+        select_expressions.append('TRUE')
+    insert_columns.extend(['create_uid', 'create_date', 'write_uid', 'write_date'])
+    select_expressions.extend(['%s', 'NOW()', '%s', 'NOW()'])
     cr.execute(
-        """
-        INSERT INTO res_partner (
-            name, active, is_company, customer_rank,
-            open_balance, pec_credit, is_credit_raised, credit_raise_date,
-            national_id, register_number,
-            create_uid, create_date, write_uid, write_date
-        )
-        SELECT COALESCE(name, '') || ' - حساب كهرباء ' || %s,
-               active, is_company, GREATEST(customer_rank, 1),
-               open_balance, pec_credit, is_credit_raised, credit_raise_date,
-               national_id, register_number,
-               %s, NOW(), %s, NOW()
-          FROM res_partner
-         WHERE id = %s
-        RETURNING id
-        """,
+        'INSERT INTO res_partner (%s) SELECT %s FROM res_partner '
+        'WHERE id = %%s RETURNING id' % (
+            ', '.join(insert_columns), ', '.join(select_expressions)),
         [customer_number, SUPERUSER_ID, SUPERUSER_ID, source_partner_id],
     )
     row = cr.fetchone()

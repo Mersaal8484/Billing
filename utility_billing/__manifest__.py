@@ -1,6 +1,6 @@
 {
     'name': 'Utility Billing',
-    'version': '16.0.2.3.1',
+    'version': '16.0.2.3.2',
     'category': 'Utility ERP',
     'summary': 'Postpaid Billing & Collections Engine (Sale Order Based)',
     'description': """

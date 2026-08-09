@@ -18,7 +18,7 @@ class UtilityBillingAPI(http.Controller):
         if user.has_group('base.group_user'):
             return request.env['utility.customer'].sudo().search([])
         return request.env['utility.customer'].sudo().search([
-            ('partner_id', '=', user.partner_id.id),
+            ('owner_partner_id', '=', user.partner_id.id),
         ])
 
     def _authorize_account(self, customer_number):
@@ -34,7 +34,7 @@ class UtilityBillingAPI(http.Controller):
             return request.env['sale.order']
         if user.has_group('base.group_user'):
             return order
-        if order.customer_id and order.customer_id.partner_id.id == user.partner_id.id:
+        if order.customer_id and order.customer_id.owner_partner_id.id == user.partner_id.id:
             return order
         return request.env['sale.order']
 
@@ -97,6 +97,7 @@ class UtilityBillingAPI(http.Controller):
         order_id = params.get('order_id')
         amount = params.get('amount')
         provider_id = params.get('provider_id')
+        invoice_id = params.get('invoice_id')
         direction = params.get('payment_direction', 'inbound')
         if direction not in ('inbound', 'outbound'):
             return {'error': 'payment_direction must be "inbound" or "outbound"'}
@@ -106,6 +107,16 @@ class UtilityBillingAPI(http.Controller):
         order = self._authorize_order(order_id)
         if not order:
             return {'error': 'Order not found'}
+        posted_moves = order._get_posted_utility_moves()
+        if invoice_id:
+            invoice = request.env['account.move'].sudo().browse(int(invoice_id)).exists()
+            if (not invoice or len(invoice) != 1 or invoice not in posted_moves
+                    or invoice.partner_id != order.partner_id):
+                return {'error': 'invoice_id must identify a posted accounting invoice of this bill'}
+        elif len(posted_moves) == 1:
+            invoice = posted_moves
+        else:
+            return {'error': 'invoice_id is required when the bill has multiple accounting invoices'}
         try:
             amount = float(amount)
         except (TypeError, ValueError):
@@ -141,6 +152,7 @@ class UtilityBillingAPI(http.Controller):
             'provider_id': provider.id,
             'payment_direction': direction,
             'sale_order_id': order.id,
+            'utility_invoice_id': invoice.id,
             'amount': amount,
         })
         tx.action_mark_pending()
@@ -201,7 +213,7 @@ class UtilityBillingAPI(http.Controller):
         if not account.exists():
             return {'error': 'Customer account not found'}
         user = request.env.user
-        if not user.has_group('base.group_user') and account.partner_id.id != user.partner_id.id:
+        if not user.has_group('base.group_user') and account.owner_partner_id.id != user.partner_id.id:
             return {'error': 'Customer account not found'}
         try:
             order = request.env['utility.service.order'].sudo().create({

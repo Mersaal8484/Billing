@@ -11,6 +11,7 @@
                 <field name="payment_direction" widget="badge" decoration-info="payment_direction == 'inbound'" decoration-warning="payment_direction == 'outbound'"/>
                 <field name="sale_order_id"/>
                 <field name="customer_id"/>
+                <field name="utility_invoice_id"/>
                 <field name="amount"/>
                 <field name="state" widget="badge"/>
                 <field name="payment_id"/>
@@ -36,6 +37,7 @@
                             <field name="payment_direction"/>
                             <field name="sale_order_id"/>
                             <field name="customer_id"/>
+                            <field name="utility_invoice_id"/>
                         </group>
                         <group>
                             <field name="amount"/>

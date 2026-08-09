@@ -22,6 +22,11 @@ class UtilityPaymentGatewayTransaction(models.Model):
         ('outbound', 'صادر (إرجاع/استرداد للمشترك)'),
     ], string='اتجاه الدفع', default='inbound', required=True, index=True)
     sale_order_id = fields.Many2one('sale.order', string='الفاتورة', required=True, ondelete='restrict')
+    utility_invoice_id = fields.Many2one(
+        'account.move', string='الفاتورة المحاسبية المحددة',
+        ondelete='restrict', index=True,
+        domain="[('utility_sale_order_id', '=', sale_order_id), ('state', '=', 'posted')]",
+    )
     customer_id = fields.Many2one('utility.customer', string='الحساب', related='sale_order_id.customer_id', store=True)
     partner_id = fields.Many2one('res.partner', string='المشترك', related='sale_order_id.partner_id', store=True)
     currency_id = fields.Many2one('res.currency', string='العملة', related='sale_order_id.currency_id', store=True)
@@ -64,6 +69,12 @@ class UtilityPaymentGatewayTransaction(models.Model):
                     raise ValidationError(_('الفاتورة غير قابلة للدفع.'))
                 if tx.amount > tx.sale_order_id.balance_due:
                     raise ValidationError(_('مبلغ الدفع لا يمكن أن يتجاوز الرصيد المستحق.'))
+            if not tx.utility_invoice_id:
+                raise ValidationError(_('يجب تحديد الفاتورة المحاسبية المحددة قبل إرسال معاملة الدفع.'))
+            if (tx.utility_invoice_id.utility_sale_order_id != tx.sale_order_id
+                    or tx.utility_invoice_id.partner_id != tx.sale_order_id.partner_id
+                    or tx.utility_invoice_id.state != 'posted'):
+                raise ValidationError(_('الفاتورة المحاسبية المحددة لا تخص حساب الكهرباء أو ليست مرحلة.'))
             if tx.provider_id.company_id and tx.provider_id.company_id != tx.company_id:
                 raise ValidationError(_('مزود الدفع والفاتورة يجب أن يتبعا نفس الشركة.'))
             if not tx.provider_id.supports_direction(tx.payment_direction):
@@ -101,6 +112,8 @@ class UtilityPaymentGatewayTransaction(models.Model):
                 raise ValidationError(_('يمكن تأكيد معاملات الدفع المعلقة فقط.'))
 
             order = tx.sale_order_id
+            if not tx.utility_invoice_id:
+                raise ValidationError(_('يجب تحديد الفاتورة المحاسبية المحددة قبل تأكيد معاملة الدفع.'))
             self.env.cr.execute(
                 "SELECT id FROM sale_order WHERE id = %s FOR UPDATE",
                 [order.id],
@@ -153,10 +166,7 @@ class UtilityPaymentGatewayTransaction(models.Model):
                 'journal_id': journal.id,
                 'payment_method_line_id': method_line.id,
                 'utility_sale_order_id': order.id,
-                'utility_invoice_id': (
-                    order._get_posted_utility_moves().id
-                    if len(order._get_posted_utility_moves()) == 1 else False
-                ),
+                'utility_invoice_id': tx.utility_invoice_id.id,
                 'utility_payment_method': 'electronic',
                 'electronic_doc_no': provider_reference or tx.provider_reference or tx.name,
                 'date': fields.Date.context_today(tx_company),

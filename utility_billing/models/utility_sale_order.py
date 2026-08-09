@@ -291,18 +291,6 @@ class UtilitySaleOrder(models.Model):
                     vals['name'] = sale_type.sequence_id.next_by_id()
         return super(UtilitySaleOrder, self).create(vals_list)
 
-    def write(self, vals):
-        if 'customer_id' in vals or 'partner_id' in vals:
-            for order in self:
-                customer = self.env['utility.customer'].browse(
-                    vals.get('customer_id', order.customer_id.id)).exists()
-                if customer:
-                    expected_partner_id = customer.partner_id.id
-                    if vals.get('partner_id', expected_partner_id) != expected_partner_id:
-                        raise ValidationError(_('شريك أمر البيع يجب أن يطابق شريك الحساب الكهربائي.'))
-                    vals['partner_id'] = expected_partner_id
-        return super().write(vals)
-
     def action_confirm(self):
         contracts_to_create = []
         lines_mapping = []
@@ -368,6 +356,15 @@ class UtilitySaleOrder(models.Model):
     })
 
     def write(self, vals):
+        if 'customer_id' in vals or 'partner_id' in vals:
+            for order in self:
+                customer = self.env['utility.customer'].browse(
+                    vals.get('customer_id', order.customer_id.id)).exists()
+                if customer:
+                    expected_partner_id = customer.partner_id.id
+                    if vals.get('partner_id', expected_partner_id) != expected_partner_id:
+                        raise ValidationError(_('شريك أمر البيع يجب أن يطابق شريك الحساب الكهربائي.'))
+                    vals['partner_id'] = expected_partner_id
         if vals.get('state') == 'cancel':
             for order in self:
                 component_readings = order.reading_component_ids.mapped('reading_id')
