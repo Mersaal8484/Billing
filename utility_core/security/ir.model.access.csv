@@ -4,7 +4,7 @@ access_utility_region_readonly,utility.region.readonly,model_utility_region,grou
 access_utility_region_supervisor,utility.region.supervisor,model_utility_region,group_utility_supervisor,1,1,1,0
 access_utility_office_admin,utility.office.admin,model_utility_office,group_utility_admin,1,1,1,1
 access_utility_office_readonly,utility.office.readonly,model_utility_office,group_utility_readonly,1,0,0,0
-access_utility_office_supervisor,utility.office.supervisor,model_utility_office,group_utility_supervisor,1,1,1,0
+access_utility_office_legacy_readonly,utility.office.legacy.readonly,model_utility_office,group_utility_readonly,1,0,0,0
 access_utility_feeder_admin,utility.feeder.admin,model_utility_feeder,group_utility_admin,1,1,1,1
 access_utility_feeder_readonly,utility.feeder.readonly,model_utility_feeder,group_utility_readonly,1,0,0,0
 access_utility_feeder_technician,utility.feeder.technician,model_utility_feeder,group_utility_technician,1,1,0,0
@@ -121,4 +121,3 @@ access_utility_period_generator_admin,utility.period.generator.admin,model_utili
 access_utility_period_generator_billing,utility.period.generator.billing,model_utility_period_generator,group_utility_billing_manager,1,1,1,1
 access_utility_period_adjust_wizard_admin,utility.period.adjust.wizard.admin,model_utility_period_adjust_wizard,group_utility_admin,1,1,1,1
 access_utility_period_adjust_wizard_billing,utility.period.adjust.wizard.billing,model_utility_period_adjust_wizard,group_utility_billing_manager,1,1,1,1
-

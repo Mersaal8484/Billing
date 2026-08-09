@@ -80,30 +80,19 @@ class UtilitySaleOrderPayment(models.Model):
 
     def _ensure_collector_journal(self):
         self.ensure_one()
-        current_user = self.env.user
-        journal = current_user.collection_journal_id
-        if journal and journal.company_id != self.company_id:
-            journal = False
-
-        if not journal:
-            journal_name = _('يومية تحصيل - %s') % current_user.name
-            journal = self.env['account.journal'].search([
-                ('company_id', '=', self.company_id.id),
-                ('type', '=', 'cash'),
-                ('name', '=', journal_name),
-            ], limit=1)
-            if not journal:
-                cash_account = self._get_or_create_collector_cash_account(
-                    current_user, self.company_id)
-                journal = self.env['account.journal'].create({
-                    'name': journal_name,
-                    'code': self._get_unique_collector_journal_code(
-                        current_user, self.company_id),
-                    'type': 'cash',
-                    'company_id': self.company_id.id,
-                    'default_account_id': cash_account.id,
-                })
-            current_user.sudo().write({'collection_journal_id': journal.id})
+        staff = self.env['utility.staff'].search([
+            ('user_id', '=', self.env.user.id),
+            ('company_id', '=', self.company_id.id),
+            ('user_role_id.code', '=', 'collector'),
+        ], limit=1)
+        if not staff or not staff.collection_journal_id:
+            raise ValidationError(_(
+                'لا توجد يومية نقدية مستقلة مهيأة لهذا المتحصل. '
+                'قم بتجهيز يومية المتحصل قبل تسجيل التحصيل.'
+            ))
+        journal = staff.collection_journal_id
+        if journal.type != 'cash' or not journal.default_account_id:
+            raise ValidationError(_('يومية المتحصل أو حساب صندوقه غير صالح.'))
         return journal
 
     def _ensure_payment_accounts(self, journal):
@@ -128,7 +117,7 @@ class UtilitySaleOrderPayment(models.Model):
 
         LineModel = self.env['account.payment.method.line']
         acc_field = 'payment_account_id' if hasattr(LineModel, 'payment_account_id') else ('outstanding_account_id' if hasattr(LineModel, 'outstanding_account_id') else False)
-        target_out_acc = company.account_journal_payment_debit_account_id.id if company.account_journal_payment_debit_account_id else (cash_acc.id if cash_acc else False)
+        target_out_acc = cash_acc.id
 
         if not journal.inbound_payment_method_line_ids:
             manual_inbound = self.env['account.payment.method'].search([
@@ -142,8 +131,8 @@ class UtilitySaleOrderPayment(models.Model):
                 j_vals['inbound_payment_method_line_ids'] = [(0, 0, m_line)]
         elif acc_field and target_out_acc:
             for line in journal.inbound_payment_method_line_ids:
-                if not getattr(line, acc_field, False):
-                    line.sudo().write({acc_field: target_out_acc})
+                    if getattr(line, acc_field, False) != cash_acc:
+                        line.sudo().write({acc_field: target_out_acc})
 
         if not journal.outbound_payment_method_line_ids:
             manual_outbound = self.env['account.payment.method'].search([
@@ -157,8 +146,8 @@ class UtilitySaleOrderPayment(models.Model):
                 j_vals['outbound_payment_method_line_ids'] = [(0, 0, m_line)]
         elif acc_field and target_out_acc:
             for line in journal.outbound_payment_method_line_ids:
-                if not getattr(line, acc_field, False):
-                    line.sudo().write({acc_field: target_out_acc})
+                    if getattr(line, acc_field, False) != cash_acc:
+                        line.sudo().write({acc_field: target_out_acc})
 
         if j_vals:
             journal.sudo().write(j_vals)
@@ -167,8 +156,8 @@ class UtilitySaleOrderPayment(models.Model):
 
     def action_register_utility_payment(self):
         self.ensure_one()
-        journal = self.env.user.collection_journal_id
-        if not journal or journal.company_id != self.company_id:
+        journal = self._ensure_collector_journal()
+        if journal.company_id != self.company_id:
             raise ValidationError(_(
                 'لم يتم إعداد يومية التحصيل لهذا المستخدم والشركة. '
                 'يجب على المحاسب إعدادها قبل تسجيل الدفعات.'

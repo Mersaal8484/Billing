@@ -14,7 +14,7 @@ class ResUsers(models.Model):
     )
     collection_journal_id = fields.Many2one(
         'account.journal', string='اليومية النقدية للتحصيل',
-        domain="[('type', 'in', ('cash', 'bank'))]",
+        domain="[('type', '=', 'cash')]",
         help='اليومية الخاصة بالمحصل لتسجيل دفعات فواتير الكهرباء')
 
     collector_block_code = fields.Char(

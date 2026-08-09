@@ -15,6 +15,10 @@ class AccountPayment(models.Model):
         'account.move', string='الفاتورة المحاسبية المحددة', index=True,
         copy=False, domain="[('utility_sale_order_id', '=', utility_sale_order_id), ('state', '=', 'posted')]",
         help='الفاتورة الوحيدة التي ستتم مطابقة هذه الدفعة معها.')
+    collector_id = fields.Many2one(
+        'utility.staff', string='المتحصل الميداني', index=True,
+        check_company=True,
+        help='المتحصل الذي تخصه اليومية النقدية لهذه الدفعة.')
     service_charge_id = fields.Many2one('utility.service.charge', string='رسم الخدمة', index=True, copy=False, check_company=True)
     utility_payment_method = fields.Selection([
         ('cash', 'نقدي (تحصيل ميداني)'),
@@ -60,10 +64,15 @@ class AccountPayment(models.Model):
 
     @api.onchange('utility_payment_method')
     def _onchange_utility_payment_method(self):
-        if self.utility_payment_method in ('cash', 'bank'):
-            user_journal = self.env.user.collection_journal_id
-            if user_journal and user_journal.company_id == self.company_id:
-                self.journal_id = user_journal
+        if self.utility_payment_method == 'cash':
+            collector = self.collector_id or self.env['utility.staff'].search([
+                ('user_id', '=', self.env.user.id),
+                ('company_id', '=', self.company_id.id),
+                ('user_role_id.code', '=', 'collector'),
+            ], limit=1)
+            if collector:
+                self.collector_id = collector
+                self.journal_id = collector.collection_journal_id
         elif self.utility_payment_method == 'electronic':
             provider = self.env['utility.integration.provider'].search([
                 ('company_id', '=', self.company_id.id),
@@ -139,6 +148,25 @@ class AccountPayment(models.Model):
         self.ensure_one()
         if not self.utility_sale_order_id:
             return
+        if self.utility_payment_method == 'cash':
+            collector = self.collector_id or self.env['utility.staff'].search([
+                ('user_id', '=', self.env.user.id),
+                ('company_id', '=', self.company_id.id),
+                ('user_role_id.code', '=', 'collector'),
+            ], limit=1)
+            if not collector or not collector.collection_journal_id:
+                raise ValidationError(_(
+                    'يجب تجهيز اليومية النقدية المستقلة للمتحصل قبل ترحيل التحصيل.'
+                ))
+            if self.journal_id != collector.collection_journal_id:
+                raise ValidationError(_(
+                    'دفعة التحصيل يجب أن تستخدم اليومية الخاصة بالمتحصل المحدد.'
+                ))
+            cash_account = collector.collection_journal_id.default_account_id
+            if not cash_account or self.outstanding_account_id != cash_account:
+                raise ValidationError(_(
+                    'حساب سيولة دفعة المتحصل يجب أن يكون حساب صندوق المتحصل المستقل.'
+                ))
         self.env['utility.payment.allocation'].prevalidate_payment(
             self, require_posted=False)
 
@@ -148,7 +176,9 @@ class AccountPayment(models.Model):
             payment_period = self._get_payment_period_for_order(self.utility_sale_order_id)
             self.date_range_id = payment_period
 
-    @api.constrains('utility_sale_order_id', 'utility_invoice_id', 'partner_id', 'date_range_id')
+    @api.constrains(
+        'utility_sale_order_id', 'utility_invoice_id', 'partner_id',
+        'date_range_id', 'collector_id', 'journal_id', 'utility_payment_method')
     def _check_utility_payment_period_matches_bill(self):
         self._validate_utility_payment_period()
         for payment in self.filtered('utility_sale_order_id'):
@@ -162,6 +192,31 @@ class AccountPayment(models.Model):
                 raise ValidationError(_('الفاتورة المحددة لا تخص فاتورة الكهرباء المختارة.'))
             if payment.utility_invoice_id.partner_id != expected_partner:
                 raise ValidationError(_('شريك الفاتورة المحاسبية لا يطابق شريك الحساب الكهربائي.'))
+            if payment.utility_payment_method == 'cash':
+                if not payment.collector_id or payment.journal_id != payment.collector_id.collection_journal_id:
+                    raise ValidationError(_('دفعة التحصيل النقدية يجب أن تطابق يومية المتحصل.'))
+
+    def _prepare_field_collector_payment(self, vals, order):
+        """Bind cash utility payments to the current collector cash journal."""
+        if vals.get('utility_payment_method', 'cash') != 'cash':
+            return
+        collector = self.env['utility.staff'].browse(
+            vals.get('collector_id')).exists() if vals.get('collector_id') else self.env['utility.staff'].search([
+                ('user_id', '=', self.env.user.id),
+                ('company_id', '=', order.company_id.id),
+                ('user_role_id.code', '=', 'collector'),
+            ], limit=1)
+        if not collector or not collector.collection_journal_id:
+            raise ValidationError(_(
+                'لا توجد يومية نقدية مستقلة مهيأة للمتحصل الحالي.'
+            ))
+        if collector.company_id != order.company_id:
+            raise ValidationError(_('المتحصل واليومية يجب أن ينتميا إلى شركة الفاتورة.'))
+        journal_id = vals.get('journal_id')
+        if journal_id and journal_id != collector.collection_journal_id.id:
+            raise ValidationError(_('لا يمكن تسجيل دفعة المتحصل في يومية متحصل آخر.'))
+        vals['collector_id'] = collector.id
+        vals['journal_id'] = collector.collection_journal_id.id
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -175,6 +230,7 @@ class AccountPayment(models.Model):
                 if vals.get('partner_id') and vals['partner_id'] != expected_partner_id:
                     raise ValidationError(_('شريك الدفعة يجب أن يطابق شريك الحساب الكهربائي.'))
                 vals['partner_id'] = expected_partner_id
+                self._prepare_field_collector_payment(vals, order)
                 payment_period = self._get_payment_period_for_order(order)
                 if not payment_period:
                     raise ValidationError(
@@ -210,6 +266,18 @@ class AccountPayment(models.Model):
                     % order.date_range_id.display_name
                 )
             vals['date_range_id'] = payment_period.id
+            self._prepare_field_collector_payment(vals, order)
+        elif self.filtered('utility_sale_order_id') and (
+                'collector_id' in vals or 'journal_id' in vals
+                or 'utility_payment_method' in vals):
+            for payment in self.filtered('utility_sale_order_id'):
+                candidate = dict(vals)
+                candidate.setdefault('utility_payment_method', payment.utility_payment_method)
+                candidate.setdefault('collector_id', payment.collector_id.id)
+                candidate.setdefault('journal_id', payment.journal_id.id)
+                self._prepare_field_collector_payment(
+                    candidate, payment.utility_sale_order_id)
+                vals.update(candidate)
         res = super().write(vals)
         if vals.get('service_charge_id'):
             for payment in self:
@@ -232,6 +300,18 @@ class AccountPayment(models.Model):
                     lambda move: move.state == 'posted' and move.move_type in ('out_invoice', 'out_refund'))
                 if len(posted_moves) == 1:
                     res['utility_invoice_id'] = posted_moves.id
+
+        if order_id and 'collector_id' in fields_list:
+            order = self.env['sale.order'].browse(order_id).exists()
+            collector = self.env['utility.staff'].search([
+                ('user_id', '=', self.env.user.id),
+                ('company_id', '=', order.company_id.id),
+                ('user_role_id.code', '=', 'collector'),
+            ], limit=1) if order else self.env['utility.staff']
+            if collector:
+                res['collector_id'] = collector.id
+                if 'journal_id' in fields_list and collector.collection_journal_id:
+                    res['journal_id'] = collector.collection_journal_id.id
 
         # تعيين طريقة الدفع الافتراضية واليومية الميدانية للمستخدم
         if 'utility_payment_method' in fields_list and not res.get('utility_payment_method'):

@@ -103,5 +103,5 @@
 
     <menuitem id="menu_utility_payment_allocations" name="تخصيصات التحصيل"
               parent="menu_utility_accounting" action="action_utility_payment_allocation"
-              sequence="35" groups="utility_core.group_utility_cashier,utility_core.group_utility_billing_manager,utility_core.group_utility_auditor,utility_core.group_utility_admin"/>
+              sequence="35" groups="utility_core.group_utility_collector,utility_core.group_utility_billing_manager,utility_core.group_utility_auditor,utility_core.group_utility_admin"/>
 </odoo>

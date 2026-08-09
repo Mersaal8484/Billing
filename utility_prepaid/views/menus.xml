@@ -92,6 +92,13 @@
             parent="menu_utility_prepaid_root"
             sequence="30"/>
 
+        <menuitem id="menu_prepaid_offices"
+            name="المكاتب"
+            parent="menu_cashier_operations"
+            action="utility_core.action_utility_office"
+            groups="utility_prepaid.group_utility_prepaid_cashier,utility_prepaid.group_utility_prepaid_officer,utility_prepaid.group_utility_prepaid_manager,utility_prepaid.group_utility_prepaid_admin"
+            sequence="5"/>
+
         <menuitem id="menu_cashier_shifts"
             name="الورديات"
             parent="menu_cashier_operations"

@@ -22,6 +22,7 @@
                            attrs="{'invisible': [('utility_sale_order_id', '=', False)], 'readonly': [('state', '!=', 'draft')]}"/>
                     <field name="service_charge_id" readonly="1" attrs="{'invisible': [('service_charge_id', '=', False)]}"/>
                     <field name="utility_payment_method" readonly="1" attrs="{'invisible': [('utility_sale_order_id', '=', False)]}"/>
+                    <field name="collector_id" attrs="{'invisible': ['|', ('utility_sale_order_id', '=', False), ('utility_payment_method', '!=', 'cash')], 'readonly': [('state', '!=', 'draft')]}"/>
                     <field name="electronic_doc_no" readonly="1" attrs="{'invisible': [('utility_sale_order_id', '=', False)]}"/>
                     <field name="is_invoice_verified" readonly="1" attrs="{'invisible': [('utility_sale_order_id', '=', False)]}"/>
                     <field name="date_range_id" readonly="1" attrs="{'invisible': [('date_range_id', '=', False)]}"/>

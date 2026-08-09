@@ -32,6 +32,7 @@
     'data': [
         'security/utility_prepaid_security.xml',
         'security/ir.model.access.csv',
+        'data/utility_prepaid_roles.xml',
         'data/utility_prepaid_sequence.xml',
         'data/utility_prepaid_products.xml',
         'data/utility_prepaid_channels.xml',

@@ -17,7 +17,7 @@
             <field name="name">Service Charge Multi-Company Rule</field>
             <field name="model_id" ref="model_utility_service_charge"/>
             <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
-            <field name="groups" eval="[(4, ref('utility_core.group_utility_billing_manager')), (4, ref('utility_core.group_utility_cashier')), (4, ref('utility_core.group_utility_auditor'))]"/>
+            <field name="groups" eval="[(4, ref('utility_core.group_utility_billing_manager')), (4, ref('utility_core.group_utility_collector')), (4, ref('utility_core.group_utility_auditor'))]"/>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="True"/>
             <field name="perm_create" eval="True"/>
@@ -55,7 +55,7 @@
             <field name="name">Payment Allocation Route Rule</field>
             <field name="model_id" ref="model_utility_payment_allocation"/>
             <field name="domain_force">[(1, '=', 1)] if user.has_group('utility_core.group_utility_admin') else ['|', ('utility_customer_id.route_id', '=', False), ('utility_customer_id.route_id', 'in', user.assigned_route_ids.ids)]</field>
-            <field name="groups" eval="[(4, ref('utility_core.group_utility_cashier')), (4, ref('utility_core.group_utility_collector')), (4, ref('utility_core.group_utility_technician')), (4, ref('utility_core.group_utility_billing_manager'))]"/>
+            <field name="groups" eval="[(4, ref('utility_core.group_utility_collector')), (4, ref('utility_core.group_utility_technician')), (4, ref('utility_core.group_utility_billing_manager'))]"/>
         </record>
 
         <record id="utility_collection_company_rule" model="ir.rule">
@@ -64,17 +64,59 @@
             <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
             <field name="global" eval="True"/>
         </record>
+        <record id="utility_collection_collector_scope_rule" model="ir.rule">
+            <field name="name">Collection Collector Scope Rule</field>
+            <field name="model_id" ref="model_utility_collection"/>
+            <field name="domain_force">[(1, '=', 1)] if user.has_group('utility_core.group_utility_admin') else [('collector_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('utility_core.group_utility_collector'))]"/>
+        </record>
+        <record id="utility_collection_auditor_region_rule" model="ir.rule">
+            <field name="name">Collection Auditor Geographic Rule</field>
+            <field name="model_id" ref="model_utility_collection"/>
+            <field name="domain_force">[(1, '=', 1)] if user.has_group('utility_core.group_utility_admin') else ([('utility_customer_id.region_id', 'in', user.assigned_region_ids.ids)] if user.assigned_region_ids else [('id', '=', False)])</field>
+            <field name="groups" eval="[(4, ref('utility_core.group_utility_auditor'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
         <record id="utility_collection_settlement_company_rule" model="ir.rule">
             <field name="name">Collection Settlement Multi-Company Rule</field>
             <field name="model_id" ref="model_utility_collection_settlement"/>
             <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
             <field name="global" eval="True"/>
         </record>
+        <record id="utility_collection_settlement_collector_scope_rule" model="ir.rule">
+            <field name="name">Settlement Collector Scope Rule</field>
+            <field name="model_id" ref="model_utility_collection_settlement"/>
+            <field name="domain_force">[(1, '=', 1)] if user.has_group('utility_core.group_utility_admin') else [('collector_id.user_id', '=', user.id)]</field>
+            <field name="groups" eval="[(4, ref('utility_core.group_utility_collector'))]"/>
+        </record>
+        <record id="utility_collection_settlement_auditor_region_rule" model="ir.rule">
+            <field name="name">Settlement Auditor Geographic Rule</field>
+            <field name="model_id" ref="model_utility_collection_settlement"/>
+            <field name="domain_force">[(1, '=', 1)] if user.has_group('utility_core.group_utility_admin') else ([('line_ids.collection_id.utility_customer_id.region_id', 'in', user.assigned_region_ids.ids)] if user.assigned_region_ids else [('id', '=', False)])</field>
+            <field name="groups" eval="[(4, ref('utility_core.group_utility_auditor'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
+        </record>
         <record id="utility_bank_settlement_company_rule" model="ir.rule">
             <field name="name">Bank Settlement Multi-Company Rule</field>
             <field name="model_id" ref="model_utility_bank_settlement"/>
             <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
             <field name="global" eval="True"/>
+        </record>
+        <record id="utility_bank_settlement_auditor_region_rule" model="ir.rule">
+            <field name="name">Bank Settlement Auditor Geographic Rule</field>
+            <field name="model_id" ref="model_utility_bank_settlement"/>
+            <field name="domain_force">[(1, '=', 1)] if user.has_group('utility_core.group_utility_admin') else ([('line_ids.collection_settlement_id.line_ids.collection_id.utility_customer_id.region_id', 'in', user.assigned_region_ids.ids)] if user.assigned_region_ids else [('id', '=', False)])</field>
+            <field name="groups" eval="[(4, ref('utility_core.group_utility_auditor'))]"/>
+            <field name="perm_read" eval="True"/>
+            <field name="perm_write" eval="False"/>
+            <field name="perm_create" eval="False"/>
+            <field name="perm_unlink" eval="False"/>
         </record>
     </data>
 </odoo>

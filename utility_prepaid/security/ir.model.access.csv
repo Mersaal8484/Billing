@@ -40,3 +40,7 @@ access_prepaid_dashboard_user,utility.prepaid.dashboard.user,model_utility_prepa
 access_cashier_shift_admin,utility.cashier.shift.admin,model_utility_cashier_shift,base.group_system,1,1,1,1
 access_cashier_shift_user,utility.cashier.shift.user,model_utility_cashier_shift,utility_prepaid.group_utility_prepaid_user,1,1,1,0
 access_cashier_shift_close_wizard,utility.cashier.shift.close.wizard,model_utility_cashier_shift_close_wizard,utility_prepaid.group_utility_prepaid_user,1,1,1,0
+access_utility_office_prepaid_cashier,utility.office.prepaid.cashier,utility_core.model_utility_office,utility_prepaid.group_utility_prepaid_cashier,1,1,1,0
+access_utility_office_prepaid_user,utility.office.prepaid.user,utility_core.model_utility_office,utility_prepaid.group_utility_prepaid_officer,1,1,1,0
+access_utility_office_prepaid_manager,utility.office.prepaid.manager,utility_core.model_utility_office,utility_prepaid.group_utility_prepaid_manager,1,1,1,0
+access_utility_office_prepaid_admin,utility.office.prepaid.admin,utility_core.model_utility_office,utility_prepaid.group_utility_prepaid_admin,1,1,1,1

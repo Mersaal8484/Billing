@@ -33,6 +33,9 @@ class UtilityStaff(models.Model):
         domain="[('type', '=', 'cash')]",
         tracking=True,
         help='اليومية النقدية المخصصة لهذا المتحصل الميداني وتسجيل تحصيلاته')
+    cash_account_id = fields.Many2one(
+        'account.account', related='collection_journal_id.default_account_id',
+        string='حساب صندوق المتحصل', store=True, readonly=True)
     route_count = fields.Integer(string='عدد المسارات', compute='_compute_route_count')
 
     @api.onchange('area_id')
@@ -91,7 +94,29 @@ class UtilityStaff(models.Model):
         ('unique_user_per_company',
          'unique(user_id, company_id)',
          'هذا المستخدم مرتبط بسجل موظف آخر في نفس الشركة. كل مستخدم يجب أن يرتبط بموظف واحد فقط.'),
+        ('unique_collection_journal',
+         'unique(collection_journal_id)',
+         'لا يجوز مشاركة يومية التحصيل بين أكثر من متحصل.'),
     ]
+
+    @api.constrains('collection_journal_id', 'company_id')
+    def _check_collection_journal(self):
+        for record in self.filtered('collection_journal_id'):
+            journal = record.collection_journal_id
+            if journal.type != 'cash':
+                raise ValidationError(_('يومية المتحصل يجب أن تكون يومية نقدية.'))
+            if journal.company_id != record.company_id:
+                raise ValidationError(_('يومية المتحصل يجب أن تنتمي إلى نفس الشركة.'))
+            if not journal.default_account_id:
+                raise ValidationError(_('يومية المتحصل يجب أن تحتوي على حساب صندوق مستقل.'))
+            duplicate = self.search([
+                ('collection_journal_id', '=', journal.id),
+                ('id', '!=', record.id),
+            ], limit=1)
+            if duplicate:
+                raise ValidationError(_(
+                    'اليومية النقدية مستخدمة مسبقًا للمتحصل %s.'
+                ) % duplicate.display_name)
 
     @api.constrains('phone', 'mobile')
     def _check_phone_9_digits(self):
@@ -106,17 +131,14 @@ class UtilityStaff(models.Model):
                 )
 
     def _auto_create_collector_journal(self):
-        """Auto-create a dedicated Cash Journal for field collectors and cashiers."""
+        """Create a collection journal only for postpaid field collectors."""
         for record in self:
             is_collector = False
             if record.user_role_id:
                 code = (record.user_role_id.code or '').lower()
                 name = record.user_role_id.name or ''
-                if code in ('collector', 'cashier') or any(kw in name for kw in ('متحصل', 'صندوق', 'محصل')):
+                if code == 'collector' or any(kw in name for kw in ('متحصل', 'محصل')):
                     is_collector = True
-            else:
-                # إذا لم يُحدد دور محدد، نعتبر كل موظف في جدول الموظفين الميدانيين مؤهلاً
-                is_collector = True
 
             if is_collector and not record.collection_journal_id:
                 code_suffix = str(record.id or record.employee_code or '001')[-4:]
@@ -174,7 +196,7 @@ class UtilityStaff(models.Model):
                     })
                 record.collection_journal_id = existing.id
 
-            if record.collection_journal_id:
+            if is_collector and record.collection_journal_id:
                 journal = record.collection_journal_id
                 company = journal.company_id
                 # 1. ضمان وجود حسابات الدفعات والإيصالات المستحقة على الشركة
@@ -222,7 +244,7 @@ class UtilityStaff(models.Model):
 
                 LineModel = self.env['account.payment.method.line']
                 acc_field = 'payment_account_id' if hasattr(LineModel, 'payment_account_id') else ('outstanding_account_id' if hasattr(LineModel, 'outstanding_account_id') else False)
-                target_out_acc = company.account_journal_payment_debit_account_id.id if company.account_journal_payment_debit_account_id else (cash_acc.id if cash_acc else False)
+                target_out_acc = cash_acc.id if cash_acc else False
 
                 if not journal.inbound_payment_method_line_ids:
                     manual_inbound = self.env['account.payment.method'].search([
@@ -274,6 +296,17 @@ class UtilityStaff(models.Model):
             }
 
     def write(self, vals):
+        if vals.get('collection_journal_id'):
+            journal = self.env['account.journal'].browse(
+                vals['collection_journal_id']).exists()
+            duplicate = self.search([
+                ('collection_journal_id', '=', journal.id),
+                ('id', 'not in', self.ids),
+            ], limit=1)
+            if duplicate:
+                raise ValidationError(_(
+                    'اليومية النقدية مستخدمة مسبقًا للمتحصل %s.'
+                ) % duplicate.display_name)
         res = super(UtilityStaff, self).write(vals)
         if 'user_role_id' in vals or 'user_id' in vals or 'name' in vals or 'collection_journal_id' in vals:
             for record in self:
