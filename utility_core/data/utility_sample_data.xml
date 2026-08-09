@@ -279,6 +279,12 @@ if products:
             <field name="type">region</field>
             <field name="recurring_rule_type">biweekly</field>
         </record>
+        <record id="demo_region_monthly" model="utility.region">
+            <field name="name">منطقة الدورة الشهرية</field>
+            <field name="code">REGION_MONTHLY</field>
+            <field name="type">region</field>
+            <field name="recurring_rule_type">monthly</field>
+        </record>
         <record id="demo_area_2" model="utility.region">
             <field name="name">فرع المنطقة الثانية</field>
             <field name="code">AREA_2</field>
