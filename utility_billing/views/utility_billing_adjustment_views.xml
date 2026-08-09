@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_billing_adjustment_tree" model="ir.ui.view">
+        <field name="name">utility.billing.adjustment.tree</field>
+        <field name="model">utility.billing.adjustment</field>
+        <field name="arch" type="xml">
+            <tree default_order="requested_date desc">
+                <field name="name"/>
+                <field name="customer_id"/>
+                <field name="billing_period_id"/>
+                <field name="invoice_id"/>
+                <field name="adjustment_type"/>
+                <field name="original_amount" widget="monetary"/>
+                <field name="difference_amount" widget="monetary"/>
+                <field name="state" widget="badge"
+                       decoration-muted="state in ('draft', 'cancelled')"
+                       decoration-warning="state == 'submitted'"
+                       decoration-success="state in ('approved', 'applied')"/>
+                <field name="requested_by_id"/>
+                <field name="approved_by_id"/>
+                <field name="company_id" invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_utility_billing_adjustment_form" model="ir.ui.view">
+        <field name="name">utility.billing.adjustment.form</field>
+        <field name="model">utility.billing.adjustment</field>
+        <field name="arch" type="xml">
+            <form string="تعديل فاتورة الكهرباء">
+                <header>
+                    <button name="action_submit" string="إرسال للاعتماد" type="object"
+                            class="btn-primary" attrs="{'invisible': [('state', '!=', 'draft')]}"/>
+                    <button name="action_approve" string="اعتماد التعديل" type="object"
+                            class="btn-primary" attrs="{'invisible': [('state', '!=', 'submitted')]}"/>
+                    <button name="action_apply_correction" string="تطبيق التصحيح" type="object"
+                            class="btn-primary" attrs="{'invisible': [('state', '!=', 'approved')]}"/>
+                    <button name="action_cancel" string="إلغاء" type="object"
+                            attrs="{'invisible': [('state', 'in', ('applied', 'cancelled'))]}"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,submitted,approved,applied"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_original_invoice" type="object" class="oe_stat_button" icon="fa-file-text-o">
+                            <span>الفاتورة الأصلية</span>
+                        </button>
+                        <button name="action_open_credit_note" type="object" class="oe_stat_button" icon="fa-minus-circle"
+                                attrs="{'invisible': [('credit_note_id', '=', False)]}">
+                            <span>إشعار الدائن</span>
+                        </button>
+                        <button name="action_open_replacement" type="object" class="oe_stat_button" icon="fa-refresh"
+                                attrs="{'invisible': [('replacement_invoice_id', '=', False)]}">
+                            <span>الفاتورة البديلة</span>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group string="الفاتورة الأصلية">
+                        <group>
+                            <field name="customer_id" attrs="{'readonly': [('state', '!=', 'draft')]}"/>
+                            <field name="billing_period_id" attrs="{'readonly': [('state', '!=', 'draft')]}"/>
+                            <field name="sale_order_id" attrs="{'readonly': [('state', '!=', 'draft')]}"/>
+                            <field name="invoice_id" attrs="{'readonly': [('state', '!=', 'draft')]}"/>
+                        </group>
+                        <group>
+                            <field name="original_amount" widget="monetary" readonly="1"/>
+                            <field name="corrected_amount" widget="monetary" attrs="{'readonly': [('state', '!=', 'draft')]}"/>
+                            <field name="difference_amount" widget="monetary" readonly="1"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                    </group>
+                    <group string="تفاصيل التصحيح">
+                        <group>
+                            <field name="adjustment_type" attrs="{'readonly': [('state', '!=', 'draft')]}"/>
+                            <field name="rebill" attrs="{'readonly': [('state', '!=', 'draft')]}"/>
+                            <field name="corrected_consumption" attrs="{'readonly': [('state', '!=', 'draft'), ('rebill', '=', False)]}"/>
+                            <field name="corrected_current_reading" attrs="{'readonly': [('state', '!=', 'draft'), ('rebill', '=', False)]}"/>
+                        </group>
+                        <group>
+                            <field name="reason" attrs="{'readonly': [('state', '!=', 'draft')]}"/>
+                            <field name="description" attrs="{'readonly': [('state', '!=', 'draft')]}"/>
+                        </group>
+                    </group>
+                    <group string="نتيجة التطبيق">
+                        <group>
+                            <field name="credit_note_id" readonly="1"/>
+                            <field name="replacement_sale_order_id" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="replacement_invoice_id" readonly="1"/>
+                            <field name="company_id" readonly="1"/>
+                        </group>
+                    </group>
+                    <group string="الاعتماد والتدقيق">
+                        <group>
+                            <field name="requested_by_id" readonly="1"/>
+                            <field name="requested_date" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="approved_by_id" readonly="1"/>
+                            <field name="approved_date" readonly="1"/>
+                        </group>
+                    </group>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_utility_billing_adjustment_search" model="ir.ui.view">
+        <field name="name">utility.billing.adjustment.search</field>
+        <field name="model">utility.billing.adjustment</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="customer_id"/>
+                <field name="invoice_id"/>
+                <field name="reason"/>
+                <filter name="draft" string="مسودة" domain="[('state', '=', 'draft')]"/>
+                <filter name="submitted" string="بانتظار الاعتماد" domain="[('state', '=', 'submitted')]"/>
+                <filter name="approved" string="معتمد" domain="[('state', '=', 'approved')]"/>
+                <filter name="applied" string="تم التطبيق" domain="[('state', '=', 'applied')]"/>
+                <filter name="cancelled" string="ملغى" domain="[('state', '=', 'cancelled')]"/>
+                <separator/>
+                <filter name="group_customer" string="المشترك" context="{'group_by': 'customer_id'}"/>
+                <filter name="group_period" string="فترة الفوترة" context="{'group_by': 'billing_period_id'}"/>
+                <filter name="group_type" string="نوع التعديل" context="{'group_by': 'adjustment_type'}"/>
+                <filter name="group_state" string="الحالة" context="{'group_by': 'state'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_utility_billing_adjustment" model="ir.actions.act_window">
+        <field name="name">تعديلات الفوترة</field>
+        <field name="res_model">utility.billing.adjustment</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_utility_billing_adjustment_search"/>
+    </record>
+
+    <menuitem id="menu_utility_billing_adjustments" name="تعديلات الفوترة"
+              parent="menu_utility_accounting" action="action_utility_billing_adjustment" sequence="5"/>
+</odoo>

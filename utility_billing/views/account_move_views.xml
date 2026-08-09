@@ -12,6 +12,8 @@
                             <field name="utility_sale_order_id" readonly="1" attrs="{'invisible': [('utility_sale_order_id', '=', False)]}"/>
                             <field name="utility_customer_id" readonly="1" attrs="{'invisible': [('utility_customer_id', '=', False)]}"/>
                             <field name="service_charge_id" readonly="1" attrs="{'invisible': [('service_charge_id', '=', False)]}"/>
+                            <field name="utility_adjustment_id" readonly="1" attrs="{'invisible': [('utility_adjustment_id', '=', False)]}"/>
+                            <field name="utility_replacement_of_id" readonly="1" attrs="{'invisible': [('utility_replacement_of_id', '=', False)]}"/>
                             <field name="meter_number" readonly="1" attrs="{'invisible': [('utility_sale_order_id', '=', False)]}"/>
                         </group>
                         <group attrs="{'invisible': [('utility_sale_order_id', '=', False)]}">

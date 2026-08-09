@@ -66,6 +66,26 @@ class UtilitySaleOrder(models.Model):
     penalty_ids = fields.One2many('utility.penalty', 'sale_order_id', string='سجل الغرامات')
     utility_move_ids = fields.One2many(
         'account.move', 'utility_sale_order_id', string='فواتير الكهرباء المحاسبية')
+    billing_adjustment_ids = fields.One2many(
+        'utility.billing.adjustment', 'sale_order_id', string='تعديلات الفوترة',
+        copy=False, readonly=True)
+    billing_adjustment_count = fields.Integer(
+        string='عدد تعديلات الفوترة', compute='_compute_billing_adjustment_count')
+    replacement_of_id = fields.Many2one(
+        'sale.order', string='فاتورة مستبدلة', index=True, copy=False,
+        readonly=True, ondelete='restrict')
+    replacement_sale_order_ids = fields.One2many(
+        'sale.order', 'replacement_of_id', string='الفواتير البديلة',
+        copy=False, readonly=True)
+    billing_adjustment_id = fields.Many2one(
+        'utility.billing.adjustment', string='تعديل الفوترة', index=True,
+        copy=False, readonly=True)
+    billing_correction_status = fields.Selection([
+        ('normal', 'عادية'),
+        ('partially_corrected', 'مصححة جزئياً'),
+        ('replaced', 'مستبدلة'),
+    ], string='حالة التصحيح', default='normal', copy=False, readonly=True,
+        tracking=True)
 
     qr_code_value = fields.Char('بيانات QR', compute='_compute_qr_code', readonly=True)
     qr_code_url = fields.Char('رابط QR', compute='_compute_qr_code', readonly=True)
@@ -92,6 +112,22 @@ class UtilitySaleOrder(models.Model):
     def _compute_reading_component_count(self):
         for order in self:
             order.reading_component_count = len(order.reading_component_ids)
+
+    @api.depends('billing_adjustment_ids')
+    def _compute_billing_adjustment_count(self):
+        for order in self:
+            order.billing_adjustment_count = len(order.billing_adjustment_ids)
+
+    def action_view_billing_adjustments(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('تعديلات الفوترة'),
+            'res_model': 'utility.billing.adjustment',
+            'view_mode': 'tree,form',
+            'domain': [('sale_order_id', '=', self.id)],
+            'context': {'default_sale_order_id': self.id},
+        }
 
     def action_view_reading_components(self):
         self.ensure_one()
@@ -140,7 +176,15 @@ class UtilitySaleOrder(models.Model):
                 raise ValidationError(_(
                     'فترة الفاتورة يجب أن تطابق فترة القراءة المرتبطة حرفياً.'))
 
+            if (period.state in ('closed', 'locked')
+                    and not self.env.context.get('allow_billing_adjustment')):
+                raise ValidationError(_(
+                    'لا يمكن إنشاء فاتورة عادية في الفترة المغلقة أو المقفلة [%s]. '
+                    'استخدم مسار تعديل الفوترة المعتمد.') % period.name)
+
             # التحقق من منع الفواتير المكررة لنفس المشترك والفترة
+            if self.env.context.get('allow_billing_adjustment'):
+                continue
             duplicate = self.search([
                 ('customer_id', '=', order.customer_id.id),
                 ('date_range_id', '=', order.date_range_id.id),
@@ -287,6 +331,13 @@ class UtilitySaleOrder(models.Model):
                 if vals.get('partner_id') and vals['partner_id'] != expected_partner_id:
                     raise ValidationError(_('شريك أمر البيع يجب أن يطابق شريك الحساب الكهربائي.'))
                 vals['partner_id'] = expected_partner_id
+            period_id = vals.get('date_range_id')
+            if period_id and not self.env.context.get('allow_billing_adjustment'):
+                period = self.env['date.range'].browse(period_id).exists()
+                if period and period.state in ('closed', 'locked'):
+                    raise ValidationError(_(
+                        'لا يمكن إنشاء فاتورة عادية في الفترة [%s] لأنها مغلقة أو مقفلة. '
+                        'استخدم تعديل فوترة معتمد.') % period.name)
             if vals.get('name', '/') == '/' and vals.get('type_id'):
                 sale_type = self.env['sale.order.type'].browse(vals['type_id'])
                 if sale_type.sequence_id:
@@ -537,6 +588,15 @@ class UtilitySaleOrderLine(models.Model):
         'utility.transformer', string='المحول الخاص',
         readonly=True, copy=False, index=True,
         help='المحول الخاص المرتبط عند إضافة بند رسوم المحول الخاص للفاتورة.')
+    utility_component_key = fields.Char(
+        string='معرف مكون الفوترة', index=True, copy=False, readonly=True,
+        help='هوية ثابتة لمكون الفاتورة لمنع التكرار عند إعادة التوليد.')
+
+    _sql_constraints = [
+        ('utility_component_key_unique',
+         'unique(order_id, utility_component_key)',
+         'لا يمكن تكرار مكون الفوترة نفسه داخل الفاتورة.'),
+    ]
 
     @api.depends(
         'qty_invoiced', 'qty_delivered', 'product_uom_qty', 'state',

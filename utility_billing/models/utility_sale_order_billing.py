@@ -179,6 +179,20 @@ class UtilitySaleOrderBilling(models.Model):
 
         self._append_private_transformer_fee_line(lines)
 
+        # Give every generated component a deterministic identity.  The key is
+        # based on the generated source/type and its stable occurrence order;
+        # it is not derived from mutable posted accounting values.
+        occurrence = {}
+        for command in lines:
+            line_vals = command[2]
+            component_type = line_vals.get('meter_line_type') or 'other'
+            occurrence[component_type] = occurrence.get(component_type, 0) + 1
+            line_vals['utility_component_key'] = '%s:%s:%s' % (
+                component_type,
+                occurrence[component_type],
+                line_vals.get('product_id') or 0,
+            )
+
         self.order_line = [(5, 0, 0)] + lines
 
     def _append_private_transformer_fee_line(self, lines):

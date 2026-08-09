@@ -10,6 +10,32 @@ class UtilityReading(models.Model):
 
     batch_id = fields.Many2one('utility.reading.batch', 'الدفعة', readonly=True, index=True)
 
+    def _check_billing_period_mutation(self, vals=None):
+        """Prevent ordinary reading changes after the billing period is closed."""
+        if (self.env.context.get('allow_billing_adjustment')
+                or self.env.context.get('_bypass_reading_protection')):
+            return
+        if self.filtered(lambda reading: reading.date_range_id.state in ('closed', 'locked')):
+            raise ValidationError(_(
+                'لا يمكن تعديل قراءة مرتبطة بفترة مغلقة أو مقفلة. '
+                'استخدم مسار تعديل الفوترة المعتمد.'))
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        period_ids = [vals.get('date_range_id') for vals in vals_list if vals.get('date_range_id')]
+        if period_ids and not self.env.context.get('allow_billing_adjustment'):
+            closed = self.env['date.range'].search([
+                ('id', 'in', period_ids), ('state', 'in', ('closed', 'locked')),
+            ], limit=1)
+            if closed:
+                raise ValidationError(_(
+                    'لا يمكن إنشاء قراءة في الفترة المغلقة أو المقفلة [%s].') % closed.name)
+        return super().create(vals_list)
+
+    def write(self, vals):
+        self._check_billing_period_mutation(vals)
+        return super().write(vals)
+
     def _queue_approved_billable_readings(self):
         """Move newly approved periodic billable readings to the billing queue.
 

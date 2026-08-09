@@ -37,6 +37,11 @@
                         attrs="{'invisible': ['|', ('customer_id', '=', False), ('balance_due', '&gt;', 0)]}"/>
             </xpath>
             <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_billing_adjustments" type="object"
+                        class="oe_stat_button" icon="fa-exchange"
+                        attrs="{'invisible': [('billing_adjustment_count', '=', 0)]}">
+                    <field name="billing_adjustment_count" widget="statinfo" string="تعديلات الفوترة"/>
+                </button>
                 <button name="action_view_reading_components" type="object"
                         class="oe_stat_button" icon="fa-tachometer"
                         attrs="{'invisible': [('reading_component_count', '=', 0)]}">

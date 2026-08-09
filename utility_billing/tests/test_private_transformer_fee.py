@@ -215,6 +215,41 @@ class TestPrivateTransformerFee(TransactionCase):
         self.assertEqual(len(fee_lines), 1)
         self.assertAlmostEqual(fee_lines.price_unit, 2500.0, places=2)
 
+    def test_regeneration_preserves_unique_component_identity(self):
+        customer = self._create_customer('009B', is_private=True, fee=2500.0)
+        order = self._create_order(customer, consumption=1000.0)
+        first_keys = set(order.order_line.mapped('utility_component_key'))
+
+        order._calculate_amounts()
+        order._calculate_amounts()
+        second_keys = set(order.order_line.mapped('utility_component_key'))
+
+        self.assertEqual(len(second_keys), len(order.order_line))
+        self.assertEqual(first_keys, second_keys)
+
+    def test_closed_period_rejects_normal_bill_creation(self):
+        customer = self._create_customer('009C', is_private=False)
+        closed_period = self.env['date.range'].create({
+            'name': 'فترة مغلقة لاختبار منع الفوترة',
+            'period_code': 'READ-PTF-CLOSED-2026-08',
+            'cycle_key': 'PTF-CLOSED-2026-08',
+            'period_role': 'reading',
+            'type_id': self.period.type_id.id,
+            'date_start': '2026-08-01',
+            'date_end': '2026-08-31',
+            'billing_cadence': 'monthly',
+            'state': 'closed',
+        })
+        with self.assertRaises(ValidationError):
+            self.env['sale.order'].create({
+                'partner_id': customer.partner_id.id,
+                'customer_id': customer.id,
+                'date_range_id': closed_period.id,
+                'period_start': closed_period.date_start,
+                'period_end': closed_period.date_end,
+                'consumption': 100.0,
+            })
+
     def test_negative_fee_raises_validation_error(self):
         customer = self._create_customer('010', is_private=True, fee=100.0)
         with self.assertRaises(ValidationError):
