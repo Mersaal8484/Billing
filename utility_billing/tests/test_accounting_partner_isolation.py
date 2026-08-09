@@ -74,6 +74,37 @@ class TestUtilityAccountingPartnerIsolation(TransactionCase):
         with self.assertRaises(ValidationError):
             second.write({'transformer_id': transformer.id})
 
+    def test_auditor_customer_scope_uses_assigned_region_rule(self):
+        region_a = self.env['utility.region'].create({
+            'name': 'منطقة مدقق أ', 'code': 'AUD-A', 'type': 'region',
+        })
+        region_b = self.env['utility.region'].create({
+            'name': 'منطقة مدقق ب', 'code': 'AUD-B', 'type': 'region',
+        })
+        owner_a = self.Partner.create({
+            'name': 'مالك منطقة أ', 'region_id': region_a.id,
+        })
+        owner_b = self.Partner.create({
+            'name': 'مالك منطقة ب', 'region_id': region_b.id,
+        })
+        _, first = self._create_customer('AUD-A', owner_a)
+        _, second = self._create_customer('AUD-B', owner_b)
+        auditor = self.env['res.users'].create({
+            'name': 'مدقق نطاق أ',
+            'login': 'auditor_scope_a@example.test',
+            'groups_id': [(6, 0, [
+                self.env.ref('base.group_user').id,
+                self.env.ref('utility_core.group_utility_auditor').id,
+            ])],
+            'assigned_region_ids': [(6, 0, [region_a.id])],
+        })
+
+        visible = self.Customer.with_user(auditor).search([
+            ('id', 'in', [first.id, second.id]),
+        ])
+        self.assertIn(first, visible)
+        self.assertNotIn(second, visible)
+
     def test_balances_are_isolated_by_account_partner(self):
         _, first = self._create_customer('005')
         _, second = self._create_customer('006')
