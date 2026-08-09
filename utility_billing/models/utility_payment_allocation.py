@@ -84,6 +84,10 @@ class UtilityPaymentAllocation(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        if not self.env.context.get('utility_allocation_internal'):
+            raise ValidationError(_(
+                'لا يمكن إنشاء تخصيص مالي يدويًا؛ يتم إنشاؤه فقط من محرك التحصيل.'
+            ))
         for vals in vals_list:
             if vals.get('name', _('New')) in (False, _('New')):
                 vals['name'] = self.env['ir.sequence'].next_by_code(
@@ -200,13 +204,17 @@ class UtilityPaymentAllocation(models.Model):
         invoice = self.prevalidate_payment(payment, require_posted=True)
 
         residual_before = invoice.amount_residual
-        allocation = self.sudo().create({
+        acting_user = self.env.user
+        allocation = self.with_context(
+            utility_allocation_internal=True,
+        ).sudo().create({
             'payment_id': payment.id,
             'invoice_id': invoice.id,
             'requested_amount': payment.amount,
             'residual_before': residual_before,
             'source': source,
             'external_reference': external_reference,
+            'created_by': acting_user.id,
             'state': 'allocated',
         })
 

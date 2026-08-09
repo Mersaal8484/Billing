@@ -1,3 +1,4 @@
+from odoo.exceptions import ValidationError
 from odoo.tests.common import TransactionCase
 
 
@@ -14,6 +15,10 @@ class TestUtilityPaymentAllocation(TransactionCase):
         if not payment:
             self.skipTest('No posted utility payment fixture is available.')
         return payment
+
+    def test_manual_allocation_creation_is_rejected(self):
+        with self.assertRaises(ValidationError):
+            self.env['utility.payment.allocation'].create({})
 
     def test_allocation_is_idempotent_and_exact(self):
         payment = self._posted_utility_payment()
