@@ -8,6 +8,13 @@ class AccountPayment(models.Model):
     _inherit = 'account.payment'
 
     utility_sale_order_id = fields.Many2one('sale.order', string='فاتورة الكهرباء', index=True)
+    utility_customer_id = fields.Many2one(
+        'utility.customer', related='utility_sale_order_id.customer_id',
+        string='حساب الكهرباء', store=True, index=True, readonly=True)
+    utility_invoice_id = fields.Many2one(
+        'account.move', string='الفاتورة المحاسبية المحددة', index=True,
+        copy=False, domain="[('utility_sale_order_id', '=', utility_sale_order_id), ('state', '=', 'posted')]",
+        help='الفاتورة الوحيدة التي ستتم مطابقة هذه الدفعة معها.')
     service_charge_id = fields.Many2one('utility.service.charge', string='رسم الخدمة', index=True, copy=False, check_company=True)
     utility_payment_method = fields.Selection([
         ('cash', 'نقدي (تحصيل ميداني)'),
@@ -112,9 +119,20 @@ class AccountPayment(models.Model):
             payment_period = self._get_payment_period_for_order(self.utility_sale_order_id)
             self.date_range_id = payment_period
 
-    @api.constrains('utility_sale_order_id', 'date_range_id')
+    @api.constrains('utility_sale_order_id', 'utility_invoice_id', 'partner_id', 'date_range_id')
     def _check_utility_payment_period_matches_bill(self):
         self._validate_utility_payment_period()
+        for payment in self.filtered('utility_sale_order_id'):
+            order = payment.utility_sale_order_id
+            expected_partner = order.customer_id.partner_id
+            if payment.partner_id != expected_partner:
+                raise ValidationError(_('شريك الدفعة يجب أن يطابق شريك الحساب الكهربائي.'))
+            if not payment.utility_invoice_id:
+                raise ValidationError(_('يجب تحديد الفاتورة المحاسبية التي ستطابق معها الدفعة.'))
+            if payment.utility_invoice_id.utility_sale_order_id != order:
+                raise ValidationError(_('الفاتورة المحددة لا تخص فاتورة الكهرباء المختارة.'))
+            if payment.utility_invoice_id.partner_id != expected_partner:
+                raise ValidationError(_('شريك الفاتورة المحاسبية لا يطابق شريك الحساب الكهربائي.'))
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -122,6 +140,12 @@ class AccountPayment(models.Model):
             order_id = vals.get('utility_sale_order_id')
             if order_id:
                 order = self.env['sale.order'].browse(order_id)
+                if not order.customer_id:
+                    raise ValidationError(_('فاتورة الكهرباء لا تحتوي على حساب كهربائي.'))
+                expected_partner_id = order.customer_id.partner_id.id
+                if vals.get('partner_id') and vals['partner_id'] != expected_partner_id:
+                    raise ValidationError(_('شريك الدفعة يجب أن يطابق شريك الحساب الكهربائي.'))
+                vals['partner_id'] = expected_partner_id
                 payment_period = self._get_payment_period_for_order(order)
                 if not payment_period:
                     raise ValidationError(
@@ -146,6 +170,10 @@ class AccountPayment(models.Model):
     def write(self, vals):
         if vals.get('utility_sale_order_id'):
             order = self.env['sale.order'].browse(vals['utility_sale_order_id'])
+            expected_partner_id = order.customer_id.partner_id.id
+            if vals.get('partner_id', expected_partner_id) != expected_partner_id:
+                raise ValidationError(_('شريك الدفعة يجب أن يطابق شريك الحساب الكهربائي.'))
+            vals['partner_id'] = expected_partner_id
             payment_period = self._get_payment_period_for_order(order)
             if not payment_period:
                 raise ValidationError(
@@ -168,6 +196,13 @@ class AccountPayment(models.Model):
             payment_period = self._get_payment_period_for_order(order)
             if payment_period:
                 res['date_range_id'] = payment_period.id
+        if order_id and 'utility_invoice_id' in fields_list:
+            order = self.env['sale.order'].browse(order_id).exists()
+            if order:
+                posted_moves = (order.invoice_ids | order.utility_move_ids).filtered(
+                    lambda move: move.state == 'posted' and move.move_type in ('out_invoice', 'out_refund'))
+                if len(posted_moves) == 1:
+                    res['utility_invoice_id'] = posted_moves.id
 
         # تعيين طريقة الدفع الافتراضية واليومية الميدانية للمستخدم
         if 'utility_payment_method' in fields_list and not res.get('utility_payment_method'):
@@ -236,19 +271,13 @@ class AccountPayment(models.Model):
             return
 
         order = self.utility_sale_order_id
-        invoices = self.env['account.move']
-        if order:
-            invoices |= (order.invoice_ids | order.utility_move_ids)
-
-        if not invoices and self.partner_id:
-            invoices = self.env['account.move'].search([
-                ('partner_id', '=', self.partner_id.id),
-                ('move_type', '=', 'out_invoice'),
-                ('state', '=', 'posted'),
-                ('payment_state', 'in', ('not_paid', 'partial', 'in_payment'))
-            ])
-
-        invoices = invoices.filtered(lambda m: m.state == 'posted' and m.payment_state in ('not_paid', 'partial', 'in_payment'))
+        invoice = self.utility_invoice_id
+        if not order or not invoice:
+            return
+        if invoice.utility_sale_order_id != order or invoice.partner_id != order.customer_id.partner_id:
+            raise ValidationError(_('لا يمكن مطابقة الدفعة مع فاتورة لا تخص الحساب الكهربائي المحدد.'))
+        invoices = invoice.filtered(
+            lambda m: m.state == 'posted' and m.payment_state in ('not_paid', 'partial', 'in_payment'))
 
         payment_lines = self.move_id.line_ids.filtered(
             lambda line: not line.reconciled and line.account_id.account_type == 'asset_receivable'
@@ -259,18 +288,4 @@ class AccountPayment(models.Model):
         lines = payment_lines | invoice_lines
         if len(lines) >= 2:
             lines.reconcile()
-
-        # إجراء تسوية شاملة لحساب العملاء للشريك لضمان سداد الفاتورة تلقائياً
-        if self.partner_id:
-            partner_lines = self.env['account.move.line'].search([
-                ('partner_id', '=', self.partner_id.id),
-                ('reconciled', '=', False),
-                ('account_id.account_type', '=', 'asset_receivable'),
-                ('move_id.state', '=', 'posted')
-            ])
-            if len(partner_lines) >= 2:
-                try:
-                    partner_lines.reconcile()
-                except Exception:
-                    pass
 

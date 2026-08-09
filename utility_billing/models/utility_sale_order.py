@@ -48,6 +48,15 @@ class UtilitySaleOrder(models.Model):
     consumption = fields.Float('الاستهلاك')
     contract_template_id = fields.Many2one('utility.contract.template', 'قالب العقد', related='customer_id.contract_template_id', store=True)
 
+    @api.constrains('customer_id', 'partner_id')
+    def _check_utility_accounting_partner(self):
+        for order in self.filtered('customer_id'):
+            expected = order.customer_id.partner_id
+            if order.partner_id != expected:
+                raise ValidationError(_(
+                    'شريك أمر البيع %s لا يطابق الشريك المحاسبي للحساب الكهربائي %s.'
+                ) % (order.partner_id.display_name, expected.display_name))
+
     amount_energy = fields.Monetary('قيمة الطاقة', currency_field='currency_id')
     amount_service = fields.Monetary('رسم الخدمة الثابت', currency_field='currency_id')
     amount_discount = fields.Monetary('الخصومات', currency_field='currency_id')
@@ -181,10 +190,16 @@ class UtilitySaleOrder(models.Model):
             )
             order.all_qty_delivered = delivered
 
-    @api.depends('partner_id')
+    @api.depends('partner_id', 'customer_id', 'invoice_ids.state', 'utility_move_ids.state')
     def _compute_previous_balance(self):
         for order in self:
-            order.previous_balance = order.partner_id.credit if order.partner_id else 0.0
+            if not order.customer_id:
+                order.previous_balance = 0.0
+                continue
+            posted_moves = (order.invoice_ids | order.utility_move_ids).filtered(
+                lambda move: move.state == 'posted')
+            order.previous_balance = order.customer_id._get_receivable_balance(
+                exclude_move_ids=posted_moves.ids)
 
     @api.depends('amount_total', 'previous_balance')
     def _compute_total_due_amount(self):
@@ -261,11 +276,32 @@ class UtilitySaleOrder(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
+            customer_id = vals.get('customer_id')
+            if customer_id:
+                customer = self.env['utility.customer'].browse(customer_id).exists()
+                if not customer:
+                    raise ValidationError(_('الحساب الكهربائي المحدد غير موجود.'))
+                expected_partner_id = customer.partner_id.id
+                if vals.get('partner_id') and vals['partner_id'] != expected_partner_id:
+                    raise ValidationError(_('شريك أمر البيع يجب أن يطابق شريك الحساب الكهربائي.'))
+                vals['partner_id'] = expected_partner_id
             if vals.get('name', '/') == '/' and vals.get('type_id'):
                 sale_type = self.env['sale.order.type'].browse(vals['type_id'])
                 if sale_type.sequence_id:
                     vals['name'] = sale_type.sequence_id.next_by_id()
         return super(UtilitySaleOrder, self).create(vals_list)
+
+    def write(self, vals):
+        if 'customer_id' in vals or 'partner_id' in vals:
+            for order in self:
+                customer = self.env['utility.customer'].browse(
+                    vals.get('customer_id', order.customer_id.id)).exists()
+                if customer:
+                    expected_partner_id = customer.partner_id.id
+                    if vals.get('partner_id', expected_partner_id) != expected_partner_id:
+                        raise ValidationError(_('شريك أمر البيع يجب أن يطابق شريك الحساب الكهربائي.'))
+                    vals['partner_id'] = expected_partner_id
+        return super().write(vals)
 
     def action_confirm(self):
         contracts_to_create = []
@@ -527,9 +563,6 @@ class UtilitySaleOrderLine(models.Model):
 
     def _prepare_invoice_line(self, **optional_values):
         res = super(UtilitySaleOrderLine, self)._prepare_invoice_line(**optional_values)
-        if self.sponsor_id:
-            res['partner_id'] = self.sponsor_id.id
-
         acc_id = False
         product_id = False
         company = self.company_id or self.env.company
@@ -617,12 +650,3 @@ class UtilityAccountMove(models.Model):
     previous_reading = fields.Float('القراءة السابقة')
     current_reading = fields.Float('القراءة الحالية')
     consumption = fields.Float('الاستهلاك')
-
-    def _post(self, soft=True):
-        res = super(UtilityAccountMove, self)._post(soft=soft)
-        for move in self:
-            for line in move.line_ids:
-                if line.sale_line_ids and line.sale_line_ids[0].sponsor_id:
-                    if line.partner_id != line.sale_line_ids[0].sponsor_id:
-                        line.write({'partner_id': line.sale_line_ids[0].sponsor_id.id})
-        return res

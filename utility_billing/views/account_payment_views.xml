@@ -8,6 +8,8 @@
             <xpath expr="//sheet/group" position="inside">
                 <group string="تفاصيل الكهرباء" attrs="{'invisible': [('utility_sale_order_id', '=', False), ('service_charge_id', '=', False)]}">
                     <field name="utility_sale_order_id" readonly="1" attrs="{'invisible': [('utility_sale_order_id', '=', False)]}"/>
+                    <field name="utility_customer_id" readonly="1" attrs="{'invisible': [('utility_customer_id', '=', False)]}"/>
+                    <field name="utility_invoice_id" readonly="1" attrs="{'invisible': [('utility_invoice_id', '=', False)]}"/>
                     <field name="service_charge_id" readonly="1" attrs="{'invisible': [('service_charge_id', '=', False)]}"/>
                     <field name="utility_payment_method" readonly="1" attrs="{'invisible': [('utility_sale_order_id', '=', False)]}"/>
                     <field name="electronic_doc_no" readonly="1" attrs="{'invisible': [('utility_sale_order_id', '=', False)]}"/>

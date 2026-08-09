@@ -182,6 +182,10 @@ class UtilitySaleOrderPayment(models.Model):
                 'default_partner_id': self.partner_id.id,
                 'default_amount': self.balance_due if self.balance_due > 0 else self.amount_total,
                 'default_utility_sale_order_id': self.id,
+                'default_utility_invoice_id': (
+                    self._get_posted_utility_moves().id
+                    if len(self._get_posted_utility_moves()) == 1 else False
+                ),
                 'default_journal_id': journal.id if journal else False,
             }
         }

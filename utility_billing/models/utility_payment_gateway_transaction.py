@@ -153,6 +153,10 @@ class UtilityPaymentGatewayTransaction(models.Model):
                 'journal_id': journal.id,
                 'payment_method_line_id': method_line.id,
                 'utility_sale_order_id': order.id,
+                'utility_invoice_id': (
+                    order._get_posted_utility_moves().id
+                    if len(order._get_posted_utility_moves()) == 1 else False
+                ),
                 'utility_payment_method': 'electronic',
                 'electronic_doc_no': provider_reference or tx.provider_reference or tx.name,
                 'date': fields.Date.context_today(tx_company),

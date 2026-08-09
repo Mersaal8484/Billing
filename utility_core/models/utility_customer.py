@@ -15,7 +15,12 @@ class UtilityCustomer(models.Model):
     active = fields.Boolean('نشط', default=True)
     company_id = fields.Many2one('res.company', 'الشركة', default=lambda self: self.env.company)
     customer_number = fields.Char('رقم العميل', required=True, index=True, default=lambda self: _('جديد'))
-    partner_id = fields.Many2one('res.partner', 'العميل (شخص)', required=True, domain=[('is_company', '=', False)])
+    owner_partner_id = fields.Many2one(
+        'res.partner', 'المالك القانوني', index=True,
+        help='الشخص أو الشركة الفعلية المالكة للحساب الكهربائي.')
+    partner_id = fields.Many2one(
+        'res.partner', 'الشريك المحاسبي', required=True, index=True,
+        help='شريك محاسبي مخصص لهذا الحساب الكهربائي فقط.')
 
     category_id = fields.Many2one('utility.subscriber.category', string='فئة المشترك الرئيسية', required=True)
     mobile = fields.Char(related='partner_id.mobile', string='رقم الجوال', readonly=False, size=9)
@@ -174,7 +179,70 @@ class UtilityCustomer(models.Model):
     _sql_constraints = [
         ('unique_customer_number_company', 'unique(customer_number, company_id)',
          'رقم العميل يجب أن يكون فريداً لكل شركة!'),
+        ('unique_accounting_partner', 'unique(partner_id)',
+         'لا يمكن ربط أكثر من حساب كهرباء بنفس الشريك المحاسبي.'),
     ]
+
+    def _create_dedicated_accounting_partner(self, owner_partner, customer_number):
+        """Create a private accounting contact without changing the legal owner."""
+        copy_vals = owner_partner.copy_data()[0]
+        copy_vals.update({
+            'name': _('%s - حساب كهرباء %s') % (owner_partner.name, customer_number),
+            'parent_id': False,
+            'is_subscriber': True,
+            'customer_rank': max(owner_partner.customer_rank, 1),
+        })
+        return self.env['res.partner'].create(copy_vals)
+
+    @api.constrains('partner_id', 'owner_partner_id')
+    def _check_accounting_partner_identity(self):
+        """Ensure the accounting partner belongs to exactly one utility account."""
+        for customer in self:
+            if not customer.partner_id:
+                raise ValidationError(_('يجب تحديد شريك محاسبي للحساب الكهربائي.'))
+            duplicate = self.search([
+                ('partner_id', '=', customer.partner_id.id),
+                ('id', '!=', customer.id),
+            ], limit=1)
+            if duplicate:
+                raise ValidationError(_(
+                    'الشريك المحاسبي %s مرتبط مسبقًا بالحساب الكهربائي %s.'
+                ) % (customer.partner_id.display_name, duplicate.customer_number))
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Create a dedicated accounting partner for every new utility account."""
+        for vals in vals_list:
+            if vals.get('customer_number', _('جديد')) == _('جديد'):
+                vals['customer_number'] = self.env['ir.sequence'].next_by_code('utility.customer') or _('جديد')
+
+            partner_id = vals.get('partner_id')
+            owner_id = vals.get('owner_partner_id') or partner_id
+            if not owner_id:
+                raise ValidationError(_('يجب تحديد المالك القانوني للحساب الكهربائي.'))
+
+            owner = self.env['res.partner'].browse(owner_id).exists()
+            if not owner:
+                raise ValidationError(_('المالك القانوني المحدد غير موجود.'))
+
+            if not self.env.context.get('utility_account_partner_ready'):
+                source_partner = self.env['res.partner'].browse(partner_id).exists() if partner_id else owner
+                if not source_partner:
+                    raise ValidationError(_('الشريك المحاسبي المحدد غير موجود.'))
+                dedicated = self._create_dedicated_accounting_partner(
+                    source_partner, vals['customer_number'])
+                vals['owner_partner_id'] = owner.id
+                vals['partner_id'] = dedicated.id
+            else:
+                vals['owner_partner_id'] = owner.id
+
+        customers = super().create(vals_list)
+        for customer in customers:
+            customer.partner_id.sudo().write({
+                'customer_rank': max(customer.partner_id.customer_rank, 1),
+                'is_subscriber': True,
+            })
+        return customers
 
     def _get_effective_billing_period(self):
         """Return the mandatory billing cadence using geographic precedence."""
@@ -187,21 +255,20 @@ class UtilityCustomer(models.Model):
         elif self.contract_template_id and self.contract_template_id.recurring_rule_type:
             recurring_type = self.contract_template_id.recurring_rule_type
         return {'bi_monthly': 'biweekly'}.get(recurring_type, recurring_type)
-    @api.model_create_multi
-    def create(self, vals_list):
-        for vals in vals_list:
-            if vals.get('customer_number', _('جديد')) == _('جديد'):
-                vals['customer_number'] = self.env['ir.sequence'].next_by_code('utility.customer') or _('جديد')
-        customers = super().create(vals_list)
-        for customer in customers:
-            if customer.partner_id:
-                customer.partner_id.sudo().write({
-                    'customer_rank': max(customer.partner_id.customer_rank, 1),
-                    'is_subscriber': True,
-                })
-        return customers
-
     def write(self, vals):
+        if 'partner_id' in vals:
+            new_partner = self.env['res.partner'].browse(vals['partner_id']).exists()
+            for customer in self:
+                if not new_partner:
+                    raise ValidationError(_('الشريك المحاسبي المحدد غير موجود.'))
+                duplicate = self.search([
+                    ('partner_id', '=', new_partner.id),
+                    ('id', 'not in', self.ids),
+                ], limit=1)
+                if duplicate:
+                    raise ValidationError(_(
+                        'لا يمكن استخدام الشريك المحاسبي %s؛ فهو مرتبط بالحساب %s.'
+                    ) % (new_partner.display_name, duplicate.customer_number))
         res = super().write(vals)
         if 'partner_id' in vals:
             for customer in self:
@@ -334,16 +401,37 @@ class UtilityCustomer(models.Model):
             ('reconciled', '=', False),
         ], ['amount_residual:sum'], ['partner_id'])
 
-        partner_to_customer_ids = {}
-        for customer_id, partner_id in partner_map.items():
-            partner_to_customer_ids.setdefault(partner_id, []).append(customer_id)
         for group in groups:
             partner_id = group['partner_id'][0] if group['partner_id'] else False
-            for customer_id in partner_to_customer_ids.get(partner_id, []):
+            customer_id = next((cid for cid, pid in partner_map.items() if pid == partner_id), False)
+            if customer_id:
                 balance_map[customer_id] = group.get('amount_residual', 0.0)
 
         for rec in self:
             rec.accounting_balance = balance_map.get(rec.id, 0.0)
+
+    def _get_receivable_balance(self, exclude_move_ids=None):
+        """Return posted unreconciled receivables for this account partner only."""
+        self.ensure_one()
+        if not self.partner_id:
+            return 0.0
+        accounts = self.env['account.account'].search([
+            ('account_type', '=', 'asset_receivable'),
+            ('company_id', '=', self.company_id.id),
+        ])
+        if not accounts:
+            return 0.0
+        domain = [
+            ('partner_id', '=', self.partner_id.id),
+            ('account_id', 'in', accounts.ids),
+            ('parent_state', '=', 'posted'),
+            ('reconciled', '=', False),
+        ]
+        if exclude_move_ids:
+            domain.append(('move_id', 'not in', list(exclude_move_ids)))
+        result = self.env['account.move.line'].sudo().read_group(
+            domain, ['amount_residual:sum'], [])
+        return result[0].get('amount_residual', 0.0) if result else 0.0
 
     @api.depends('partner_id', 'meter_id')
     def _compute_smart_buttons(self):
