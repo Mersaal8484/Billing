@@ -54,6 +54,15 @@ class UtilityCustomerMeterAssignment(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
+        # Serialize the assignment decision: lock the customer AND the meter
+        # rows before inserting, so two concurrent transactions cannot both
+        # pass the open-assignment uniqueness checks in _validate_assignment.
+        customers = self.env['utility.customer'].browse(
+            [vals['customer_id'] for vals in vals_list if vals.get('customer_id')])
+        meters = self.env['utility.meter'].browse(
+            [vals['meter_id'] for vals in vals_list if vals.get('meter_id')])
+        customers._lock_lifecycle()
+        meters._lock_meter()
         records = super().create(vals_list)
         for record in records:
             record._validate_assignment()
@@ -72,6 +81,12 @@ class UtilityCustomerMeterAssignment(models.Model):
             raise ValidationError(_('شركة تخصيص العداد يجب أن تطابق شركة الحساب.'))
         if self.meter_id.company_id != self.company_id:
             raise ValidationError(_('عداد التخصيص يجب أن ينتمي إلى نفس الشركة.'))
+        # Re-lock the involved rows (no-op when already locked by create/write)
+        # so the uniqueness checks below read a consistent, serialized state.
+        if self.customer_id:
+            self.customer_id._lock_lifecycle()
+        if self.meter_id:
+            self.meter_id._lock_meter()
         open_domain = [
             ('id', '!=', self.id), ('state', '=', 'open'),
             ('date_to', '=', False),
@@ -271,10 +286,70 @@ class UtilityCustomerLifecycle(models.Model):
                 raise ValidationError(_('لا يمكن إعادة التوصيل قبل إكمال أمر الخدمة الميداني.'))
         return self._transition(('disconnected',), 'active', 'reconnected', reason, False, notes, service_order)
 
-    def action_close(self, reason=False, effective_date=False, notes=False):
+    def action_close(self, reason=False, effective_date=False, notes=False,
+                     final_reading=False, require_field_removal=False,
+                     service_order=False):
+        """إغلاق الحساب بسياسة اكتمال تشغيلية كاملة.
+
+        Policy:
+          Close Account
+            ├─ Final reading available (explicit or recorded on the meter)?
+            ├─ Current meter assignment closed/released?
+            ├─ Meter released/removed from the account?
+            └─ (Optional) completed field-removal service order when required?
+          → Closed
+
+        لا يقوم Core بإنشاء الفاتورة النهائية بنفسه — هذا مسؤولية وحدة الفوترة —
+        لكنه يمنع إغلاق حساب لا تزال لديه تخصيص عداد مفتوح أو عداد مرتبط.
+        """
         if not reason:
             raise ValidationError(_('سبب إغلاق الحساب مطلوب.'))
-        return self._transition(('active', 'suspended', 'disconnected'), 'closed', 'closed', reason, effective_date, notes)
+        for customer in self:
+            customer._lock_lifecycle()
+            if customer.state not in ('active', 'suspended', 'disconnected'):
+                raise ValidationError(_('لا يمكن إغلاق الحساب من حالته الحالية.'))
+            effective = effective_date or fields.Datetime.now()
+            old_state = customer.state
+            meter = customer.meter_id
+            assignment = customer.current_meter_assignment_id
+
+            final_value = final_reading
+            if meter:
+                if final_value is False:
+                    if meter.last_read_date:
+                        final_value = meter.last_reading_value
+                    else:
+                        raise ValidationError(_(
+                            'لا يمكن إغلاق الحساب [%s] قبل تسجيل القراءة الختامية للعداد.'
+                        ) % customer.customer_number)
+                if require_field_removal and not (
+                        self.env.context.get('lifecycle_override')
+                        or self.env.context.get('lifecycle_service_order')):
+                    if not service_order or service_order.state != 'completed':
+                        raise ValidationError(_(
+                            'لا يمكن إغلاق الحساب مع طلب إزالة العداد ميدانياً '
+                            'قبل إكمال أمر الخدمة الميداني.'))
+
+            if assignment and assignment.state == 'open':
+                assignment.action_close(
+                    final_reading=final_value if final_value is not False else False,
+                    reason=_('إغلاق الحساب: %s') % reason,
+                    notes=notes)
+            if meter:
+                meter.write({'customer_id': False, 'connection_type': 'not_connected'})
+                customer.with_context(lifecycle_operation=True).write({'meter_id': False})
+                customer._log_lifecycle_event(
+                    'meter_removed', old_state=old_state, reason=reason,
+                    notes=notes, service_order=service_order, old_meter=meter)
+            customer.with_context(lifecycle_operation=True).write({
+                'state': 'closed',
+                'date_end': effective.date(),
+                'contract_end_date': effective.date(),
+            })
+            customer._log_lifecycle_event(
+                'closed', old_state=old_state, reason=reason,
+                notes=notes, service_order=service_order)
+        return True
 
     def write(self, vals):
         protected = {'state', 'meter_id'}

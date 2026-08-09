@@ -389,6 +389,16 @@ if template:
         {'sequence': 70, 'name': 'الشريحة السابعة (200,000-299,999)', 'from_kwh': 200000, 'to_kwh': 300000, 'price_per_kwh': 175},
         {'sequence': 80, 'name': 'الشريحة الثامنة (300,000+)', 'from_kwh': 300000, 'to_kwh': 0, 'price_per_kwh': 170},
     ]
+    has_discount = bool(template.discount_formula_id and template.line_ids.filtered(lambda line: line.meter_line_type == 'discount'))
+    if has_discount:
+        blocks_data.append({
+            'sequence': 10,
+            'name': 'الوحدات المدعومة (0-100)',
+            'from_kwh': 0,
+            'to_kwh': 100,
+            'price_per_kwh': blocks_data[0]['price_per_kwh'],
+            'is_discount': True,
+        })
     env.cr.execute("DELETE FROM utility_contract_template_block WHERE template_id = %s", [template.id])
     for b in blocks_data:
         b['template_id'] = template.id

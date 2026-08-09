@@ -10,6 +10,39 @@ class UtilityReading(models.Model):
 
     batch_id = fields.Many2one('utility.reading.batch', 'الدفعة', readonly=True, index=True)
 
+    def _queue_approved_billable_readings(self):
+        """Move newly approved periodic billable readings to the billing queue.
+
+        This is deliberately centralized on the inherited reading model so every
+        approval entry point (form buttons, review console, and bulk approval)
+        follows the same workflow. Non-billable readings remain ``approved``.
+        """
+        readings = self.filtered(
+            lambda reading: reading.state == 'approved'
+            and reading.reading_purpose == 'periodic'
+            and reading.date_range_id
+            and reading.is_billable
+            and (
+                reading.reading_category == 'customer'
+                or (
+                    reading.reading_category == 'transformer'
+                    and reading.is_private_transformer
+                )
+            )
+        )
+        if readings:
+            readings.with_context(_bypass_reading_protection=True).write({
+                'state': 'queued',
+                'billing_error': False,
+            })
+        return readings
+
+    def action_approve(self):
+        """Approve readings and immediately enqueue billable periodic readings."""
+        result = super().action_approve()
+        self._queue_approved_billable_readings()
+        return result
+
     def _get_billing_period_type(self):
         self.ensure_one()
         recurring_type = (

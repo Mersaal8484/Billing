@@ -181,7 +181,7 @@ class TestUtilityReadingReview(TransactionCase):
         })
         res = self.ReadingReviewService.action_approve_review([reading.id])
         self.assertEqual(res['status'], 'success')
-        self.assertEqual(reading.state, 'approved')
+        self.assertEqual(reading.state, 'queued')
         self.assertEqual(reading.reviewer_id, self.env.user)
         self.assertTrue(reading.review_date)
 
@@ -221,7 +221,7 @@ class TestUtilityReadingReview(TransactionCase):
         })
         res = self.ReadingReviewService.action_bulk_approve_safe([r1.id, r2.id])
         self.assertEqual(res['status'], 'success')
-        self.assertEqual(r1.state, 'approved')
+        self.assertEqual(r1.state, 'queued')
         self.assertEqual(r2.state, 'under_review')
 
     def test_05_reading_semantics_and_is_billable(self):

@@ -119,6 +119,18 @@ class UtilityMeter(models.Model):
                     'last_read_date': last.reading_date,
                 })
 
+    def _lock_meter(self):
+        """Serialize concurrent decisions that involve this meter (e.g. meter
+        assignment/installation) by locking its row with SELECT ... FOR UPDATE.
+        Must be called inside the same transaction as the decision that reads
+        the current assignments and then inserts the new one."""
+        self.env.flush_all()
+        if self.ids:
+            self.env.cr.execute(
+                'SELECT id FROM utility_meter WHERE id IN %s ORDER BY id FOR UPDATE',
+                [tuple(self.ids)])
+        self.invalidate_cache()
+
     def action_view_readings(self):
         self.ensure_one()
         return {

@@ -21,6 +21,12 @@ class UtilityCustomerLifecycleWizard(models.TransientModel):
     effective_date = fields.Datetime('تاريخ السريان', default=fields.Datetime.now, required=True)
     notes = fields.Text('ملاحظات')
     administrative_override = fields.Boolean('اعتماد إداري استثنائي')
+    final_reading = fields.Float(
+        'القراءة الختامية', default=False, digits=(12, 3),
+        help='تُسجل على تخصيص العداد الحالي عند الإغلاق. تلقائية إذا وُجدت قراءة مسجلة على العداد.')
+    require_field_removal = fields.Boolean(
+        'طلب إزالة العداد ميدانياً',
+        help='حدد هذا الخيار إذا كان لا بد من إصدار أمر خدمة مكتمل لإزالة العداد من الموقع.')
 
     @api.model
     def default_get(self, fields_list):
@@ -52,5 +58,9 @@ class UtilityCustomerLifecycleWizard(models.TransientModel):
         elif self.action_type == 'reconnect':
             customer.action_reconnect(self.reason, self.notes, service_order)
         elif self.action_type == 'close':
-            customer.action_close(self.reason, self.effective_date, self.notes)
+            customer.action_close(
+                self.reason, self.effective_date, self.notes,
+                final_reading=self.final_reading,
+                require_field_removal=self.require_field_removal,
+                service_order=service_order)
         return {'type': 'ir.actions.act_window_close'}
