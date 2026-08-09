@@ -60,10 +60,10 @@ class UtilityReadingBatchService(models.AbstractModel):
         ])
         media_assets_by_name = {asset.original_filename: asset for asset in media_assets}
         media_assets_by_uuid = {asset.asset_uuid: asset for asset in media_assets}
-        media_assets_by_client_uuid = {
-            asset.client_reading_uuid: asset
+        media_assets_by_reading_uuid = {
+            asset.reading_uuid: asset
             for asset in media_assets
-            if asset.client_reading_uuid
+            if asset.reading_uuid
         }
         legacy_attachments = {att.name: att for att in batch.image_ids}
 
@@ -84,7 +84,7 @@ class UtilityReadingBatchService(models.AbstractModel):
                         media_assets_by_name,
                         legacy_attachments,
                         media_assets_by_uuid=media_assets_by_uuid,
-                        media_assets_by_client_uuid=media_assets_by_client_uuid,
+                        media_assets_by_reading_uuid=media_assets_by_reading_uuid,
                     )
                     if res.get('success'):
                         line.write({
@@ -147,7 +147,7 @@ class UtilityReadingBatchService(models.AbstractModel):
         media_assets_by_name,
         legacy_attachments,
         media_assets_by_uuid=None,
-        media_assets_by_client_uuid=None,
+        media_assets_by_reading_uuid=None,
     ):
         meter_number = line.meter_number
         if not meter_number:
@@ -169,14 +169,14 @@ class UtilityReadingBatchService(models.AbstractModel):
         reading_date = line.reading_date or fields.Datetime.now()
         image_filename = line.image_filename
         media_assets_by_uuid = media_assets_by_uuid or {}
-        media_assets_by_client_uuid = media_assets_by_client_uuid or {}
+        media_assets_by_reading_uuid = media_assets_by_reading_uuid or {}
 
         # معالجة الصورة الرقمية عبر Media Service أو المرفقات السابقة
         media_asset = False
         if line.asset_uuid and line.asset_uuid in media_assets_by_uuid:
             media_asset = media_assets_by_uuid[line.asset_uuid]
-        elif line.client_reading_uuid and line.client_reading_uuid in media_assets_by_client_uuid:
-            media_asset = media_assets_by_client_uuid[line.client_reading_uuid]
+        elif line.client_reading_uuid and line.client_reading_uuid in media_assets_by_reading_uuid:
+            media_asset = media_assets_by_reading_uuid[line.client_reading_uuid]
         elif image_filename:
             if image_filename in media_assets_by_name:
                 media_asset = media_assets_by_name[image_filename]
@@ -200,6 +200,7 @@ class UtilityReadingBatchService(models.AbstractModel):
         reading_vals = {
             'meter_id': meter.id,
             'account_id': customer.id,
+            'batch_id': batch.id,
             'date_range_id': batch.date_range_id.id,
             'reading_value': reading_value,
             'reading_date': reading_date,
@@ -209,8 +210,6 @@ class UtilityReadingBatchService(models.AbstractModel):
 
         if media_asset:
             reading_vals['image_asset_id'] = media_asset.id
-            if media_asset.original_attachment_id:
-                reading_vals['attachment_id'] = media_asset.original_attachment_id.id
 
         reading = Reading.create(reading_vals)
         if media_asset and not media_asset.reading_id:

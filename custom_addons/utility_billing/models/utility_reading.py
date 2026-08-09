@@ -143,9 +143,7 @@ class UtilityReading(models.Model):
         order.action_confirm()
         invoices = order._create_invoices()
         invoices.action_post()
-        if self.image_asset_id and self.image_asset_id.original_attachment_id:
-            order.attachment_id = self.image_asset_id.original_attachment_id
-        elif self.attachment_id:
+        if self.attachment_id:
             order.attachment_id = self.attachment_id
         self.with_context(_bypass_reading_protection=True).write({
             'state': 'billed', 'billing_error': False,

@@ -189,7 +189,6 @@ class UtilityReaderAPI(http.Controller):
         return {
             'success': True,
             'asset_uuid': media_asset.asset_uuid,
-            'attachment_id': media_asset.original_attachment_id.id if media_asset.original_attachment_id else False,
             'filename': filename,
         }
 
@@ -250,10 +249,8 @@ class UtilityReaderAPI(http.Controller):
                 mimetype=upload.mimetype or 'image/jpeg',
                 batch_id=batch.id,
                 asset_type='meter_reading',
+                reading_uuid=form.get('reading_uuid') or form.get('client_reading_uuid') or False,
             )
-            client_reading_uuid = form.get('reading_uuid') or form.get('client_reading_uuid') or False
-            if client_reading_uuid:
-                media_asset.write({'client_reading_uuid': client_reading_uuid})
         except Exception as exc:
             _logger.exception("Multipart image upload failed for batch %s", batch.id)
             return self._json_response({
@@ -266,16 +263,16 @@ class UtilityReaderAPI(http.Controller):
             'batch_id': batch.id,
             'batch_uuid': batch.batch_uuid,
             'asset_uuid': media_asset.asset_uuid,
-            'reading_uuid': media_asset.client_reading_uuid or False,
+            'reading_uuid': media_asset.reading_uuid or False,
             'filename': filename,
             'mime_type': media_asset.mime_type,
             'file_size': media_asset.file_size,
             'sha256': media_asset.sha256,
             'state': media_asset.state,
             'storage_backend': media_asset.storage_backend,
-            'original_reference': media_asset.external_original_reference,
-            'review_reference': media_asset.external_review_reference,
-            'thumbnail_reference': media_asset.external_thumbnail_reference,
+            'original_path': media_asset.original_path,
+            'review_path': media_asset.review_path,
+            'thumbnail_path': media_asset.thumbnail_path,
             'original_url': media_asset.original_url,
             'review_url': media_asset.review_url,
             'thumbnail_url': media_asset.thumbnail_url,

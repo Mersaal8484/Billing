@@ -72,9 +72,9 @@ class FilesystemMediaAdapter(AbstractMediaStorageAdapter):
 
     def delete(self, asset):
         for reference in {
-            asset.external_original_reference,
-            asset.external_review_reference,
-            asset.external_thumbnail_reference,
+            asset.original_path,
+            asset.review_path,
+            asset.thumbnail_path,
         }:
             if not reference:
                 continue
@@ -92,11 +92,11 @@ class FilesystemMediaAdapter(AbstractMediaStorageAdapter):
         return self._get_reference_for_variant(asset, variant) or ''
 
     def _get_reference_for_variant(self, asset, variant):
-        if variant == 'thumbnail' and asset.external_thumbnail_reference:
-            return asset.external_thumbnail_reference
-        if variant == 'review' and asset.external_review_reference:
-            return asset.external_review_reference
-        return asset.external_original_reference
+        if variant == 'thumbnail' and asset.thumbnail_path:
+            return asset.thumbnail_path
+        if variant == 'review' and asset.review_path:
+            return asset.review_path
+        return asset.original_path
 
     def _resolve_reference(self, reference):
         storage_root = os.path.abspath(self.storage_path)

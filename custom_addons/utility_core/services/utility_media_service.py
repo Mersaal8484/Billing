@@ -92,7 +92,16 @@ class UtilityMediaService(models.AbstractModel):
             return 'image/jpeg'
 
     @api.model
-    def store_media(self, file_data, filename, mimetype='image/jpeg', reading_id=False, batch_id=False, asset_type='meter_reading'):
+    def store_media(
+        self,
+        file_data,
+        filename,
+        mimetype='image/jpeg',
+        reading_id=False,
+        batch_id=False,
+        asset_type='meter_reading',
+        reading_uuid=False,
+    ):
         """تخزين وسائط جديدة ومعالجتها عبر Adapter وتوليد النسخ.
 
         العقد: file_data يجب أن يكون raw bytes (صورة ثنائية حقيقية).
@@ -131,7 +140,7 @@ class UtilityMediaService(models.AbstractModel):
 
         active_backend = self.env['ir.config_parameter'].sudo().get_param('utility.media_backend', 'filesystem')
 
-        if existing_asset and existing_asset.external_original_reference:
+        if existing_asset and existing_asset.original_path:
             _logger.info("Reusing binary media from SHA256 match asset %s for new evidence record", existing_asset.asset_uuid)
             new_asset = self.env['utility.media.asset'].sudo().create({
                 'original_filename': filename,
@@ -140,12 +149,13 @@ class UtilityMediaService(models.AbstractModel):
                 'sha256': sha256_hash,
                 'asset_type': asset_type,
                 'reading_id': reading_id,
+                'reading_uuid': reading_uuid,
                 'batch_id': batch_id,
                 'state': 'ready',
                 'storage_backend': existing_asset.storage_backend or active_backend,
-                'external_original_reference': existing_asset.external_original_reference,
-                'external_review_reference': existing_asset.external_review_reference or existing_asset.external_original_reference,
-                'external_thumbnail_reference': existing_asset.external_thumbnail_reference or existing_asset.external_original_reference,
+                'original_path': existing_asset.original_path,
+                'review_path': existing_asset.review_path or existing_asset.original_path,
+                'thumbnail_path': existing_asset.thumbnail_path or existing_asset.original_path,
                 'processed_at': fields.Datetime.now(),
             })
             return new_asset
@@ -158,6 +168,7 @@ class UtilityMediaService(models.AbstractModel):
             'sha256': sha256_hash,
             'asset_type': asset_type,
             'reading_id': reading_id,
+            'reading_uuid': reading_uuid,
             'batch_id': batch_id,
             'state': 'processing',
             'storage_backend': active_backend,
@@ -228,9 +239,9 @@ class UtilityMediaService(models.AbstractModel):
     @api.model
     def _normalize_storage_refs(self, original_ref, review_ref, thumbnail_ref):
         return {
-            'external_original_reference': original_ref,
-            'external_review_reference': review_ref or original_ref,
-            'external_thumbnail_reference': thumbnail_ref or original_ref,
+            'original_path': original_ref,
+            'review_path': review_ref or original_ref,
+            'thumbnail_path': thumbnail_ref or original_ref,
         }
 
     @api.model
