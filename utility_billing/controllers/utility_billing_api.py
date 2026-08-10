@@ -75,6 +75,10 @@ class UtilityBillingAPI(http.Controller):
         account = self._authorize_account(customer_number)
         if not account:
             return {'error': 'Account not found'}
+        try:
+            limit = max(1, min(int(limit), 100))
+        except (TypeError, ValueError):
+            return {'error': 'limit must be numeric'}
         orders = request.env['sale.order'].sudo().search([
             ('customer_id', '=', account.id),
         ], order='date_order desc', limit=limit)
@@ -142,7 +146,11 @@ class UtilityBillingAPI(http.Controller):
 
         Provider = request.env['utility.integration.provider'].sudo()
         if provider_id:
-            provider = Provider.browse(int(provider_id))
+            try:
+                provider_id = int(provider_id)
+            except (TypeError, ValueError):
+                return {'error': 'provider_id must be numeric'}
+            provider = Provider.browse(provider_id)
         else:
             provider = Provider.search([
                 ('is_payment_capable', '=', True),
