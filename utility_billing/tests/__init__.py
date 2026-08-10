@@ -5,3 +5,4 @@ from . import test_payment_allocation
 from . import test_collection_settlement
 from . import test_private_transformer_fee
 from . import test_utility_billing_adjustment
+from . import test_wave7_financial_uat

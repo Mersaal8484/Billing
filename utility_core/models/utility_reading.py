@@ -123,6 +123,7 @@ class UtilityReading(models.Model):
         ('not_clear', 'غير واضحة'),
         ('not_same', 'لا تطابق العداد'),
         ('none', 'بدون صورة'),
+        ('pending', 'بانتظار مراجعة الصورة'),
         ('replace', 'عداد مركب حديثاً'),
         ('loss_read', 'قراءة مفقودة'),
     ], string='حالة الصورة', default='none',
@@ -186,7 +187,10 @@ class UtilityReading(models.Model):
             )
             if old_asset and old_asset != new_asset:
                 new_asset.sudo().write({'revision': (old_asset.revision or 1) + 1})
-            r.image_asset_id = new_asset.id
+            r.with_context(_bypass_reading_protection=True).write({
+                'image_asset_id': new_asset.id,
+                'image_state': 'pending' if r.image_state == 'none' else r.image_state,
+            })
     review_notes = fields.Text('ملاحظات المراجعة')
     rejection_reason = fields.Text('سبب الرفض')
     is_validated = fields.Boolean('تم التحقق', default=False)
@@ -231,6 +235,18 @@ class UtilityReading(models.Model):
         self.env.cr.execute("""
             CREATE INDEX IF NOT EXISTS utility_reading_review_state_image_date_idx
             ON utility_reading (state, image_state, reading_date DESC, id DESC)
+        """)
+        self.env.cr.execute("""
+            UPDATE utility_reading AS reading
+               SET image_state = CASE
+                   WHEN reading.state IN ('approved', 'queued', 'billed')
+                   THEN 'clear'
+                   ELSE 'pending'
+               END
+              FROM utility_media_asset AS asset
+             WHERE reading.image_asset_id = asset.id
+               AND reading.image_state = 'none'
+               AND asset.state NOT IN ('deleted', 'failed')
         """)
         self.env.cr.execute("""
             UPDATE utility_reading reading
@@ -538,6 +554,11 @@ class UtilityReading(models.Model):
             if r.state != 'under_review':
                 raise ValidationError('يمكن الموافقة على القراءات قيد المراجعة فقط!')
 
+            if r.is_billable and r.image_state != 'clear':
+                raise ValidationError(
+                    'لا يمكن اعتماد القراءة قبل اعتماد الصورة كصورة واضحة (clear).'
+                )
+
             # FIX-4: منع اعتماد قراءة بالاستهلاك سالب للقراءات القابلة للفوترة
             if r.is_billable and r.consumption < 0:
                 raise ValidationError(
@@ -643,6 +664,13 @@ class UtilityReading(models.Model):
                 vals['date_range_id'] = open_period.id
         records = super().create(vals_list)
         for r in records:
+            if r.image_asset_id and r.image_state == 'none':
+                r.with_context(_bypass_reading_protection=True).write({
+                    'image_state': (
+                        'clear' if r.state in ('approved', 'queued', 'billed')
+                        else 'pending'
+                    ),
+                })
             if r.meter_id:
                 r.meter_id._update_last_reading()
             if r.image_asset_id and not r.image_asset_id.reading_id:

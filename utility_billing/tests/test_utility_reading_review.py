@@ -226,6 +226,7 @@ class TestUtilityReadingReview(TransactionCase):
             'account_id': self.test_customer.id,
             'reading_date': self._reading_now(),
             'reading_value': 2500,
+            'image_state': 'clear',
             'state': 'under_review',
             'date_range_id': self.test_period.id,
         })
