@@ -129,6 +129,39 @@ class UtilityBillingAdjustment(models.Model):
             if record.company_id != record.sale_order_id.company_id:
                 raise ValidationError(_('شركة التعديل لا تطابق شركة الفاتورة الأصلية.'))
 
+    @api.constrains(
+        'state', 'credit_note_id', 'replacement_sale_order_id',
+        'replacement_invoice_id', 'rebill')
+    def _check_applied_integrity(self):
+        for record in self:
+            if record.state != 'applied':
+                continue
+            if not record.credit_note_id or record.credit_note_id.state != 'posted':
+                raise ValidationError(_(
+                    'لا يمكن أن يكون التعديل مطبقًا دون إشعار دائن مرحّل.'
+                ))
+            if record.rebill and (
+                    not record.replacement_sale_order_id
+                    or not record.replacement_invoice_id
+                    or record.replacement_invoice_id.state != 'posted'):
+                raise ValidationError(_(
+                    'إعادة الفوترة المطبقة تتطلب أمر بيع وفاتورة بديلة مرحلة.'
+                ))
+
+    def _lock_for_application(self):
+        self.ensure_one()
+        self.env.flush_all()
+        self.env.cr.execute(
+            'SELECT id FROM utility_billing_adjustment WHERE id = %s FOR UPDATE',
+            [self.id],
+        )
+        self.env.cr.execute(
+            'SELECT id FROM account_move WHERE id = %s FOR UPDATE',
+            [self.invoice_id.id],
+        )
+        self.invalidate_cache()
+        self.invoice_id.invalidate_cache()
+
     def _check_manager(self):
         if not (self.env.user.has_group('utility_core.group_utility_billing_manager')
                 or self.env.user.has_group('utility_core.group_utility_admin')):
@@ -331,6 +364,7 @@ class UtilityBillingAdjustment(models.Model):
     def action_apply_correction(self):
         self._check_manager()
         for record in self:
+            record._lock_for_application()
             if record.state == 'applied':
                 raise ValidationError(_('تم تطبيق هذا التعديل مسبقاً ولا يمكن إعادة تطبيقه.'))
             if record.state != 'approved':
@@ -338,6 +372,15 @@ class UtilityBillingAdjustment(models.Model):
             record._validate_original_links()
             if record.difference_amount >= 0:
                 raise ValidationError(_('هذا المسار يدعم تخفيض الفاتورة عبر إشعار دائن فقط.'))
+            conflicting = self.search([
+                ('id', '!=', record.id),
+                ('invoice_id', '=', record.invoice_id.id),
+                ('state', '=', 'applied'),
+            ], limit=1)
+            if conflicting:
+                raise ValidationError(_(
+                    'لا يمكن تطبيق تعديل آخر على الفاتورة %s بعد تطبيق التعديل %s.'
+                ) % (record.invoice_id.display_name, conflicting.name))
             with self.env.cr.savepoint():
                 credit_note = (
                     record._create_full_credit_note()

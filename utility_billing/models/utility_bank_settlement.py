@@ -111,6 +111,17 @@ class UtilityBankSettlement(models.Model):
         sources.invalidate_cache()
         return sources
 
+    def _lock_statement_line(self):
+        self.ensure_one()
+        if not self.statement_line_id:
+            return
+        self.env.flush_all()
+        self.env.cr.execute(
+            'SELECT id FROM account_bank_statement_line WHERE id = %s FOR UPDATE',
+            [self.statement_line_id.id],
+        )
+        self.statement_line_id.invalidate_cache()
+
     def _validate_lines(self):
         self.ensure_one()
         if not self.line_ids:
@@ -248,6 +259,9 @@ class UtilityBankSettlement(models.Model):
         for record in self:
             if record.state != 'waiting_bank_match' or not record.statement_line_id:
                 raise ValidationError(_('حدد سطر كشف بنكي فعلي قبل المطابقة.'))
+            record._lock_sources()
+            record._lock_statement_line()
+            record._validate_lines()
             line = record.statement_line_id
             if line.company_id != record.company_id or line.journal_id != record.bank_journal_id:
                 raise ValidationError(_('سطر البنك لا يطابق الشركة أو اليومية.'))

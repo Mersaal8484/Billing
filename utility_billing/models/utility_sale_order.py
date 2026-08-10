@@ -689,24 +689,10 @@ class UtilitySaleOrderLine(models.Model):
                     res['account_id'] = income_acc.id
 
         if not res.get('account_id'):
-            journal = self.env['account.journal'].search([
-                ('type', '=', 'sale'), ('company_id', '=', company.id)
-            ], limit=1)
-            if journal and journal.default_account_id:
-                res['account_id'] = journal.default_account_id.id
-            else:
-                fallback_acc = self.env['account.account'].search([
-                    ('company_id', '=', company.id),
-                    ('account_type', 'in', ('income', 'income_other')),
-                    ('deprecated', '=', False)
-                ], limit=1)
-                if not fallback_acc:
-                    fallback_acc = self.env['account.account'].search([
-                        ('company_id', '=', company.id),
-                        ('deprecated', '=', False)
-                    ], limit=1)
-                if fallback_acc:
-                    res['account_id'] = fallback_acc.id
+            raise ValidationError(_(
+                'لا يوجد حساب إيراد مضبوط لبند الفوترة "%s". '
+                'أكمل إعداد المنتج/التعرفة أو حساب الشركة قبل إصدار الفاتورة.'
+            ) % (self.name or self.product_id.display_name))
 
         return res
 

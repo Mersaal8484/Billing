@@ -169,6 +169,13 @@ class UtilityPaymentAllocation(models.Model):
         if not payment.utility_sale_order_id:
             return self.env['utility.payment.allocation']
 
+        self.env.flush_all()
+        self.env.cr.execute(
+            'SELECT id FROM account_payment WHERE id = %s FOR UPDATE',
+            [payment.id],
+        )
+        payment.invalidate_cache()
+
         existing = self.search([
             ('payment_id', '=', payment.id),
             ('state', 'in', ('allocated', 'reconciled')),

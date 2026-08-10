@@ -389,6 +389,20 @@ class UtilityCollectionSettlement(models.Model):
         for record in self:
             if record.state != 'confirmed':
                 raise ValidationError(_('يجب تأكيد التسوية قبل ترحيلها.'))
+            record._lock_collections()
+            for line in record.line_ids:
+                collection = line.collection_id
+                collection.invalidate_cache(['state', 'remaining_amount'])
+                if collection.state not in ('posted', 'included_in_settlement'):
+                    raise ValidationError(_(
+                        'لا يمكن ترحيل التسوية لأن التحصيل %s لم يعد متاحًا.'
+                    ) % collection.name)
+                if float_compare(
+                        line.actual_settled_amount, collection.remaining_amount,
+                        precision_rounding=record.currency_id.rounding) > 0:
+                    raise ValidationError(_(
+                        'تجاوزت التسوية المتبقي المتاح للتحصيل %s بعد تحديثه.'
+                    ) % collection.name)
             company = record.company_id
             if not company.deposit_clearing_account_id or not company.settlement_journal_id:
                 raise ValidationError(
