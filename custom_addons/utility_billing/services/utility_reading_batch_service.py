@@ -196,6 +196,20 @@ class UtilityReadingBatchService(models.AbstractModel):
                 except Exception as e:
                     _logger.warning("Could not store media asset for %s: %s", image_filename, str(e))
 
+        reading_purpose = line.reading_purpose or 'periodic'
+        existing_reading = Reading.search([
+            ('meter_id', '=', meter.id),
+            ('account_id', '=', customer.id),
+            ('date_range_id', '=', batch.date_range_id.id),
+            ('reading_purpose', '=', reading_purpose),
+            ('state', 'not in', ['error']),
+        ], limit=1)
+        if existing_reading:
+            line.write({'state': 'done', 'reading_id': existing_reading.id, 'error_message': False})
+            if media_asset and not media_asset.reading_id:
+                media_asset.write({'reading_id': existing_reading.id})
+            return {'success': True, 'reading_id': existing_reading.id, 'skipped_existing': True}
+
         reading_state = 'under_review' if media_asset else 'approved'
         reading_vals = {
             'meter_id': meter.id,
@@ -204,7 +218,7 @@ class UtilityReadingBatchService(models.AbstractModel):
             'date_range_id': batch.date_range_id.id,
             'reading_value': reading_value,
             'reading_date': reading_date,
-            'reading_purpose': line.reading_purpose or 'periodic',
+            'reading_purpose': reading_purpose,
             'state': reading_state,
         }
 

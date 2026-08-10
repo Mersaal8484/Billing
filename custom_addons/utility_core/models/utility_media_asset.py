@@ -24,6 +24,7 @@ class UtilityMediaAsset(models.Model):
         ondelete='set null',
     )
     reading_uuid = fields.Char('Client Reading UUID', index=True, copy=False)
+    client_reading_uuid = fields.Char('Legacy Client Reading UUID', index=True, copy=False)
     reading_id = fields.Many2one(
         'utility.reading',
         string='Linked Reading',
@@ -73,6 +74,22 @@ class UtilityMediaAsset(models.Model):
          'unique(batch_id, reading_uuid)',
          'Client reading UUID must be unique inside the same batch.'),
     ]
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get('client_reading_uuid') and not vals.get('reading_uuid'):
+                vals['reading_uuid'] = vals['client_reading_uuid']
+            if vals.get('reading_uuid') and not vals.get('client_reading_uuid'):
+                vals['client_reading_uuid'] = vals['reading_uuid']
+        return super().create(vals_list)
+
+    def write(self, vals):
+        if 'client_reading_uuid' in vals and 'reading_uuid' not in vals:
+            vals['reading_uuid'] = vals['client_reading_uuid']
+        if 'reading_uuid' in vals and 'client_reading_uuid' not in vals:
+            vals['client_reading_uuid'] = vals['reading_uuid']
+        return super().write(vals)
 
     @api.depends('original_filename', 'asset_uuid')
     def _compute_name(self):
