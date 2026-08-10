@@ -38,14 +38,31 @@ class UtilityReaderAPI(http.Controller):
         if not date_range_id:
             return {'success': False, 'error': 'date_range_id is required'}
 
-        # التحقق من وجود الفترة
-        period = request.env['date.range'].browse(int(date_range_id))
-        if not period.exists():
+        # التحقق من صحة المعرف والفترة والشركة قبل إنشاء الدفعة
+        try:
+            date_range_id = int(date_range_id)
+        except (TypeError, ValueError):
+            return {'success': False, 'error': 'date_range_id must be numeric'}
+        period = request.env['date.range'].browse(date_range_id)
+        if (not period.exists() or period.period_role != 'reading'
+                or period.state != 'open'
+                or period.company_id not in (False, request.env.company)):
             return {'success': False, 'error': 'الفترة غير موجودة'}
 
+        region_id = params.get('region_id')
+        if region_id:
+            try:
+                region_id = int(region_id)
+            except (TypeError, ValueError):
+                return {'success': False, 'error': 'region_id must be numeric'}
+            region = request.env['utility.region'].browse(region_id)
+            if (not region.exists() or region.type != 'region'
+                    or (period.region_ids and region not in period.region_ids)):
+                return {'success': False, 'error': 'المنطقة غير صالحة لهذه الفترة'}
+
         batch = request.env['utility.reading.batch'].create({
-            'date_range_id': int(date_range_id),
-            'region_id': int(params.get('region_id')) if params.get('region_id') else False,
+            'date_range_id': date_range_id,
+            'region_id': region_id or False,
             'total_readings': int(params.get('total_readings', 0)),
         })
         return {
