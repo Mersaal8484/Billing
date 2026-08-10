@@ -73,6 +73,8 @@
                     <group string="تفاصيل التصحيح">
                         <group>
                             <field name="adjustment_type" attrs="{'readonly': [('state', '!=', 'draft')]}"/>
+                            <field name="component_line_type"
+                                   attrs="{'invisible': [('adjustment_type', '!=', 'billing_component_correction')], 'readonly': [('state', '!=', 'draft')]}"/>
                             <field name="rebill" attrs="{'readonly': [('state', '!=', 'draft')]}"/>
                             <field name="corrected_consumption" attrs="{'readonly': [('state', '!=', 'draft'), ('rebill', '=', False)]}"/>
                             <field name="corrected_current_reading" attrs="{'readonly': [('state', '!=', 'draft'), ('rebill', '=', False)]}"/>

@@ -32,6 +32,18 @@ class UtilityBillingAdjustment(models.Model):
         ('manual_adjustment', 'تعديل يدوي'),
         ('other', 'أخرى'),
     ], string='نوع التعديل', required=True, default='manual_adjustment', tracking=True)
+    component_line_type = fields.Selection([
+        ('consumption', 'استهلاك'),
+        ('fixed_fee', 'رسم ثابت'),
+        ('service_charge', 'رسم خدمة'),
+        ('mu_allim', 'رسم المعلم'),
+        ('cleaning', 'رسم النظافة'),
+        ('municipality', 'رسم محلي'),
+        ('private_transformer_fee', 'رسم المحول الخاص'),
+        ('discount', 'خصم'),
+        ('penalty', 'غرامة'),
+    ], string='مكوّن الفوترة', tracking=True,
+        help='يحدد بند الفاتورة الذي يجب أن يعالجه الإشعار الجزئي.')
     reason = fields.Char(string='سبب التعديل', required=True, tracking=True)
     description = fields.Text(string='الوصف والتبرير')
     rebill = fields.Boolean(string='إعادة فوترة كاملة', default=False, tracking=True)
@@ -222,14 +234,24 @@ class UtilityBillingAdjustment(models.Model):
         if not amount:
             raise ValidationError(_('لا يوجد فرق مالي لإنشاء إشعار دائن.'))
         invoice = self.invoice_id
-        source_line = invoice.invoice_line_ids.filtered(lambda line: line.account_id)[:1]
+        invoice_lines = invoice.invoice_line_ids.filtered(
+            lambda item: item.account_id
+            and item.display_type not in ('line_section', 'line_note'))
+        if self.adjustment_type == 'billing_component_correction':
+            if not self.component_line_type:
+                raise ValidationError(_('يجب تحديد مكوّن الفوترة للتصحيح المكوّني.'))
+            invoice_lines = invoice_lines.filtered(
+                lambda line: self.component_line_type in line.sale_line_ids.mapped('meter_line_type'))
+            if not invoice_lines:
+                raise ValidationError(_('لم يتم العثور على مكوّن الفوترة المحدد في الفاتورة الأصلية.'))
+        source_line = invoice_lines[:1]
         if not source_line:
             raise ValidationError(_('لا يوجد حساب إيراد صالح في الفاتورة الأصلية لإنشاء إشعار الدائن.'))
-        ratio = amount / invoice.amount_total if invoice.amount_total else 0.0
-        invoice_lines = []
-        for line in invoice.invoice_line_ids.filtered(
-                lambda item: item.account_id and item.display_type not in ('line_section', 'line_note')):
-            invoice_lines.append((0, 0, {
+        source_total = sum(invoice_lines.mapped('price_total'))
+        ratio = amount / source_total if source_total else 0.0
+        credit_line_commands = []
+        for line in invoice_lines:
+            credit_line_commands.append((0, 0, {
                 'product_id': line.product_id.id,
                 'name': _('تصحيح: %s') % (line.name or self.reason),
                 'account_id': line.account_id.id,
@@ -239,7 +261,7 @@ class UtilityBillingAdjustment(models.Model):
                 'tax_ids': [(6, 0, line.tax_ids.ids)],
                 'analytic_distribution': line.analytic_distribution,
             }))
-        if not invoice_lines:
+        if not credit_line_commands:
             raise ValidationError(_('لا توجد بنود محاسبية قابلة للنسخ في الفاتورة الأصلية.'))
         credit_note = self.env['account.move'].create({
             'move_type': 'out_refund',
@@ -254,7 +276,7 @@ class UtilityBillingAdjustment(models.Model):
             'utility_sale_order_id': self.sale_order_id.id,
             'utility_adjustment_id': self.id,
             'reversed_entry_id': invoice.id,
-            'invoice_line_ids': invoice_lines,
+            'invoice_line_ids': credit_line_commands,
         })
         residual = amount - credit_note.amount_total
         if abs(residual) > invoice.currency_id.rounding:
@@ -273,7 +295,12 @@ class UtilityBillingAdjustment(models.Model):
         order = self.sale_order_id
         if self.adjustment_type in ('reading_correction', 'consumption_correction') and self.corrected_consumption < 0:
             raise ValidationError(_('الاستهلاك المصحح لا يمكن أن يكون سالباً.'))
-        consumption = self.corrected_consumption if self.corrected_consumption else order.consumption
+        consumption = order.consumption
+        if self.adjustment_type == 'consumption_correction':
+            consumption = self.corrected_consumption
+        current_reading = order.current_reading
+        if self.adjustment_type == 'reading_correction':
+            current_reading = self.corrected_current_reading
         replacement = self.env['sale.order'].with_context(
             allow_billing_adjustment=True,
         ).create({
@@ -285,7 +312,7 @@ class UtilityBillingAdjustment(models.Model):
             'period_start': order.period_start,
             'period_end': order.period_end,
             'previous_reading': order.previous_reading,
-            'current_reading': self.corrected_current_reading or order.current_reading,
+            'current_reading': current_reading,
             'consumption': consumption,
             'replacement_of_id': order.id,
             'billing_adjustment_id': self.id,
