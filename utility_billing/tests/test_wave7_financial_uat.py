@@ -343,3 +343,19 @@ class TestWave7FinancialUAT(TransactionCase):
         self.assertEqual(adjustment.replacement_sale_order_id.consumption, 900.0)
         self.assertEqual(adjustment.replacement_invoice_id.state, 'posted')
         self.assertEqual(payment.state, 'posted')
+
+        # Final exposure is intentionally measured as a signed portfolio
+        # balance.  The payment stays allocated to the original invoice;
+        # the full credit note and replacement invoice remain auditable
+        # outstanding documents until an explicit reconciliation is made.
+        credit_note = adjustment.credit_note_id
+        replacement_invoice = adjustment.replacement_invoice_id
+        self.assertAlmostEqual(invoice.amount_residual, 600.0, places=2)
+        self.assertAlmostEqual(credit_note.amount_residual, 1000.0, places=2)
+        self.assertAlmostEqual(replacement_invoice.amount_residual, 900.0, places=2)
+        signed_exposure = (
+            invoice.amount_residual
+            - credit_note.amount_residual
+            + replacement_invoice.amount_residual
+        )
+        self.assertAlmostEqual(signed_exposure, 500.0, places=2)
