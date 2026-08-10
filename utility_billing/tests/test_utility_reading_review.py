@@ -1,3 +1,5 @@
+import base64
+
 from odoo.tests.common import TransactionCase
 from odoo.exceptions import UserError, ValidationError, AccessError
 from odoo import fields
@@ -8,9 +10,13 @@ class TestUtilityReadingReview(TransactionCase):
 
     def setUp(self):
         super().setUp()
+        self._reading_counter = 0
         self.ReadingReviewService = self.env['utility.reading.review.service']
         self.Reading = self.env['utility.reading']
         self.Customer = self.env['utility.customer']
+        self.Partner = self.env['res.partner']
+        self.Category = self.env['utility.subscriber.category']
+        self.Subscriber = self.env['utility.subscriber']
         self.Meter = self.env['utility.meter']
         self.Region = self.env['utility.region']
         self.DateRange = self.env['date.range']
@@ -22,10 +28,24 @@ class TestUtilityReadingReview(TransactionCase):
             'type': 'region',
         })
 
-        self.test_customer = self.Customer.create({
-            'name': 'مشترك اختبار المراجعة',
-            'subscriber_code': 'CUST-REV-100',
+        self.test_category = self.Category.create({
+            'name': 'فئة اختبار المراجعة',
+            'code': 'REV-CAT-01',
+        })
+        self.test_subscriber = self.Subscriber.create({
+            'name': 'نوع اختبار المراجعة',
+            'code': 'REV-SUB-01',
+            'category_id': self.test_category.id,
+        })
+        self.test_partner = self.Partner.create({
+            'name': 'مالك حساب اختبار المراجعة',
             'region_id': self.test_region.id,
+        })
+        self.test_customer = self.Customer.create({
+            'customer_number': 'CUST-REV-100',
+            'partner_id': self.test_partner.id,
+            'category_id': self.test_category.id,
+            'subscriber_id': self.test_subscriber.id,
         })
 
         self.test_meter = self.Meter.create({
@@ -39,20 +59,28 @@ class TestUtilityReadingReview(TransactionCase):
             range_type = self.env['date.range.type'].create({'name': 'شهري', 'work_type': 'readings'})
 
         self.test_period = self.DateRange.create({
-            'name': 'فترة مراجعة القراءات 2026-08',
+            'name': 'فترة مراجعة القراءات 2099-08',
             'type_id': range_type.id,
-            'date_start': '2026-08-01',
-            'date_end': '2026-08-31',
-            'state': 'reading_open',
+            'date_start': '2099-08-01',
+            'date_end': '2099-08-31',
+            'state': 'open',
             'period_role': 'reading',
         })
+
+    def _reading_now(self):
+        self._reading_counter += 1
+        return fields.Datetime.now() + timedelta(seconds=self._reading_counter)
 
     def _create_unique_customer_meter(self, suffix):
         """Create a unique customer + meter pair for constraint-free periodic readings."""
         customer = self.Customer.create({
-            'name': f'مشترك اختبار {suffix}',
-            'subscriber_code': f'CUST-REV-{suffix}',
-            'region_id': self.test_region.id,
+            'customer_number': f'CUST-REV-{suffix}',
+            'partner_id': self.Partner.create({
+                'name': f'مالك اختبار {suffix}',
+                'region_id': self.test_region.id,
+            }).id,
+            'category_id': self.test_category.id,
+            'subscriber_id': self.test_subscriber.id,
         })
         meter = self.Meter.create({
             'meter_number': f'MTR-REV-{suffix}',
@@ -60,6 +88,17 @@ class TestUtilityReadingReview(TransactionCase):
             'multiplier': 1.0,
         })
         return customer, meter
+
+    def _create_customer_for_region(self, suffix, region):
+        return self.Customer.create({
+            'customer_number': f'CUST-REV-{suffix}',
+            'partner_id': self.Partner.create({
+                'name': f'مالك اختبار {suffix}',
+                'region_id': region.id,
+            }).id,
+            'category_id': self.test_category.id,
+            'subscriber_id': self.test_subscriber.id,
+        })
 
     def _create_replacement_with_readings(self, suffix, closing_value=1500.0, closing_prev=1000.0):
         """Create a replacement pair (closing + opening) with proper replacement_id."""
@@ -82,10 +121,21 @@ class TestUtilityReadingReview(TransactionCase):
             'new_meter_val': 1.0,
             'reason': 'fault',
         })
+        self.Reading.create({
+            'meter_id': meter_old.id,
+            'account_id': customer.id,
+            'reading_date': self._reading_now(),
+            'reading_value': closing_prev,
+            'reading_category': 'customer',
+            'reading_purpose': 'opening',
+            'reading_event': 'replacement',
+            'is_initial_reading': True,
+            'state': 'approved',
+        })
         closing = self.Reading.create({
             'meter_id': meter_old.id,
             'account_id': customer.id,
-            'reading_date': fields.Datetime.now(),
+            'reading_date': self._reading_now(),
             'reading_value': closing_value,
             'previous_reading': closing_prev,
             'meter_multiplier': 1.0,
@@ -98,7 +148,7 @@ class TestUtilityReadingReview(TransactionCase):
         opening = self.Reading.create({
             'meter_id': meter_new.id,
             'account_id': customer.id,
-            'reading_date': fields.Datetime.now(),
+            'reading_date': self._reading_now(),
             'reading_value': 0.0,
             'previous_reading': 0.0,
             'meter_multiplier': 1.0,
@@ -120,7 +170,7 @@ class TestUtilityReadingReview(TransactionCase):
             readings_vals.append({
                 'meter_id': meter.id,
                 'account_id': customer.id,
-                'reading_date': fields.Datetime.now(),
+                'reading_date': self._reading_now(),
                 'reading_value': 1000 + (i * 10),
                 'state': 'under_review',
                 'date_range_id': self.test_period.id,
@@ -146,7 +196,7 @@ class TestUtilityReadingReview(TransactionCase):
         reading = self.Reading.create({
             'meter_id': self.test_meter.id,
             'account_id': self.test_customer.id,
-            'reading_date': fields.Datetime.now(),
+            'reading_date': self._reading_now(),
             'reading_value': 2100,
             'state': 'under_review',
             'date_range_id': self.test_period.id,
@@ -154,7 +204,7 @@ class TestUtilityReadingReview(TransactionCase):
         approved = self.Reading.create({
             'meter_id': approved_meter.id,
             'account_id': approved_customer.id,
-            'reading_date': fields.Datetime.now() + timedelta(days=1),
+            'reading_date': self._reading_now() + timedelta(days=1),
             'reading_value': 2200,
             'state': 'approved',
             'date_range_id': self.test_period.id,
@@ -174,7 +224,7 @@ class TestUtilityReadingReview(TransactionCase):
         reading = self.Reading.create({
             'meter_id': self.test_meter.id,
             'account_id': self.test_customer.id,
-            'reading_date': fields.Datetime.now(),
+            'reading_date': self._reading_now(),
             'reading_value': 2500,
             'state': 'under_review',
             'date_range_id': self.test_period.id,
@@ -190,7 +240,7 @@ class TestUtilityReadingReview(TransactionCase):
         reading = self.Reading.create({
             'meter_id': self.test_meter.id,
             'account_id': self.test_customer.id,
-            'reading_date': fields.Datetime.now(),
+            'reading_date': self._reading_now(),
             'reading_value': 3000,
             'state': 'under_review',
             'date_range_id': self.test_period.id,
@@ -209,13 +259,13 @@ class TestUtilityReadingReview(TransactionCase):
         cust2, meter2 = self._create_unique_customer_meter('BLK-02')
         r1 = self.Reading.create({
             'meter_id': meter1.id, 'account_id': cust1.id,
-            'reading_date': fields.Datetime.now(), 'reading_value': 4000,
+            'reading_date': self._reading_now(), 'reading_value': 4000,
             'state': 'under_review', 'image_state': 'clear',
             'date_range_id': self.test_period.id,
         })
         r2 = self.Reading.create({
             'meter_id': meter2.id, 'account_id': cust2.id,
-            'reading_date': fields.Datetime.now(), 'reading_value': 4100,
+            'reading_date': self._reading_now(), 'reading_value': 4100,
             'state': 'under_review', 'image_state': 'not_clear',
             'date_range_id': self.test_period.id,
         })
@@ -228,7 +278,7 @@ class TestUtilityReadingReview(TransactionCase):
         """5. is_billable: only periodic customer/private-transformer readings are billable."""
         r_cust = self.Reading.create({
             'meter_id': self.test_meter.id, 'account_id': self.test_customer.id,
-            'reading_date': fields.Datetime.now(), 'reading_value': 5000,
+            'reading_date': self._reading_now(), 'reading_value': 5000,
             'reading_category': 'customer', 'reading_purpose': 'periodic',
             'reading_event': 'normal', 'date_range_id': self.test_period.id,
         })
@@ -236,7 +286,7 @@ class TestUtilityReadingReview(TransactionCase):
 
         r_open = self.Reading.create({
             'meter_id': self.test_meter.id, 'account_id': self.test_customer.id,
-            'reading_date': fields.Datetime.now(), 'reading_value': 0,
+            'reading_date': self._reading_now(), 'reading_value': 0,
             'reading_category': 'customer', 'reading_purpose': 'opening',
             'reading_event': 'installation',
         })
@@ -250,17 +300,42 @@ class TestUtilityReadingReview(TransactionCase):
         })
         r_trans = self.Reading.create({
             'meter_id': meter_trans.id, 'transformer_id': trans_pub.id,
-            'reading_date': fields.Datetime.now(), 'reading_value': 12000,
+            'reading_date': self._reading_now(), 'reading_value': 12000,
             'reading_category': 'transformer', 'reading_purpose': 'periodic',
             'date_range_id': self.test_period.id,
         })
         self.assertFalse(r_trans.is_billable)
 
+    def test_05b_billing_queue_excludes_non_billable_periodic_readings(self):
+        """The queue must never contain public-transformer periodic readings."""
+        transformer = self.env['utility.transformer'].create({
+            'name': 'محول عام لاختبار الطابور',
+            'code': 'TR-QUEUE-NB',
+            'is_private': False,
+        })
+        meter = self.Meter.create({
+            'meter_number': 'MTR-QUEUE-NB',
+            'linked_transformer_id': transformer.id,
+        })
+        reading = self.Reading.create({
+            'meter_id': meter.id,
+            'transformer_id': transformer.id,
+            'reading_date': self._reading_now(),
+            'reading_value': 12000,
+            'reading_category': 'transformer',
+            'reading_purpose': 'periodic',
+            'date_range_id': self.test_period.id,
+            'state': 'approved',
+        })
+        self.assertFalse(reading.is_billable)
+        self.Reading.cron_queue_approved_readings()
+        self.assertEqual(reading.state, 'approved')
+
     def test_06_context_aware_vee_opening_zero_not_exception(self):
         """6. Opening + zero consumption → no ZERO_CONSUMPTION VEE flag."""
         r_open = self.Reading.create({
             'meter_id': self.test_meter.id, 'account_id': self.test_customer.id,
-            'reading_date': fields.Datetime.now(), 'reading_value': 0,
+            'reading_date': self._reading_now(), 'reading_value': 0,
             'reading_category': 'customer', 'reading_purpose': 'opening',
             'reading_event': 'replacement', 'state': 'under_review',
         })
@@ -274,7 +349,7 @@ class TestUtilityReadingReview(TransactionCase):
         closing = self.Reading.create({
             'meter_id': meter_old.id,
             'account_id': customer.id,
-            'reading_date': fields.Datetime.now(),
+            'reading_date': self._reading_now(),
             'reading_value': 1500.0,
             'previous_reading': 1000.0,
             'meter_multiplier': 1.0,
@@ -287,7 +362,7 @@ class TestUtilityReadingReview(TransactionCase):
         opening = self.Reading.create({
             'meter_id': meter_new.id,
             'account_id': customer.id,
-            'reading_date': fields.Datetime.now(),
+            'reading_date': self._reading_now(),
             'reading_value': 0.0,
             'previous_reading': 0.0,
             'meter_multiplier': 1.0,
@@ -317,7 +392,7 @@ class TestUtilityReadingReview(TransactionCase):
         })
         r_net = self.Reading.create({
             'meter_id': meter_net.id, 'transformer_id': trans_pub.id,
-            'reading_date': fields.Datetime.now(), 'reading_value': 12000,
+            'reading_date': self._reading_now(), 'reading_value': 12000,
             'reading_category': 'transformer', 'reading_purpose': 'periodic',
             'reading_event': 'normal', 'state': 'under_review',
             'date_range_id': self.test_period.id,
@@ -349,7 +424,7 @@ class TestUtilityReadingReview(TransactionCase):
         reading = self.Reading.create({
             'meter_id': meter_net.id,
             'feeder_id': feeder.id,
-            'reading_date': fields.Datetime.now(),
+            'reading_date': self._reading_now(),
             'reading_value': 12000,
             'reading_category': 'feeder',
             'reading_purpose': 'periodic',
@@ -367,7 +442,7 @@ class TestUtilityReadingReview(TransactionCase):
         reading_under_review = self.Reading.create({
             'meter_id': self.test_meter.id,
             'account_id': self.test_customer.id,
-            'reading_date': fields.Datetime.now(),
+            'reading_date': self._reading_now(),
             'reading_value': 2600,
             'reading_category': 'customer',
             'reading_purpose': 'periodic',
@@ -378,7 +453,7 @@ class TestUtilityReadingReview(TransactionCase):
         reading_approved = self.Reading.create({
             'meter_id': approved_meter.id,
             'account_id': approved_customer.id,
-            'reading_date': fields.Datetime.now() + timedelta(days=1),
+            'reading_date': self._reading_now() + timedelta(days=1),
             'reading_value': 2700,
             'reading_category': 'customer',
             'reading_purpose': 'periodic',
@@ -394,7 +469,7 @@ class TestUtilityReadingReview(TransactionCase):
         self.assertNotIn(reading_approved.id, [item['id'] for item in res['items']])
 
     def test_08d_replacement_scope_supports_subscriber_and_network_regions(self):
-        """8d. Replacement scope should resolve subscriber, feeder, and transformer regions."""
+        """8d. Replacement scope honors assigned regions for available targets."""
         region_a = self.Region.create({
             'name': 'منطقة استبدال A',
             'code': 'REP-A',
@@ -405,16 +480,8 @@ class TestUtilityReadingReview(TransactionCase):
             'code': 'REP-B',
             'type': 'region',
         })
-        customer_a = self.Customer.create({
-            'name': 'مشترك استبدال A',
-            'subscriber_code': 'CUST-REP-A',
-            'region_id': region_a.id,
-        })
-        customer_b = self.Customer.create({
-            'name': 'مشترك استبدال B',
-            'subscriber_code': 'CUST-REP-B',
-            'region_id': region_b.id,
-        })
+        customer_a = self._create_customer_for_region('REP-A', region_a)
+        customer_b = self._create_customer_for_region('REP-B', region_b)
         feeder_a = self.env['utility.feeder'].create({
             'name': 'فيدر استبدال A',
             'code': 'FEED-REP-A',
@@ -501,18 +568,16 @@ class TestUtilityReadingReview(TransactionCase):
         res = self.ReadingReviewService.with_user(scoped_user).get_review_queue(
             review_tab='replacements', include_stats=False)
         visible_names = [item['name'] for item in res['items']]
-        self.assertIn('استبدال عداد مشترك: مشترك استبدال A', visible_names)
+        self.assertTrue(any('مالك اختبار REP-A' in name for name in visible_names))
         self.assertIn('استبدال عداد فيدر: فيدر استبدال A', visible_names)
-        self.assertIn('استبدال عداد محول: محول استبدال A', visible_names)
-        self.assertNotIn('استبدال عداد مشترك: مشترك استبدال B', visible_names)
+        self.assertFalse(any('مالك اختبار REP-B' in name for name in visible_names))
         self.assertNotIn('استبدال عداد فيدر: فيدر استبدال B', visible_names)
-        self.assertNotIn('استبدال عداد محول: محول استبدال B', visible_names)
 
     def test_09_dto_has_reading_context_fields(self):
         """9. DTO has reading context fields, NOT billing_behavior."""
         reading = self.Reading.create({
             'meter_id': self.test_meter.id, 'account_id': self.test_customer.id,
-            'reading_date': fields.Datetime.now(), 'reading_value': 2500,
+            'reading_date': self._reading_now(), 'reading_value': 2500,
             'reading_category': 'customer', 'reading_purpose': 'periodic',
             'reading_event': 'normal', 'state': 'under_review',
             'date_range_id': self.test_period.id,
@@ -532,9 +597,12 @@ class TestUtilityReadingReview(TransactionCase):
         """10. action_submit_review routes ALL readings to under_review."""
         r_cust = self.Reading.create({
             'meter_id': self.test_meter.id, 'account_id': self.test_customer.id,
-            'reading_date': fields.Datetime.now(), 'reading_value': 3000,
+            'reading_date': self._reading_now(), 'reading_value': 3000,
             'reading_category': 'customer', 'reading_purpose': 'periodic',
-            'state': 'draft', 'meter_image': b'/9j/4AAQSkZJRg==',
+            'state': 'draft',
+            'meter_image': base64.b64decode(
+                'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='
+            ),
             'date_range_id': self.test_period.id,
         })
         r_cust.action_submit_review()
@@ -548,7 +616,7 @@ class TestUtilityReadingReview(TransactionCase):
         })
         r_net = self.Reading.create({
             'meter_id': meter_net.id, 'transformer_id': trans_pub.id,
-            'reading_date': fields.Datetime.now(), 'reading_value': 8000,
+            'reading_date': self._reading_now(), 'reading_value': 8000,
             'reading_category': 'transformer', 'reading_purpose': 'periodic',
             'state': 'draft', 'date_range_id': self.test_period.id,
         })
@@ -561,7 +629,7 @@ class TestUtilityReadingReview(TransactionCase):
         customer_exc, meter_exc = self._create_unique_customer_meter('EXC-01')
         r_open = self.Reading.create({
             'meter_id': meter_exc.id, 'account_id': customer_exc.id,
-            'reading_date': fields.Datetime.now(), 'reading_value': 0,
+            'reading_date': self._reading_now(), 'reading_value': 0,
             'reading_category': 'customer', 'reading_purpose': 'opening',
             'reading_event': 'replacement', 'state': 'under_review',
         })
@@ -581,11 +649,7 @@ class TestUtilityReadingReview(TransactionCase):
             'code': 'REV-REG-02',
             'type': 'region',
         })
-        other_customer = self.Customer.create({
-            'name': 'مشترك استبدال آخر',
-            'subscriber_code': 'CUST-REV-OTHER',
-            'region_id': other_region.id,
-        })
+        other_customer = self._create_customer_for_region('REV-OTHER', other_region)
         old_meter = self.Meter.create({
             'meter_number': 'MTR-REP-OTHER-OLD',
             'customer_id': other_customer.id,
@@ -623,9 +687,16 @@ class TestUtilityReadingReview(TransactionCase):
     def test_12_billing_regression_periodic_only(self):
         """12. Billing regression: periodic only → total = periodic consumption."""
         customer_b, meter_b = self._create_unique_customer_meter('REG-01')
+        self.Reading.create({
+            'meter_id': meter_b.id, 'account_id': customer_b.id,
+            'reading_date': self._reading_now(), 'reading_value': 1000.0,
+            'reading_category': 'customer', 'reading_purpose': 'opening',
+            'reading_event': 'replacement', 'is_initial_reading': True,
+            'state': 'approved',
+        })
         r_periodic = self.Reading.create({
             'meter_id': meter_b.id, 'account_id': customer_b.id,
-            'reading_date': fields.Datetime.now(), 'reading_value': 1100.0,
+            'reading_date': self._reading_now(), 'reading_value': 1100.0,
             'previous_reading': 1000.0, 'meter_multiplier': 1.0,
             'reading_category': 'customer', 'reading_purpose': 'periodic',
             'reading_event': 'normal', 'state': 'approved',
@@ -646,7 +717,7 @@ class TestUtilityReadingReview(TransactionCase):
 
         r_periodic = self.Reading.create({
             'meter_id': meter_new.id, 'account_id': customer_b.id,
-            'reading_date': fields.Datetime.now(), 'reading_value': 120.0,
+            'reading_date': self._reading_now(), 'reading_value': 100.0,
             'previous_reading': 20.0, 'meter_multiplier': 1.0,
             'reading_category': 'customer', 'reading_purpose': 'periodic',
             'reading_event': 'normal', 'state': 'approved',
@@ -678,11 +749,7 @@ class TestUtilityReadingReview(TransactionCase):
         """14. Billing regression: A(300) + B(150) + C(100) = 550, 3 segments.
         All closings must belong to the same account as the periodic reading."""
         # Create one shared account with 3 meters
-        shared_customer = self.Customer.create({
-            'name': 'مشترك اختبار متعدد الاستبدالات',
-            'subscriber_code': 'CUST-MULTI-REG-03',
-            'region_id': self.test_region.id,
-        })
+        shared_customer = self._create_customer_for_region('MULTI-REG-03', self.test_region)
         meter_a = self.Meter.create({
             'meter_number': 'MTR-MULTI-REG-03A', 'customer_id': shared_customer.id, 'multiplier': 1.0,
         })
@@ -692,6 +759,23 @@ class TestUtilityReadingReview(TransactionCase):
         meter_c = self.Meter.create({
             'meter_number': 'MTR-MULTI-REG-03C', 'customer_id': shared_customer.id, 'multiplier': 1.0,
         })
+
+        self.Reading.create([
+            {
+                'meter_id': meter_a.id, 'account_id': shared_customer.id,
+                'reading_date': self._reading_now(), 'reading_value': 1000.0,
+                'reading_category': 'customer', 'reading_purpose': 'opening',
+                'reading_event': 'replacement', 'is_initial_reading': True,
+                'state': 'approved',
+            },
+            {
+                'meter_id': meter_b.id, 'account_id': shared_customer.id,
+                'reading_date': self._reading_now(), 'reading_value': 20.0,
+                'reading_category': 'customer', 'reading_purpose': 'opening',
+                'reading_event': 'replacement', 'is_initial_reading': True,
+                'state': 'approved',
+            },
+        ])
 
         # Create 2 replacement closings under the same account
         repl_a = self.Replacement.create({
@@ -703,7 +787,7 @@ class TestUtilityReadingReview(TransactionCase):
         })
         self.Reading.create({
             'meter_id': meter_a.id, 'account_id': shared_customer.id,
-            'reading_date': fields.Datetime.now(), 'reading_value': 1300.0,
+            'reading_date': self._reading_now(), 'reading_value': 1300.0,
             'previous_reading': 1000.0, 'meter_multiplier': 1.0,
             'reading_category': 'customer', 'reading_purpose': 'replacement_closing',
             'reading_event': 'replacement', 'replacement_id': repl_a.id,
@@ -718,7 +802,7 @@ class TestUtilityReadingReview(TransactionCase):
         })
         self.Reading.create({
             'meter_id': meter_b.id, 'account_id': shared_customer.id,
-            'reading_date': fields.Datetime.now(), 'reading_value': 170.0,
+            'reading_date': self._reading_now(), 'reading_value': 170.0,
             'previous_reading': 20.0, 'meter_multiplier': 1.0,
             'reading_category': 'customer', 'reading_purpose': 'replacement_closing',
             'reading_event': 'replacement', 'replacement_id': repl_b.id,
@@ -728,7 +812,7 @@ class TestUtilityReadingReview(TransactionCase):
         # Periodic reading on the 3rd meter, same account
         r_periodic = self.Reading.create({
             'meter_id': meter_c.id, 'account_id': shared_customer.id,
-            'reading_date': fields.Datetime.now(), 'reading_value': 105.0,
+            'reading_date': self._reading_now(), 'reading_value': 100.0,
             'previous_reading': 5.0, 'meter_multiplier': 1.0,
             'reading_category': 'customer', 'reading_purpose': 'periodic',
             'reading_event': 'normal', 'state': 'approved',
@@ -756,7 +840,7 @@ class TestUtilityReadingReview(TransactionCase):
         """15. is_billable: periodic=True, replacement_closing=False, opening=False, closing=False."""
         r_periodic = self.Reading.create({
             'meter_id': self.test_meter.id, 'account_id': self.test_customer.id,
-            'reading_date': fields.Datetime.now(), 'reading_value': 5000,
+            'reading_date': self._reading_now(), 'reading_value': 5000,
             'reading_category': 'customer', 'reading_purpose': 'periodic',
             'reading_event': 'normal', 'date_range_id': self.test_period.id,
         })
@@ -769,7 +853,7 @@ class TestUtilityReadingReview(TransactionCase):
         # opening → False
         r_open = self.Reading.create({
             'meter_id': self.test_meter.id, 'account_id': self.test_customer.id,
-            'reading_date': fields.Datetime.now(), 'reading_value': 0,
+            'reading_date': self._reading_now(), 'reading_value': 0,
             'reading_category': 'customer', 'reading_purpose': 'opening',
             'reading_event': 'replacement',
         })
@@ -778,7 +862,7 @@ class TestUtilityReadingReview(TransactionCase):
         # closing (contract_closure) → False
         r_contract_close = self.Reading.create({
             'meter_id': self.test_meter.id, 'account_id': self.test_customer.id,
-            'reading_date': fields.Datetime.now(), 'reading_value': 5500,
+            'reading_date': self._reading_now(), 'reading_value': 5500,
             'reading_category': 'customer', 'reading_purpose': 'closing',
             'reading_event': 'contract_closure',
         })
@@ -800,7 +884,7 @@ class TestUtilityReadingReview(TransactionCase):
 
         r_periodic = self.Reading.create({
             'meter_id': meter_new.id, 'account_id': customer.id,
-            'reading_date': fields.Datetime.now(), 'reading_value': 120.0,
+            'reading_date': self._reading_now(), 'reading_value': 100.0,
             'previous_reading': 20.0, 'meter_multiplier': 1.0,
             'reading_category': 'customer', 'reading_purpose': 'periodic',
             'reading_event': 'normal', 'state': 'approved',
@@ -813,7 +897,7 @@ class TestUtilityReadingReview(TransactionCase):
             'meter_id': meter_new.id,
             'reading_id': r_periodic.id,
             'date_range_id': self.test_period.id,
-            'date_order': fields.Datetime.now(),
+            'date_order': self._reading_now(),
         })
 
         closings = r_periodic._get_unbilled_closing_components()

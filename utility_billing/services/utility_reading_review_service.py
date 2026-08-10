@@ -44,6 +44,10 @@ class UtilityReadingReviewService(models.AbstractModel):
             domain.append(('reading_category', 'in', ['transformer', 'feeder']))
             domain.append(('is_private_transformer', '=', False))
         elif review_tab == 'exceptions':
+            # Opening readings are initialization data, not review exceptions.
+            # Their image state may legitimately be ``none`` because no field
+            # photo is required for an opening event.
+            domain.append(('reading_purpose', '!=', 'opening'))
             domain.append('|')
             domain.append(('consumption_alert', '!=', 'normal'))
             domain.append(('image_state', 'in', ['not_clear', 'not_same', 'none', 'loss_read']))
@@ -71,14 +75,8 @@ class UtilityReadingReviewService(models.AbstractModel):
             return [('id', '=', False)]
         return [
             '|', '|',
-            '&',
-            ('target_type', '=', 'subscriber'),
             ('utility_account_id.region_id', 'in', regions.ids),
-            '&',
-            ('target_type', '=', 'feeder'),
             ('feeder_id.region_id', 'in', regions.ids),
-            '&',
-            ('target_type', '=', 'transformer'),
             ('transformer_id.region_id', 'in', regions.ids),
         ]
 
@@ -352,8 +350,13 @@ class UtilityReadingReviewService(models.AbstractModel):
                 'id': r.id,
                 'name': r.name,
                 'target_type': r.target_type,
-                'target_name': r.utility_account_id.name if r.utility_account_id else (r.feeder_id.name if r.feeder_id else (r.transformer_id.name if r.transformer_id else '')),
-                'subscriber_code': r.utility_account_id.subscriber_code if r.utility_account_id else '',
+                'target_name': (
+                    r.utility_account_id.display_name if r.utility_account_id
+                    else r.feeder_id.display_name if r.feeder_id
+                    else r.transformer_id.display_name if r.transformer_id
+                    else ''
+                ),
+                'subscriber_code': r.utility_account_id.customer_number if r.utility_account_id else '',
                 'replace_date': fields.Datetime.to_string(r.replace_date) if r.replace_date else '',
                 'reason': r.reason or '',
                 'state': r.state,
