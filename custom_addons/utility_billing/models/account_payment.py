@@ -247,18 +247,18 @@ class AccountPayment(models.Model):
         if not self.move_id:
             return
 
+        self.env.flush_all()
+        self.env.cr.execute(
+            'SELECT id FROM account_payment WHERE id = %s FOR UPDATE',
+            [self.id],
+        )
+        self.invalidate_cache()
         order = self.utility_sale_order_id
+        if not order:
+            return
         invoices = self.env['account.move']
         if order:
             invoices |= (order.invoice_ids | order.utility_move_ids)
-
-        if not invoices and self.partner_id:
-            invoices = self.env['account.move'].search([
-                ('partner_id', '=', self.partner_id.id),
-                ('move_type', '=', 'out_invoice'),
-                ('state', '=', 'posted'),
-                ('payment_state', 'in', ('not_paid', 'partial', 'in_payment'))
-            ])
 
         invoices = invoices.filtered(lambda m: m.state == 'posted' and m.payment_state in ('not_paid', 'partial', 'in_payment'))
 
@@ -271,18 +271,4 @@ class AccountPayment(models.Model):
         lines = payment_lines | invoice_lines
         if len(lines) >= 2:
             lines.reconcile()
-
-        # إجراء تسوية شاملة لحساب العملاء للشريك لضمان سداد الفاتورة تلقائياً
-        if self.partner_id:
-            partner_lines = self.env['account.move.line'].search([
-                ('partner_id', '=', self.partner_id.id),
-                ('reconciled', '=', False),
-                ('account_id.account_type', '=', 'asset_receivable'),
-                ('move_id.state', '=', 'posted')
-            ])
-            if len(partner_lines) >= 2:
-                try:
-                    partner_lines.reconcile()
-                except Exception:
-                    pass
 

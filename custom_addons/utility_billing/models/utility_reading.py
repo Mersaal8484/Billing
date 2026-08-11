@@ -101,6 +101,12 @@ class UtilityReading(models.Model):
         if self.date_range_id.state in ('closed', 'locked'):
             raise ValidationError(_('فترة القراءة (%s) في حالة (%s) وتمنع إنشاء فواتير جديدة.') % (self.date_range_id.name, self.date_range_id.state))
 
+        self.env.flush_all()
+        self.env.cr.execute(
+            'SELECT id FROM utility_reading WHERE id = %s FOR UPDATE',
+            [self.id],
+        )
+        self.invalidate_cache(['state', 'included_sale_order_id'])
         existing = self.env['sale.order'].search([
             ('reading_id', '=', self.id), ('state', '!=', 'cancel')], limit=1)
         if existing:
@@ -163,7 +169,7 @@ class UtilityReading(models.Model):
         return self._action_generate_periodic_bill()
 
     def action_generate_bills_batch(self):
-        readings = self.filtered(lambda r: r.reading_purpose == 'periodic' and r.date_range_id and r.state == 'approved' and (
+        readings = self.filtered(lambda r: r.reading_purpose == 'periodic' and r.date_range_id and r.state == 'approved' and r.is_billable and (
             r.reading_category == 'customer' or
             (r.reading_category == 'transformer' and r.is_private_transformer)
         ))
@@ -189,6 +195,7 @@ class UtilityReading(models.Model):
             ('state', '=', 'approved'),
             ('reading_purpose', '=', 'periodic'),
             ('date_range_id', '!=', False),
+            ('is_billable', '=', True),
             '|',
             ('reading_category', '=', 'customer'),
             '&',

@@ -29,7 +29,11 @@ class UtilityBillingAPI(http.Controller):
     def _authorize_order(self, order_id):
         """التحقق من ملكية الفاتورة وإرجاعها إن وجدت."""
         user = request.env.user
-        order = request.env['sale.order'].sudo().browse(int(order_id))
+        try:
+            order_id = int(order_id)
+        except (TypeError, ValueError):
+            return request.env['sale.order']
+        order = request.env['sale.order'].sudo().browse(order_id)
         if not order.exists():
             return request.env['sale.order']
         if user.has_group('base.group_user'):
@@ -47,6 +51,10 @@ class UtilityBillingAPI(http.Controller):
         account = self._authorize_account(customer_number)
         if not account:
             return {'error': 'Account not found'}
+        try:
+            limit = max(1, min(int(limit), 100))
+        except (TypeError, ValueError):
+            return {'error': 'limit must be numeric'}
         orders = request.env['sale.order'].sudo().search([
             ('customer_id', '=', account.id),
             ('bill_state', 'not in', ('paid', 'cancelled')),
@@ -121,7 +129,11 @@ class UtilityBillingAPI(http.Controller):
 
         Provider = request.env['utility.integration.provider'].sudo()
         if provider_id:
-            provider = Provider.browse(int(provider_id))
+            try:
+                provider_id = int(provider_id)
+            except (TypeError, ValueError):
+                return {'error': 'provider_id must be numeric'}
+            provider = Provider.browse(provider_id)
         else:
             provider = Provider.search([
                 ('is_payment_capable', '=', True),
@@ -197,7 +209,11 @@ class UtilityBillingAPI(http.Controller):
         description = params.get('description')
         if not customer_id or not service_type or not description:
             return {'error': 'customer_id, service_type, and description are required'}
-        account = request.env['utility.customer'].sudo().browse(int(customer_id))
+        try:
+            customer_id = int(customer_id)
+        except (TypeError, ValueError):
+            return {'error': 'customer_id must be numeric'}
+        account = request.env['utility.customer'].sudo().browse(customer_id)
         if not account.exists():
             return {'error': 'Customer account not found'}
         user = request.env.user
@@ -205,7 +221,7 @@ class UtilityBillingAPI(http.Controller):
             return {'error': 'Customer account not found'}
         try:
             order = request.env['utility.service.order'].sudo().create({
-                'customer_id': int(customer_id),
+                'customer_id': customer_id,
                 'service_type': service_type,
                 'description': description,
                 'state': 'draft',
@@ -234,15 +250,27 @@ class UtilityBillingAPI(http.Controller):
         meter = request.env['utility.meter'].sudo().search([('meter_number', '=', meter_number)], limit=1)
         if not meter:
             return {'error': 'Meter not found'}
+        if meter.company_id != provider.company_id:
+            return {'error': 'Meter is not available for this AMI provider company'}
         try:
             reading_value = float(reading_value)
         except (TypeError, ValueError):
             return {'error': 'reading_value must be numeric'}
         date_range_id = params.get('date_range_id') or False
+        if date_range_id:
+            try:
+                date_range_id = int(date_range_id)
+            except (TypeError, ValueError):
+                return {'error': 'date_range_id must be numeric'}
+            period = request.env['date.range'].sudo().browse(date_range_id).exists()
+            if (not period or period.company_id not in (False, provider.company_id)
+                    or period.period_role != 'reading'
+                    or period.state != 'open'):
+                return {'error': 'Invalid reading period for this AMI provider company'}
         reading = meter.create_ami_reading(
             reading_value,
             reading_date=params.get('reading_date') or False,
-            date_range_id=int(date_range_id) if date_range_id else False,
+            date_range_id=date_range_id or False,
         )
         provider.call_json({
             'meter_number': meter_number,
