@@ -52,6 +52,7 @@
             <field name="consumption_start">2026-07-01</field>
             <field name="consumption_end">2026-07-31</field>
             <field name="billing_period">monthly</field>
+            <field name="billing_cadence">monthly</field>
             <field name="work_type">readings</field>
             <field name="state">open</field>
         </record>
@@ -68,6 +69,7 @@
             <field name="consumption_start">2026-07-01</field>
             <field name="consumption_end">2026-07-15</field>
             <field name="billing_period">biweekly</field>
+            <field name="billing_cadence">semi_monthly</field>
             <field name="work_type">readings</field>
             <field name="state">open</field>
         </record>
@@ -84,6 +86,7 @@
             <field name="consumption_start">2026-07-16</field>
             <field name="consumption_end">2026-07-31</field>
             <field name="billing_period">biweekly</field>
+            <field name="billing_cadence">semi_monthly</field>
             <field name="work_type">readings</field>
             <field name="state">planned</field>
         </record>

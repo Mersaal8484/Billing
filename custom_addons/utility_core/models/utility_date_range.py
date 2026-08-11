@@ -458,7 +458,10 @@ class DateRange(models.Model):
         Payment Period: يرث النطاق من reading_period_id إذا لم تُحدَّد مناطق."""
         for vals in vals_list:
             role = vals.get('period_role', 'reading')
-            cadence = vals.get('billing_cadence', 'monthly')
+            raw_cadence = vals.get('billing_cadence') or vals.get('billing_period') or 'monthly'
+            cadence = normalize_billing_cadence(raw_cadence)
+            if 'billing_cadence' not in vals:
+                vals['billing_cadence'] = cadence
             if not vals.get('type_id'):
                 period_type = self.env['date.range.type']._resolve_period_type(cadence, role)
                 vals['type_id'] = period_type.id

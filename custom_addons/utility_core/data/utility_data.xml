@@ -182,6 +182,7 @@
         <record id="utility_product_consumption" model="product.product">
             <field name="name">استهلاك طاقة كهربائية</field>
             <field name="type">service</field>
+            <field name="invoice_policy">order</field>
             <field name="list_price">0.00</field>
             <field name="property_account_income_id" ref="account_income_electricity"/>
         </record>

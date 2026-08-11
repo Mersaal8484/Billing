@@ -1,6 +1,6 @@
 import calendar
 from datetime import date, datetime, time, timedelta, timezone
-from zoneinfo import ZoneInfo
+import pytz
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
 from ..models.utility_date_range import normalize_billing_cadence
@@ -210,11 +210,11 @@ class UtilityPeriodGenerator(models.TransientModel):
     def _to_utc_start_of_day(self, local_date):
         """Convert a local date to a UTC naive datetime at 00:00:00."""
         user_tz = self.env.user.tz or self.env.context.get('tz') or 'UTC'
-        local_dt = datetime.combine(local_date, time.min).replace(tzinfo=ZoneInfo(user_tz))
+        local_dt = pytz.timezone(user_tz).localize(datetime.combine(local_date, time.min))
         return local_dt.astimezone(timezone.utc).replace(tzinfo=None)
 
     def _to_utc_end_of_day(self, local_date):
         """Convert a local date to a UTC naive datetime at 23:59:59.999999."""
         user_tz = self.env.user.tz or self.env.context.get('tz') or 'UTC'
-        local_dt = datetime.combine(local_date, time.max).replace(tzinfo=ZoneInfo(user_tz))
+        local_dt = pytz.timezone(user_tz).localize(datetime.combine(local_date, time.max))
         return local_dt.astimezone(timezone.utc).replace(tzinfo=None)

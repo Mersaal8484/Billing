@@ -293,6 +293,13 @@
         </field>
     </record>
 
+    <record id="action_utility_reading_form_view" model="ir.actions.act_window.view">
+        <field name="sequence" eval="3"/>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_utility_reading_form"/>
+        <field name="act_window_id" ref="action_utility_reading"/>
+    </record>
+
     <record id="action_utility_readings_pending_review" model="ir.actions.act_window">
         <field name="name">قراءات تنتظر المراجعة</field>
         <field name="res_model">utility.reading</field>

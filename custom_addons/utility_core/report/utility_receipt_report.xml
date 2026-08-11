@@ -1,14 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <report
-        id="action_report_utility_receipt"
-        model="utility.customer"
-        string="تقرير الإيصال"
-        report_type="qweb-pdf"
-        name="utility_core.receipt_report"
-        file="utility_core.receipt_report"
-        print_report_name="'Receipt - %s' % object.customer_number"
-    />
+    <record id="action_report_utility_receipt" model="ir.actions.report">
+        <field name="name">تقرير الإيصال</field>
+        <field name="model">utility.customer</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">utility_core.receipt_report</field>
+        <field name="report_file">utility_core.receipt_report</field>
+        <field name="print_report_name">'Receipt - %s' % object.customer_number</field>
+    </record>
 
     <template id="receipt_report">
         <t t-call="web.html_container">

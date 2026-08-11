@@ -111,42 +111,50 @@ if products:
         <record id="utility_product_kwh" model="product.product">
             <field name="name">استهلاك كهرباء (kWh)</field>
             <field name="type">service</field>
+            <field name="invoice_policy">order</field>
             <field name="list_price">350.00</field>
         </record>
         <record id="utility_product_fixed_fee" model="product.product">
             <field name="name">رسوم اشتراك العداد</field>
             <field name="type">service</field>
+            <field name="invoice_policy">order</field>
             <field name="list_price">1500.00</field>
         </record>
         <record id="utility_product_service_charge" model="product.product">
             <field name="name">رسوم خدمات وصيانة</field>
             <field name="type">service</field>
+            <field name="invoice_policy">order</field>
             <field name="list_price">1000.00</field>
         </record>
         <record id="utility_product_discount" model="product.product">
             <field name="name">خصم استهلاك مدعوم</field>
             <field name="type">service</field>
+            <field name="invoice_policy">order</field>
             <field name="list_price">-350.00</field>
             <field name="property_account_income_id" ref="demo_account_discount" />
         </record>
         <record id="utility_product_mu_allim" model="product.product">
             <field name="name">رسم المعلم</field>
             <field name="type">service</field>
+            <field name="invoice_policy">order</field>
             <field name="list_price">0.00</field>
         </record>
         <record id="utility_product_cleaning" model="product.product">
             <field name="name">رسم النظافة</field>
             <field name="type">service</field>
+            <field name="invoice_policy">order</field>
             <field name="list_price">0.00</field>
         </record>
         <record id="utility_product_municipality" model="product.product">
             <field name="name">رسم المجالس المحلية</field>
             <field name="type">service</field>
+            <field name="invoice_policy">order</field>
             <field name="list_price">0.00</field>
         </record>
         <record id="utility_product_penalty" model="product.product">
             <field name="name">غرامة</field>
             <field name="type">service</field>
+            <field name="invoice_policy">order</field>
             <field name="list_price">0.00</field>
         </record>
         <record id="utility_product_meter_single" model="product.product">
@@ -270,6 +278,12 @@ if products:
             <field name="code">REGION_HUD</field>
             <field name="type">region</field>
             <field name="recurring_rule_type">biweekly</field>
+        </record>
+        <record id="demo_region_monthly" model="utility.region">
+            <field name="name">منطقة الدورة الشهرية</field>
+            <field name="code">REGION_MONTHLY</field>
+            <field name="type">region</field>
+            <field name="recurring_rule_type">monthly</field>
         </record>
         <record id="demo_area_2" model="utility.region">
             <field name="name">فرع المنطقة الثانية</field>

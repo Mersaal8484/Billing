@@ -498,6 +498,19 @@ class UtilitySaleOrderLine(models.Model):
         ('other', 'أخرى'),
     ], string='نوع البند')
 
+    @api.depends(
+        'qty_invoiced', 'qty_delivered', 'product_uom_qty', 'state',
+        'order_id.customer_id', 'order_id.reading_id',
+    )
+    def _compute_qty_to_invoice(self):
+        super()._compute_qty_to_invoice()
+        utility_lines = self.filtered(
+            lambda line: line.order_id.customer_id and not line.display_type
+        )
+        for line in utility_lines:
+            if line.state in ('sale', 'done'):
+                line.qty_to_invoice = line.product_uom_qty - line.qty_invoiced
+
     def _get_company_config(self, company_field, config_key):
         company = self.company_id or self.env.company
         val = company[company_field] if hasattr(company, company_field) else False
