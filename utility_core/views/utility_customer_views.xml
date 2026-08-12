@@ -9,6 +9,7 @@
                   decoration-warning="state in ('suspended', 'disconnected')" 
                   decoration-success="state == 'active'">
                 <field name="customer_number"/>
+                <field name="external_qr_reference" optional="show"/>
                 <field name="partner_id"/>
                 <field name="category_id"/>
                 <field name="subscriber_id"/>
@@ -76,6 +77,7 @@
                     </div>
                     <group>
                         <group string="معلومات الهوية والنوع">
+                            <field name="external_qr_reference" placeholder="QR-..."/>
                             <field name="partner_id"/>
                             <field name="category_id" options="{'no_create': True}"/>
                             <field name="subscriber_id" options="{'no_create': True}"/>
@@ -189,6 +191,7 @@
         <field name="arch" type="xml">
             <search>
                 <field name="customer_number"/>
+                <field name="external_qr_reference" string="معرف QR الخارجي"/>
                 <field name="partner_id"/>
                 <field name="mobile"/>
                 <field name="region_id"/>

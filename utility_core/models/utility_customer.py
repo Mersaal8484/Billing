@@ -15,6 +15,9 @@ class UtilityCustomer(models.Model):
     active = fields.Boolean('نشط', default=True)
     company_id = fields.Many2one('res.company', 'الشركة', default=lambda self: self.env.company)
     customer_number = fields.Char('رقم العميل', required=True, index=True, default=lambda self: _('جديد'))
+    external_qr_reference = fields.Char(
+        string='معرف QR الخارجي', index=True, tracking=True,
+    )
     partner_id = fields.Many2one(
         'res.partner', 'العميل / الشريك المحاسبي', required=True,
         index=True, ondelete='restrict',
@@ -132,6 +135,8 @@ class UtilityCustomer(models.Model):
     _sql_constraints = [
         ('unique_customer_number_company', 'unique(customer_number, company_id)',
          'رقم العميل يجب أن يكون فريداً لكل شركة!'),
+        ('unique_external_qr_reference_company', 'unique(external_qr_reference, company_id)',
+         'معرف QR الخارجي يجب أن يكون فريداً لكل شركة!'),
         ('unique_accounting_partner', 'unique(partner_id)',
          'لا يمكن ربط أكثر من حساب كهرباء بنفس الشريك المحاسبي.'),
     ]
@@ -155,6 +160,9 @@ class UtilityCustomer(models.Model):
     def create(self, vals_list):
         """Create one dedicated partner for every new utility account."""
         for vals in vals_list:
+            if 'external_qr_reference' in vals:
+                vals['external_qr_reference'] = (
+                    vals['external_qr_reference'] or '').strip() or False
             if vals.get('customer_number', _('جديد')) == _('جديد'):
                 vals['customer_number'] = self.env['ir.sequence'].next_by_code('utility.customer') or _('جديد')
 
@@ -200,6 +208,9 @@ class UtilityCustomer(models.Model):
             recurring_type = self.contract_template_id.recurring_rule_type
         return {'bi_monthly': 'biweekly'}.get(recurring_type, recurring_type)
     def write(self, vals):
+        vals = dict(vals)
+        if 'external_qr_reference' in vals:
+            vals['external_qr_reference'] = (vals['external_qr_reference'] or '').strip() or False
         if 'partner_id' in vals and not self.env.context.get(
                 'allow_utility_account_partner_change'):
             for customer in self:
@@ -353,6 +364,52 @@ class UtilityCustomer(models.Model):
         for rec in self:
             res.append((rec.id, f'[{rec.customer_number}] {rec.partner_id.name}'))
         return res
+
+    @api.model
+    def _name_search(self, name='', args=None, operator='ilike', limit=100, name_get_uid=None):
+        """Preserve customer search fields and add the external QR reference."""
+        args = args or []
+        domain = []
+        if name:
+            domain = ['|', '|', '|', '|',
+                      ('customer_number', operator, name),
+                      ('external_qr_reference', operator, name),
+                      ('partner_id.name', operator, name),
+                      ('partner_id.national_id', operator, name),
+                      ('meter_id.meter_number', operator, name)]
+        return self._search(domain + args, limit=limit, access_rights_uid=name_get_uid)
+
+    @api.model
+    def _resolve_identifiers(self, customer_id=None, customer_number=None,
+                             external_qr_reference=None, scope_ids=None):
+        """Resolve exact customer identifiers within this recordset scope.
+
+        ``scope_ids`` optionally limits resolution to an authorized customer
+        scope. When more than one identifier is supplied, every identifier
+        must resolve to one customer.
+        """
+        scope = [('id', 'in', scope_ids)] if scope_ids is not None else []
+        identifiers = []
+        if customer_id not in (None, '', False):
+            try:
+                customer_id = int(customer_id)
+            except (TypeError, ValueError):
+                return self.browse(), 'CUSTOMER_NOT_FOUND'
+            identifiers.append(self.search(scope + [('id', '=', customer_id)], limit=1))
+        if customer_number not in (None, '', False):
+            identifiers.append(self.search(
+                scope + [('customer_number', '=', str(customer_number).strip())], limit=1))
+        if external_qr_reference not in (None, '', False):
+            identifiers.append(self.search(scope + [
+                ('external_qr_reference', '=', str(external_qr_reference).strip())
+            ], limit=1))
+        if not identifiers:
+            return self.browse(), 'CUSTOMER_IDENTIFIER_REQUIRED'
+        if any(not customer for customer in identifiers):
+            return self.browse(), 'CUSTOMER_NOT_FOUND'
+        if len({customer.id for customer in identifiers}) > 1:
+            return self.browse(), 'CUSTOMER_IDENTIFIER_MISMATCH'
+        return identifiers[0], False
 
     @api.depends('partner_id')
     def _compute_accounting_balance(self):

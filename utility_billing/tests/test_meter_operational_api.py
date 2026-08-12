@@ -47,7 +47,7 @@ class TestMeterOperationalBillingAPI(TransactionCase):
             'state': 'open',
         })
 
-    def _meter_and_customer(self, suffix='001'):
+    def _meter_and_customer(self, suffix='001', external_qr_reference=False):
         partner = self.env['res.partner'].create({
             'name': 'عميل API بدون جوال %s' % suffix,
             'mobile': False,
@@ -59,10 +59,15 @@ class TestMeterOperationalBillingAPI(TransactionCase):
         })
         customer = self.env['utility.customer'].create({
             'customer_number': 'OPS-API-CUSTOMER-%s' % suffix,
+            'external_qr_reference': external_qr_reference,
             'partner_id': partner.id,
             'category_id': self.category.id,
             'subscriber_id': self.subscriber.id,
             'meter_id': meter.id,
+        })
+        meter.write({
+            'customer_id': customer.id,
+            'connection_type': 'subscriber',
         })
         return meter, customer
 
@@ -139,3 +144,55 @@ class TestMeterOperationalBillingAPI(TransactionCase):
         self.assertTrue(result['success'])
         reading = self.env['utility.reading'].browse(result['reading_id'])
         self.assertEqual(reading.meter_id, meter)
+
+    def test_customer_lookup_by_external_qr_reference(self):
+        _meter, customer = self._meter_and_customer('CUSTOMER-LOOKUP', 'QR-CUSTOMER-LOOKUP')
+        controller = utility_billing_api.UtilityBillingAPI()
+        with patch.object(utility_billing_api, 'request', self._request({
+                'external_qr_reference': 'QR-CUSTOMER-LOOKUP'})):
+            result = controller.customer_lookup()
+        self.assertTrue(result['success'])
+        self.assertEqual(result['customer']['customer_id'], customer.id)
+        self.assertEqual(result['customer']['external_qr_reference'], 'QR-CUSTOMER-LOOKUP')
+
+    def test_customer_lookup_matching_identifiers_succeeds(self):
+        _meter, customer = self._meter_and_customer('CUSTOMER-MATCH', 'QR-CUSTOMER-MATCH')
+        controller = utility_billing_api.UtilityBillingAPI()
+        with patch.object(utility_billing_api, 'request', self._request({
+                'customer_number': customer.customer_number,
+                'external_qr_reference': customer.external_qr_reference})):
+            result = controller.customer_lookup()
+        self.assertTrue(result['success'])
+
+    def test_customer_lookup_conflicting_identifiers_is_rejected(self):
+        _meter, first = self._meter_and_customer('CUSTOMER-MISMATCH-A', 'QR-CUSTOMER-A')
+        _meter, _second = self._meter_and_customer('CUSTOMER-MISMATCH-B', 'QR-CUSTOMER-B')
+        controller = utility_billing_api.UtilityBillingAPI()
+        with patch.object(utility_billing_api, 'request', self._request({
+                'customer_number': first.customer_number,
+                'external_qr_reference': 'QR-CUSTOMER-B'})):
+            result = controller.customer_lookup()
+        self.assertFalse(result['success'])
+        self.assertEqual(result['code'], 'CUSTOMER_IDENTIFIER_MISMATCH')
+
+    def test_customer_qr_update_is_idempotent_and_editable(self):
+        _meter, customer = self._meter_and_customer('CUSTOMER-UPDATE', 'QR-UPDATE-OLD')
+        controller = utility_billing_api.UtilityBillingAPI()
+        for reference in ('QR-UPDATE-OLD', 'QR-UPDATE-NEW'):
+            with patch.object(utility_billing_api, 'request', self._request({
+                    'customer_number': customer.customer_number,
+                    'new_external_qr_reference': reference})):
+                result = controller.update_customer_qr_reference()
+            self.assertTrue(result['success'])
+            self.assertEqual(result['customer']['external_qr_reference'], reference)
+
+    def test_customer_qr_update_rejects_another_customers_qr(self):
+        _meter, first = self._meter_and_customer('CUSTOMER-OWNER-A', 'QR-OWNER-A')
+        _meter, second = self._meter_and_customer('CUSTOMER-OWNER-B', 'QR-OWNER-B')
+        controller = utility_billing_api.UtilityBillingAPI()
+        with patch.object(utility_billing_api, 'request', self._request({
+                'customer_number': second.customer_number,
+                'new_external_qr_reference': first.external_qr_reference})):
+            result = controller.update_customer_qr_reference()
+        self.assertFalse(result['success'])
+        self.assertEqual(result['code'], 'QR_REFERENCE_ALREADY_ASSIGNED')

@@ -321,7 +321,7 @@ class UtilityReaderAPI(http.Controller):
                 'operational_number': meter.operational_number or None,
                 'meter_type': meter.meter_type if hasattr(meter, 'meter_type') else None,
                 'customer_id': customer.id if customer else None,
-                'customer_name': customer.name if customer else None,
+                'customer_name': customer.partner_id.name if customer and customer.partner_id else None,
                 'customer_number': customer.customer_number if customer else None,
                 'address': customer.address if customer and hasattr(customer, 'address') else None,
             },

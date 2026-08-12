@@ -2,6 +2,7 @@ from odoo import fields, http
 from odoo.http import request
 import hmac
 import logging
+from psycopg2 import IntegrityError
 
 _logger = logging.getLogger(__name__)
 
@@ -50,6 +51,82 @@ class UtilityBillingAPI(http.Controller):
         """التحقق من ملكية حساب الكهرباء وإرجاعه إن وجد."""
         accounts = self._get_authorized_accounts()
         return accounts.filtered(lambda a: a.customer_number == customer_number)[:1]
+
+    def _resolve_authorized_customer(self, params):
+        """Resolve exact customer identifiers within the caller's access scope."""
+        accounts = self._get_authorized_accounts()
+        customer, error_code = accounts._resolve_identifiers(
+            customer_id=params.get('customer_id'),
+            customer_number=params.get('customer_number'),
+            external_qr_reference=params.get('external_qr_reference'),
+            scope_ids=accounts.ids,
+        )
+        return customer, error_code
+
+    @staticmethod
+    def _customer_payload(customer):
+        return {
+            'customer_id': customer.id,
+            'customer_number': customer.customer_number,
+            'external_qr_reference': customer.external_qr_reference or None,
+            'customer_name': customer.partner_id.name if customer.partner_id else None,
+        }
+
+    @http.route('/api/v1/utility/customer/lookup', type='json', auth='user', methods=['POST'])
+    def customer_lookup(self, **kwargs):
+        """Resolve an authorized customer by exact business identifier."""
+        customer, error_code = self._resolve_authorized_customer(request.jsonrequest or {})
+        if error_code == 'CUSTOMER_IDENTIFIER_MISMATCH':
+            return {'success': False, 'error': 'معرفات الحساب متعارضة', 'code': error_code}
+        if error_code == 'CUSTOMER_IDENTIFIER_REQUIRED':
+            return {'success': False, 'error': 'customer_id, customer_number or external_qr_reference is required', 'code': error_code}
+        if not customer:
+            return {'success': False, 'error': 'الحساب غير موجود', 'code': error_code or 'CUSTOMER_NOT_FOUND'}
+        return {'success': True, 'customer': self._customer_payload(customer)}
+
+    @http.route('/api/v1/utility/customer/qr_reference', type='json', auth='user', methods=['POST'])
+    def update_customer_qr_reference(self, **kwargs):
+        """Assign or change the current external QR reference idempotently."""
+        params = request.jsonrequest or {}
+        customer, error_code = self._resolve_authorized_customer(params)
+        if error_code == 'CUSTOMER_IDENTIFIER_MISMATCH':
+            return {'success': False, 'error': 'معرفات الحساب متعارضة', 'code': error_code}
+        if error_code == 'CUSTOMER_IDENTIFIER_REQUIRED':
+            return {'success': False, 'error': 'customer_id, customer_number or external_qr_reference is required', 'code': error_code}
+        if not customer:
+            return {'success': False, 'error': 'الحساب غير موجود', 'code': error_code or 'CUSTOMER_NOT_FOUND'}
+        target_key = (
+            'new_external_qr_reference'
+            if 'new_external_qr_reference' in params
+            else 'external_qr_reference'
+        )
+        if target_key not in params:
+            return {'success': False, 'error': 'external_qr_reference is required', 'code': 'VALIDATION_ERROR'}
+
+        reference = (params.get(target_key) or '').strip() or False
+        owner = request.env['utility.customer']
+        if reference:
+            owner = owner.search([
+                ('external_qr_reference', '=', reference),
+                ('company_id', '=', customer.company_id.id),
+                ('id', '!=', customer.id),
+            ], limit=1)
+        if owner:
+            return {
+                'success': False,
+                'error': 'معرف QR الخارجي مستخدم بالفعل لدى حساب آخر',
+                'code': 'QR_REFERENCE_ALREADY_ASSIGNED',
+            }
+        try:
+            with request.env.cr.savepoint():
+                customer.write({'external_qr_reference': reference})
+        except IntegrityError:
+            return {
+                'success': False,
+                'error': 'معرف QR الخارجي مستخدم بالفعل لدى حساب آخر',
+                'code': 'QR_REFERENCE_ALREADY_ASSIGNED',
+            }
+        return {'success': True, 'customer': self._customer_payload(customer)}
 
     def _authorize_order(self, order_id):
         """التحقق من ملكية الفاتورة وإرجاعها إن وجدت."""
