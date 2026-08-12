@@ -14,8 +14,8 @@ class UtilityCustomerPrepaidWizard(models.TransientModel):
         ('manual', 'يدوي'),
     ], string='نوع الاتصال الذكي')
 
-    def action_create(self):
-        result = super().action_create()
+    def action_create_customer(self):
+        result = super().action_create_customer()
         if self.create_meter and result.get('res_id'):
             customer = self.env['utility.customer'].browse(result['res_id'])
             if customer.meter_id:

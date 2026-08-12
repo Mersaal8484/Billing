@@ -5,7 +5,7 @@
         <field name="model">utility.customer.wizard</field>
         <field name="inherit_id" ref="utility_core.view_utility_customer_wizard_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//field[@name='manufacturer']" position="after">
+            <xpath expr="//field[@name='operational_number']" position="after">
                 <field name="sts_key_revision" attrs="{'invisible': [('payment_type', '!=', 'prepaid')]}"/>
                 <field name="communication_type" attrs="{'invisible': [('payment_type', '!=', 'postpaid')]}"/>
             </xpath>

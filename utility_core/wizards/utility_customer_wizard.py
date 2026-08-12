@@ -28,6 +28,10 @@ class UtilityCustomerWizard(models.TransientModel):
     name = fields.Char(string='اسم المشترك / الجهة', required=True)
     mobile = fields.Char(string='رقم الجوال', size=9)
     national_id = fields.Char(string='الرقم الوطني / الهوية')
+    external_qr_reference = fields.Char(
+        string='معرف QR الخارجي',
+        help='القيمة الناتجة فعلياً من مسح QR بواسطة تطبيق الموبايل؛ يمررها المعالج إلى الحساب فقط.',
+    )
     
     street = fields.Char(string='العنوان (الشارع)')
     
@@ -90,31 +94,17 @@ class UtilityCustomerWizard(models.TransientModel):
 
     # Optional Meter Creation
     create_meter = fields.Boolean(string='إنشاء وربط عداد جديد فوراً', default=True)
-    available_meter_product_ids = fields.Many2many(
-        'product.product', compute='_compute_available_meter_product_ids',
-        string='منتجات العدادات المتاحة')
-    meter_product_id = fields.Many2one('product.product', string='منتج العداد')
-    meter_model_id = fields.Many2one('utility.meter.model', string='موديل العداد', readonly=True)
     meter_number = fields.Char(string='رقم العداد', readonly=True, default=lambda self: _('جديد'))
-    serial_number = fields.Char(string='الرقم التسلسلي')
-    manufacturer = fields.Char(string='الشركة المصنعة', default='Landis+Gyr')
-    meter_type_id = fields.Many2one('utility.meter.type', string='نوع العداد')
+    operational_number = fields.Char(string='الرقم التشغيلي')
     payment_type = fields.Selection([
         ('postpaid', 'آجل الدفع'),
         ('prepaid', 'دفع مسبق'),
         ('manual', 'يدوي')
     ], string='نظام العداد', default='manual', required=True)
-    phase = fields.Selection([
-        ('single', 'أحادي الطور'),
-        ('three', 'ثلاثي الطور'),
-    ], string='الطور', default='single')
 
     def _get_dynamic_domains(self):
         """Return UI domains without relying on helper field names in JS eval."""
         self.ensure_one()
-        meter_products = self.env['utility.meter.model'].search([
-            ('product_id', '!=', False),
-        ]).mapped('product_id')
         area_domain = [('type', '=', 'area')]
         if self.utility_region_id:
             area_domain.append(('parent_id', '=', self.utility_region_id.id))
@@ -136,7 +126,6 @@ class UtilityCustomerWizard(models.TransientModel):
             ),
             'utility_area_id': area_domain,
             'transformer_zone_id': zone_domain,
-            'meter_product_id': [('id', 'in', meter_products.ids)],
         }
 
     @api.onchange(
@@ -146,34 +135,6 @@ class UtilityCustomerWizard(models.TransientModel):
     def _onchange_dynamic_domains(self):
         for wizard in self:
             return {'domain': wizard._get_dynamic_domains()}
-
-    @api.depends('create_meter')
-    def _compute_available_meter_product_ids(self):
-        products = self.env['utility.meter.model'].search([
-            ('product_id', '!=', False),
-        ]).mapped('product_id')
-        for wizard in self:
-            wizard.available_meter_product_ids = products
-
-    @api.onchange('meter_product_id')
-    def _onchange_meter_product_id(self):
-        for wizard in self:
-            meter_model = False
-            if wizard.meter_product_id:
-                meter_model = self.env['utility.meter.model'].search([
-                    ('product_id', '=', wizard.meter_product_id.id),
-                ], limit=1)
-                if not meter_model:
-                    return {
-                        'warning': {
-                            'title': _('منتج عداد غير مضبوط'),
-                            'message': _('المنتج المختار غير مربوط بموديل عداد. يرجى ضبطه من إعدادات موديلات العدادات.'),
-                        }
-                    }
-            wizard.meter_model_id = meter_model
-            wizard.meter_type_id = meter_model.meter_type_id if meter_model else False
-            wizard.manufacturer = meter_model.manufacturer if meter_model and meter_model.manufacturer else wizard.manufacturer
-            wizard.phase = meter_model.meter_type_id.phase if meter_model and meter_model.meter_type_id and meter_model.meter_type_id.phase else wizard.phase
 
     @api.depends('category_id')
     def _compute_available_subscriber_ids(self):
@@ -323,7 +284,7 @@ class UtilityCustomerWizard(models.TransientModel):
             'name': self.transformer_name or f"محول خاص - {partner.name}",
             'code': transformer_code,
             'capacity': self.transformer_capacity,
-            'phase': self.transformer_phase or (self.phase if self.phase else 'single'),
+            'phase': self.transformer_phase or 'single',
             'manufacturer': self.transformer_manufacturer,
             'serial_number': self.transformer_serial,
             'voltage_primary': self.voltage_primary,
@@ -337,23 +298,6 @@ class UtilityCustomerWizard(models.TransientModel):
     def action_create_customer(self):
         self.ensure_one()
         
-        meter_model = False
-        if self.create_meter:
-            if not self.meter_product_id:
-                raise ValidationError(_('يجب اختيار منتج العداد قبل حفظ المشترك.'))
-            if not self.serial_number:
-                raise ValidationError(_('يجب إدخال الرقم التسلسلي للعداد قبل حفظ المشترك.'))
-
-            meter_model = self.meter_model_id
-            if self.meter_product_id and not meter_model:
-                meter_model = self.env['utility.meter.model'].search([('product_id', '=', self.meter_product_id.id)], limit=1)
-            
-            if not meter_model:
-                raise ValidationError(_('منتج العداد المختار غير مربوط بموديل عداد. يرجى ضبط موديلات العدادات أولاً.'))
-
-            if self.env['utility.meter'].search([('serial_number', '=', self.serial_number)], limit=1):
-                raise ValidationError(_('الرقم التسلسلي للعداد مستخدم مسبقاً. يرجى إدخال رقم تسلسلي مختلف.'))
-
         if self.subscriber_id and self.category_id and self.subscriber_id.category_id != self.category_id:
             raise ValidationError(
                 _("نوع المشترك '%s' يجب أن ينتمي إلى فئة المشترك الرئيسية المحددة '%s'.")
@@ -417,23 +361,20 @@ class UtilityCustomerWizard(models.TransientModel):
         if self.create_meter:
             status_active = self.env['utility.meter.status'].search([('code', '=', 'ACTIVE')], limit=1)
             meter_vals = {
-                'serial_number': self.serial_number,
-                'manufacturer': self.manufacturer,
-                'model_id': meter_model.id,
-                'meter_type_id': self.meter_type_id.id if self.meter_type_id else False,
                 'status_id': status_active.id if status_active else False,
-                'phase': self.phase,
+                'meter_number': self.meter_number if self.meter_number != _('جديد') else False,
+                'operational_number': self.operational_number or False,
                 'transformer_id': transformer.id if transformer else False,
                 'feeder_id': transformer.feeder_id.id if transformer and transformer.feeder_id else False,
                 'payment_type': self.payment_type,
             }
-            if 'product_id' in self.env['utility.meter']._fields:
-                meter_vals['product_id'] = self.meter_product_id.id
+            meter_vals.update(self._prepare_meter_vals())
             meter = self.env['utility.meter'].create(meter_vals)
 
         # 4. Create utility.customer
         customer_vals = {
             'partner_id': partner.id,
+            'external_qr_reference': self.external_qr_reference or False,
             'category_id': self.category_id.id,
             'subscriber_id': self.subscriber_id.id,
             'contract_template_id': self.contract_template_id.id,
@@ -464,3 +405,8 @@ class UtilityCustomerWizard(models.TransientModel):
             'res_id': customer.id,
             'target': 'current',
         }
+
+    def _prepare_meter_vals(self):
+        """Return optional module-owned values for a newly created meter."""
+        self.ensure_one()
+        return {}

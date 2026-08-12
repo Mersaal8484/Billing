@@ -17,6 +17,7 @@ class UtilityCustomer(models.Model):
     customer_number = fields.Char('رقم العميل', required=True, index=True, default=lambda self: _('جديد'))
     external_qr_reference = fields.Char(
         string='معرف QR الخارجي', index=True, tracking=True,
+        help='القيمة المميزة التي يتم استخراجها عند مسح QR الخاص بالمشترك بواسطة تطبيق الموبايل.',
     )
     partner_id = fields.Many2one(
         'res.partner', 'العميل / الشريك المحاسبي', required=True,

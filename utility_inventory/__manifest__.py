@@ -15,6 +15,7 @@ Adds lot/serial tracking and product association for physical meters.
     'depends': ['utility_core', 'stock', 'product'],
     'data': [
         'views/utility_meter_inventory_views.xml',
+        'views/utility_customer_wizard_inventory_views.xml',
     ],
     'demo': [],
     'installable': True,

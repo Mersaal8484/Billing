@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_customer_wizard_inventory" model="ir.ui.view">
+        <field name="name">utility.customer.wizard.inventory</field>
+        <field name="model">utility.customer.wizard</field>
+        <field name="inherit_id" ref="utility_core.view_utility_customer_wizard_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='operational_number']" position="after">
+                <field name="meter_product_id"
+                       domain="[('id', 'in', available_meter_product_ids)]"
+                       attrs="{'invisible': [('create_meter', '=', False)], 'required': [('create_meter', '=', True)]}"
+                       options="{'no_create': True, 'no_open': True}"/>
+                <field name="lot_id"
+                       domain="[('product_id', '=', meter_product_id)]"
+                       attrs="{'invisible': [('create_meter', '=', False)], 'required': [('create_meter', '=', True)]}"
+                       options="{'no_create': True, 'no_open': True}"/>
+            </xpath>
+            <xpath expr="//field[@name='meter_product_id']" position="before">
+                <field name="available_meter_product_ids" invisible="1"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

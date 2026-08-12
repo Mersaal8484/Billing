@@ -18,6 +18,7 @@
                                 <group string="بيانات الهوية والاتصال">
                                     <field name="national_id" placeholder="الرقم الوطني أو السجل التجاري"/>
                                     <field name="mobile" placeholder="777xxxxxx"/>
+                                    <field name="external_qr_reference" placeholder="QR-..."/>
                                     <field name="street" placeholder="اسم الشارع / الحي"/>
                                 </group>
                                 <group string="تصنيف المشترك">
@@ -44,15 +45,8 @@
                                 <group>
                                     <field name="create_meter"/>
                                     <field name="payment_type" attrs="{'invisible': [('create_meter', '=', False)]}"/>
-                                    <field name="meter_product_id" options="{'no_create': True, 'no_open': True}" attrs="{'invisible': [('create_meter', '=', False)], 'required': [('create_meter', '=', True)]}"/>
-                                    <field name="meter_model_id" options="{'no_create': True, 'no_open': True}" attrs="{'invisible': [('create_meter', '=', False)]}"/>
-                                    <field name="meter_type_id" options="{'no_create': True, 'no_open': True}" attrs="{'invisible': [('create_meter', '=', False)]}"/>
-                                    <field name="serial_number" attrs="{'invisible': [('create_meter', '=', False)], 'required': [('create_meter', '=', True)]}"/>
                                     <field name="meter_number" readonly="1" attrs="{'invisible': [('create_meter', '=', False)]}"/>
-                                </group>
-                                <group attrs="{'invisible': [('create_meter', '=', False)]}">
-                                    <field name="phase"/>
-                                    <field name="manufacturer"/>
+                                    <field name="operational_number" attrs="{'invisible': [('create_meter', '=', False)]}"/>
                                 </group>
                             </group>
                         </page>
