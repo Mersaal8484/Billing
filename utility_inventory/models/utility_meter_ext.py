@@ -36,8 +36,12 @@ class UtilityMeterExt(models.Model):
                     raise ValidationError(_(
                         'شركة الرقم التسلسلي تسند إلى شركة مختلفة عن العداد.'
                     ))
-                if hasattr(meter.lot_id, 'location_id') and meter.lot_id.location_id:
-                    if getattr(meter.lot_id.location_id, 'scrap_location', False):
-                        raise ValidationError(_(
-                            'لا يمكن اختيار رقم تسلسلي مكهن أو تالف من مخزن الخردة.'
-                        ))
+                scrap_quant = self.env['stock.quant'].search([
+                    ('lot_id', '=', meter.lot_id.id),
+                    ('quantity', '>', 0),
+                    ('location_id.scrap_location', '=', True),
+                ], limit=1)
+                if scrap_quant:
+                    raise ValidationError(_(
+                        'لا يمكن اختيار رقم تسلسلي مكهن أو تالف من مخزن الخردة (%s).'
+                    ) % scrap_quant.location_id.display_name)

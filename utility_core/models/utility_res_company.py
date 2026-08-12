@@ -98,45 +98,48 @@ class ResCompany(models.Model):
         companies = self.search([])
         for company in companies:
             vals = {}
+            def is_compat(rec):
+                return rec and (not getattr(rec, 'company_id', False) or rec.company_id == company)
+
             if not company.opening_journal_id:
                 j_open = self.env.ref('utility_core.journal_opening_balance', raise_if_not_found=False)
-                if j_open:
+                if is_compat(j_open):
                     vals['opening_journal_id'] = j_open.id
             if not company.sales_journal_id:
                 j_sale = self.env.ref('utility_core.journal_utility_sales', raise_if_not_found=False)
-                if j_sale:
+                if is_compat(j_sale):
                     vals['sales_journal_id'] = j_sale.id
             if not company.electricity_income_account_id:
                 acc = self.env.ref('utility_core.account_income_electricity', raise_if_not_found=False)
-                if acc:
+                if is_compat(acc):
                     vals['electricity_income_account_id'] = acc.id
             if not company.electricity_product_id:
                 prod = self.env.ref('utility_core.utility_product_consumption', raise_if_not_found=False)
-                if prod:
+                if is_compat(prod):
                     vals['electricity_product_id'] = prod.id
             if not company.discount_account_id:
                 acc = self.env.ref('utility_core.account_discount_utility', raise_if_not_found=False)
-                if acc:
+                if is_compat(acc):
                     vals['discount_account_id'] = acc.id
             if not company.discount_product_id:
                 prod = self.env.ref('utility_core.utility_product_discount', raise_if_not_found=False)
-                if prod:
+                if is_compat(prod):
                     vals['discount_product_id'] = prod.id
             if not company.mu_allim_product_id:
                 prod = self.env.ref('utility_core.utility_product_mu_allim', raise_if_not_found=False)
-                if prod:
+                if is_compat(prod):
                     vals['mu_allim_product_id'] = prod.id
             if not company.cleaning_product_id:
                 prod = self.env.ref('utility_core.utility_product_cleaning', raise_if_not_found=False)
-                if prod:
+                if is_compat(prod):
                     vals['cleaning_product_id'] = prod.id
             if not company.local_fee_product_id:
                 prod = self.env.ref('utility_core.utility_product_municipality', raise_if_not_found=False)
-                if prod:
+                if is_compat(prod):
                     vals['local_fee_product_id'] = prod.id
             if not company.private_transformer_fee_product_id:
                 prod = self.env.ref('utility_core.utility_product_private_transformer_fee', raise_if_not_found=False)
-                if prod:
+                if is_compat(prod):
                     vals['private_transformer_fee_product_id'] = prod.id
 
             if not company.account_journal_payment_debit_account_id or not company.account_journal_payment_credit_account_id:
