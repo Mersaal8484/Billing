@@ -191,7 +191,11 @@ class UtilityPaymentGatewayTransaction(models.Model):
             if not method_line:
                 raise ValidationError(_('لم يتم العثور على طريقة دفع معتمدة في اليومية المختارة (%s).') % journal.display_name)
 
-            payment = tx_company.env['account.payment'].sudo().create({
+            dest_account = tx.utility_invoice_id.line_ids.filtered(lambda l: l.account_id.account_type == 'asset_receivable')[:1].account_id
+            if not dest_account:
+                dest_account = order.partner_id.with_company(company).property_account_receivable_id
+
+            payment_vals = {
                 'partner_id': order.partner_id.id,
                 'amount': tx.amount,
                 'payment_type': direction,  # 'inbound' or 'outbound'
@@ -203,7 +207,11 @@ class UtilityPaymentGatewayTransaction(models.Model):
                 'utility_payment_method': 'electronic',
                 'electronic_doc_no': provider_reference or tx.provider_reference or tx.name,
                 'date': fields.Date.context_today(tx_company),
-            })
+            }
+            if dest_account:
+                payment_vals['destination_account_id'] = dest_account.id
+
+            payment = tx_company.env['account.payment'].sudo().create(payment_vals)
             payment._validate_utility_payment_amount()
             payment.action_post()
             tx.write({

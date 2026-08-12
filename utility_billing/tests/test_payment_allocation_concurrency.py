@@ -116,12 +116,17 @@ class TestPaymentAllocationConcurrency(TransactionCase):
         self.invoice = self.order._create_invoices()
         self.invoice.action_post()
 
-        self.journal = self.env['account.journal'].create({
-            'name': 'يومية تخصيص',
-            'code': 'AL01',
-            'type': 'bank',
-            'company_id': self.env.company.id,
-        })
+        self.journal = self.env['account.journal'].search([
+            ('code', '=', 'AL01'),
+            ('company_id', '=', self.env.company.id),
+        ], limit=1)
+        if not self.journal:
+            self.journal = self.env['account.journal'].create({
+                'name': 'يومية تخصيص',
+                'code': 'AL01',
+                'type': 'bank',
+                'company_id': self.env.company.id,
+            })
 
     def test_payment_allocation_idempotency_and_locking(self):
         """Test that calling allocate_payment twice on the same payment returns the existing allocation."""

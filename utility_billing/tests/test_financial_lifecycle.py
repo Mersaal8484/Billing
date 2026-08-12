@@ -102,12 +102,17 @@ class TestFinancialLifecycle(TransactionCase):
             'type': 'service',
             'property_account_income_id': income_account.id,
         })
-        self.journal = self.env['account.journal'].create({
-            'name': 'يومية البنك الرئيسي',
-            'code': 'BNK01',
-            'type': 'bank',
-            'company_id': self.company.id,
-        })
+        self.journal = self.env['account.journal'].search([
+            ('code', '=', 'BNK01'),
+            ('company_id', '=', self.company.id),
+        ], limit=1)
+        if not self.journal:
+            self.journal = self.env['account.journal'].create({
+                'name': 'يومية البنك الرئيسي',
+                'code': 'BNK01',
+                'type': 'bank',
+                'company_id': self.company.id,
+            })
 
     def test_full_accounting_lifecycle_sign_convention(self):
         """Test accounting_balance signs across Invoice (+500), Partial Payment (-200), Credit Note (-100), Final Payment (-200)."""

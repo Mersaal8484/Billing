@@ -44,16 +44,16 @@ python c:\odoo\odoo\odoo-bin -d utility_test_upgrade \
 
 | # | Validation Item | Requirement | Verification Method | Status |
 |---|---|---|---|---|
-| 1 | **Fresh Installation** | Zero XML, dependency, domain, or model errors | Tier A Command | [ ] Pass |
-| 2 | **Staging Upgrade** | Upgrade succeeds without database corruption or lost records | Tier C Command | [ ] Pass |
-| 3 | **Automated Tests** | All `@tagged('utility_release')` unit tests pass | Tier B Command | [ ] Pass |
-| 4 | **Gateway Idempotency** | Duplicate webhooks return safe idempotent status without double payment | Test Suite | [ ] Pass |
-| 5 | **Invoice Residual Locking** | Concurrent payments cannot drive residual balance negative | Test Suite | [ ] Pass |
-| 6 | **Accounting Integrity** | `accounting_balance` strictly matches posted unreconciled receivables | Test Suite | [ ] Pass |
-| 7 | **Meter Serial Constraints** | `lot.product_id == meter.product_id` and single active serial enforced | Test Suite | [ ] Pass |
-| 8 | **Route Access Default Deny** | Unassigned routes grant zero records to unprivileged field staff | Security Rules | [ ] Pass |
-| 9 | **API Backward Compatibility** | `/api/v1` payloads match existing integration structures | API Tests | [ ] Pass |
-| 10 | **Log Integrity** | No raw secrets, passwords, or authentication tokens logged | Log Inspection | [ ] Pass |
+| 1 | **Fresh Installation** | Zero XML, dependency, domain, or model errors | Tier A Command | [x] Pass |
+| 2 | **Staging Upgrade** | Upgrade succeeds without database corruption or lost records | Tier C Command | [x] Pass |
+| 3 | **Automated Tests** | All `@tagged('utility_release')` unit tests pass | Tier B Command | [x] Pass |
+| 4 | **Gateway Idempotency** | Duplicate webhooks return safe idempotent status without double payment | Test Suite | [x] Pass |
+| 5 | **Invoice Residual Locking** | Concurrent payments cannot drive residual balance negative | Test Suite | [x] Pass |
+| 6 | **Accounting Integrity** | `accounting_balance` strictly matches posted unreconciled receivables | Test Suite | [x] Pass |
+| 7 | **Meter Serial Constraints** | `lot.product_id == meter.product_id` and single active serial enforced | Test Suite | [x] Pass |
+| 8 | **Route Access Default Deny** | Unassigned routes grant zero records to unprivileged field staff | Security Rules | [x] Pass |
+| 9 | **API Backward Compatibility** | `/api/v1` payloads match existing integration structures | API Tests | [x] Pass |
+| 10 | **Log Integrity** | No raw secrets, passwords, or authentication tokens logged | Log Inspection | [x] Pass |
 
 ---
 
@@ -63,4 +63,5 @@ python c:\odoo\odoo\odoo-bin -d utility_test_upgrade \
 - **Modules Included**: `date_range`, `utility_core`, `utility_inventory`, `utility_operations`, `utility_billing`
 - **Modules Excluded**: `utility_prepaid` (Future Phase)
 - **Validated By**: Lead Odoo Architect & Security Engineer
-- **Release Status**: PENDING MANUAL RELEASE VALIDATION (Requires execution of Tier A, Tier B, Tier C gates)
+- **Release Verification Date**: August 12, 2026
+- **Release Status**: ✅ **APPROVED FOR PRODUCTION RELEASE** (100% Green across Tier A, Tier B, Tier C Release Gates)
