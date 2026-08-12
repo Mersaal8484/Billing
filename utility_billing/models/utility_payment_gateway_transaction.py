@@ -123,7 +123,7 @@ class UtilityPaymentGatewayTransaction(models.Model):
                 "SELECT id FROM utility_payment_gateway_transaction WHERE id = %s FOR UPDATE",
                 [tx.id],
             )
-            tx.invalidate_cache(['state', 'payment_id', 'provider_reference'])
+            tx.invalidate_recordset(['state', 'payment_id', 'provider_reference'])
             if tx.state == 'done':
                 continue
             if tx.state != 'pending':
@@ -144,8 +144,8 @@ class UtilityPaymentGatewayTransaction(models.Model):
                 "SELECT id FROM account_move WHERE id = %s FOR UPDATE",
                 [tx.utility_invoice_id.id],
             )
-            order.invalidate_cache(['bill_state', 'balance_due'])
-            tx.utility_invoice_id.invalidate_cache([
+            order.invalidate_recordset(['bill_state', 'balance_due'])
+            tx.utility_invoice_id.invalidate_recordset([
                 'state', 'partner_id', 'amount_residual', 'payment_state', 'move_type'])
 
             if tx.payment_direction == 'inbound':

@@ -11,7 +11,7 @@
         <record id="utility_sale_order_route_rule" model="ir.rule">
             <field name="name">Sale Order Route Access Rule</field>
             <field name="model_id" ref="sale.model_sale_order"/>
-            <field name="domain_force">[(1, '=', 1)] if user.has_group('utility_core.group_utility_admin') else ['|', ('route_id', '=', False), ('route_id', 'in', user.assigned_route_ids.ids)]</field>
+            <field name="domain_force">[(1, '=', 1)] if user.has_group('utility_core.group_utility_admin') else ([('route_id', 'in', user.assigned_route_ids.ids)] if user.assigned_route_ids else [('id', '=', False)])</field>
             <field name="groups" eval="[(4, ref('utility_core.group_utility_collector')), (4, ref('utility_core.group_utility_technician'))]"/>
             <field name="perm_read" eval="True"/>
             <field name="perm_write" eval="True"/>
@@ -60,8 +60,8 @@
         <record id="utility_payment_allocation_route_rule" model="ir.rule">
             <field name="name">Payment Allocation Route Rule</field>
             <field name="model_id" ref="model_utility_payment_allocation"/>
-            <field name="domain_force">[(1, '=', 1)] if user.has_group('utility_core.group_utility_admin') else ['|', ('utility_customer_id.route_id', '=', False), ('utility_customer_id.route_id', 'in', user.assigned_route_ids.ids)]</field>
-            <field name="groups" eval="[(4, ref('utility_core.group_utility_collector')), (4, ref('utility_core.group_utility_technician')), (4, ref('utility_core.group_utility_billing_manager'))]"/>
+            <field name="domain_force">[(1, '=', 1)] if user.has_group('utility_core.group_utility_admin') else ([('utility_customer_id.route_id', 'in', user.assigned_route_ids.ids)] if user.assigned_route_ids else [('id', '=', False)])</field>
+            <field name="groups" eval="[(4, ref('utility_core.group_utility_collector')), (4, ref('utility_core.group_utility_technician'))]"/>
         </record>
 
         <record id="utility_collection_company_rule" model="ir.rule">

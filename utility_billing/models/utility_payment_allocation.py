@@ -118,7 +118,7 @@ class UtilityPaymentAllocation(models.Model):
         self.env.flush_all()
         self.env.cr.execute(
             'SELECT id FROM account_move WHERE id = %s FOR UPDATE', [invoice.id])
-        invoice.invalidate_cache([
+        invoice.invalidate_recordset([
             'state', 'partner_id', 'move_type', 'amount_residual', 'payment_state'])
 
     @api.model
@@ -174,7 +174,7 @@ class UtilityPaymentAllocation(models.Model):
             'SELECT id FROM account_payment WHERE id = %s FOR UPDATE',
             [payment.id],
         )
-        payment.invalidate_cache()
+        payment.invalidate_recordset()
 
         existing = self.search([
             ('payment_id', '=', payment.id),
@@ -257,7 +257,7 @@ class UtilityPaymentAllocation(models.Model):
         for key in common_keys:
             (payment_groups[key] | invoice_groups[key]).reconcile()
 
-        invoice.invalidate_cache(['amount_residual', 'payment_state'])
+        invoice.invalidate_recordset(['amount_residual', 'payment_state'])
         residual_after = invoice.amount_residual
         allocated_amount = residual_before - residual_after
         currency = invoice.currency_id

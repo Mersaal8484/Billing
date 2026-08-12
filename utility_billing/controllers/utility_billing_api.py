@@ -252,38 +252,45 @@ class UtilityBillingAPI(http.Controller):
         params = request.jsonrequest or {}
         secret = params.get('secret') or params.get('webhook_secret')
         if not secret:
-            return {'error': 'webhook secret is required'}
-        provider = request.env['utility.integration.provider'].sudo().search([
+            return {'error': 'webhook secret is required', 'code': 'VALIDATION_ERROR'}
+        
+        providers = request.env['utility.integration.provider'].sudo().search([
             ('provider_type', '=', 'ami'),
             ('active', '=', True),
-            ('webhook_secret', '=', secret),
-        ], limit=1)
+        ])
+        provider = False
+        secret_bytes = secret.encode('utf-8')
+        for p in providers:
+            if p.webhook_secret and hmac.compare_digest(p.webhook_secret.encode('utf-8'), secret_bytes):
+                provider = p
+                break
+
         if not provider:
-            return {'error': 'Invalid AMI provider secret'}
+            return {'error': 'Invalid AMI provider secret', 'code': 'INVALID_WEBHOOK_SIGNATURE'}
         meter_number = params.get('meter_number')
         reading_value = params.get('reading_value')
         if not meter_number or reading_value is None:
-            return {'error': 'meter_number and reading_value are required'}
+            return {'error': 'meter_number and reading_value are required', 'code': 'VALIDATION_ERROR'}
         meter = request.env['utility.meter'].sudo().search([('meter_number', '=', meter_number)], limit=1)
         if not meter:
-            return {'error': 'Meter not found'}
+            return {'error': 'Meter not found', 'code': 'METER_NOT_FOUND'}
         if meter.company_id != provider.company_id:
-            return {'error': 'Meter is not available for this AMI provider company'}
+            return {'error': 'Meter is not available for this AMI provider company', 'code': 'ACCESS_DENIED'}
         try:
             reading_value = float(reading_value)
         except (TypeError, ValueError):
-            return {'error': 'reading_value must be numeric'}
+            return {'error': 'reading_value must be numeric', 'code': 'VALIDATION_ERROR'}
         date_range_id = params.get('date_range_id') or False
         if date_range_id:
             try:
                 date_range_id = int(date_range_id)
             except (TypeError, ValueError):
-                return {'error': 'date_range_id must be numeric'}
+                return {'error': 'date_range_id must be numeric', 'code': 'VALIDATION_ERROR'}
             period = request.env['date.range'].sudo().browse(date_range_id).exists()
             if (not period or period.company_id not in (False, provider.company_id)
                     or period.period_role != 'reading'
                     or period.state != 'open'):
-                return {'error': 'Invalid reading period for this AMI provider company'}
+                return {'error': 'Invalid reading period for this AMI provider company', 'code': 'INVALID_READING_PERIOD'}
         reading = meter.create_ami_reading(
             reading_value,
             reading_date=params.get('reading_date') or False,
@@ -305,7 +312,7 @@ class UtilityBillingAPI(http.Controller):
         area_id = params.get('area_id')
         user = request.env.user
         if not user.has_group('base.group_user'):
-            return {'error': 'Access denied. Reports are for internal users only.'}
+            return {'error': 'Access denied. Reports are for internal users only.', 'code': 'ACCESS_DENIED'}
         allowed_accounts = self._get_authorized_accounts()
         allowed_ids = allowed_accounts.ids
         if not allowed_ids:
@@ -319,9 +326,15 @@ class UtilityBillingAPI(http.Controller):
             ('date_order', '<=', end_dt),
         ]
         if region_id:
-            bills_domain.append(('customer_id.region_id', '=', int(region_id)))
+            try:
+                bills_domain.append(('customer_id.region_id', '=', int(region_id)))
+            except (TypeError, ValueError):
+                return {'error': 'region_id must be numeric', 'code': 'VALIDATION_ERROR'}
         if area_id:
-            bills_domain.append(('customer_id.area_id', '=', int(area_id)))
+            try:
+                bills_domain.append(('customer_id.area_id', '=', int(area_id)))
+            except (TypeError, ValueError):
+                return {'error': 'area_id must be numeric', 'code': 'VALIDATION_ERROR'}
         total_bills = request.env['sale.order'].search_count(bills_domain)
 
         payments_domain = [
