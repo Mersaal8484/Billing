@@ -159,7 +159,9 @@ class UtilityMeterReplacement(models.Model):
     @api.onchange('old_meter_serial_scan')
     def _onchange_old_meter_serial_scan(self):
         if self.old_meter_serial_scan:
-            meter = self.env['utility.meter'].search(['|', ('meter_number', '=', self.old_meter_serial_scan), ('serial_number', '=', self.old_meter_serial_scan)], limit=1)
+            meter = self.env['utility.meter'].search(
+                self.env['utility.meter']._scan_domain(self.old_meter_serial_scan),
+                limit=1)
             if meter:
                 if meter.connection_type == 'feeder' and meter.linked_feeder_id:
                     self.target_type = 'feeder'
@@ -184,7 +186,9 @@ class UtilityMeterReplacement(models.Model):
     @api.onchange('new_meter_serial_scan')
     def _onchange_new_meter_serial_scan(self):
         if self.new_meter_serial_scan:
-            meter = self.env['utility.meter'].search(['|', ('meter_number', '=', self.new_meter_serial_scan), ('serial_number', '=', self.new_meter_serial_scan)], limit=1)
+            meter = self.env['utility.meter'].search(
+                self.env['utility.meter']._scan_domain(self.new_meter_serial_scan),
+                limit=1)
             if meter:
                 if meter.connection_type == 'not_connected' and not meter.customer_id:
                     self.new_meter_id = meter.id

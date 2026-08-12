@@ -39,7 +39,7 @@ METER                    </div>
                          style="width:26mm; height:26mm; display:block; margin:2px auto;" alt="Meter QR"/>
                     <div style="font-weight:bold; margin-top:1px; font-size:9px;" t-esc="o.meter_number or ''"/>
                     <div t-if="o.customer_id" style="font-size:7px;" t-esc="o.customer_id.customer_number or ''"/>
-                    <div t-if="o.serial_number" style="font-size:7px;">S/N: <span t-esc="o.serial_number"/></div>
+                    <div t-if="o._get_physical_serial()" style="font-size:7px;">S/N: <span t-esc="o._get_physical_serial()"/></div>
                 </div>
             </t>
         </t>

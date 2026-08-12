@@ -32,7 +32,6 @@
                             <field name="coupling_meter_ids" readonly="1">
                                 <tree>
                                     <field name="meter_number"/>
-                                    <field name="serial_number"/>
                                     <field name="installation_date"/>
                                 </tree>
                             </field>
@@ -42,7 +41,6 @@
                                 <tree>
                                     <field name="meter_number"/>
                                     <field name="customer_id"/>
-                                    <field name="serial_number"/>
                                 </tree>
                             </field>
                         </page>

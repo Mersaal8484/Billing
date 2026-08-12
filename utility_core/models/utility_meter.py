@@ -31,7 +31,6 @@ class UtilityMeter(models.Model):
     company_id = fields.Many2one('res.company', 'الشركة', default=lambda self: self.env.company)
     meter_number = fields.Char('رقم العداد', required=True, index=True, default=lambda self: _('جديد'))
     operational_number = fields.Char('الرقم التشغيلي', index=True, tracking=True)
-    serial_number = fields.Char('الرقم التسلسلي', index=True)
     manufacturer = fields.Char('الشركة المصنّعة')
     model_id = fields.Many2one('utility.meter.model', 'الموديل')
     payment_type = fields.Selection([
@@ -189,7 +188,7 @@ class UtilityMeter(models.Model):
                 m.substation_id = False
                 m.feeder_id = False
 
-    @api.depends('meter_number', 'operational_number', 'serial_number', 'connection_type',
+    @api.depends('meter_number', 'operational_number', 'connection_type',
                  'customer_id.customer_number', 'customer_id.partner_id.name',
                  'linked_transformer_id.code', 'linked_private_transformer_id.code',
                  'linked_feeder_id.code',
@@ -206,7 +205,7 @@ class UtilityMeter(models.Model):
                 'UTILITY-METER',
                 company_name,
                 meter.meter_number or '',
-                meter.serial_number or '',
+                meter._get_physical_serial(),
                 customer_number,
                 customer_name,
                 meter.transformer_id.code or '',
@@ -230,7 +229,6 @@ class UtilityMeter(models.Model):
          'رقم العداد يجب أن يكون فريداً لكل شركة!'),
         ('unique_operational_number_company', 'unique(operational_number, company_id)',
          'الرقم التشغيلي للعداد يجب أن يكون فريداً لكل شركة!'),
-        ('unique_serial_number', 'unique(serial_number)', 'الرقم التسلسلي يجب أن يكون فريداً!'),
     ]
 
     def action_add_subscriber(self):
@@ -291,16 +289,30 @@ class UtilityMeter(models.Model):
     @api.model
     def _name_search(self, name, args=None, operator='ilike', limit=100, name_get_uid=None):
         args = args or []
-        domain = []
-        if name:
-            domain = ['|', '|', '|', '|',
-                ('meter_number', operator, name),
-                ('operational_number', operator, name),
-                ('serial_number', operator, name),
-                ('customer_id.partner_id.name', operator, name),
-                ('meter_type_id.name', operator, name)
-            ]
+        domain = self._name_search_domain(name, operator)
         return self._search(domain + args, limit=limit, access_rights_uid=name_get_uid)
+
+    def _get_physical_serial(self):
+        """Return the physical serial when an inventory bridge provides it."""
+        self.ensure_one()
+        return ''
+
+    @api.model
+    def _name_search_domain(self, name, operator='ilike'):
+        """Build the logical meter lookup domain without inventory fields."""
+        if not name:
+            return []
+        return ['|', '|', '|',
+            ('meter_number', operator, name),
+            ('operational_number', operator, name),
+            ('customer_id.partner_id.name', operator, name),
+            ('meter_type_id.name', operator, name),
+        ]
+
+    @api.model
+    def _scan_domain(self, value):
+        """Build the barcode lookup domain; inventory may add Lot/Serial."""
+        return [('meter_number', '=', value)]
 
     @api.depends('connection_type', 'meter_number', 'operational_number', 'customer_id', 'customer_id.partner_id', 'linked_private_transformer_id', 'linked_transformer_id', 'transformer_id', 'linked_feeder_id', 'feeder_id', 'meter_type_id', 'payment_type')
     def _compute_display_name(self):

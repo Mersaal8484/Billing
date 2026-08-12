@@ -99,7 +99,6 @@
                             <field name="meter_ids">
                                 <tree>
                                     <field name="meter_number"/>
-                                    <field name="serial_number"/>
                                     <field name="meter_type_id"/>
                                     <field name="payment_type" widget="badge"/>
                                     <field name="status_id"/>

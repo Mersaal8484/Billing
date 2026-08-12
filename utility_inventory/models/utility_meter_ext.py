@@ -5,8 +5,8 @@ from odoo.exceptions import ValidationError
 class UtilityMeterExt(models.Model):
     _inherit = 'utility.meter'
 
-    # Compatibility projection: stock.lot.name is the only physical serial
-    # source once utility_inventory is installed.
+    # stock.lot.name is the sole physical serial source. This is a read-only
+    # projection for integrations and legacy screens, not an independent value.
     serial_number = fields.Char(
         related='lot_id.name', string='الرقم التسلسلي', store=True,
         readonly=True, index=True,
@@ -16,6 +16,25 @@ class UtilityMeterExt(models.Model):
                                   help='منتج العداد المستخدم في المخزون لتتبع الرقم التسلسلي')
     lot_id = fields.Many2one('stock.lot', 'الرقم التسلسلي (Lot/Serial)', ondelete='restrict',
                              help='ربط العداد بالرقم التسلسلي في نظام المخزون')
+
+    def _get_physical_serial(self):
+        self.ensure_one()
+        return self.lot_id.name or ''
+
+    @api.depends('lot_id.name')
+    def _compute_qr_code(self):
+        return super()._compute_qr_code()
+
+    @api.model
+    def _name_search_domain(self, name, operator='ilike'):
+        domain = super()._name_search_domain(name, operator)
+        if name:
+            return ['|', ('lot_id.name', operator, name)] + domain
+        return domain
+
+    @api.model
+    def _scan_domain(self, value):
+        return ['|', ('meter_number', '=', value), ('lot_id.name', '=', value)]
 
     @api.model_create_multi
     def create(self, vals_list):

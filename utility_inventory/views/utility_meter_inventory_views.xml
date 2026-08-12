@@ -20,15 +20,24 @@
         </field>
     </record>
 
+    <record id="view_utility_meter_tree_inventory" model="ir.ui.view">
+        <field name="name">utility.meter.tree.inventory</field>
+        <field name="model">utility.meter</field>
+        <field name="inherit_id" ref="utility_core.view_utility_meter_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='operational_number']" position="after">
+                <field name="serial_number" string="الرقم التسلسلي المادي"/>
+            </xpath>
+        </field>
+    </record>
+
     <record id="view_utility_meter_search_inventory" model="ir.ui.view">
         <field name="name">utility.meter.search.inventory</field>
         <field name="model">utility.meter</field>
         <field name="inherit_id" ref="utility_core.view_utility_meter_search"/>
         <field name="arch" type="xml">
-            <xpath expr="//field[@name='serial_number']" position="attributes">
-                <attribute name="string">الرقم التسلسلي المادي</attribute>
-            </xpath>
-            <xpath expr="//field[@name='serial_number']" position="after">
+            <xpath expr="//field[@name='operational_number']" position="after">
+                <field name="serial_number" string="الرقم التسلسلي المادي"/>
                 <field name="product_id"/>
                 <field name="lot_id"/>
             </xpath>

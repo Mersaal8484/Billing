@@ -271,9 +271,9 @@ class UtilityReading(models.Model):
             ], limit=1)
             
             if not meter:
-                meter = self.env['utility.meter'].search([
-                    ('serial_number', '=', self.meter_serial_scan)
-                ], limit=1)
+                meter = self.env['utility.meter'].search(
+                    self.env['utility.meter']._scan_domain(self.meter_serial_scan),
+                    limit=1)
 
             if meter:
                 self.meter_id = meter.id
