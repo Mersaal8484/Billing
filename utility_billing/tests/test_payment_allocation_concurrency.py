@@ -7,7 +7,23 @@ class TestPaymentAllocationConcurrency(TransactionCase):
 
     def setUp(self):
         super().setUp()
-        self.partner = self.env['res.partner'].create({'name': 'اختبار تخصيص الدفعات'})
+        self.company = self.env.company
+        receivable_account = self.env['account.account'].search([
+            ('account_type', '=', 'asset_receivable'),
+            ('company_id', 'in', (self.env.company.id, False))
+        ], limit=1)
+        if not receivable_account:
+            receivable_account = self.env['account.account'].create({
+                'name': 'حساب مدينون للاختبار',
+                'code': '110000.TEST',
+                'account_type': 'asset_receivable',
+                'reconcile': True,
+                'company_id': self.env.company.id,
+            })
+        self.partner = self.env['res.partner'].create({
+            'name': 'اختبار تخصيص الدفعات',
+            'property_account_receivable_id': receivable_account.id,
+        })
         self.category = self.env['utility.subscriber.category'].create({
             'name': 'سكني تخصيص',
             'code': 'RES_ALLOC_CONC',
@@ -20,20 +36,23 @@ class TestPaymentAllocationConcurrency(TransactionCase):
         self.template = self.env['utility.contract.template'].create({
             'name': 'قالب عقد تخصيص',
             'code': 'TPL_ALLOC',
-            'subscriber_category_id': self.category.id,
-            'subscriber_id': self.sub_type.id,
+            'subscriber_category_ids': [(6, 0, [self.category.id])],
+            'subscriber_ids': [(6, 0, [self.sub_type.id])],
         })
         self.customer = self.env['utility.customer'].create({
-            'name': 'حساب المشترك التخصيص',
             'customer_number': 'CUST-ALLOC-001',
             'partner_id': self.partner.id,
-            'subscriber_category_id': self.category.id,
+            'category_id': self.category.id,
             'subscriber_id': self.sub_type.id,
             'contract_template_id': self.template.id,
         })
         self.date_range_type = self.env['date.range.type'].create({
             'name': 'فترة قراءات تخصيص',
-            'billing_period': True,
+            'fiscal_year': False,
+        })
+        self.payment_range_type = self.env['date.range.type'].create({
+            'name': 'فترة سداد تخصيص',
+            'fiscal_year': False,
         })
         self.date_range = self.env['date.range'].create({
             'name': 'أبريل 2026 - تخصيص',
@@ -45,16 +64,28 @@ class TestPaymentAllocationConcurrency(TransactionCase):
         })
         self.payment_period = self.env['date.range'].create({
             'name': 'سداد أبريل 2026 - تخصيص',
-            'type_id': self.date_range_type.id,
+            'type_id': self.payment_range_type.id,
             'date_start': '2026-04-01',
             'date_end': '2026-05-15',
             'period_role': 'payment',
             'reading_period_id': self.date_range.id,
             'state': 'open',
         })
+        income_account = self.env['account.account'].search([
+            ('account_type', '=', 'income'),
+            ('company_id', 'in', (self.env.company.id, False))
+        ], limit=1)
+        if not income_account:
+            income_account = self.env['account.account'].create({
+                'name': 'إيرادات مبيعات الكهرباء للاختبار',
+                'code': '400000.TEST',
+                'account_type': 'income',
+                'company_id': self.env.company.id,
+            })
         self.product = self.env['product.product'].create({
             'name': 'خدمة كهرباء - تخصيص',
             'type': 'service',
+            'property_account_income_id': income_account.id,
         })
         self.order = self.env['sale.order'].create({
             'customer_id': self.customer.id,

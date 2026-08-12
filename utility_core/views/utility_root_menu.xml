@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_utility_root" name="الكهرباء" sequence="90" web_icon="utility_core,static/description/icon.png" />
+    <menuitem id="menu_utility_customer_management" name="العملاء" sequence="10" parent="menu_utility_root" />
+    <menuitem id="menu_utility_config" name="الإعدادات" sequence="90" parent="menu_utility_root" groups="group_utility_admin" />
+</odoo>

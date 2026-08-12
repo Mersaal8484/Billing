@@ -28,7 +28,7 @@ class UtilitySaleOrder(models.Model):
     reading_component_count = fields.Integer(
         'عدد مقاطع القراءة', compute='_compute_reading_component_count')
     available_billing_period_ids = fields.Many2many('date.range', compute='_compute_available_billing_period_ids')
-    date_range_id = fields.Many2one('date.range', 'فترة الفاتورة', index=True, required=True)
+    date_range_id = fields.Many2one('date.range', 'فترة الفاتورة', index=True)
     route_id = fields.Many2one('utility.route', related='customer_id.route_id', store=True, string='خط السير', index=True)
 
     meter_image = fields.Binary(related='reading_id.meter_image', string='صورة العداد', readonly=False)
@@ -47,6 +47,12 @@ class UtilitySaleOrder(models.Model):
     current_reading = fields.Float('القراءة الحالية')
     consumption = fields.Float('الاستهلاك')
     contract_template_id = fields.Many2one('utility.contract.template', 'قالب العقد', related='customer_id.contract_template_id', store=True)
+
+    @api.constrains('customer_id', 'date_range_id')
+    def _check_utility_order_required_fields(self):
+        for order in self.filtered('customer_id'):
+            if not order.date_range_id:
+                raise ValidationError(_('فترة الفاتورة (date_range_id) مطلوبة لأمر بيع الكهرباء.'))
 
     @api.constrains('customer_id', 'partner_id')
     def _check_utility_accounting_partner(self):

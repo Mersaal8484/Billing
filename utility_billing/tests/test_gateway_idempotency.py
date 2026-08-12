@@ -7,7 +7,23 @@ class TestGatewayIdempotency(TransactionCase):
 
     def setUp(self):
         super().setUp()
-        self.partner = self.env['res.partner'].create({'name': 'اختبار تكافؤ التكرار'})
+        self.company = self.env.company
+        receivable_account = self.env['account.account'].search([
+            ('account_type', '=', 'asset_receivable'),
+            ('company_id', 'in', (self.env.company.id, False))
+        ], limit=1)
+        if not receivable_account:
+            receivable_account = self.env['account.account'].create({
+                'name': 'حساب مدينون للاختبار',
+                'code': '110000.TEST',
+                'account_type': 'asset_receivable',
+                'reconcile': True,
+                'company_id': self.env.company.id,
+            })
+        self.partner = self.env['res.partner'].create({
+            'name': 'اختبار تكافؤ التكرار',
+            'property_account_receivable_id': receivable_account.id,
+        })
         self.category = self.env['utility.subscriber.category'].create({
             'name': 'سكني تكرار',
             'code': 'RES_IDEMPOTENCY',
@@ -18,22 +34,25 @@ class TestGatewayIdempotency(TransactionCase):
             'category_id': self.category.id,
         })
         self.template = self.env['utility.contract.template'].create({
-            'name': 'قالب عقد تكرار',
-            'code': 'TPL_IDEMP',
-            'subscriber_category_id': self.category.id,
-            'subscriber_id': self.sub_type.id,
+            'name': 'قالب عقد تكافؤ الإطارات',
+            'code': 'TPL_IDEM_REAL',
+            'subscriber_category_ids': [(6, 0, [self.category.id])],
+            'subscriber_ids': [(6, 0, [self.sub_type.id])],
         })
         self.customer = self.env['utility.customer'].create({
-            'name': 'حساب المشترك للتكرار',
-            'customer_number': 'CUST-IDEMP-001',
+            'customer_number': 'CUST-IDEM-001',
             'partner_id': self.partner.id,
-            'subscriber_category_id': self.category.id,
+            'category_id': self.category.id,
             'subscriber_id': self.sub_type.id,
             'contract_template_id': self.template.id,
         })
         self.date_range_type = self.env['date.range.type'].create({
             'name': 'فترة قراءات تكرار',
-            'billing_period': True,
+            'fiscal_year': False,
+        })
+        self.payment_range_type = self.env['date.range.type'].create({
+            'name': 'فترة سداد تكرار',
+            'fiscal_year': False,
         })
         self.date_range = self.env['date.range'].create({
             'name': 'فبراير 2026 - تكرار',
@@ -45,16 +64,28 @@ class TestGatewayIdempotency(TransactionCase):
         })
         self.payment_period = self.env['date.range'].create({
             'name': 'سداد فبراير 2026 - تكرار',
-            'type_id': self.date_range_type.id,
+            'type_id': self.payment_range_type.id,
             'date_start': '2026-02-01',
             'date_end': '2026-03-15',
             'period_role': 'payment',
             'reading_period_id': self.date_range.id,
             'state': 'open',
         })
+        income_account = self.env['account.account'].search([
+            ('account_type', '=', 'income'),
+            ('company_id', 'in', (self.env.company.id, False))
+        ], limit=1)
+        if not income_account:
+            income_account = self.env['account.account'].create({
+                'name': 'إيرادات مبيعات الكهرباء للاختبار',
+                'code': '400000.TEST',
+                'account_type': 'income',
+                'company_id': self.env.company.id,
+            })
         self.product = self.env['product.product'].create({
             'name': 'خدمة كهرباء - تكرار',
             'type': 'service',
+            'property_account_income_id': income_account.id,
         })
         self.order = self.env['sale.order'].create({
             'customer_id': self.customer.id,
@@ -77,12 +108,11 @@ class TestGatewayIdempotency(TransactionCase):
             'company_id': self.env.company.id,
         })
         self.provider = self.env['utility.integration.provider'].create({
-            'name': 'بوابة دفع اختبارية',
-            'code': 'TEST_GATEWAY',
+            'name': 'مزود دفع إلكتروني تكرار',
             'provider_type': 'payment_gateway',
             'is_payment_capable': True,
             'payment_direction': 'inbound',
-            'payment_journal_id': self.journal.id,
+            'inbound_journal_id': self.journal.id,
             'active': True,
         })
         self.tx = self.env['utility.payment.gateway.transaction'].create({

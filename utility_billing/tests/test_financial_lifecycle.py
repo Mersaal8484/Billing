@@ -8,8 +8,21 @@ class TestFinancialLifecycle(TransactionCase):
     def setUp(self):
         super().setUp()
         self.company = self.env.company
+        receivable_account = self.env['account.account'].search([
+            ('account_type', '=', 'asset_receivable'),
+            ('company_id', 'in', (self.env.company.id, False))
+        ], limit=1)
+        if not receivable_account:
+            receivable_account = self.env['account.account'].create({
+                'name': 'حساب مدينون للاختبار',
+                'code': '110000.TEST',
+                'account_type': 'asset_receivable',
+                'reconcile': True,
+                'company_id': self.env.company.id,
+            })
         self.partner = self.env['res.partner'].create({
             'name': 'مشترك دورة مالية كاملة',
+            'property_account_receivable_id': receivable_account.id,
         })
         self.category = self.env['utility.subscriber.category'].create({
             'name': 'سكني مالية',
@@ -23,20 +36,23 @@ class TestFinancialLifecycle(TransactionCase):
         self.template = self.env['utility.contract.template'].create({
             'name': 'قالب عقد مالية',
             'code': 'TPL_FIN_LIFE',
-            'subscriber_category_id': self.category.id,
-            'subscriber_id': self.sub_type.id,
+            'subscriber_category_ids': [(6, 0, [self.category.id])],
+            'subscriber_ids': [(6, 0, [self.sub_type.id])],
         })
         self.customer = self.env['utility.customer'].create({
-            'name': 'حساب المشترك الدورة المالية',
             'customer_number': 'CUST-FIN-001',
             'partner_id': self.partner.id,
-            'subscriber_category_id': self.category.id,
+            'category_id': self.category.id,
             'subscriber_id': self.sub_type.id,
             'contract_template_id': self.template.id,
         })
         self.date_range_type = self.env['date.range.type'].create({
             'name': 'فترة قراءات مالية',
-            'billing_period': True,
+            'fiscal_year': False,
+        })
+        self.payment_range_type = self.env['date.range.type'].create({
+            'name': 'فترة سداد مالية',
+            'fiscal_year': False,
         })
         self.date_range = self.env['date.range'].create({
             'name': 'مارس 2026 - مالية',
@@ -48,16 +64,28 @@ class TestFinancialLifecycle(TransactionCase):
         })
         self.payment_period = self.env['date.range'].create({
             'name': 'سداد مارس 2026 - مالية',
-            'type_id': self.date_range_type.id,
+            'type_id': self.payment_range_type.id,
             'date_start': '2026-03-01',
             'date_end': '2026-04-15',
             'period_role': 'payment',
             'reading_period_id': self.date_range.id,
             'state': 'open',
         })
+        income_account = self.env['account.account'].search([
+            ('account_type', '=', 'income'),
+            ('company_id', 'in', (self.env.company.id, False))
+        ], limit=1)
+        if not income_account:
+            income_account = self.env['account.account'].create({
+                'name': 'إيرادات مبيعات الكهرباء للاختبار',
+                'code': '400000.TEST',
+                'account_type': 'income',
+                'company_id': self.env.company.id,
+            })
         self.product = self.env['product.product'].create({
             'name': 'خدمة استهلاك كهرباء - مالية',
             'type': 'service',
+            'property_account_income_id': income_account.id,
         })
         self.journal = self.env['account.journal'].create({
             'name': 'يومية البنك الرئيسي',
@@ -108,15 +136,16 @@ class TestFinancialLifecycle(TransactionCase):
         self.assertAlmostEqual(self.customer.accounting_balance, 300.0, places=2)
 
         # 3. Credit Note (-100) -> Balance = 200
-        credit_note_wizard = self.env['account.move.reversal'].with_context(
-            active_model='account.move', active_ids=invoice.ids
-        ).create({
-            'refund_method': 'refund',
-            'reason': 'تعديل خصم إشعار دائن',
-            'journal_id': invoice.journal_id.id,
+        credit_note = self.env['account.move'].create({
+            'move_type': 'out_refund',
+            'partner_id': self.partner.id,
+            'date': self.date_range.date_start,
+            'invoice_line_ids': [(0, 0, {
+                'product_id': self.product.id,
+                'quantity': 1.0,
+                'price_unit': 100.0,
+            })],
         })
-        res = credit_note_wizard.reverse_moves()
-        credit_note = self.env['account.move'].browse(res['res_id'])
         credit_note.action_post()
 
         self.customer._compute_accounting_balance()
