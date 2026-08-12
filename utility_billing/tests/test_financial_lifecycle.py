@@ -24,21 +24,36 @@ class TestFinancialLifecycle(TransactionCase):
             'name': 'مشترك دورة مالية كاملة',
             'property_account_receivable_id': receivable_account.id,
         })
-        self.category = self.env['utility.subscriber.category'].create({
-            'name': 'سكني مالية',
-            'code': 'RES_FIN_LIFE',
-        })
-        self.sub_type = self.env['utility.subscriber'].create({
-            'name': 'سكني عام مالية',
-            'code': 'RES_GEN_FIN',
-            'category_id': self.category.id,
-        })
-        self.template = self.env['utility.contract.template'].create({
-            'name': 'قالب عقد مالية',
-            'code': 'TPL_FIN_LIFE',
-            'subscriber_category_ids': [(6, 0, [self.category.id])],
-            'subscriber_ids': [(6, 0, [self.sub_type.id])],
-        })
+        self.category = self.env['utility.subscriber.category'].search([
+            ('code', '=', 'RES_FIN_LIFE'),
+            ('company_id', 'in', (self.env.company.id, False)),
+        ], limit=1)
+        if not self.category:
+            self.category = self.env['utility.subscriber.category'].create({
+                'name': 'سكني مالية',
+                'code': 'RES_FIN_LIFE',
+            })
+        self.sub_type = self.env['utility.subscriber'].search([
+            ('code', '=', 'RES_GEN_FIN'),
+            ('company_id', 'in', (self.env.company.id, False)),
+        ], limit=1)
+        if not self.sub_type:
+            self.sub_type = self.env['utility.subscriber'].create({
+                'name': 'سكني عام مالية',
+                'code': 'RES_GEN_FIN',
+                'category_id': self.category.id,
+            })
+        self.template = self.env['utility.contract.template'].search([
+            ('code', '=', 'TPL_FIN_LIFE'),
+            ('company_id', 'in', (self.env.company.id, False)),
+        ], limit=1)
+        if not self.template:
+            self.template = self.env['utility.contract.template'].create({
+                'name': 'قالب عقد مالية',
+                'code': 'TPL_FIN_LIFE',
+                'subscriber_category_ids': [(6, 0, [self.category.id])],
+                'subscriber_ids': [(6, 0, [self.sub_type.id])],
+            })
         self.customer = self.env['utility.customer'].create({
             'customer_number': 'CUST-FIN-001',
             'partner_id': self.partner.id,
@@ -167,3 +182,61 @@ class TestFinancialLifecycle(TransactionCase):
 
         self.customer._compute_accounting_balance()
         self.assertAlmostEqual(self.customer.accounting_balance, 0.0, places=2)
+
+    def test_writeoff_accounting_integrity(self):
+        """Test that utility write-off applies credit note, reconciles invoice residual, and updates accounting balance."""
+        writeoff_journal = self.env['account.journal'].create({
+            'name': 'يومية الإثباتات والإنهاءات',
+            'code': 'WOJ01',
+            'type': 'sale',
+            'company_id': self.company.id,
+        })
+        expense_account = self.env['account.account'].search([
+            ('account_type', '=', 'expense'),
+            ('company_id', 'in', (self.company.id, False))
+        ], limit=1)
+        if not expense_account:
+            expense_account = self.env['account.account'].create({
+                'name': 'مصروفات الإثباتات والديون المعدومة',
+                'code': '690000.TEST',
+                'account_type': 'expense',
+                'company_id': self.company.id,
+            })
+
+        self.company.write({
+            'writeoff_journal_id': writeoff_journal.id,
+            'writeoff_account_id': expense_account.id,
+        })
+
+        order = self.env['sale.order'].create({
+            'customer_id': self.customer.id,
+            'partner_id': self.partner.id,
+            'date_range_id': self.date_range.id,
+            'order_line': [(0, 0, {
+                'product_id': self.product.id,
+                'product_uom_qty': 1.0,
+                'price_unit': 500.0,
+            })],
+        })
+        order.action_confirm()
+        invoice = order._create_invoices()
+        invoice.action_post()
+
+        writeoff = self.env['utility.writeoff'].create({
+            'customer_id': self.customer.id,
+            'sale_order_id': order.id,
+            'amount': 100.0,
+            'reason': 'إعفاء جزء من المستحقات للاختبار',
+        })
+        writeoff.action_approve()
+        writeoff.action_apply()
+
+        self.assertEqual(writeoff.state, 'applied')
+        self.assertTrue(writeoff.move_id)
+        self.assertEqual(writeoff.move_id.state, 'posted')
+
+        invoice.invalidate_recordset()
+        self.assertAlmostEqual(invoice.amount_residual, 400.0, places=2)
+
+        self.customer._compute_accounting_balance()
+        self.assertAlmostEqual(self.customer.accounting_balance, 400.0, places=2)

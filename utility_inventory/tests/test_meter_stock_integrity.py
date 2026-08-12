@@ -66,3 +66,23 @@ class TestMeterStockIntegrity(TransactionCase):
                 'product_id': self.product_serial.id,
                 'lot_id': self.lot_1.id,
             })
+
+    def test_scrapped_serial_cannot_be_assigned(self):
+        """Test that a serial lot located in a scrap location raises ValidationError on meter creation."""
+        scrap_location = self.env['stock.location'].create({
+            'name': 'مخزن الخردة التالفة للاختبار',
+            'scrap_location': True,
+            'usage': 'inventory',
+        })
+        self.env['stock.quant'].create({
+            'product_id': self.product_serial.id,
+            'location_id': scrap_location.id,
+            'lot_id': self.lot_2.id,
+            'quantity': 1.0,
+        })
+        with self.assertRaises(ValidationError):
+            self.env['utility.meter'].create({
+                'meter_number': 'MTR-SCRAP-999',
+                'product_id': self.product_serial.id,
+                'lot_id': self.lot_2.id,
+            })

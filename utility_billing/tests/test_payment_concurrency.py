@@ -1,3 +1,5 @@
+import threading
+import time
 from odoo.tests import TransactionCase, tagged
 from odoo.exceptions import ValidationError
 
@@ -24,28 +26,49 @@ class TestPaymentConcurrency(TransactionCase):
             'name': 'اختبار التزامن الخالي من التداخل',
             'property_account_receivable_id': receivable_account.id,
         })
-        self.category = self.env['utility.subscriber.category'].create({
-            'name': 'سكني تزامن موثوق',
-            'code': 'RES_CONC_REAL',
-        })
-        self.sub_type = self.env['utility.subscriber'].create({
-            'name': 'سكني عام تزامن موثوق',
-            'code': 'RES_GEN_CONC_REAL',
-            'category_id': self.category.id,
-        })
-        self.template = self.env['utility.contract.template'].create({
-            'name': 'قالب عقد تزامن موثوق',
-            'code': 'TPL_CONC_REAL',
-            'subscriber_category_ids': [(6, 0, [self.category.id])],
-            'subscriber_ids': [(6, 0, [self.sub_type.id])],
-        })
-        self.customer = self.env['utility.customer'].create({
-            'customer_number': 'CUST-CONC-REAL-001',
-            'partner_id': self.partner.id,
-            'category_id': self.category.id,
-            'subscriber_id': self.sub_type.id,
-            'contract_template_id': self.template.id,
-        })
+        self.category = self.env['utility.subscriber.category'].search([
+            ('code', '=', 'RES_CONC_REAL'),
+            ('company_id', 'in', (self.env.company.id, False)),
+        ], limit=1)
+        if not self.category:
+            self.category = self.env['utility.subscriber.category'].create({
+                'name': 'سكني تزامن موثوق',
+                'code': 'RES_CONC_REAL',
+            })
+        self.sub_type = self.env['utility.subscriber'].search([
+            ('code', '=', 'RES_GEN_CONC_REAL'),
+            ('company_id', 'in', (self.env.company.id, False)),
+        ], limit=1)
+        if not self.sub_type:
+            self.sub_type = self.env['utility.subscriber'].create({
+                'name': 'سكني عام تزامن موثوق',
+                'code': 'RES_GEN_CONC_REAL',
+                'category_id': self.category.id,
+            })
+        self.template = self.env['utility.contract.template'].search([
+            ('code', '=', 'TPL_CONC_REAL'),
+            ('company_id', 'in', (self.env.company.id, False)),
+        ], limit=1)
+        if not self.template:
+            self.template = self.env['utility.contract.template'].create({
+                'name': 'قالب عقد تزامن موثوق',
+                'code': 'TPL_CONC_REAL',
+                'subscriber_category_ids': [(6, 0, [self.category.id])],
+                'subscriber_ids': [(6, 0, [self.sub_type.id])],
+            })
+        c_number = f'CUST-CONC-REAL-{self._testMethodName}'
+        self.customer = self.env['utility.customer'].search([
+            ('customer_number', '=', c_number),
+            ('company_id', '=', self.env.company.id),
+        ], limit=1)
+        if not self.customer:
+            self.customer = self.env['utility.customer'].create({
+                'customer_number': c_number,
+                'partner_id': self.partner.id,
+                'category_id': self.category.id,
+                'subscriber_id': self.sub_type.id,
+                'contract_template_id': self.template.id,
+            })
         self.date_range_type = self.env['date.range.type'].create({
             'name': 'فترة قراءات تزامن موثوق',
             'fiscal_year': False,
@@ -174,17 +197,76 @@ class TestPaymentConcurrency(TransactionCase):
         self.assertNotEqual(tx.state, 'done')
         self.assertEqual(self.invoice.amount_residual, 100.0)
 
-    def test_multi_cursor_sequential_residual_lock(self):
-        """Test residual locking and transaction serialization."""
-        tx1 = self.env['utility.payment.gateway.transaction'].create({
-            'provider_id': self.provider.id,
-            'payment_direction': 'inbound',
-            'sale_order_id': self.order.id,
-            'utility_invoice_id': self.invoice.id,
-            'amount': 300.0,
-            'state': 'pending',
-        })
-        tx1.action_confirm_payment(provider_reference='REF-MULTI-1')
+    def test_real_two_cursor_invoice_lock_concurrency(self):
+        """Test true PostgreSQL FOR UPDATE row locking across two concurrent database cursors."""
+        self.env.flush_all()
+        invoice_id = self.invoice.id
+        provider_id = self.provider.id
+        order_id = self.order.id
+        registry = self.env.registry
 
-        self.invoice.invalidate_recordset()
+        event_locked = threading.Event()
+        event_release = threading.Event()
+        thread_2_finished = threading.Event()
+        thread_2_results = []
+
+        def worker_1():
+            cr1 = registry.cursor()
+            try:
+                cr1.execute("SELECT id FROM account_move WHERE id = %s FOR UPDATE", (invoice_id,))
+                event_locked.set()
+                # Hold row lock until thread 2 attempts lock, then wait for release signal
+                event_release.wait(timeout=5)
+                cr1.rollback()
+            finally:
+                cr1.close()
+
+        def worker_2():
+            # Wait until thread 1 has acquired FOR UPDATE row lock
+            event_locked.wait(timeout=5)
+            time.sleep(0.1)
+            cr2 = registry.cursor()
+            try:
+                env2 = self.env(cr=cr2)
+                tx2 = env2['utility.payment.gateway.transaction'].create({
+                    'provider_id': provider_id,
+                    'payment_direction': 'inbound',
+                    'sale_order_id': order_id,
+                    'utility_invoice_id': invoice_id,
+                    'amount': 300.0,
+                    'state': 'pending',
+                })
+                # This call will attempt FOR UPDATE on account.move and block until cr1 releases lock
+                tx2.action_confirm_payment(provider_reference='REF-CONC-TH2')
+                cr2.commit()
+                thread_2_results.append('done')
+            except Exception as e:
+                cr2.rollback()
+                thread_2_results.append(str(e))
+            finally:
+                cr2.close()
+                thread_2_finished.set()
+
+        t1 = threading.Thread(target=worker_1)
+        t2 = threading.Thread(target=worker_2)
+
+        t1.start()
+        t2.start()
+
+        # Confirm thread 1 acquired lock
+        self.assertTrue(event_locked.wait(timeout=5))
+
+        # Check that thread 2 is running and blocked on lock
+        time.sleep(0.3)
+        self.assertTrue(t2.is_alive(), "Thread 2 should be running and waiting on FOR UPDATE lock held by Thread 1")
+
+        # Signal Thread 1 to release lock
+        event_release.set()
+
+        t1.join(timeout=5)
+        t2.join(timeout=5)
+
+        self.assertTrue(thread_2_finished.is_set())
+
+        self.env.invalidate_all()
         self.assertEqual(self.invoice.amount_residual, 200.0)

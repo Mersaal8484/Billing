@@ -24,21 +24,36 @@ class TestPaymentAllocationConcurrency(TransactionCase):
             'name': 'اختبار تخصيص الدفعات',
             'property_account_receivable_id': receivable_account.id,
         })
-        self.category = self.env['utility.subscriber.category'].create({
-            'name': 'سكني تخصيص',
-            'code': 'RES_ALLOC_CONC',
-        })
-        self.sub_type = self.env['utility.subscriber'].create({
-            'name': 'سكني عام تخصيص',
-            'code': 'RES_GEN_ALLOC',
-            'category_id': self.category.id,
-        })
-        self.template = self.env['utility.contract.template'].create({
-            'name': 'قالب عقد تخصيص',
-            'code': 'TPL_ALLOC',
-            'subscriber_category_ids': [(6, 0, [self.category.id])],
-            'subscriber_ids': [(6, 0, [self.sub_type.id])],
-        })
+        self.category = self.env['utility.subscriber.category'].search([
+            ('code', '=', 'RES_ALLOC_CONC'),
+            ('company_id', 'in', (self.env.company.id, False)),
+        ], limit=1)
+        if not self.category:
+            self.category = self.env['utility.subscriber.category'].create({
+                'name': 'سكني تخصيص',
+                'code': 'RES_ALLOC_CONC',
+            })
+        self.sub_type = self.env['utility.subscriber'].search([
+            ('code', '=', 'RES_GEN_ALLOC'),
+            ('company_id', 'in', (self.env.company.id, False)),
+        ], limit=1)
+        if not self.sub_type:
+            self.sub_type = self.env['utility.subscriber'].create({
+                'name': 'سكني عام تخصيص',
+                'code': 'RES_GEN_ALLOC',
+                'category_id': self.category.id,
+            })
+        self.template = self.env['utility.contract.template'].search([
+            ('code', '=', 'TPL_ALLOC'),
+            ('company_id', 'in', (self.env.company.id, False)),
+        ], limit=1)
+        if not self.template:
+            self.template = self.env['utility.contract.template'].create({
+                'name': 'قالب عقد تخصيص',
+                'code': 'TPL_ALLOC',
+                'subscriber_category_ids': [(6, 0, [self.category.id])],
+                'subscriber_ids': [(6, 0, [self.sub_type.id])],
+            })
         self.customer = self.env['utility.customer'].create({
             'customer_number': 'CUST-ALLOC-001',
             'partner_id': self.partner.id,
