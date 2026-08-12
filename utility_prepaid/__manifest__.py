@@ -23,6 +23,7 @@
     'license': 'LGPL-3',
     'depends': [
         'utility_core',
+        'utility_inventory',
         'utility_billing',
         'point_of_sale',
         'account',
@@ -52,6 +53,8 @@
         'views/prepaid_dashboard_views.xml',
         'views/res_config_settings_views.xml',
         'views/pos_order_views.xml',
+        'views/utility_meter_views.xml',
+        'views/utility_customer_wizard_views.xml',
         'views/utility_customer_views.xml',
         'views/menus.xml',
         'report/utility_reports.xml',

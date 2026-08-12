@@ -48,7 +48,6 @@ class UtilityMeter(models.Model):
     voltage = fields.Float('الجهد (فولت)')
     current_rating = fields.Float('شدة التيار (أمبير)')
     power_rating = fields.Float('القدرة (كيلوواط)')
-    sts_key_revision = fields.Char('مراجعة مفتاح STS')
     customer_id = fields.Many2one('utility.customer', 'العميل/العقد', index=True)
     account_id = fields.Many2one('utility.customer', string='الحساب', related='customer_id', store=True)
 
@@ -65,15 +64,6 @@ class UtilityMeter(models.Model):
     feeder_id = fields.Many2one('utility.feeder', 'الفيدر', compute='_compute_location_fields', store=True)
     installation_date = fields.Date('تاريخ التركيب')
     address = fields.Text('العنوان')
-    communication_type = fields.Selection([
-        ('gsm', 'جي إس إم (GSM)'),
-        ('nbiot', 'إن بي آي أو تي (NB-IoT)'),
-        ('lora', 'لورا (LoRa)'),
-        ('rf', 'تردد لاسلكي (RF)'),
-        ('plc', 'خط الطاقة (PLC)'),
-        ('manual', 'يدوي'),
-    ], string='نوع الاتصال')
-    sim_number = fields.Char('رقم شريحة SIM')
     reading_ids = fields.One2many('utility.reading', 'meter_id', string='سجل القراءات')
     log_ids = fields.One2many('utility.meter.log', 'meter_id', string='سجل تاريخ العداد')
     reading_count = fields.Integer('عدد القراءات', compute='_compute_reading_count', store=True)
@@ -243,23 +233,6 @@ class UtilityMeter(models.Model):
         ('unique_serial_number', 'unique(serial_number)', 'الرقم التسلسلي يجب أن يكون فريداً!'),
     ]
 
-    def action_request_ami_reading(self):
-        provider = self.env['utility.integration.provider'].sudo().search([
-            ('provider_type', '=', 'ami'),
-            ('active', '=', True),
-        ], limit=1)
-        if not provider:
-            raise UserError(_('لا يوجد مزود AMI نشط.'))
-        for meter in self:
-            payload = {
-                'meter_number': meter.meter_number,
-                'operational_number': meter.operational_number or '',
-                'serial_number': meter.serial_number,
-                'customer': meter.customer_id.customer_number if meter.customer_id else False,
-            }
-            provider.call_json(payload, 'ami.reading.request', record=meter)
-        return True
-
     def action_add_subscriber(self):
         self.ensure_one()
         if self.connection_type != 'not_connected' or self.customer_id:
@@ -306,17 +279,6 @@ class UtilityMeter(models.Model):
             'context': {'default_meter_id': self.id},
         }
 
-    def create_ami_reading(self, reading_value, reading_date=False, date_range_id=False):
-        self.ensure_one()
-        return self.env['utility.reading'].sudo().create({
-            'meter_id': self.id,
-            'reading_value': reading_value,
-            'reading_date': reading_date or fields.Datetime.now(),
-            'date_range_id': date_range_id or False,
-            'reading_type': 'ami',
-            'reading_category': 'customer',
-            'reading_source': 'ami_integration',
-        })
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:

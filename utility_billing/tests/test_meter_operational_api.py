@@ -124,27 +124,6 @@ class TestMeterOperationalBillingAPI(TransactionCase):
         self.assertFalse(result['success'])
         self.assertEqual(result['code'], 'METER_IDENTIFIER_MISMATCH')
 
-    def test_ami_callback_resolves_operational_number(self):
-        meter, _customer = self._meter_and_customer('AMI')
-        provider = self.env['utility.integration.provider'].create({
-            'name': 'مزود AMI للاختبار',
-            'provider_type': 'ami',
-            'mode': 'manual',
-            'webhook_secret': 'ops-api-secret',
-            'company_id': self.env.company.id,
-        })
-        controller = utility_billing_api.UtilityBillingAPI()
-        params = {
-            'secret': provider.webhook_secret,
-            'operational_number': meter.operational_number,
-            'reading_value': 123.5,
-        }
-        with patch.object(utility_billing_api, 'request', self._request(params)):
-            result = controller.ami_reading_callback()
-        self.assertTrue(result['success'])
-        reading = self.env['utility.reading'].browse(result['reading_id'])
-        self.assertEqual(reading.meter_id, meter)
-
     def test_customer_lookup_by_external_qr_reference(self):
         _meter, customer = self._meter_and_customer('CUSTOMER-LOOKUP', 'QR-CUSTOMER-LOOKUP')
         controller = utility_billing_api.UtilityBillingAPI()

@@ -86,3 +86,13 @@ class TestMeterStockIntegrity(TransactionCase):
                 'product_id': self.product_serial.id,
                 'lot_id': self.lot_2.id,
             })
+
+    def test_serial_number_is_readonly_projection_of_stock_lot(self):
+        meter = self.env['utility.meter'].create({
+            'meter_number': 'MTR-PROJECTION-001',
+            'product_id': self.product_serial.id,
+            'lot_id': self.lot_1.id,
+        })
+        self.assertEqual(meter.serial_number, self.lot_1.name)
+        with self.assertRaises(ValidationError):
+            meter.write({'serial_number': 'SN-OTHER'})

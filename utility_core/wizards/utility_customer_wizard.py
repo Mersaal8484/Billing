@@ -104,18 +104,10 @@ class UtilityCustomerWizard(models.TransientModel):
         ('prepaid', 'دفع مسبق'),
         ('manual', 'يدوي')
     ], string='نظام العداد', default='manual', required=True)
-    sts_key_revision = fields.Char(string='مراجعة مفتاح STS')
     phase = fields.Selection([
         ('single', 'أحادي الطور'),
         ('three', 'ثلاثي الطور'),
     ], string='الطور', default='single')
-    communication_type = fields.Selection([
-        ('none', 'بدون اتصال'),
-        ('ir', 'أشعة تحت الحمراء'),
-        ('rf', 'تردد لاسلكي'),
-        ('plc', 'ناقل خط الطاقة'),
-        ('gsm', 'شبكة الجوال'),
-    ], string='نوع الاتصال', default='none')
 
     def _get_dynamic_domains(self):
         """Return UI domains without relying on helper field names in JS eval."""
@@ -434,8 +426,6 @@ class UtilityCustomerWizard(models.TransientModel):
                 'transformer_id': transformer.id if transformer else False,
                 'feeder_id': transformer.feeder_id.id if transformer and transformer.feeder_id else False,
                 'payment_type': self.payment_type,
-                'sts_key_revision': self.sts_key_revision if self.payment_type == 'prepaid' else False,
-                'communication_type': self.communication_type if self.payment_type == 'postpaid' else False,
             }
             if 'product_id' in self.env['utility.meter']._fields:
                 meter_vals['product_id'] = self.meter_product_id.id

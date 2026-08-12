@@ -1,6 +1,6 @@
 {
     'name': 'Utility Inventory',
-    'version': '16.0.1.0.0',
+    'version': '16.0.1.1.0',
     'category': 'Utility ERP',
     'summary': 'Inventory & Warehouse Management Integration',
     'description': """
@@ -14,6 +14,7 @@ Adds lot/serial tracking and product association for physical meters.
     'license': 'LGPL-3',
     'depends': ['utility_core', 'stock', 'product'],
     'data': [
+        'views/utility_meter_inventory_views.xml',
     ],
     'demo': [],
     'installable': True,

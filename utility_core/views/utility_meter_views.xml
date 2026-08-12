@@ -32,10 +32,7 @@
         <field name="arch" type="xml">
             <form>
                 <field name="customer_id" invisible="1"/>
-                <header>
-                    <button name="action_request_ami_reading" type="object" string="طلب قراءة AMI" class="btn-secondary"
-                            attrs="{'invisible': [('payment_type', '!=', 'postpaid')]}"/>
-                </header>
+                <header/>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
                         <button name="action_view_readings" type="object"
@@ -144,26 +141,6 @@
                                     <field name="user_id"/>
                                 </tree>
                             </field>
-                        </page>
-                        <page name="specific_data" string="بيانات العداد المخصصة">
-                            <group>
-                                <!-- Prepaid Data -->
-                                <group string="بيانات الدفع المسبق (STS)" attrs="{'invisible': [('payment_type', '!=', 'prepaid')]}">
-                                    <field name="sts_key_revision" attrs="{'required': [('payment_type', '=', 'prepaid')]}"/>
-                                </group>
-                                <!-- Postpaid Data (AMI/Smart) -->
-                                <group string="بيانات العداد الذكي (عن بُعد)" attrs="{'invisible': [('payment_type', '!=', 'postpaid')]}">
-                                    <field name="communication_type" attrs="{'required': [('payment_type', '=', 'postpaid')]}"/>
-                                    <field name="sim_number" attrs="{'invisible': [('communication_type', 'not in', ('gsm', 'nbiot'))]}"/>
-                            <field name="qr_code_url" readonly="1"/>
-                                </group>
-                                <!-- Manual Data -->
-                                <group string="بيانات العداد اليدوي" attrs="{'invisible': [('payment_type', '!=', 'manual')]}">
-                                    <div class="text-muted" colspan="2">
-                                        يتم إدخال قراءات هذا العداد يدوياً عبر شاشة القراءات الدورية.
-                                    </div>
-                                </group>
-                            </group>
                         </page>
                         <page name="assignment" string="التعيين والموقع">
                             <group>

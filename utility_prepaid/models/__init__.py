@@ -8,3 +8,4 @@ from . import integration
 from . import configuration
 from . import reporting
 from . import utility_customer
+from . import utility_meter

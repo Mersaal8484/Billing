@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_meter_form_inventory" model="ir.ui.view">
+        <field name="name">utility.meter.form.inventory</field>
+        <field name="model">utility.meter</field>
+        <field name="inherit_id" ref="utility_core.view_utility_meter_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='assignment']" position="after">
+                <page name="inventory" string="المخزون والرقم المادي">
+                    <group>
+                        <field name="product_id" options="{'no_create': True}"/>
+                        <field name="lot_id" domain="[('product_id', '=', product_id)]" options="{'no_create': True}"/>
+                        <field name="serial_number" readonly="1"/>
+                    </group>
+                    <div class="text-muted">
+                        الرقم التسلسلي المادي مصدره Lot/Serial في المخزون ولا يُعدّل من شاشة العداد.
+                    </div>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_utility_meter_search_inventory" model="ir.ui.view">
+        <field name="name">utility.meter.search.inventory</field>
+        <field name="model">utility.meter</field>
+        <field name="inherit_id" ref="utility_core.view_utility_meter_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='serial_number']" position="attributes">
+                <attribute name="string">الرقم التسلسلي المادي</attribute>
+            </xpath>
+            <xpath expr="//field[@name='serial_number']" position="after">
+                <field name="product_id"/>
+                <field name="lot_id"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

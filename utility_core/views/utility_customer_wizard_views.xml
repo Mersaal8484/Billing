@@ -53,8 +53,6 @@
                                 <group attrs="{'invisible': [('create_meter', '=', False)]}">
                                     <field name="phase"/>
                                     <field name="manufacturer"/>
-                                    <field name="sts_key_revision" attrs="{'invisible': [('payment_type', '!=', 'prepaid')], 'required': [('payment_type', '=', 'prepaid')]}"/>
-                                    <field name="communication_type" attrs="{'invisible': [('payment_type', '!=', 'postpaid')], 'required': [('payment_type', '=', 'postpaid')]}"/>
                                 </group>
                             </group>
                         </page>
