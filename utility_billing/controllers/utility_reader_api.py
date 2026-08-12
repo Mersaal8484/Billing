@@ -11,6 +11,29 @@ _logger = logging.getLogger(__name__)
 class UtilityReaderAPI(http.Controller):
     """REST API لتطبيق القارئ (Flutter) — رفع القراءات والصور على شكل دفعات"""
 
+    def _resolve_meter_identifiers(self, params):
+        """Resolve supplied meter identifiers and reject contradictory values."""
+        Meter = request.env['utility.meter']
+        identifiers = []
+        if params.get('meter_id') not in (None, '', False):
+            try:
+                meter = Meter.search([('id', '=', int(params['meter_id']))], limit=1)
+            except (TypeError, ValueError):
+                meter = Meter.browse()
+            identifiers.append(('meter_id', meter))
+        for key in ('operational_number', 'meter_number'):
+            value = params.get(key)
+            if value not in (None, '', False):
+                identifiers.append((key, Meter.search([(key, '=', str(value).strip())], limit=1)))
+        if not identifiers:
+            return Meter.browse(), 'IDENTIFIER_REQUIRED'
+        if any(not meter for _, meter in identifiers):
+            return Meter.browse(), 'METER_NOT_FOUND'
+        meter_ids = {meter.id for _, meter in identifiers}
+        if len(meter_ids) > 1:
+            return Meter.browse(), 'METER_IDENTIFIER_MISMATCH'
+        return identifiers[0][1], False
+
     def _get_owned_batch(self, batch_id):
         try:
             batch_id = int(batch_id)
@@ -278,19 +301,16 @@ class UtilityReaderAPI(http.Controller):
         """
         بحث عن عداد بالرقم — يستخدمه التطبيق للتحقق أثناء الإدخال.
         يجب تمرير:
-          - meter_number: رقم العداد (إلزامي)
+          - meter_id أو operational_number أو meter_number: أحد معرفات العداد
         """
         params = request.jsonrequest
-        meter_number = params.get('meter_number')
-        if not meter_number:
-            return {'success': False, 'error': 'meter_number is required'}
-
-        meter = request.env['utility.meter'].search([
-            ('meter_number', '=', meter_number)
-        ], limit=1)
-
-        if not meter:
-            return {'success': False, 'error': 'العداد غير موجود'}
+        meter, error_code = self._resolve_meter_identifiers(params)
+        if error_code == 'IDENTIFIER_REQUIRED':
+            return {'success': False, 'error': 'meter_id, operational_number or meter_number is required'}
+        if error_code == 'METER_IDENTIFIER_MISMATCH':
+            return {'success': False, 'error': 'المعرفات الممررة للعداد متعارضة', 'code': error_code}
+        if error_code:
+            return {'success': False, 'error': 'العداد غير موجود', 'code': error_code}
 
         customer = meter.customer_id
         return {
@@ -298,6 +318,7 @@ class UtilityReaderAPI(http.Controller):
             'meter': {
                 'id': meter.id,
                 'meter_number': meter.meter_number,
+                'operational_number': meter.operational_number or None,
                 'meter_type': meter.meter_type if hasattr(meter, 'meter_type') else None,
                 'customer_id': customer.id if customer else None,
                 'customer_name': customer.name if customer else None,

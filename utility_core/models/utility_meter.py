@@ -30,6 +30,7 @@ class UtilityMeter(models.Model):
     active = fields.Boolean('نشط', default=True)
     company_id = fields.Many2one('res.company', 'الشركة', default=lambda self: self.env.company)
     meter_number = fields.Char('رقم العداد', required=True, index=True, default=lambda self: _('جديد'))
+    operational_number = fields.Char('الرقم التشغيلي', index=True, tracking=True)
     serial_number = fields.Char('الرقم التسلسلي', index=True)
     manufacturer = fields.Char('الشركة المصنّعة')
     model_id = fields.Many2one('utility.meter.model', 'الموديل')
@@ -198,7 +199,7 @@ class UtilityMeter(models.Model):
                 m.substation_id = False
                 m.feeder_id = False
 
-    @api.depends('meter_number', 'serial_number', 'connection_type',
+    @api.depends('meter_number', 'operational_number', 'serial_number', 'connection_type',
                  'customer_id.customer_number', 'customer_id.partner_id.name',
                  'linked_transformer_id.code', 'linked_private_transformer_id.code',
                  'linked_feeder_id.code',
@@ -220,6 +221,7 @@ class UtilityMeter(models.Model):
                 customer_name,
                 meter.transformer_id.code or '',
                 meter.feeder_id.code or '',
+                meter.operational_number or '',
             ])
             meter.qr_code_value = payload
             encoded = quote(payload)
@@ -236,6 +238,8 @@ class UtilityMeter(models.Model):
     _sql_constraints = [
         ('unique_meter_number_company', 'unique(meter_number, company_id)',
          'رقم العداد يجب أن يكون فريداً لكل شركة!'),
+        ('unique_operational_number_company', 'unique(operational_number, company_id)',
+         'الرقم التشغيلي للعداد يجب أن يكون فريداً لكل شركة!'),
         ('unique_serial_number', 'unique(serial_number)', 'الرقم التسلسلي يجب أن يكون فريداً!'),
     ]
 
@@ -249,6 +253,7 @@ class UtilityMeter(models.Model):
         for meter in self:
             payload = {
                 'meter_number': meter.meter_number,
+                'operational_number': meter.operational_number or '',
                 'serial_number': meter.serial_number,
                 'customer': meter.customer_id.customer_number if meter.customer_id else False,
             }
@@ -315,6 +320,8 @@ class UtilityMeter(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
+            if 'operational_number' in vals:
+                vals['operational_number'] = (vals['operational_number'] or '').strip() or False
             if vals.get('meter_number', _('جديد')) == _('جديد'):
                 vals['meter_number'] = self.env['ir.sequence'].next_by_code('utility.meter') or _('جديد')
         return super().create(vals_list)
@@ -324,18 +331,22 @@ class UtilityMeter(models.Model):
         args = args or []
         domain = []
         if name:
-            domain = ['|', '|', '|',
+            domain = ['|', '|', '|', '|',
                 ('meter_number', operator, name),
+                ('operational_number', operator, name),
                 ('serial_number', operator, name),
                 ('customer_id.partner_id.name', operator, name),
                 ('meter_type_id.name', operator, name)
             ]
         return self._search(domain + args, limit=limit, access_rights_uid=name_get_uid)
 
-    @api.depends('connection_type', 'meter_number', 'customer_id', 'customer_id.partner_id', 'linked_private_transformer_id', 'linked_transformer_id', 'transformer_id', 'linked_feeder_id', 'feeder_id', 'meter_type_id', 'payment_type')
+    @api.depends('connection_type', 'meter_number', 'operational_number', 'customer_id', 'customer_id.partner_id', 'linked_private_transformer_id', 'linked_transformer_id', 'transformer_id', 'linked_feeder_id', 'feeder_id', 'meter_type_id', 'payment_type')
     def _compute_display_name(self):
         for meter in self:
-            parts = [f"[{meter.meter_number}]"]
+            parts = [
+                f"[{meter.operational_number}] {meter.meter_number}"
+                if meter.operational_number else f"[{meter.meter_number}]"
+            ]
 
             # 1. اسم العنصر المرتبط حسب نوع الربط (مشترك / محول خاص / محول / فيدر)
             target_name = False
@@ -370,6 +381,9 @@ class UtilityMeter(models.Model):
         return [(meter.id, meter.display_name or f"[{meter.meter_number}]") for meter in self]
 
     def write(self, vals):
+        vals = dict(vals)
+        if 'operational_number' in vals:
+            vals['operational_number'] = (vals['operational_number'] or '').strip() or False
         for meter in self:
             if not self.env.context.get('skip_implicit_log'):
                 if 'status_id' in vals and vals.get('status_id') != meter.status_id.id:

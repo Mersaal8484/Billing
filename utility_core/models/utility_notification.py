@@ -71,6 +71,12 @@ class UtilityNotificationLog(models.Model):
             ('active', '=', True),
         ], limit=1)
         for notification in self.filtered(lambda n: n.channel == 'sms' and n.state == 'queued'):
+            if not notification.mobile:
+                notification.write({
+                    'state': 'failed',
+                    'error_message': _('رقم الجوال غير متوفر لإرسال الإشعار (CUSTOMER_MOBILE_REQUIRED).'),
+                })
+                continue
             if not sms_provider:
                 notification.write({
                     'state': 'failed',

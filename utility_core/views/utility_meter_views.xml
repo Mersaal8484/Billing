@@ -6,6 +6,7 @@
         <field name="arch" type="xml">
             <tree>
                 <field name="meter_number"/>
+                <field name="operational_number" optional="show"/>
                 <field name="serial_number"/>
                 <field name="connection_type" widget="badge" decoration-info="connection_type == 'subscriber'"
                         decoration-success="connection_type == 'feeder'"
@@ -95,6 +96,7 @@
                             <field name="connection_type" widget="radio"/>
                             <field name="meter_type_id" options="{'no_create': True, 'no_open': True}"/>
                             <field name="serial_number"/>
+                            <field name="operational_number" placeholder="OP-XXXXX"/>
                             <field name="manufacturer"/>
                             <field name="model_id" options="{'no_create': True, 'no_open': True}"/>
                             <field name="status_id" options="{'no_create': True}"/>
@@ -215,6 +217,7 @@
         <field name="arch" type="xml">
             <search>
                 <field name="meter_number"/>
+                <field name="operational_number" string="الرقم التشغيلي"/>
                 <field name="serial_number"/>
                 <field name="customer_id"/>
                 <field name="account_id"/>

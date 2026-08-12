@@ -7,7 +7,7 @@ class UtilityMeterSubscriberWizard(models.TransientModel):
 
     meter_id = fields.Many2one('utility.meter', 'العداد', required=True, readonly=True)
     partner_name = fields.Char('اسم المشترك', required=True)
-    mobile = fields.Char('رقم الجوال', required=True)
+    mobile = fields.Char('رقم الجوال')
     national_id = fields.Char('الرقم الوطني / الهوية')
     street = fields.Char('العنوان')
     category_id = fields.Many2one('utility.subscriber.category', string='فئة المشترك', required=True)
@@ -55,7 +55,7 @@ class UtilityMeterPrivateTransformerWizard(models.TransientModel):
     meter_id = fields.Many2one('utility.meter', 'العداد', required=True, readonly=True)
 
     partner_name = fields.Char('اسم المشترك', required=True)
-    mobile = fields.Char('رقم الجوال', required=True)
+    mobile = fields.Char('رقم الجوال')
     national_id = fields.Char('الرقم الوطني / الهوية')
     street = fields.Char('العنوان')
     category_id = fields.Many2one('utility.subscriber.category', string='فئة المشترك', required=True)

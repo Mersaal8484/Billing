@@ -8,6 +8,28 @@ _logger = logging.getLogger(__name__)
 
 class UtilityBillingAPI(http.Controller):
 
+    def _resolve_meter_identifiers(self, params):
+        """Resolve AMI identifiers while preventing ambiguous meter selection."""
+        Meter = request.env['utility.meter'].sudo()
+        identifiers = []
+        if params.get('meter_id') not in (None, '', False):
+            try:
+                meter = Meter.search([('id', '=', int(params['meter_id']))], limit=1)
+            except (TypeError, ValueError):
+                meter = Meter.browse()
+            identifiers.append(meter)
+        for key in ('operational_number', 'meter_number'):
+            value = params.get(key)
+            if value not in (None, '', False):
+                identifiers.append(Meter.search([(key, '=', str(value).strip())], limit=1))
+        if not identifiers:
+            return Meter.browse(), 'IDENTIFIER_REQUIRED'
+        if any(not meter for meter in identifiers):
+            return Meter.browse(), 'METER_NOT_FOUND'
+        if len({meter.id for meter in identifiers}) > 1:
+            return Meter.browse(), 'METER_IDENTIFIER_MISMATCH'
+        return identifiers[0], False
+
     def _get_authorized_accounts(self):
         """إرجاع recordset لحسابات الكهرباء المسموح للمستخدم الحالي الوصول إليها.
 
@@ -267,13 +289,19 @@ class UtilityBillingAPI(http.Controller):
 
         if not provider:
             return {'error': 'Invalid AMI provider secret', 'code': 'INVALID_WEBHOOK_SIGNATURE'}
+        meter_id = params.get('meter_id')
+        operational_number = params.get('operational_number')
         meter_number = params.get('meter_number')
         reading_value = params.get('reading_value')
-        if not meter_number or reading_value is None:
-            return {'error': 'meter_number and reading_value are required', 'code': 'VALIDATION_ERROR'}
-        meter = request.env['utility.meter'].sudo().search([('meter_number', '=', meter_number)], limit=1)
+        if reading_value is None:
+            return {'error': 'reading_value is required', 'code': 'VALIDATION_ERROR'}
+        meter, identifier_error = self._resolve_meter_identifiers(params)
+        if identifier_error == 'IDENTIFIER_REQUIRED':
+            return {'error': 'meter_id, operational_number or meter_number is required', 'code': 'VALIDATION_ERROR'}
+        if identifier_error == 'METER_IDENTIFIER_MISMATCH':
+            return {'error': 'المعرفات الممررة للعداد متعارضة', 'code': identifier_error}
         if not meter:
-            return {'error': 'Meter not found', 'code': 'METER_NOT_FOUND'}
+            return {'error': 'Meter not found', 'code': identifier_error or 'METER_NOT_FOUND'}
         if meter.company_id != provider.company_id:
             return {'error': 'Meter is not available for this AMI provider company', 'code': 'ACCESS_DENIED'}
         try:
@@ -298,6 +326,8 @@ class UtilityBillingAPI(http.Controller):
         )
         provider.call_json({
             'meter_number': meter_number,
+            'operational_number': operational_number or meter.operational_number or '',
+            'meter_id': meter.id,
             'reading_id': reading.reading_id,
             'reading_value': reading_value,
         }, 'ami.reading.callback', record=reading)
