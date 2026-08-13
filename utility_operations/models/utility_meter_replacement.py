@@ -18,7 +18,12 @@ class UtilityMeterReplacement(models.Model):
 
     def _compute_picking_ids(self):
         for rec in self:
-            pickings = self.env['stock.picking'].search([('origin', '=', rec.order_number or rec.name)])
+            ref = rec.order_number or rec.name
+            pickings = self.env['stock.picking'].search([
+                '|',
+                ('origin', '=', ref),
+                ('utility_operation_ref', 'ilike', f"REPLACEMENT:{ref}"),
+            ])
             rec.picking_ids = pickings
             rec.picking_count = len(pickings)
 
@@ -28,57 +33,6 @@ class UtilityMeterReplacement(models.Model):
             if vals.get('order_number', _('New')) == _('New'):
                 vals['order_number'] = self.env['ir.sequence'].next_by_code('utility.meter.replacement') or _('New')
         return super().create(vals_list)
-
-    def _create_stock_picking(self, meter, location_dest_usage):
-        if not meter or not meter.product_id:
-            return False
-            
-        stock_location = self.env.ref('stock.stock_location_stock', raise_if_not_found=False)
-        customer_location = self.env.ref('stock.stock_location_customers', raise_if_not_found=False)
-        scrap_location = self.env.ref('stock.stock_location_scrapped', raise_if_not_found=False)
-        
-        if not stock_location or not customer_location:
-            return False
-            
-        loc_id = stock_location.id if location_dest_usage == 'customer' else customer_location.id
-        dest_id = customer_location.id if location_dest_usage == 'customer' else (scrap_location.id if scrap_location else stock_location.id)
-        
-        picking_type = self.env['stock.picking.type'].search([('code', '=', 'outgoing' if location_dest_usage == 'customer' else 'incoming'), ('company_id', '=', self.env.company.id)], limit=1)
-        if not picking_type:
-            return False
-            
-        picking = self.env['stock.picking'].create({
-            'picking_type_id': picking_type.id,
-            'location_id': loc_id,
-            'location_dest_id': dest_id,
-            'origin': self.order_number or self.name,
-        })
-        
-        move = self.env['stock.move'].create({
-            'name': meter.meter_number,
-            'product_id': meter.product_id.id,
-            'product_uom_qty': 1,
-            'product_uom': meter.product_id.uom_id.id,
-            'picking_id': picking.id,
-            'location_id': loc_id,
-            'location_dest_id': dest_id,
-        })
-        
-        if meter.lot_id:
-            self.env['stock.move.line'].create({
-                'move_id': move.id,
-                'product_id': meter.product_id.id,
-                'product_uom_id': meter.product_id.uom_id.id,
-                'qty_done': 1,
-                'lot_id': meter.lot_id.id,
-                'picking_id': picking.id,
-                'location_id': loc_id,
-                'location_dest_id': dest_id,
-            })
-        
-        picking.action_confirm()
-        picking.button_validate()
-        return picking
 
     def action_complete_replacement(self):
         """Complete logistics around the unified core replacement flow."""
@@ -92,9 +46,22 @@ class UtilityMeterReplacement(models.Model):
         })
         old_meter = self.old_meter_id
         new_meter = self.new_meter_id
-        result = self._action_confirm_replacement_unified()
+        ref = self.order_number or self.name
+
+        # 1. Delegate physical stock execution to canonical inventory layer
         if old_meter:
-            self._create_stock_picking(old_meter, 'scrap')
-        if new_meter:
-            self._create_stock_picking(new_meter, 'customer')
+            old_meter.inventory_replace_meter(
+                new_meter=new_meter,
+                origin=ref,
+                operation_ref=f"REPLACEMENT:{ref}",
+                old_destination='inspection',
+            )
+        elif new_meter:
+            new_meter.inventory_install_meter(
+                origin=ref,
+                operation_ref=f"REPLACEMENT:{ref}:INSTALL",
+            )
+
+        # 2. Confirm logical customer & meter state update
+        result = self._action_confirm_replacement_unified()
         return result

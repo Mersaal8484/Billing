@@ -2,6 +2,13 @@ from odoo import fields, models, _
 from odoo.exceptions import UserError
 
 
+class UtilityMeterModelPrepaid(models.Model):
+    _inherit = 'utility.meter.model'
+
+    supports_prepaid = fields.Boolean('يدعم الدفع المسبق (STS/Prepaid)')
+    communication_capabilities = fields.Char('تقنيات الاتصال المدعومة بالموديل')
+
+
 class UtilityMeterPrepaid(models.Model):
     _inherit = 'utility.meter'
 

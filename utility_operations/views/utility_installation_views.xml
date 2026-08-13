@@ -44,7 +44,7 @@
                         <group string="بيانات العداد">
                             <group>
                                 <field name="meter_id" required="1"/>
-                                <field name="meter_serial"/>
+                                <field name="meter_serial_snapshot" readonly="1"/>
                                 <field name="meter_type_id"/>
                             </group>
                             <group>

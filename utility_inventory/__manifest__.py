@@ -14,6 +14,7 @@ Adds lot/serial tracking and product association for physical meters.
     'license': 'LGPL-3',
     'depends': ['utility_core', 'stock', 'product'],
     'data': [
+        'data/utility_inventory_data.xml',
         'views/utility_meter_inventory_views.xml',
         'views/utility_customer_wizard_inventory_views.xml',
     ],

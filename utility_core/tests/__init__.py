@@ -6,3 +6,5 @@ from . import test_customer_lifecycle
 from . import test_customer_mobile_and_meter_ops
 from . import test_external_customer_qr_reference
 from . import test_customer_wizard_meter_onboarding
+from . import test_meter_model_architecture
+

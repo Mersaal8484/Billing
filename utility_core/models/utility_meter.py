@@ -43,10 +43,10 @@ class UtilityMeter(models.Model):
     ], string='نظام العداد', default='manual', required=True)
     meter_type_id = fields.Many2one('utility.meter.type', 'نوع العداد')
     status_id = fields.Many2one('utility.meter.status', 'الحالة')
-    phase = fields.Selection([
-        ('single', 'طور واحد'),
-        ('three', 'ثلاثة أطوار'),
-    ], string='الطور', help='الطور التشغيلي للعداد؛ يُورث من الموديل عند اختياره')
+    phase = fields.Selection(
+        related='model_id.phase', string='الطور', store=True, readonly=True,
+        help='مواصفة الطور الفنية؛ تُجلب من موديل العداد'
+    )
     voltage = fields.Float(
         'الجهد (فولت)', related='model_id.voltage', store=True, readonly=True)
     current_rating = fields.Float(
@@ -410,41 +410,26 @@ class UtilityMeterType(models.Model):
 
 class UtilityMeterModel(models.Model):
     _name = 'utility.meter.model'
-    _description = 'موديل العداد'
+    _description = 'موديل العداد (الكتالوج الفني)'
     _order = 'name'
 
     name = fields.Char('الاسم', required=True)
-    code = fields.Char('Code')
+    code = fields.Char('كود الموديل/الرمز الفني')
     manufacturer = fields.Char('الشركة المصنّعة')
-    meter_type_id = fields.Many2one('utility.meter.type', 'النوع')
+    default_meter_type_id = fields.Many2one('utility.meter.type', 'النوع الافتراضي بالموديل')
+    meter_type_id = fields.Many2one('utility.meter.type', 'نوع العداد الافتراضي', related='default_meter_type_id', readonly=False, store=True)
     phase = fields.Selection([
         ('single', 'طور واحد'),
         ('three', 'ثلاثة أطوار'),
-    ], string='الطور', help='القدرة الطورية الافتراضية لهذا الموديل')
+    ], string='الطور المصنعي', help='الخصائص الطورية المصنعية للموديل')
     voltage = fields.Float('الجهد (فولت)')
     current_rating = fields.Float('شدة التيار (أمبير)')
     power_rating = fields.Float('القدرة (كيلوواط)')
-    voltage_range = fields.Char('Voltage Range')
-    current_range = fields.Char('Current Range')
+    voltage_range = fields.Char('نطاق الجهد')
+    current_range = fields.Char('نطاق التيار')
     sts_supported = fields.Boolean('يدعم STS')
     communication_types = fields.Char('أنواع الاتصال')
-    description = fields.Text('الوصف')
-    product_id = fields.Many2one(
-        'product.product', 'المنتج',
-        help='المنتج الذي يمثل هذا الموديل في نظام المخزون والمحاسبة',
-    )
-
-    def action_open_product(self):
-        self.ensure_one()
-        if self.product_id:
-            return {
-                'type': 'ir.actions.act_window',
-                'name': 'المنتج',
-                'res_model': 'product.product',
-                'res_id': self.product_id.id,
-                'view_mode': 'form',
-                'target': 'current',
-            }
+    description = fields.Text('الوصف الفني')
 
 
 class UtilityMeterStatus(models.Model):

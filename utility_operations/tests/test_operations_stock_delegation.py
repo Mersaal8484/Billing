@@ -1,0 +1,120 @@
+from odoo.tests import TransactionCase, tagged
+from odoo.exceptions import ValidationError
+
+
+@tagged('post_install', '-at_install', 'utility_release', 'utility_operations')
+class TestOperationsStockDelegation(TransactionCase):
+
+    def setUp(self):
+        super().setUp()
+        self.region = self.env['utility.region'].create({
+            'name': 'منطقة العمليات', 'code': 'OP-REG', 'type': 'region',
+        })
+        self.category = self.env['utility.subscriber.category'].create({
+            'name': 'فئة عمليات', 'code': 'OP-CAT',
+        })
+        self.subscriber = self.env['utility.subscriber'].create({
+            'name': 'نوع عمليات', 'code': 'OP-SUB',
+            'category_id': self.category.id,
+        })
+        self.partner = self.env['res.partner'].create({
+            'name': 'عميل العمليات', 'region_id': self.region.id,
+        })
+        self.customer = self.env['utility.customer'].create({
+            'partner_id': self.partner.id,
+            'category_id': self.category.id,
+            'subscriber_id': self.subscriber.id,
+        })
+
+        self.product_serial = self.env['product.product'].create({
+            'name': 'عداد عمليات ذكي',
+            'type': 'product',
+            'tracking': 'serial',
+        })
+        self.lot_1 = self.env['stock.lot'].create({
+            'name': 'SN-OP-101',
+            'product_id': self.product_serial.id,
+            'company_id': self.env.company.id,
+        })
+        self.stock_location = self.env.ref('stock.stock_location_stock')
+        self.env['stock.quant'].create({
+            'product_id': self.product_serial.id,
+            'location_id': self.stock_location.id,
+            'lot_id': self.lot_1.id,
+            'quantity': 1.0,
+        })
+        self.meter = self.env['utility.meter'].create({
+            'meter_number': 'MTR-OP-101',
+            'operational_number': 'OP-NUM-101',
+            'product_id': self.product_serial.id,
+            'lot_id': self.lot_1.id,
+        })
+
+    def test_01_operations_models_do_not_implement_direct_stock_picking_creation(self):
+        """Operations models must not implement _create_stock_picking helper."""
+        self.assertFalse(hasattr(self.env['utility.service.order'], '_create_stock_picking'))
+        self.assertFalse(hasattr(self.env['utility.meter.replacement'], '_create_stock_picking'))
+
+    def test_02_service_order_new_connection_delegates_to_inventory_layer(self):
+        """Service order completion invokes utility_inventory API and creates stock picking."""
+        so = self.env['utility.service.order'].create({
+            'service_type': 'new_connection',
+            'customer_id': self.customer.id,
+            'meter_id': self.meter.id,
+            'description': 'توصيلة جديدة تجريبية',
+            'state': 'in_progress',
+        })
+        so.action_complete()
+        self.assertEqual(so.state, 'completed')
+        self.assertEqual(self.meter.customer_id, self.customer)
+        self.assertEqual(so.picking_count, 1)
+        picking = so.picking_ids[0]
+        self.assertEqual(picking.utility_inventory_operation, 'install')
+        self.assertEqual(picking.utility_meter_id, self.meter)
+
+    def test_03_service_order_removal_delegates_to_inventory_layer(self):
+        """Service order removal routes meter to Meter Inspection via inventory API."""
+        self.meter.inventory_install_meter(origin='PRE-INST')
+        self.meter.write({'customer_id': self.customer.id})
+
+        so = self.env['utility.service.order'].create({
+            'service_type': 'meter_removal',
+            'customer_id': self.customer.id,
+            'meter_id': self.meter.id,
+            'description': 'رفع عداد تجريبي',
+            'state': 'in_progress',
+        })
+        so.action_complete()
+        self.assertEqual(so.state, 'completed')
+        self.assertFalse(self.meter.customer_id)
+        self.assertEqual(self.meter.physical_state, 'inspection')
+
+    def test_04_installation_uses_immutable_serial_snapshot(self):
+        """utility.installation uses meter_serial_snapshot as immutable serial snapshot."""
+        inst = self.env['utility.installation'].create({
+            'customer_id': self.customer.id,
+            'meter_id': self.meter.id,
+        })
+        self.assertEqual(inst.meter_serial_snapshot, 'SN-OP-101')
+        self.assertEqual(inst.meter_serial, 'SN-OP-101')
+
+    def test_05_failed_inventory_validation_rolls_back_service_order_completion(self):
+        """If inventory execution fails (e.g. invalid lot state), service order does not complete."""
+        # Scrap lot
+        scrap_loc = self.env.ref('stock.stock_location_scrapped')
+        self.env['stock.quant'].create({
+            'product_id': self.product_serial.id,
+            'location_id': scrap_loc.id,
+            'lot_id': self.lot_1.id,
+            'quantity': 1.0,
+        })
+        so = self.env['utility.service.order'].create({
+            'service_type': 'new_connection',
+            'customer_id': self.customer.id,
+            'meter_id': self.meter.id,
+            'description': 'توصيلة بفشل مخزني',
+            'state': 'in_progress',
+        })
+        with self.assertRaises(ValidationError):
+            so.action_complete()
+        self.assertEqual(so.state, 'in_progress')

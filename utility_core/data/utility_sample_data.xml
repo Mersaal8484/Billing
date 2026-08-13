@@ -189,7 +189,6 @@ if products:
             <field name="power_rating">13.8</field>
             <field name="sts_supported" eval="True" />
             <field name="communication_types">PLC, GPRS</field>
-            <field name="product_id" ref="utility_product_meter_single" />
         </record>
         <record id="demo_meter_model_three" model="utility.meter.model">
             <field name="name">HEXING Three Phase Smart</field>
@@ -201,7 +200,6 @@ if products:
             <field name="power_rating">41.5</field>
             <field name="sts_supported" eval="True" />
             <field name="communication_types">PLC, 4G</field>
-            <field name="product_id" ref="utility_product_meter_three" />
         </record>
         <record id="utility_product_meter_mech_single" model="product.product">
             <field name="name">عداد ميكانيكي طور واحد (Single Phase Mechanical)</field>
@@ -240,7 +238,6 @@ if products:
             <field name="current_rating">40.0</field>
             <field name="power_rating">9.2</field>
             <field name="sts_supported" eval="False" />
-            <field name="product_id" ref="utility_product_meter_mech_single" />
         </record>
         <record id="demo_meter_model_mech_three" model="utility.meter.model">
             <field name="name">L&amp;T Three Phase Mechanical</field>
@@ -251,7 +248,6 @@ if products:
             <field name="current_rating">100.0</field>
             <field name="power_rating">69.0</field>
             <field name="sts_supported" eval="False" />
-            <field name="product_id" ref="utility_product_meter_mech_three" />
         </record>
         <record id="demo_meter_model_smart_ct" model="utility.meter.model">
             <field name="name">HEXING Three Phase CT Smart</field>
@@ -263,7 +259,6 @@ if products:
             <field name="power_rating">173.0</field>
             <field name="sts_supported" eval="True" />
             <field name="communication_types">PLC, 4G, RS485</field>
-            <field name="product_id" ref="utility_product_meter_ct_three" />
         </record>
         <function model="res.company" name="write">
             <value eval="[ref('base.main_company')]" />

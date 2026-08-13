@@ -40,9 +40,11 @@ class UtilityDropdownMixin(models.AbstractModel):
 
     @api.model
     def _get_meter_product_domain(self):
-        models = self.env['utility.meter.model'].search([('product_id', '!=', False)])
-        product_ids = models.mapped('product_id.id')
-        return [('id', 'in', product_ids)]
+        if 'product_id' in self.env['utility.meter.model']._fields:
+            models = self.env['utility.meter.model'].search([('product_id', '!=', False)])
+            product_ids = models.mapped('product_id.id')
+            return [('id', 'in', product_ids)]
+        return [('id', '=', False)]
 
     @api.model
     def _get_available_new_meter_domain(self):
