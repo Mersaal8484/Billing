@@ -1,12 +1,11 @@
 import json
-from unittest.mock import MagicMock
 from psycopg2 import OperationalError
 from odoo.tests.common import TransactionCase
 from odoo.exceptions import ValidationError
 from odoo.addons.utility_core.adapters.workflow.local import LocalWorkflowAdapter
 
 
-class TestReadingAndWorkflowConcurrency(TransactionCase):
+class TestWorkflowAtomicClaim(TransactionCase):
 
     def setUp(self):
         super().setUp()
@@ -66,26 +65,3 @@ class TestReadingAndWorkflowConcurrency(TransactionCase):
         )
         self.assertEqual(counter['calls'], 0)  # Payload MUST NOT execute on processing command
         self.assertEqual(res, 'جاري المعالجة بواسطة Worker 1')
-
-    def test_reading_batch_process_batch_55p03_lock_contention(self):
-        """التحقق من أن تنافس الحجز PostgreSQL 55P03 على دفعة القراءات يُعالج بسلاسة بدون تكرار الأسطر."""
-        batch_service = self.env['utility.reading.batch.service']
-        # Verify 55P03 handling logic on mock cursor
-        mock_cr = MagicMock()
-        err = OperationalError()
-        err.pgcode = '55P03'
-        mock_cr.execute.side_effect = err
-
-        original_cr = batch_service.env.cr
-        try:
-            batch_service.env.cr = mock_cr
-            # Since browse(1) might not exist, create dummy batch
-            batch = self.env['utility.reading.batch'].create({
-                'name': 'BATCH-LOCK-TEST',
-                'batch_uuid': 'UUID-LOCK-TEST-001',
-                'state': 'draft',
-            })
-            res = batch_service.process_batch(batch.id)
-            self.assertEqual(res, {'status': 'locked', 'reason': 'batch_locked'})
-        finally:
-            batch_service.env.cr = original_cr

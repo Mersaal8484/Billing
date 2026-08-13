@@ -1,6 +1,6 @@
 import json
 import logging
-from psycopg2 import OperationalError
+from psycopg2 import OperationalError, IntegrityError
 from odoo import fields, _
 from odoo.exceptions import ValidationError
 from .base import AbstractWorkflowAdapter
@@ -17,9 +17,9 @@ class LocalWorkflowAdapter(AbstractWorkflowAdapter):
     def _dispatch_command(self, period, action_type, payload_func, summary_func, payload_data=None):
         """
         تنفيذ أمر عبر نمط صندوق الرسائل المنشورة مع الادعاء الذري (Atomic Claim & Durable Local Outbox Dispatcher):
-        1. إنشاء/جلب أمر بمفتاح عدم التكرار (Idempotency Key).
+        1. إنشاء/جلب أمر بمفتاح عدم التكرار مع معالجة سباق الإنشاء (Create Race Condition).
         2. حجز السجل ذريًا بواسطة FOR UPDATE NOWAIT مع معالجة 55P03 فقط عند التنافس.
-        3. التحقق المنطقي من الحالة (مكفولة ألا تُعاد معالجة الأوامر في حالتي processing أو executed).
+        3. إبطال الـ Cache وقراءة أحدث حالة صريحة من قاعدة البيانات عبر invalidate_recordset.
         4. تحويل الحالة ذريًا من pending/failed إلى processing وتسجيل وقت البدء وزيادة عدد المحاولات.
         5. تنفيذ الإجراء المستهدف (Business Function) مرة واحدة فقط.
         6. عند النجاح: تحويل الحالة إلى executed وتسجيل وقت الإكمال والنتيجة.
@@ -30,16 +30,26 @@ class LocalWorkflowAdapter(AbstractWorkflowAdapter):
         payload_str = json.dumps(payload_data, ensure_ascii=False) if payload_data else False
 
         existing = cmd_model.search([('idempotency_key', '=', idempotency_key)], limit=1)
-        cmd = existing or cmd_model.create({
-            'name': f"CMD-{action_type.upper()}-{period.period_code}",
-            'idempotency_key': idempotency_key,
-            'period_id': period.id,
-            'action_type': action_type,
-            'state': 'pending',
-            'workflow_id': period.workflow_id,
-            'workflow_run_id': period.workflow_run_id,
-            'payload_json': payload_str,
-        })
+        if existing:
+            cmd = existing
+        else:
+            try:
+                with self.env.cr.savepoint():
+                    cmd = cmd_model.create({
+                        'name': f"CMD-{action_type.upper()}-{period.period_code}",
+                        'idempotency_key': idempotency_key,
+                        'period_id': period.id,
+                        'action_type': action_type,
+                        'state': 'pending',
+                        'workflow_id': period.workflow_id,
+                        'workflow_run_id': period.workflow_run_id,
+                        'payload_json': payload_str,
+                    })
+            except (IntegrityError, Exception):
+                cmd = cmd_model.search([('idempotency_key', '=', idempotency_key)], limit=1)
+
+        if not cmd:
+            raise ValidationError(_("فشل الحصول على أمر مسار العمل."))
 
         try:
             self.env.cr.execute(
@@ -53,7 +63,7 @@ class LocalWorkflowAdapter(AbstractWorkflowAdapter):
                 return cmd.result_summary
             raise
 
-        cmd.refresh()
+        cmd.invalidate_recordset(['state', 'attempt_count', 'max_attempts', 'result_summary'])
         if cmd.state == 'executed':
             _logger.info("Command already executed for key %s (UUID: %s)", idempotency_key, cmd.command_uuid)
             return cmd.result_summary
@@ -192,16 +202,26 @@ class LocalWorkflowAdapter(AbstractWorkflowAdapter):
         cmd_model = self.env['utility.workflow.command'].sudo()
         existing = cmd_model.search([('idempotency_key', '=', idempotency_key)], limit=1)
 
-        cmd = existing or cmd_model.create({
-            'name': f"CMD-BATCH-{batch.name}" + (f"-R{batch.retry_count}" if retry_suffix else ""),
-            'idempotency_key': idempotency_key,
-            'action_type': 'reading_batch',
-            'period_id': batch.date_range_id.id if batch.date_range_id else False,
-            'res_model': 'utility.reading.batch',
-            'res_id': batch.id,
-            'state': 'pending',
-            'payload_json': json.dumps({'batch_id': batch.id, 'batch_uuid': batch.batch_uuid, 'retry_count': getattr(batch, 'retry_count', 0)}, ensure_ascii=False),
-        })
+        if existing:
+            cmd = existing
+        else:
+            try:
+                with self.env.cr.savepoint():
+                    cmd = cmd_model.create({
+                        'name': f"CMD-BATCH-{batch.name}" + (f"-R{batch.retry_count}" if retry_suffix else ""),
+                        'idempotency_key': idempotency_key,
+                        'action_type': 'reading_batch',
+                        'period_id': batch.date_range_id.id if batch.date_range_id else False,
+                        'res_model': 'utility.reading.batch',
+                        'res_id': batch.id,
+                        'state': 'pending',
+                        'payload_json': json.dumps({'batch_id': batch.id, 'batch_uuid': batch.batch_uuid, 'retry_count': getattr(batch, 'retry_count', 0)}, ensure_ascii=False),
+                    })
+            except (IntegrityError, Exception):
+                cmd = cmd_model.search([('idempotency_key', '=', idempotency_key)], limit=1)
+
+        if not cmd:
+            raise ValidationError(_("فشل الحصول على أمر مسار العمل للدفعة."))
 
         try:
             self.env.cr.execute(
@@ -215,7 +235,7 @@ class LocalWorkflowAdapter(AbstractWorkflowAdapter):
                 return cmd.result_summary
             raise
 
-        cmd.refresh()
+        cmd.invalidate_recordset(['state', 'attempt_count', 'max_attempts', 'result_summary'])
         if cmd.state == 'executed':
             _logger.info("Batch Command already executed for key %s (UUID: %s)", idempotency_key, cmd.command_uuid)
             return cmd.result_summary
