@@ -126,6 +126,7 @@ class UtilityMediaService(models.AbstractModel):
 
         sha256_hash = self.calculate_sha256(raw_bytes)
         file_size = len(raw_bytes)
+        active_backend = self.env['ir.config_parameter'].sudo().get_param('utility.media_backend', 'attachment')
 
         # فحص وجود أصل سابق بنفس البصمة لإعادة استخدام الـ Attachment الثنائي دون تكرار تخزين الملف
         existing_asset = self.env['utility.media.asset'].sudo().search([
@@ -134,18 +135,22 @@ class UtilityMediaService(models.AbstractModel):
             ('state', '=', 'ready'),
         ], limit=1)
 
-        active_backend = self.env['ir.config_parameter'].sudo().get_param('utility.media_backend', 'attachment')
+        create_vals = {
+            'original_filename': filename,
+            'mime_type': mimetype,
+            'file_size': file_size,
+            'sha256': sha256_hash,
+            'asset_type': asset_type,
+            'reading_id': reading_id,
+            'state': 'processing',
+            'storage_backend': active_backend,
+        }
+        if batch_id and 'batch_id' in self.env['utility.media.asset']._fields:
+            create_vals['batch_id'] = batch_id
 
         if existing_asset and existing_asset.original_attachment_id:
             _logger.info("Reusing binary attachments from SHA256 match asset %s for new evidence record", existing_asset.asset_uuid)
-            new_asset = self.env['utility.media.asset'].sudo().create({
-                'original_filename': filename,
-                'mime_type': mimetype,
-                'file_size': file_size,
-                'sha256': sha256_hash,
-                'asset_type': asset_type,
-                'reading_id': reading_id,
-                'batch_id': batch_id,
+            reused_vals = dict(create_vals, **{
                 'state': 'ready',
                 'storage_backend': existing_asset.storage_backend or active_backend,
                 'original_attachment_id': existing_asset.original_attachment_id.id,
@@ -153,20 +158,11 @@ class UtilityMediaService(models.AbstractModel):
                 'thumbnail_attachment_id': existing_asset.thumbnail_attachment_id.id if existing_asset.thumbnail_attachment_id else existing_asset.original_attachment_id.id,
                 'processed_at': fields.Datetime.now(),
             })
+            new_asset = self.env['utility.media.asset'].sudo().create(reused_vals)
             return new_asset
 
         # إنشاء سجل الأصل الرقمي
-        asset = self.env['utility.media.asset'].sudo().create({
-            'original_filename': filename,
-            'mime_type': mimetype,
-            'file_size': file_size,
-            'sha256': sha256_hash,
-            'asset_type': asset_type,
-            'reading_id': reading_id,
-            'batch_id': batch_id,
-            'state': 'processing',
-            'storage_backend': active_backend,
-        })
+        asset = self.env['utility.media.asset'].sudo().create(create_vals)
 
         try:
             adapter = self.get_media_adapter()

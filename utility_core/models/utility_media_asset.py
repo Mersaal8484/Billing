@@ -24,7 +24,6 @@ class UtilityMediaAsset(models.Model):
     ], string='نوع الأصل الرقمي', default='meter_reading', required=True, index=True)
 
     reading_id = fields.Many2one('utility.reading', string='القراءة المرتبطة', index=True, ondelete='cascade')
-    batch_id = fields.Many2one('utility.reading.batch', string='الدفعة المرتبطة', index=True, ondelete='set null')
 
     original_filename = fields.Char('اسم الملف الأصلي', required=True)
     mime_type = fields.Char('نوع الملف MIME', default='image/jpeg', required=True)

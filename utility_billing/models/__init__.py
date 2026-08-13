@@ -23,3 +23,5 @@ from . import utility_payment_gateway_transaction
 from . import utility_payment_allocation
 from . import utility_collection
 from . import utility_bank_settlement
+from . import utility_media_asset
+
