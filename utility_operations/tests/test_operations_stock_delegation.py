@@ -187,3 +187,50 @@ class TestOperationsStockDelegation(TransactionCase):
         self.assertEqual(new_meter.customer_id, self.customer)
         self.assertEqual(new_meter.physical_state, 'installed')
 
+    def test_09_disconnection_service_order_resolves_customer_from_meter(self):
+        """Disconnection resolves customer from attached meter if customer_id is empty, or fails if unresolvable."""
+        self.meter.inventory_install_meter(origin='PRE-INST-09')
+        self.meter.write({'customer_id': self.customer.id})
+
+        # 1. Successful disconnection resolving customer from meter_id
+        so = self.env['utility.service.order'].create({
+            'service_type': 'disconnection',
+            'meter_id': self.meter.id,
+            'description': 'فصل العداد عبر العداد المباشر',
+            'state': 'in_progress',
+        })
+        so.action_complete()
+        self.assertEqual(so.state, 'completed')
+        self.assertEqual(self.customer.state, 'suspended')
+
+        # 2. Unresolvable customer raises ValidationError
+        unattached_meter = self.env['utility.meter'].create({
+            'meter_number': 'MTR-UNATTACHED',
+            'product_id': self.product_serial.id,
+        })
+        so_fail = self.env['utility.service.order'].create({
+            'service_type': 'disconnection',
+            'meter_id': unattached_meter.id,
+            'description': 'فصل بلا مشترك',
+            'state': 'in_progress',
+        })
+        with self.assertRaises(ValidationError):
+            so_fail.action_complete()
+
+    def test_10_reconnection_service_order_executes_lifecycle(self):
+        """Reconnection executes action_reconnect on customer."""
+        self.customer.state = 'suspended'
+        self.meter.write({'customer_id': self.customer.id})
+
+        so = self.env['utility.service.order'].create({
+            'service_type': 'reconnection',
+            'customer_id': self.customer.id,
+            'meter_id': self.meter.id,
+            'description': 'إعادة توصيل المشترك',
+            'state': 'in_progress',
+        })
+        so.action_complete()
+        self.assertEqual(so.state, 'completed')
+        self.assertEqual(self.customer.state, 'active')
+
+

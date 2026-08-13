@@ -139,8 +139,10 @@ class UtilityServiceOrder(models.Model):
                 raise ValidationError(_('أمر الفصل/الرفع يتطلب تحديد العداد المراد رفعه (meter_id أو old_meter_id).'))
 
         elif self.service_type in ('disconnection', 'reconnection'):
-            if not self.customer_id and not (self.meter_id or self.old_meter_id):
-                raise ValidationError(_('أمر الفصل/إعادة التوصيل يتطلب تحديد المشترك أو العداد.'))
+            target_meter = self.meter_id or self.old_meter_id or self.new_meter_id
+            target_customer = self.customer_id or (target_meter and target_meter.customer_id)
+            if not target_customer:
+                raise ValidationError(_('أمر الفصل/إعادة التوصيل يتطلب تحديد المشترك صراحة أو اختيار عداد مرتبط بمشترك فعلي.'))
 
     def action_complete(self):
         self._check_state_transition(['in_progress'])
@@ -201,21 +203,27 @@ class UtilityServiceOrder(models.Model):
                 _('رفع العداد عبر أمر خدمة %s: %s') % (self.order_number, self.description),
                 ref_record=self)
 
-        elif self.service_type == 'disconnection' and self.customer_id:
-            self.customer_id.with_context(
+        elif self.service_type == 'disconnection':
+            target_meter = self.meter_id or self.old_meter_id
+            target_customer = self.customer_id or (target_meter and target_meter.customer_id)
+            if not target_customer:
+                raise ValidationError(_('تعذر تنفيذ الفصل: لم يتم العثور على مشترك مرتبط بأمر الخدمة.'))
+            target_customer.with_context(
                 lifecycle_service_order=True).action_disconnect(
                     reason=self.description, service_order=self)
-            target_meter = self.meter_id or self.old_meter_id
             if target_meter:
                 self.env['utility.meter.log'].with_context(ctx)._create_log(
                     target_meter, 'disconnection',
                     _('فصل العداد عبر أمر خدمة %s: %s') % (self.order_number, self.description),
                     ref_record=self)
-        elif self.service_type == 'reconnection' and self.customer_id:
-            self.customer_id.with_context(
+        elif self.service_type == 'reconnection':
+            target_meter = self.meter_id or self.new_meter_id or self.old_meter_id
+            target_customer = self.customer_id or (target_meter and target_meter.customer_id)
+            if not target_customer:
+                raise ValidationError(_('تعذر تنفيذ إعادة التوصيل: لم يتم العثور على مشترك مرتبط بأمر الخدمة.'))
+            target_customer.with_context(
                 lifecycle_service_order=True).action_reconnect(
                     reason=self.description, service_order=self)
-            target_meter = self.meter_id or self.new_meter_id or self.old_meter_id
             if target_meter:
                 self.env['utility.meter.log'].with_context(ctx)._create_log(
                     target_meter, 'reconnection',
