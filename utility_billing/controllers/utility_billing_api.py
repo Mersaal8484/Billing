@@ -3,6 +3,7 @@ from odoo.http import request
 import hmac
 import logging
 from psycopg2 import IntegrityError
+from odoo.addons.utility_core.models.utility_integration import sanitize_sensitive_payload
 
 _logger = logging.getLogger(__name__)
 
@@ -291,14 +292,15 @@ class UtilityBillingAPI(http.Controller):
             return {'error': 'Only pending payment transactions can receive callbacks'}
         if status in ('success', 'done', 'paid') and not provider_reference:
             return {'error': 'Provider reference is required for successful payments'}
+        sanitized_params = str(sanitize_sensitive_payload(params))
         if status not in ('success', 'done', 'paid'):
             tx.write({
                 'state': 'failed',
-                'callback_payload': str(params),
+                'callback_payload': sanitized_params,
                 'error_message': params.get('error') or 'Payment gateway reported failure',
             })
             return {'success': False, 'state': tx.state}
-        tx.action_confirm_payment(provider_reference=provider_reference, callback_payload=str(params))
+        tx.action_confirm_payment(provider_reference=provider_reference, callback_payload=sanitized_params)
         return {'success': True, 'state': tx.state, 'payment_id': tx.payment_id.id}
 
     @http.route('/api/v1/utility/operations/service_request', type='json', auth='user', methods=['POST'])

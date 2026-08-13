@@ -118,15 +118,27 @@ class UtilityUpgradeValidationWizard(models.TransientModel):
                 'detail': 'كل رقم تسلسلي مادي مرتبط بعداد نشط واحد كحد أقصى.',
             }))
 
-        # 2d. Meter / Lot Product Mismatch & Company Mismatch
-        mismatch_meters = Meter.search([('lot_id', '!=', False), ('active', '=', True)])
-        mismatch_count = 0
-        company_mismatch_count = 0
-        for m in mismatch_meters:
-            if hasattr(m, 'product_id') and m.product_id and m.lot_id.product_id != m.product_id:
-                mismatch_count += 1
-            if m.company_id and m.customer_id and m.customer_id.company_id and m.company_id != m.customer_id.company_id:
-                company_mismatch_count += 1
+        # 2d. Meter / Lot Product Mismatch & Company Mismatch (High-Performance SQL Aggregates)
+        self.env.cr.execute("""
+            SELECT COUNT(m.id)
+              FROM utility_meter m
+              JOIN stock_lot l ON l.id = m.lot_id
+             WHERE m.active = True
+               AND m.product_id IS NOT NULL
+               AND l.product_id <> m.product_id
+        """)
+        mismatch_count = self.env.cr.fetchone()[0]
+
+        self.env.cr.execute("""
+            SELECT COUNT(m.id)
+              FROM utility_meter m
+              JOIN utility_customer c ON c.id = m.customer_id
+             WHERE m.active = True
+               AND m.company_id IS NOT NULL
+               AND c.company_id IS NOT NULL
+               AND m.company_id <> c.company_id
+        """)
+        company_mismatch_count = self.env.cr.fetchone()[0]
 
         if mismatch_count > 0:
             lines.append((0, 0, {

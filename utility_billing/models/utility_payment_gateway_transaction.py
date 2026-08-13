@@ -2,6 +2,7 @@ import secrets
 
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
+from odoo.addons.utility_core.models.utility_integration import sanitize_sensitive_payload
 
 
 class UtilityPaymentGatewayTransaction(models.Model):
@@ -218,6 +219,6 @@ class UtilityPaymentGatewayTransaction(models.Model):
                 'state': 'done',
                 'payment_id': payment.id,
                 'provider_reference': provider_reference or tx.provider_reference,
-                'callback_payload': callback_payload or tx.callback_payload,
+                'callback_payload': str(sanitize_sensitive_payload(callback_payload or tx.callback_payload)),
                 'error_message': False,
             })

@@ -7,6 +7,50 @@ from odoo import api, fields, models, _
 
 _logger = logging.getLogger(__name__)
 
+SENSITIVE_PAYLOAD_KEYS = {
+    'token', 'callback_token', 'access_token', 'signature', 'authorization',
+    'api_key', 'apikey', 'secret', 'password', 'jwt', 'auth_token', 'webhook_secret',
+}
+
+
+def sanitize_sensitive_payload(payload):
+    """Sanitize sensitive keys (tokens, secrets, signatures, passwords) in payloads.
+    Supports python dicts, JSON strings, or stringified dicts."""
+    if not payload:
+        return payload
+
+    if isinstance(payload, str):
+        try:
+            data = json.loads(payload)
+            if isinstance(data, dict):
+                return json.dumps(sanitize_sensitive_payload(data), ensure_ascii=False)
+        except Exception:
+            pass
+        try:
+            import ast
+            data = ast.literal_eval(payload)
+            if isinstance(data, dict):
+                return str(sanitize_sensitive_payload(data))
+        except Exception:
+            pass
+        return payload
+
+    if isinstance(payload, dict):
+        clean_dict = {}
+        for k, v in payload.items():
+            if str(k).lower() in SENSITIVE_PAYLOAD_KEYS:
+                clean_dict[k] = '***REDACTED***'
+            elif isinstance(v, dict):
+                clean_dict[k] = sanitize_sensitive_payload(v)
+            elif isinstance(v, list):
+                clean_dict[k] = [sanitize_sensitive_payload(item) if isinstance(item, dict) else item for item in v]
+            else:
+                clean_dict[k] = v
+        return clean_dict
+
+    return payload
+
+
 # أنواع المزودين المدعومة لعمليات الدفع
 PAYMENT_PROVIDER_TYPES = {'payment_gateway', 'mobile_money', 'bank_transfer', 'direct_debit'}
 
@@ -185,12 +229,13 @@ class UtilityIntegrationProvider(models.Model):
 
     def call_json(self, payload, event_type, record=None):
         self.ensure_one()
+        sanitized = sanitize_sensitive_payload(payload)
         log = self.env['utility.integration.log'].sudo().create({
             'provider_id': self.id,
             'event_type': event_type,
             'model_name': record._name if record else False,
             'res_id': record.id if record else False,
-            'request_payload': json.dumps(payload, ensure_ascii=False, default=str),
+            'request_payload': json.dumps(sanitized, ensure_ascii=False, default=str),
             'state': 'pending',
         })
         if self.mode == 'manual':

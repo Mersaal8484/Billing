@@ -25,6 +25,7 @@ class UtilityMeterExt(models.Model):
         ('repair', 'قيد الصيانة'),
         ('scrap', 'تالف / خردة'),
     ], string='الحالة الفيزيائية', compute='_compute_physical_state', store=False)
+    last_integrity_check_at = fields.Datetime('تاريخ آخر فحص محاذاة', index=True)
 
     def _get_lot_current_location(self):
         self.ensure_one()
@@ -577,12 +578,14 @@ class UtilityMeterExt(models.Model):
     @api.model
     def cron_check_meter_stock_alignment(self, batch_limit=500):
         """فحص وتدقيق التوافق بين الحالة المنطقية والموقع المخزني الفعلي.
-        الدالة تكتشف وتسجل الفروقات في نموذج Exception Log (utility.meter.integrity.issue)
+        تستخدم الدالة Cursor مبنياً على تاريخ آخر فحص لتغطية جميع العدادات بالتتابع،
+        وتكتشف وتسجل الفروقات في نموذج Exception Log (utility.meter.integrity.issue)
         دون أي تعديل آلي لحماية بيانات الأصول والمحاسبة، مع تطبيق منع التكرار (Deduplication)."""
-        meters = self.search([('active', '=', True)], limit=batch_limit)
+        meters = self.search([('active', '=', True)], order='last_integrity_check_at asc nulls first, id asc', limit=batch_limit)
         Issue = self.env['utility.meter.integrity.issue']
         Quant = self.env['stock.quant']
         processed_issues = Issue.browse()
+        now = fields.Datetime.now()
 
         def _log_or_update_issue(meter, issue_type, severity, message, lot=None, loc=None, cust=None, wh=None):
             existing = Issue.search([
@@ -592,7 +595,7 @@ class UtilityMeterExt(models.Model):
             ], limit=1)
             if existing:
                 existing.write({
-                    'detected_at': fields.Datetime.now(),
+                    'detected_at': now,
                     'message': message,
                     'severity': severity,
                     'physical_location_id': loc.id if loc else existing.physical_location_id.id,
@@ -694,6 +697,9 @@ class UtilityMeterExt(models.Model):
                         lot=meter.lot_id, loc=current_loc, wh=wh
                     )
                     processed_issues |= issue
+
+        if meters:
+            meters.write({'last_integrity_check_at': now})
 
         return len(processed_issues)
 
