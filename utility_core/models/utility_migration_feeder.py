@@ -1,11 +1,15 @@
 from odoo import api, fields, models, _
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 
 
 class UtilityMigrationFeeder(models.Model):
     _name = 'utility.migration.feeder'
     _description = 'تهيئة بيانات الفيدرات والخلايا (النظام القديم)'
     _order = 'id asc'
+
+    company_id = fields.Many2one(
+        'res.company', string='الشركة', required=True,
+        default=lambda self: self.env.company, index=True)
 
     name = fields.Char('اسم العرض / الخلية', required=True)
     legacy_region = fields.Char('رمز المنطقة')
@@ -85,19 +89,30 @@ class UtilityMigrationFeeder(models.Model):
     # -------------------------------------------------------------------------
 
     def action_map_codes(self):
-        """مطابقة رمز المنطقة ورمز الفرع عبر جدول الترميز بنفس منطق تمبلت المشتركين"""
-        mapping_obj = self.env['utility.migration.mapping']
+        """مطابقة رمز المنطقة ورمز الفرع عبر ذاكرة التخزين المؤقت للشركة."""
         for rec in self:
             if rec.state == 'imported':
                 continue
+            company_id = rec.company_id.id or self.env.company.id
+            cache = self.env['utility.migration.mapping'].get_mapping_cache(company_id)
+            missing = []
+
             if rec.legacy_region:
-                mapping = mapping_obj.search([('mapping_type', '=', 'region'), ('legacy_code', '=', rec.legacy_region)], limit=1)
-                if mapping:
-                    rec.region_id = mapping.region_id.id
+                val = cache.get(('region', rec.legacy_region.strip()))
+                if val:
+                    rec.region_id = val.id
+                else:
+                    missing.append(f"MISSING_REGION_MAPPING: {rec.legacy_region}")
+
             if rec.legacy_area:
-                mapping = mapping_obj.search([('mapping_type', '=', 'area'), ('legacy_code', '=', rec.legacy_area)], limit=1)
-                if mapping:
-                    rec.area_id = mapping.area_id.id
+                val = cache.get(('area', rec.legacy_area.strip()))
+                if val:
+                    rec.area_id = val.id
+                else:
+                    missing.append(f"MISSING_AREA_MAPPING: {rec.legacy_area}")
+
+            if missing:
+                rec.error_message = "\n".join(missing)
 
     # -------------------------------------------------------------------------
     # Main Actions
@@ -106,28 +121,44 @@ class UtilityMigrationFeeder(models.Model):
     def action_import_data(self):
         """
         اعتماد ورفع بيانات الفيدرات والخلايا:
-        - إنشاء / تحديث utility.feeder
+        - إنشاء / تحديث utility.feeder محصور بالشركة ومحدد الهوية
         - إنشاء / تحديث utility.meter وتعيين connection_type = 'feeder' و is_coupling_meter = True
-        - إنشاء القراءة الافتتاحية utility.reading (state='billed')
+        - إنشاء القراءة الافتتاحية utility.reading (state='billed' أو 'approved') بدون كتابة مباشرة للـ feeder_id الـ related
         """
         for rec in self:
             if rec.state == 'imported':
                 continue
             try:
                 with self.env.cr.savepoint():
-                    code = rec.feeder_code or rec.legacy_analytic_id or rec.name
-                    feeder_name = rec.feeder_name or rec.name
+                    rec.action_map_codes()
+                    company_id = rec.company_id.id or self.env.company.id
 
-                    # 1. Search or create utility.feeder
-                    feeder = self.env['utility.feeder'].search([
-                        '|', ('code', '=', code), ('name', '=', feeder_name)
-                    ], limit=1)
+                    # 1. Stable Business Identity
+                    code = (rec.feeder_code or rec.legacy_analytic_id or '').strip()
+                    if not code:
+                        if rec.name:
+                            code = rec.name.strip()
+                        else:
+                            raise ValidationError(_('MISSING_FEEDER_IDENTITY: يلزم توفر رمز الفيدر أو الحساب التحليلي لتحديد الهوية المرجعية.'))
+
+                    feeder_name = rec.feeder_name or rec.name or code
+
+                    # Search or create utility.feeder (Company-Scoped & Identity-Checked)
+                    feeder = rec.created_feeder_id
+                    if not feeder:
+                        feeders = self.env['utility.feeder'].search([
+                            ('company_id', '=', company_id),
+                            ('code', '=', code),
+                        ])
+                        if len(feeders) > 1:
+                            raise ValidationError(_('AMBIGUOUS_FEEDER_IDENTITY: تعددت الفيدرات بنفس الرمز (%s) لنفس الشركة.') % code)
+                        feeder = feeders[:1]
 
                     feeder_vals = {
                         'name': feeder_name,
                         'code': code,
                         'notes': rec.description,
-                        'company_id': self.env.company.id,
+                        'company_id': company_id,
                         'active': rec.is_active,
                     }
                     if rec.area_id:
@@ -142,13 +173,16 @@ class UtilityMigrationFeeder(models.Model):
 
                     rec.created_feeder_id = feeder.id
 
-                    # 2. Search or create meter as a Coupling Meter (عداد مقارنة ورصد رئيسي)
-                    meter_num = rec.meter_number or rec.cell_meter_number or code
+                    # 2. Search or create meter as a Coupling Meter (Company-Scoped)
+                    meter_num = (rec.meter_number or rec.cell_meter_number or code).strip()
                     multiplier = rec.meter_multiplier or rec.cell_meter_multiplier or 1.0
 
-                    meter = self.env['utility.meter'].search([
-                        ('meter_number', '=', meter_num)
-                    ], limit=1)
+                    meter = rec.created_meter_id
+                    if not meter:
+                        meter = self.env['utility.meter'].search([
+                            ('company_id', '=', company_id),
+                            ('meter_number', '=', meter_num),
+                        ], limit=1)
 
                     status_active = self.env['utility.meter.status'].search([('code', '=', 'ACTIVE')], limit=1)
 
@@ -157,9 +191,9 @@ class UtilityMigrationFeeder(models.Model):
                         'multiplier': multiplier,
                         'connection_type': 'feeder',
                         'linked_feeder_id': feeder.id,
-                        'company_id': self.env.company.id,
+                        'company_id': company_id,
                         'payment_type': 'manual',
-                        'is_coupling_meter': True,  # عداد مقارنة ورصد رئيسي
+                        'is_coupling_meter': True,
                         'active': True,
                     }
                     if status_active:
@@ -171,34 +205,34 @@ class UtilityMigrationFeeder(models.Model):
                         meter = self.env['utility.meter'].create(meter_vals)
 
                     rec.created_meter_id = meter.id
-
-                    # Set coupling meter on feeder
                     feeder.write({'coupling_meter_id': meter.id})
 
-                    # 3. Create initial/opening reading using current_reading or opening_reading
-                    curr_val = rec.current_reading or rec.opening_reading
-                    if curr_val:
-                        existing_reading = self.env['utility.reading'].search([
-                            ('meter_id', '=', meter.id),
-                            ('feeder_id', '=', feeder.id),
-                            ('reading_purpose', '=', 'opening')
-                        ], limit=1)
+                    # 3. Create initial/opening reading (Zero reading 0.0 is VALID!)
+                    curr_val = rec.current_reading if (rec.current_reading is not False and rec.current_reading is not None) else rec.opening_reading
+                    if curr_val is not False and curr_val is not None:
+                        reading = rec.created_reading_id
+                        if not reading:
+                            reading = self.env['utility.reading'].search([
+                                ('meter_id', '=', meter.id),
+                                ('reading_purpose', '=', 'opening')
+                            ], limit=1)
 
+                        # Note: feeder_id is related to meter_id on utility.reading; DO NOT pass directly
                         reading_vals = {
                             'meter_id': meter.id,
-                            'feeder_id': feeder.id,
-                            'reading_value': curr_val,
+                            'reading_value': float(curr_val),
                             'reading_date': fields.Datetime.now(),
                             'reading_type': 'manual',
                             'reading_purpose': 'opening',
+                            'reading_event': 'normal',
                             'is_initial_reading': True,
                             'reading_category': 'feeder',
+                            'reading_source': 'legacy_migration',
                             'state': 'billed',
                         }
 
-                        if existing_reading:
-                            existing_reading.write(reading_vals)
-                            reading = existing_reading
+                        if reading:
+                            reading.write(reading_vals)
                         else:
                             reading = self.env['utility.reading'].create(reading_vals)
 

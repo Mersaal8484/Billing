@@ -5,6 +5,7 @@
         <field name="model">utility.migration.mapping</field>
         <field name="arch" type="xml">
             <tree string="جدول الترميز" editable="bottom">
+                <field name="company_id" groups="base.group_multi_company"/>
                 <field name="mapping_type"/>
                 <field name="legacy_code"/>
                 <field name="region_id" attrs="{'readonly': [('mapping_type', '!=', 'region')], 'required': [('mapping_type', '=', 'region')]}"/>
@@ -16,10 +17,33 @@
         </field>
     </record>
 
+    <record id="view_utility_migration_mapping_search" model="ir.ui.view">
+        <field name="name">utility.migration.mapping.search</field>
+        <field name="model">utility.migration.mapping</field>
+        <field name="arch" type="xml">
+            <search string="بحث جدول الترميز">
+                <field name="legacy_code"/>
+                <field name="mapping_type"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <separator/>
+                <filter string="المنطقة" name="filter_region" domain="[('mapping_type', '=', 'region')]"/>
+                <filter string="الفرع" name="filter_area" domain="[('mapping_type', '=', 'area')]"/>
+                <filter string="الفئة" name="filter_category" domain="[('mapping_type', '=', 'category')]"/>
+                <filter string="نوع المشترك" name="filter_subscriber" domain="[('mapping_type', '=', 'subscriber')]"/>
+                <filter string="قالب العقد" name="filter_contract" domain="[('mapping_type', '=', 'contract')]"/>
+                <group expand="0" string="تجميع حسب">
+                    <filter string="نوع الترميز" name="group_type" context="{'group_by': 'mapping_type'}"/>
+                    <filter string="الشركة" name="group_company" context="{'group_by': 'company_id'}" groups="base.group_multi_company"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
     <record id="action_utility_migration_mapping" model="ir.actions.act_window">
         <field name="name">جدول الترميز</field>
         <field name="res_model">utility.migration.mapping</field>
         <field name="view_mode">tree</field>
+        <field name="search_view_id" ref="view_utility_migration_mapping_search"/>
     </record>
 
 </odoo>

@@ -38,6 +38,8 @@
                 <field name="current_balance"/>
                 <field name="meter_reading"/>
                 <field name="phase"/>
+                <field name="meter_model_id"/>
+                <field name="company_id" groups="base.group_multi_company"/>
                 <field name="state" widget="badge"
                        decoration-info="state=='draft'"
                        decoration-success="state=='imported'"
@@ -62,12 +64,6 @@
                             type="object"
                             class="oe_highlight"
                             attrs="{'invisible': [('state', '=', 'imported')]}"/>
-                    <!--
-                        زر التفعيل يظهر فقط للعملاء الذين:
-                        - تم رفعهم (state = imported)
-                        - غير فعالين (is_active = False)
-                        - لا يوجد لهم حساب مشترك بعد (created_customer_id غير محدد)
-                    -->
                     <button name="action_activate_inactive"
                             string="🔄 تفعيل العميل"
                             type="object"
@@ -82,7 +78,6 @@
                     <field name="state" widget="statusbar" statusbar_visible="draft,imported,error"/>
                 </header>
                 <sheet>
-                    <!-- Smart Buttons -->
                     <div class="oe_button_box" name="button_box">
                         <button name="action_open_customer"
                                 type="object"
@@ -109,6 +104,7 @@
                     </div>
                     <group>
                         <group string="البيانات الأساسية">
+                            <field name="company_id" groups="base.group_multi_company"/>
                             <field name="customer_number"/>
                             <field name="mobile"/>
                             <field name="national_id"/>
@@ -136,6 +132,7 @@
                             <field name="opening_reading"
                                    attrs="{'invisible': [('is_active', '=', False)]}"/>
                             <field name="phase"/>
+                            <field name="meter_model_id"/>
                             <field name="is_private_transformer"/>
                         </group>
                         <group string="بيانات أخرى">
@@ -178,24 +175,24 @@
                 <field name="name"/>
                 <field name="mobile"/>
                 <field name="national_id"/>
+                <field name="company_id" groups="base.group_multi_company"/>
                 <filter string="العملاء الفعالين"    name="filter_active"   domain="[('is_active', '=', True)]"/>
                 <filter string="العملاء غير الفعالين" name="filter_inactive" domain="[('is_active', '=', False)]"/>
                 <filter string="مسودة"   name="filter_draft"    domain="[('state', '=', 'draft')]"/>
                 <filter string="تم الرفع" name="filter_imported" domain="[('state', '=', 'imported')]"/>
                 <filter string="خطأ"     name="filter_error"    domain="[('state', '=', 'error')]"/>
-                <!-- غير فعالين تم رفعهم ولم يُفعَّلوا بعد -->
                 <filter string="بانتظار التفعيل" name="filter_pending_activation"
                         domain="[('state', '=', 'imported'), ('is_active', '=', False), ('created_customer_id', '=', False)]"/>
                 <group expand="0" string="تجميع حسب...">
                     <filter string="الحالة"  name="group_by_state"  context="{'group_by': 'state'}"/>
                     <filter string="المنطقة" name="group_by_region" context="{'group_by': 'region_id'}"/>
                     <filter string="هل فعال؟" name="group_by_active" context="{'group_by': 'is_active'}"/>
+                    <filter string="الشركة" name="group_by_company" context="{'group_by': 'company_id'}" groups="base.group_multi_company"/>
                 </group>
             </search>
         </field>
     </record>
 
-    <!-- Server Action: تفعيل العملاء غير الفعالين (للاستخدام من قائمة الإجراءات) -->
     <record id="action_server_activate_inactive_customer" model="ir.actions.server">
         <field name="name">تفعيل العميل غير الفعال</field>
         <field name="model_id" ref="model_utility_migration_customer"/>
@@ -211,7 +208,6 @@
         <field name="view_mode">tree,form</field>
     </record>
 
-    <!-- Create a top level menu for Migration in Utility -->
     <menuitem id="menu_utility_migration_root"
               name="التهيئة والرفع"
               parent="utility_core.menu_utility_root"
@@ -228,7 +224,6 @@
               action="action_utility_migration_mapping"
               sequence="20"/>
 
-    <!-- Actions and Wizard Menus -->
     <menuitem id="menu_utility_migration_download_template"
               name="تحميل قالب العملاء"
               parent="menu_utility_migration_root"
@@ -239,7 +234,5 @@
               parent="menu_utility_migration_root"
               action="action_utility_migration_import_wizard"
               sequence="40"/>
-
-
 
 </odoo>

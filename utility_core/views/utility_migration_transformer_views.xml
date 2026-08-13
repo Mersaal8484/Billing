@@ -37,6 +37,7 @@
                 <field name="image_status"/>
                 <field name="feeder_id"/>
                 <field name="region_id"/>
+                <field name="company_id" groups="base.group_multi_company"/>
                 <field name="state" widget="badge"
                        decoration-info="state=='draft'"
                        decoration-success="state=='imported'"
@@ -104,6 +105,7 @@
                                 </div>
                                 <div class="card-body">
                                     <group>
+                                        <field name="company_id" groups="base.group_multi_company"/>
                                         <field name="reference"/>
                                         <field name="transformer_code"/>
                                         <field name="transformer_name"/>
@@ -177,6 +179,7 @@
                 <field name="meter_number"/>
                 <field name="legacy_region"/>
                 <field name="feeder_id"/>
+                <field name="company_id" groups="base.group_multi_company"/>
                 <filter string="مسودة" name="filter_draft" domain="[('state', '=', 'draft')]"/>
                 <filter string="تم الرفع" name="filter_imported" domain="[('state', '=', 'imported')]"/>
                 <filter string="خطأ" name="filter_error" domain="[('state', '=', 'error')]"/>
@@ -184,6 +187,7 @@
                     <filter string="الحالة" name="group_by_state" context="{'group_by': 'state'}"/>
                     <filter string="المنطقة" name="group_by_region" context="{'group_by': 'region_id'}"/>
                     <filter string="الفيدر / الخلية" name="group_by_feeder" context="{'group_by': 'feeder_id'}"/>
+                    <filter string="الشركة" name="group_by_company" context="{'group_by': 'company_id'}" groups="base.group_multi_company"/>
                 </group>
             </search>
         </field>

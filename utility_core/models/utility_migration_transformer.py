@@ -1,11 +1,15 @@
 from odoo import api, fields, models, _
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 
 
 class UtilityMigrationTransformer(models.Model):
     _name = 'utility.migration.transformer'
     _description = 'تهيئة بيانات المحولات (النظام القديم)'
     _order = 'id asc'
+
+    company_id = fields.Many2one(
+        'res.company', string='الشركة', required=True,
+        default=lambda self: self.env.company, index=True)
 
     name = fields.Char('اسم العرض / المحول', required=True)
     legacy_region = fields.Char('رمز المنطقة')
@@ -85,46 +89,54 @@ class UtilityMigrationTransformer(models.Model):
         }
 
     # -------------------------------------------------------------------------
-    # Code Mapping
+    # Code Mapping (Company-Scoped)
     # -------------------------------------------------------------------------
 
     def action_map_codes(self):
-        """مطابقة رمز المنطقة والفرع عبر جدول الترميز بنفس منطق تمبلت المشتركين + مطابقة الخلية"""
-        mapping_obj = self.env['utility.migration.mapping']
-        feeder_obj = self.env['utility.feeder']
-        meter_obj = self.env['utility.meter']
-
+        """مطابقة المنطقة والفرع والفيدر عبر ذاكرة التخزين المحصورة بالشركة."""
         for rec in self:
             if rec.state == 'imported':
                 continue
+            company_id = rec.company_id.id or self.env.company.id
+            cache = self.env['utility.migration.mapping'].get_mapping_cache(company_id)
+            missing = []
 
             if rec.legacy_region:
-                mapping = mapping_obj.search([('mapping_type', '=', 'region'), ('legacy_code', '=', rec.legacy_region)], limit=1)
-                if mapping:
-                    rec.region_id = mapping.region_id.id
+                val = cache.get(('region', rec.legacy_region.strip()))
+                if val:
+                    rec.region_id = val.id
+                else:
+                    missing.append(f"MISSING_REGION_MAPPING: {rec.legacy_region}")
 
             if rec.legacy_area:
-                mapping = mapping_obj.search([('mapping_type', '=', 'area'), ('legacy_code', '=', rec.legacy_area)], limit=1)
-                if mapping:
-                    rec.area_id = mapping.area_id.id
+                val = cache.get(('area', rec.legacy_area.strip()))
+                if val:
+                    rec.area_id = val.id
+                else:
+                    missing.append(f"MISSING_AREA_MAPPING: {rec.legacy_area}")
 
             if rec.cell_meter_number:
+                cell_code = rec.cell_meter_number.strip()
                 feeder = False
-                m = meter_obj.search([
-                    ('meter_number', '=', rec.cell_meter_number),
+                m = self.env['utility.meter'].search([
+                    ('company_id', '=', company_id),
+                    ('meter_number', '=', cell_code),
                     ('connection_type', '=', 'feeder')
                 ], limit=1)
                 if m and m.linked_feeder_id:
                     feeder = m.linked_feeder_id
 
                 if not feeder:
-                    feeder = feeder_obj.search([
-                        '|', ('code', '=', rec.cell_meter_number),
-                        ('name', '=like', f"%{rec.cell_meter_number}%")
+                    feeder = self.env['utility.feeder'].search([
+                        ('company_id', '=', company_id),
+                        ('code', '=', cell_code)
                     ], limit=1)
 
                 if feeder:
                     rec.feeder_id = feeder.id
+
+            if missing:
+                rec.error_message = "\n".join(missing)
 
     # -------------------------------------------------------------------------
     # Main Actions
@@ -133,30 +145,45 @@ class UtilityMigrationTransformer(models.Model):
     def action_import_data(self):
         """
         اعتماد ورفع بيانات المحولات:
-        - إنشاء / تحديث utility.transformer
+        - إنشاء / تحديث utility.transformer محصور بالشركة ومحدد الهوية (reference -> code -> analytic_id)
         - إنشاء / تحديث utility.meter وتعيين connection_type = 'transformer' و is_coupling_meter = True
-        - إنشاء القراءة الافتتاحية utility.reading (state='billed')
+        - إنشاء القراءة الافتتاحية utility.reading (state='billed' أو 'approved') بدون كتابة مباشرة للـ transformer_id/feeder_id الـ related
         """
         for rec in self:
             if rec.state == 'imported':
                 continue
             try:
                 with self.env.cr.savepoint():
-                    code = rec.reference or rec.transformer_code or rec.legacy_analytic_id or rec.name
-                    trans_name = rec.transformer_name or rec.name
+                    rec.action_map_codes()
+                    company_id = rec.company_id.id or self.env.company.id
 
-                    # 1. Search or create utility.transformer
-                    transformer = self.env['utility.transformer'].search([
-                        ('company_id', '=', self.env.company.id),
-                        ('is_private', '=', False),
-                        ('code', '=', code),
-                    ], limit=1)
+                    # 1. Preferred Identity Order: reference -> transformer_code -> legacy_analytic_id
+                    code = (rec.reference or rec.transformer_code or rec.legacy_analytic_id or '').strip()
+                    if not code:
+                        if rec.name:
+                            code = rec.name.strip()
+                        else:
+                            raise ValidationError(_('MISSING_TRANSFORMER_IDENTITY: يلزم توفر مرجع أو رمز المحول لتحديد الهوية المرجعية.'))
+
+                    trans_name = rec.transformer_name or rec.name or code
+
+                    # Search or create utility.transformer (Company-Scoped & Identity-Checked)
+                    transformer = rec.created_transformer_id
+                    if not transformer:
+                        transformers = self.env['utility.transformer'].search([
+                            ('company_id', '=', company_id),
+                            ('is_private', '=', False),
+                            ('code', '=', code),
+                        ])
+                        if len(transformers) > 1:
+                            raise ValidationError(_('AMBIGUOUS_TRANSFORMER_IDENTITY: تعددت المحولات بنفس الرمز (%s) لنفس الشركة.') % code)
+                        transformer = transformers[:1]
 
                     trans_vals = {
                         'name': trans_name,
                         'code': code,
                         'notes': rec.description,
-                        'company_id': self.env.company.id,
+                        'company_id': company_id,
                         'active': rec.is_active,
                     }
                     if rec.feeder_id:
@@ -173,13 +200,16 @@ class UtilityMigrationTransformer(models.Model):
 
                     rec.created_transformer_id = transformer.id
 
-                    # 2. Search or create meter as a Coupling Meter (عداد مقارنة ورصد رئيسي)
-                    meter_num = rec.meter_number or code
+                    # 2. Search or create meter as a Coupling Meter (Company-Scoped)
+                    meter_num = (rec.meter_number or code).strip()
                     multiplier = rec.meter_multiplier or 1.0
 
-                    meter = self.env['utility.meter'].search([
-                        ('meter_number', '=', meter_num)
-                    ], limit=1)
+                    meter = rec.created_meter_id
+                    if not meter:
+                        meter = self.env['utility.meter'].search([
+                            ('company_id', '=', company_id),
+                            ('meter_number', '=', meter_num),
+                        ], limit=1)
 
                     status_active = self.env['utility.meter.status'].search([('code', '=', 'ACTIVE')], limit=1)
 
@@ -188,9 +218,9 @@ class UtilityMigrationTransformer(models.Model):
                         'multiplier': multiplier,
                         'connection_type': 'transformer',
                         'linked_transformer_id': transformer.id,
-                        'company_id': self.env.company.id,
+                        'company_id': company_id,
                         'payment_type': 'manual',
-                        'is_coupling_meter': True,  # عداد مقارنة ورصد رئيسي
+                        'is_coupling_meter': True,
                         'active': True,
                     }
                     if status_active:
@@ -202,35 +232,34 @@ class UtilityMigrationTransformer(models.Model):
                         meter = self.env['utility.meter'].create(meter_vals)
 
                     rec.created_meter_id = meter.id
-
-                    # Set coupling meter on transformer
                     transformer.write({'coupling_meter_id': meter.id})
 
-                    # 3. Create initial/opening reading using current_reading or opening_reading
-                    curr_val = rec.current_reading or rec.opening_reading
-                    if curr_val:
-                        existing_reading = self.env['utility.reading'].search([
-                            ('meter_id', '=', meter.id),
-                            ('transformer_id', '=', transformer.id),
-                            ('reading_purpose', '=', 'opening')
-                        ], limit=1)
+                    # 3. Create initial/opening reading (Zero reading 0.0 is VALID!)
+                    curr_val = rec.current_reading if (rec.current_reading is not False and rec.current_reading is not None) else rec.opening_reading
+                    if curr_val is not False and curr_val is not None:
+                        reading = rec.created_reading_id
+                        if not reading:
+                            reading = self.env['utility.reading'].search([
+                                ('meter_id', '=', meter.id),
+                                ('reading_purpose', '=', 'opening')
+                            ], limit=1)
 
+                        # Note: transformer_id and feeder_id are related fields to meter_id on utility.reading; DO NOT pass directly
                         reading_vals = {
                             'meter_id': meter.id,
-                            'transformer_id': transformer.id,
-                            'feeder_id': transformer.feeder_id.id if transformer.feeder_id else False,
-                            'reading_value': curr_val,
+                            'reading_value': float(curr_val),
                             'reading_date': fields.Datetime.now(),
                             'reading_type': 'manual',
                             'reading_purpose': 'opening',
+                            'reading_event': 'normal',
                             'is_initial_reading': True,
                             'reading_category': 'transformer',
+                            'reading_source': 'legacy_migration',
                             'state': 'billed',
                         }
 
-                        if existing_reading:
-                            existing_reading.write(reading_vals)
-                            reading = existing_reading
+                        if reading:
+                            reading.write(reading_vals)
                         else:
                             reading = self.env['utility.reading'].create(reading_vals)
 
