@@ -24,7 +24,7 @@ class UtilityMeterExt(models.Model):
         ('inspection', 'تحت الفحص'),
         ('repair', 'قيد الصيانة'),
         ('scrap', 'تالف / خردة'),
-    ], string='الحالة الفيزيائية', compute='_compute_physical_state', store=True)
+    ], string='الحالة الفيزيائية', compute='_compute_physical_state', store=False)
 
     def _get_lot_current_location(self):
         self.ensure_one()
@@ -194,8 +194,16 @@ class UtilityMeterExt(models.Model):
                 'لتنفيذ إجراء "%s". لا يمكن تنفيذ عمليات مخزنية مادية لعدادات تراثية غير مهدأة بالمخزون.'
             ) % (self.meter_number or self.operational_number or self.display_name, action_name))
 
-    def _resolve_meter_inspection_location(self, company=None):
+    def _resolve_meter_inspection_location(self, company=None, warehouse=None):
         company = company or self.company_id or self.env.company
+        if not warehouse:
+            warehouse = self.env['stock.warehouse'].search([('company_id', '=', company.id)], limit=1)
+
+        if warehouse:
+            warehouse._ensure_meter_inspection_location()
+            if warehouse.meter_inspection_location_id:
+                return warehouse.meter_inspection_location_id
+
         loc = self.env.ref('utility_inventory.stock_location_meter_inspection', raise_if_not_found=False)
         if not loc:
             loc = self.env['stock.location'].search([
@@ -219,27 +227,27 @@ class UtilityMeterExt(models.Model):
         company = company or self.company_id or self.env.company
         if source_loc.usage == 'internal' and dest_loc.usage == 'customer':
             code = 'outgoing'
+            label = 'إخراج / تسليم (Outgoing)'
         elif source_loc.usage == 'customer' and dest_loc.usage == 'internal':
             code = 'incoming'
+            label = 'إدخال / استلام (Incoming)'
         else:
             code = 'internal'
+            label = 'نقل داخلي (Internal)'
 
         domain = [('code', '=', code), ('company_id', '=', company.id)]
         if warehouse:
             domain.append(('warehouse_id', '=', warehouse.id))
 
         picking_type = self.env['stock.picking.type'].search(domain, limit=1)
-        if not picking_type:
+        if not picking_type and warehouse:
             picking_type = self.env['stock.picking.type'].search([
                 ('code', '=', code),
                 ('company_id', '=', company.id),
             ], limit=1)
+
         if not picking_type:
-            picking_type = self.env['stock.picking.type'].search([
-                ('company_id', '=', company.id)
-            ], limit=1)
-        if not picking_type:
-            raise ValidationError(_('تعذر تحديد نوع الحركة المخزنية (Picking Type) للشركة %s.') % company.name)
+            raise ValidationError(_('تعذر تحديد نوع الحركة المخزنية (%s - Code: %s) للشركة %s.') % (label, code, company.name))
         return picking_type
 
     def _validate_physical_meter_location(self, expected_usage=None):

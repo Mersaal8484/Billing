@@ -201,3 +201,32 @@ class TestMeterStockExecution(TransactionCase):
                 'model_id': model.id,
                 'product_id': other_product.id,
             })
+
+    def test_11_warehouse_inspection_location_resolution(self):
+        """Test per-warehouse meter inspection location creation and resolution."""
+        wh = self.env['stock.warehouse'].create({
+            'name': 'مستودع فرعي أداء',
+            'code': 'WH-PERF',
+            'company_id': self.env.company.id,
+        })
+        self.assertTrue(wh.meter_inspection_location_id)
+        self.assertIn('WH-PERF', wh.meter_inspection_location_id.name)
+        resolved_loc = self.meter._resolve_meter_inspection_location(warehouse=wh)
+        self.assertEqual(resolved_loc, wh.meter_inspection_location_id)
+
+    def test_12_strict_picking_type_resolution_rejects_missing_direction(self):
+        """Test strict picking type resolution raises ValidationError if direction code is missing."""
+        dummy_company = self.env['res.company'].create({'name': 'شركة اختبار بدون حركات'})
+        with self.assertRaises(ValidationError):
+            self.meter._resolve_meter_picking_type(
+                source_loc=self.stock_location,
+                dest_loc=self.customer_location,
+                company=dummy_company,
+            )
+
+    def test_13_physical_state_is_unstored_live_projection(self):
+        """Test physical_state dynamically updates on movements without stored cache staleness."""
+        self.assertEqual(self.meter.physical_state, 'available')
+        self.meter.inventory_install_meter(origin='SO-LIVE-STATE')
+        self.assertEqual(self.meter.physical_state, 'installed')
+
