@@ -6,7 +6,7 @@
         <field name="model">res.partner</field>
         <field name="inherit_id" ref="base.view_partner_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//div[contains(@class, 'oe_button_box')]" position="inside">
+            <xpath expr="//div[hasclass('oe_button_box')]" position="inside">
                 <button name="action_open_utility_customer_registration" type="object"
                         class="oe_stat_button" icon="fa-bolt"
                         attrs="{'invisible': [('has_utility_customer', '=', False)]}">

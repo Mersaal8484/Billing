@@ -7,6 +7,22 @@
         <field name="arch" type="xml">
             <xpath expr="//div[hasclass('settings')]" position="inside">
                 <div class="app_settings_block" data-string="إدارة الكهرباء" string="إدارة الكهرباء" data-key="utility_core" groups="utility_core.group_utility_admin">
+                    <div class="row mt16 mb16 o_settings_container">
+                        <div class="col-12 col-lg-12">
+                            <div class="alert alert-info d-flex align-items-center justify-content-between mb-0" role="alert">
+                                <div>
+                                    <h4 class="alert-heading mb-1"><i class="fa fa-magic me-2"/>تهيئة وتوليد البيانات الناقصة</h4>
+                                    <span>اضغط على الزر لفحص وتوليد الحسابات واليوميات والمنتجات وموديلات العدادات الناقصة تلقائياً لقاعدة البيانات.</span>
+                                </div>
+                                <button name="action_populate_missing_defaults"
+                                        string="توليد البيانات الناقصة تلقائياً"
+                                        type="object"
+                                        class="btn btn-primary ms-3 fw-bold"
+                                        icon="fa-magic"/>
+                            </div>
+                        </div>
+                    </div>
+
                     <h2>عدادات وإعدادات القراءة</h2>
                     <div class="row mt16 o_settings_container" id="utility_meter">
                         <div class="col-12 col-lg-6 o_setting_box">
@@ -174,8 +190,89 @@
                         </div>
                     </div>
 
-                    <h2>الحسابات المحاسبية</h2>
+                    <h2>الحسابات المحاسبية وإعدادات الفوترة</h2>
                     <div class="row mt16 o_settings_container" id="utility_accounts">
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_right_pane">
+                                <label for="sales_journal_id"/>
+                                <div class="text-muted">يومية مبيعات الكهرباء (الفواتير)</div>
+                                <div class="content-group">
+                                    <div class="mt16"><field name="sales_journal_id" class="o_light_label"/></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_right_pane">
+                                <label for="electricity_income_account_id"/>
+                                <div class="text-muted">حساب إيرادات مبيعات الكهرباء</div>
+                                <div class="content-group">
+                                    <div class="mt16"><field name="electricity_income_account_id" class="o_light_label"/></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_right_pane">
+                                <label for="electricity_product_id"/>
+                                <div class="text-muted">منتج طاقة الكهرباء الرئيسي</div>
+                                <div class="content-group">
+                                    <div class="mt16"><field name="electricity_product_id" class="o_light_label"/></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_right_pane">
+                                <label for="discount_product_id"/>
+                                <div class="text-muted">منتج الخصم والإعفاءات</div>
+                                <div class="content-group">
+                                    <div class="mt16"><field name="discount_product_id" class="o_light_label"/></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_right_pane">
+                                <label for="penalty_product_id"/>
+                                <div class="text-muted">منتج الغرامات</div>
+                                <div class="content-group">
+                                    <div class="mt16"><field name="penalty_product_id" class="o_light_label"/></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_right_pane">
+                                <label for="mu_allim_product_id"/>
+                                <div class="text-muted">منتج المعلم</div>
+                                <div class="content-group">
+                                    <div class="mt16"><field name="mu_allim_product_id" class="o_light_label"/></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_right_pane">
+                                <label for="cleaning_product_id"/>
+                                <div class="text-muted">منتج النظافة</div>
+                                <div class="content-group">
+                                    <div class="mt16"><field name="cleaning_product_id" class="o_light_label"/></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_right_pane">
+                                <label for="local_fee_product_id"/>
+                                <div class="text-muted">منتج رسوم المجالس المحلية</div>
+                                <div class="content-group">
+                                    <div class="mt16"><field name="local_fee_product_id" class="o_light_label"/></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_right_pane">
+                                <label for="private_transformer_fee_product_id"/>
+                                <div class="text-muted">منتج رسوم المحول الخاص (يُضاف تلقائياً لكل دورة فوترة لحسابات المحولات الخاصة)</div>
+                                <div class="content-group">
+                                    <div class="mt16"><field name="private_transformer_fee_product_id" class="o_light_label"/></div>
+                                </div>
+                            </div>
+                        </div>
                         <div class="col-12 col-lg-6 o_setting_box">
                             <div class="o_setting_right_pane">
                                 <label for="fine_account_id"/>
@@ -284,141 +381,6 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12 col-lg-6 o_setting_box">
-                            <div class="o_setting_right_pane">
-                                <label for="sales_journal_id"/>
-                                <div class="text-muted">يومية مبيعات الكهرباء (الفواتير)</div>
-                                <div class="content-group">
-                                    <div class="mt16"><field name="sales_journal_id" class="o_light_label"/></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12 col-lg-6 o_setting_box">
-                            <div class="o_setting_right_pane">
-                                <label for="electricity_income_account_id"/>
-                                <div class="text-muted">حساب إيرادات مبيعات الكهرباء</div>
-                                <div class="content-group">
-                                    <div class="mt16"><field name="electricity_income_account_id" class="o_light_label"/></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12 col-lg-6 o_setting_box">
-                            <div class="o_setting_right_pane">
-                                <label for="electricity_product_id"/>
-                                <div class="text-muted">منتج طاقة الكهرباء الرئيسي</div>
-                                <div class="content-group">
-                                    <div class="mt16"><field name="electricity_product_id" class="o_light_label"/></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12 col-lg-6 o_setting_box">
-                            <div class="o_setting_right_pane">
-                                <label for="discount_product_id"/>
-                                <div class="text-muted">منتج الخصم والإعفاءات</div>
-                                <div class="content-group">
-                                    <div class="mt16"><field name="discount_product_id" class="o_light_label"/></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12 col-lg-6 o_setting_box">
-                            <div class="o_setting_right_pane">
-                                <label for="penalty_product_id"/>
-                                <div class="text-muted">منتج الغرامات</div>
-                                <div class="content-group">
-                                    <div class="mt16"><field name="penalty_product_id" class="o_light_label"/></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12 col-lg-6 o_setting_box">
-                            <div class="o_setting_right_pane">
-                                <label for="mu_allim_product_id"/>
-                                <div class="text-muted">منتج المعلم</div>
-                                <div class="content-group">
-                                    <div class="mt16"><field name="mu_allim_product_id" class="o_light_label"/></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12 col-lg-6 o_setting_box">
-                            <div class="o_setting_right_pane">
-                                <label for="sales_journal_id"/>
-                                <div class="text-muted">يومية مبيعات الكهرباء (الفواتير)</div>
-                                <div class="content-group">
-                                    <div class="mt16"><field name="sales_journal_id" class="o_light_label"/></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12 col-lg-6 o_setting_box">
-                            <div class="o_setting_right_pane">
-                                <label for="electricity_income_account_id"/>
-                                <div class="text-muted">حساب إيرادات مبيعات الكهرباء</div>
-                                <div class="content-group">
-                                    <div class="mt16"><field name="electricity_income_account_id" class="o_light_label"/></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12 col-lg-6 o_setting_box">
-                            <div class="o_setting_right_pane">
-                                <label for="electricity_product_id"/>
-                                <div class="text-muted">منتج طاقة الكهرباء الرئيسي</div>
-                                <div class="content-group">
-                                    <div class="mt16"><field name="electricity_product_id" class="o_light_label"/></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12 col-lg-6 o_setting_box">
-                            <div class="o_setting_right_pane">
-                                <label for="discount_product_id"/>
-                                <div class="text-muted">منتج الخصم والإعفاءات</div>
-                                <div class="content-group">
-                                    <div class="mt16"><field name="discount_product_id" class="o_light_label"/></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12 col-lg-6 o_setting_box">
-                            <div class="o_setting_right_pane">
-                                <label for="penalty_product_id"/>
-                                <div class="text-muted">منتج الغرامات</div>
-                                <div class="content-group">
-                                    <div class="mt16"><field name="penalty_product_id" class="o_light_label"/></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12 col-lg-6 o_setting_box">
-                            <div class="o_setting_right_pane">
-                                <label for="mu_allim_product_id"/>
-                                <div class="text-muted">منتج المعلم</div>
-                                <div class="content-group">
-                                    <div class="mt16"><field name="mu_allim_product_id" class="o_light_label"/></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12 col-lg-6 o_setting_box">
-                            <div class="o_setting_right_pane">
-                                <label for="cleaning_product_id"/>
-                                <div class="text-muted">منتج النظافة</div>
-                                <div class="content-group">
-                                    <div class="mt16"><field name="cleaning_product_id" class="o_light_label"/></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12 col-lg-6 o_setting_box">
-                            <div class="o_setting_right_pane">
-                                <label for="local_fee_product_id"/>
-                                <div class="text-muted">منتج رسوم المجالس المحلية</div>
-                                <div class="content-group">
-                                    <div class="mt16"><field name="local_fee_product_id" class="o_light_label"/></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12 col-lg-6 o_setting_box">
-                            <div class="o_setting_right_pane">
-                                <label for="private_transformer_fee_product_id"/>
-                                <div class="text-muted">منتج رسوم المحول الخاص (يُضاف تلقائياً لكل دورة فوترة لحسابات المحولات الخاصة)</div>
-                                <div class="content-group">
-                                    <div class="mt16"><field name="private_transformer_fee_product_id" class="o_light_label"/></div>
-                                </div>
-                            </div>
-                        </div>
 
                         <div class="col-12 col-lg-6 o_setting_box">
                             <div class="o_setting_right_pane">
@@ -473,4 +435,3 @@
               action="action_utility_config_settings"
               groups="group_utility_admin"/>
 </odoo>
-

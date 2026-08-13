@@ -144,3 +144,26 @@ class TestUtilityInfrastructureSettings(TransactionCase):
         # إعادة الإعدادات الافتراضية
         self.ConfigParam.set_param('utility.workflow_adapter', 'local')
         self.ConfigParam.set_param('utility.media_backend', 'attachment')
+
+    def test_09_populate_missing_defaults(self):
+        """9. اختبار زر توليد وتعبئة الحسابات والمنتجات وموديلات العدادات الافتراضية الناقصة تلقائياً."""
+        company = self.env.company
+
+        # Clear settings to simulate empty company
+        company.electricity_product_id = False
+        company.discount_product_id = False
+        company.legacy_single_phase_meter_model_id = False
+        company.legacy_three_phase_meter_model_id = False
+
+        settings = self.env['res.config.settings'].create({})
+        res = settings.action_populate_missing_defaults()
+
+        self.assertEqual(res['type'], 'ir.actions.client')
+        self.assertEqual(res['tag'], 'display_notification')
+        self.assertTrue(company.electricity_product_id)
+        self.assertTrue(company.discount_product_id)
+        self.assertTrue(company.legacy_single_phase_meter_model_id)
+        self.assertTrue(company.legacy_three_phase_meter_model_id)
+        self.assertEqual(company.legacy_single_phase_meter_model_id.phase, 'single')
+        self.assertEqual(company.legacy_three_phase_meter_model_id.phase, 'three')
+

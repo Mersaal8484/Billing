@@ -408,3 +408,44 @@ class TestMigrationAsyncBatch(TransactionCase):
         self.assertEqual(batch.error_count, 1)
         self.assertEqual(batch.success_count, 9)
 
+    def test_10_optimized_batch_fetch_and_continuation(self):
+        """التحقق من أن استعلام _search_batch_records يجلب فقط السجلات المعلقة المطلوبة (queued/processing) بحد max_records_per_run وترتيب id asc وتستمر الدفعة بشكل صحيح عبر الدورات المتتالية."""
+        customers_vals = []
+        for i in range(6):
+            customers_vals.append({
+                'name': f'عميل تحسين الأداء {i}',
+                'customer_number': f'CUST-OPT-{i:03d}',
+                'meter_number': f'MTR-OPT-{i:03d}',
+                'phase': 'single',
+                'legacy_region': 'REG01',
+                'legacy_area': 'AREA01',
+                'legacy_category': 'CAT01',
+                'legacy_subscriber_type': 'SUB01',
+                'legacy_contract': 'CNTR01',
+                'company_id': self.company.id,
+            })
+        records = self.env['utility.migration.customer'].create(customers_vals)
+        res = records.action_queue_migration()
+        batch = self.env['utility.migration.batch'].browse(res['res_id'])
+
+        # Test _search_batch_records direct query
+        pending = batch._search_batch_records(domain=[('state', 'in', ('queued', 'processing'))], order='id asc', limit=3)
+        self.assertEqual(len(pending), 3)
+        self.assertEqual(pending.ids, records[:3].ids)
+
+        # Run 1: limit 3
+        batch.action_process_batch(max_records_per_run=3)
+        self.assertEqual(records[:3].mapped('state'), ['imported', 'imported', 'imported'])
+        self.assertEqual(records[3:].mapped('state'), ['queued', 'queued', 'queued'])
+        self.assertEqual(batch.state, 'queued')
+
+        # Verify next search only returns remaining queued records (ids 3..5)
+        next_pending = batch._search_batch_records(domain=[('state', 'in', ('queued', 'processing'))], order='id asc', limit=3)
+        self.assertEqual(next_pending.ids, records[3:].ids)
+
+        # Run 2: process remaining 3
+        batch.action_process_batch(max_records_per_run=3)
+        self.assertEqual(records.mapped('state'), ['imported'] * 6)
+        self.assertEqual(batch.state, 'done')
+
+

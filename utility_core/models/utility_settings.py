@@ -272,3 +272,182 @@ class ResConfigSettings(models.TransientModel):
 
             if rec.media_backend == 'filesystem' and not rec.filesystem_storage_path:
                 raise ValidationError(_("عند اختيار Filesystem يجب تحديد مسار تخزين الملفات."))
+
+    def action_populate_missing_defaults(self):
+        """فحص وتوليد الإعدادات الافتراضية والحسابات والمنتجات وموديلات العدادات الناقصة للشركة."""
+        self.ensure_one()
+        company = self.company_id or self.env.company
+
+        # 1. Products (المنتجات)
+        product_obj = self.env['product.product']
+
+        # طاقة الكهرباء الرئيسية
+        if not company.electricity_product_id:
+            prod = product_obj.search([('name', '=', 'طاقة الكهرباء الرئيسية')], limit=1)
+            if not prod:
+                prod = product_obj.create({
+                    'name': 'طاقة الكهرباء الرئيسية',
+                    'type': 'service',
+                    'lst_price': 0.0,
+                })
+            company.electricity_product_id = prod
+
+        # الخصم والإعفاءات
+        if not company.discount_product_id:
+            prod = product_obj.search([('name', '=', 'خصم وإعفاءات الكهرباء')], limit=1)
+            if not prod:
+                prod = product_obj.create({
+                    'name': 'خصم وإعفاءات الكهرباء',
+                    'type': 'service',
+                    'lst_price': 0.0,
+                })
+            company.discount_product_id = prod
+
+        # الغرامات
+        if not company.penalty_product_id:
+            prod = product_obj.search([('name', '=', 'غرامة تأخير / مخالفة')], limit=1)
+            if not prod:
+                prod = product_obj.create({
+                    'name': 'غرامة تأخير / مخالفة',
+                    'type': 'service',
+                    'lst_price': 0.0,
+                })
+            company.penalty_product_id = prod
+
+        # رسم المعلم
+        if not company.mu_allim_product_id:
+            prod = product_obj.search([('name', '=', 'رسم المعلم')], limit=1)
+            if not prod:
+                prod = product_obj.create({
+                    'name': 'رسم المعلم',
+                    'type': 'service',
+                    'lst_price': 0.0,
+                })
+            company.mu_allim_product_id = prod
+
+        # رسم النظافة
+        if not company.cleaning_product_id:
+            prod = product_obj.search([('name', '=', 'رسم النظافة')], limit=1)
+            if not prod:
+                prod = product_obj.create({
+                    'name': 'رسم النظافة',
+                    'type': 'service',
+                    'lst_price': 0.0,
+                })
+            company.cleaning_product_id = prod
+
+        # رسم المجالس المحلية
+        if not company.local_fee_product_id:
+            prod = product_obj.search([('name', '=', 'رسم المجالس المحلية')], limit=1)
+            if not prod:
+                prod = product_obj.create({
+                    'name': 'رسم المجالس المحلية',
+                    'type': 'service',
+                    'lst_price': 0.0,
+                })
+            company.local_fee_product_id = prod
+
+        # رسم المحول الخاص
+        if not company.private_transformer_fee_product_id:
+            prod = product_obj.search([('name', '=', 'رسوم المحول الخاص')], limit=1)
+            if not prod:
+                prod = product_obj.create({
+                    'name': 'رسوم المحول الخاص',
+                    'type': 'service',
+                    'lst_price': 0.0,
+                })
+            company.private_transformer_fee_product_id = prod
+
+        # 2. Journals (اليوميات)
+        journal_obj = self.env['account.journal']
+        if not company.sales_journal_id:
+            sale_j = journal_obj.search([('type', '=', 'sale'), ('company_id', '=', company.id)], limit=1)
+            if sale_j:
+                company.sales_journal_id = sale_j
+
+        if not company.collection_journal_id:
+            bank_or_cash = journal_obj.search([('type', 'in', ('bank', 'cash')), ('company_id', '=', company.id)], limit=1)
+            if bank_or_cash:
+                company.collection_journal_id = bank_or_cash
+
+        if not company.writeoff_journal_id:
+            gen_j = journal_obj.search([('type', '=', 'general'), ('company_id', '=', company.id)], limit=1)
+            if gen_j:
+                company.writeoff_journal_id = gen_j
+
+        if not company.deposit_journal_id:
+            bank_j = journal_obj.search([('type', '=', 'bank'), ('company_id', '=', company.id)], limit=1) or journal_obj.search([('type', '=', 'general'), ('company_id', '=', company.id)], limit=1)
+            if bank_j:
+                company.deposit_journal_id = bank_j
+
+        if not company.settlement_journal_id:
+            gen_j = journal_obj.search([('type', '=', 'general'), ('company_id', '=', company.id)], limit=1)
+            if gen_j:
+                company.settlement_journal_id = gen_j
+
+        # 3. Accounts (الحسابات)
+        account_obj = self.env['account.account']
+        if not company.electricity_income_account_id:
+            inc_acc = account_obj.search([('account_type', '=', 'income'), ('company_id', '=', company.id)], limit=1)
+            if inc_acc:
+                company.electricity_income_account_id = inc_acc
+
+        if not company.fine_account_id:
+            fine_acc = account_obj.search([('account_type', '=', 'income'), ('company_id', '=', company.id)], limit=1)
+            if fine_acc:
+                company.fine_account_id = fine_acc
+
+        if not company.discount_account_id:
+            disc_acc = account_obj.search([('account_type', 'in', ('expense', 'income')), ('company_id', '=', company.id)], limit=1)
+            if disc_acc:
+                company.discount_account_id = disc_acc
+
+        if not company.deposit_account_id:
+            dep_acc = account_obj.search([('account_type', 'ilike', 'liability'), ('company_id', '=', company.id)], limit=1)
+            if dep_acc:
+                company.deposit_account_id = dep_acc
+
+        if not company.settlement_account_id:
+            settle_acc = account_obj.search([('company_id', '=', company.id)], limit=1)
+            if settle_acc:
+                company.settlement_account_id = settle_acc
+
+        if not company.writeoff_account_id:
+            writeoff_acc = account_obj.search([('account_type', '=', 'expense'), ('company_id', '=', company.id)], limit=1)
+            if writeoff_acc:
+                company.writeoff_account_id = writeoff_acc
+
+        # 4. Legacy Meter Models (موديلات العدادات)
+        model_obj = self.env['utility.meter.model']
+        if not company.legacy_single_phase_meter_model_id:
+            m1 = model_obj.search([('phase', '=', 'single')], limit=1)
+            if not m1:
+                m1 = model_obj.create({
+                    'name': 'عداد أحادي افتراضي',
+                    'code': 'MDL-1P-DEF',
+                    'phase': 'single',
+                })
+            company.legacy_single_phase_meter_model_id = m1
+
+        if not company.legacy_three_phase_meter_model_id:
+            m3 = model_obj.search([('phase', '=', 'three')], limit=1)
+            if not m3:
+                m3 = model_obj.create({
+                    'name': 'عداد ثلاثي افتراضي',
+                    'code': 'MDL-3P-DEF',
+                    'phase': 'three',
+                })
+            company.legacy_three_phase_meter_model_id = m3
+
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': _('توليد البيانات الافتراضية'),
+                'message': _('تم فحص وتوليد الحسابات واليوميات والمنتجات وموديلات العدادات الافتراضية الناقصة بنجاح!'),
+                'sticky': False,
+                'type': 'success',
+                'next': {'type': 'ir.actions.client', 'tag': 'reload'}
+            }
+        }
+

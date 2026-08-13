@@ -100,6 +100,24 @@ class UtilityMigrationBatch(models.Model):
                 vals['name'] = seq
         return super().create(vals_list)
 
+    def _search_batch_records(self, domain=None, order='id asc', limit=None):
+        """بحث في سجلات الميجريشن التابعة للدفعة باستخدام الاستعلام المباشر لقاعدة البيانات بدلاً من تحميل العلاقات كاملة للذاكرة."""
+        self.ensure_one()
+        model_map = {
+            'customer': 'utility.migration.customer',
+            'feeder': 'utility.migration.feeder',
+            'transformer': 'utility.migration.transformer',
+        }
+        model_name = model_map.get(self.migration_type)
+        if not model_name:
+            return self.env['utility.migration.customer']
+
+        base_domain = [('last_batch_id', '=', self.id)]
+        if domain:
+            base_domain += domain
+
+        return self.env[model_name].search(base_domain, order=order, limit=limit)
+
     def action_process_batch(self, max_records_per_run=1000):
         """معالجة الدفعة في خلفية النظام على دفعات جزئية (Chunked execution) محددة لكل دورة لتجنب تجاوز المهلة."""
         for batch in self:
@@ -110,28 +128,34 @@ class UtilityMigrationBatch(models.Model):
                 batch.started_at = fields.Datetime.now()
             batch.state = 'processing'
 
-            pending_records = batch._get_batch_records().filtered(
-                lambda r: r.state in ('queued', 'processing')
+            # Query strictly the pending records intended for this run via ORM search with limit
+            run_records = batch._search_batch_records(
+                domain=[('state', 'in', ('queued', 'processing'))],
+                order='id asc',
+                limit=max_records_per_run
             )
 
-            if not pending_records:
-                records = batch._get_batch_records()
-                err_count = len(records.filtered(lambda r: r.state == 'error'))
-                imp_count = len(records.filtered(lambda r: r.state == 'imported'))
+            if not run_records:
+                has_pending = bool(batch._search_batch_records(
+                    domain=[('state', 'in', ('queued', 'processing'))],
+                    limit=1
+                ))
+                if not has_pending:
+                    records = batch._get_batch_records()
+                    err_count = len(records.filtered(lambda r: r.state == 'error'))
+                    imp_count = len(records.filtered(lambda r: r.state == 'imported'))
 
-                if err_count == 0 and imp_count > 0:
-                    batch.state = 'done'
-                elif imp_count > 0 and err_count > 0:
-                    batch.state = 'partial'
-                elif imp_count == 0 and err_count > 0:
-                    batch.state = 'partial'
-                else:
-                    batch.state = 'done'
-                batch.finished_at = fields.Datetime.now()
+                    if err_count == 0 and imp_count > 0:
+                        batch.state = 'done'
+                    elif imp_count > 0 and err_count > 0:
+                        batch.state = 'partial'
+                    elif imp_count == 0 and err_count > 0:
+                        batch.state = 'partial'
+                    else:
+                        batch.state = 'done'
+                    batch.finished_at = fields.Datetime.now()
                 continue
 
-            # Limit records in single invocation to prevent cron execution timeouts on huge datasets
-            run_records = pending_records[:max_records_per_run] if max_records_per_run else pending_records
             chunk_size = max(1, batch.chunk_size or 200)
 
             try:
@@ -148,12 +172,13 @@ class UtilityMigrationBatch(models.Model):
                 batch.finished_at = fields.Datetime.now()
                 continue
 
-            # Re-evaluate remaining pending records in batch (queued or stuck processing)
-            remaining_pending = batch._get_batch_records().filtered(
-                lambda r: r.state in ('queued', 'processing')
-            )
+            # Re-evaluate remaining pending records in batch via fast search (limit=1)
+            has_remaining_pending = bool(batch._search_batch_records(
+                domain=[('state', 'in', ('queued', 'processing'))],
+                limit=1
+            ))
 
-            if remaining_pending:
+            if has_remaining_pending:
                 # Still pending records left for subsequent cron runs -> reset state to queued
                 batch.state = 'queued'
             else:
@@ -171,6 +196,7 @@ class UtilityMigrationBatch(models.Model):
                 else:
                     batch.state = 'done'
                 batch.finished_at = fields.Datetime.now()
+
 
     def action_open_records(self):
         self.ensure_one()
