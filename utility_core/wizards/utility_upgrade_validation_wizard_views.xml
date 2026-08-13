@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="view_utility_upgrade_validation_wizard_form" model="ir.ui.view">
+            <field name="name">utility.upgrade.validation.wizard.form</field>
+            <field name="model">utility.upgrade.validation.wizard</field>
+            <field name="arch" type="xml">
+                <form string="أداة التدقيق الشامل والفحص الفني بعد الترقية">
+                    <header>
+                        <button name="action_run_validation" string="تشغيل التدقيق الآن" type="object" class="btn-primary"/>
+                    </header>
+                    <sheet>
+                        <div class="oe_title">
+                            <h1>أداة فحص سلامة الترقية وبيانات النظام (Upgrade Validation)</h1>
+                        </div>
+                        <group>
+                            <group>
+                                <field name="status_summary" widget="badge"
+                                       decoration-success="status_summary == 'pass'"
+                                       decoration-warning="status_summary == 'warning'"
+                                       decoration-danger="status_summary == 'fail'"/>
+                            </group>
+                            <group>
+                                <field name="pass_count"/>
+                                <field name="warning_count"/>
+                                <field name="fail_count"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="تفاصيل نتائج الفحص">
+                                <field name="line_ids" readonly="1">
+                                    <tree decoration-success="status == 'pass'"
+                                          decoration-warning="status == 'warning'"
+                                          decoration-danger="status == 'fail'">
+                                        <field name="section"/>
+                                        <field name="status" widget="badge"/>
+                                        <field name="check_name"/>
+                                        <field name="detail"/>
+                                    </tree>
+                                </field>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_utility_upgrade_validation_wizard" model="ir.actions.act_window">
+            <field name="name">تدقيق وفحص سلامة الترقية</field>
+            <field name="res_model">utility.upgrade.validation.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+        </record>
+
+        <menuitem id="menu_utility_upgrade_validation_wizard"
+                  name="تدقيق وفحص الترقية"
+                  parent="utility_core.menu_utility_config"
+                  action="action_utility_upgrade_validation_wizard"
+                  sequence="99"
+                  groups="utility_core.group_utility_admin"/>
+    </data>
+</odoo>

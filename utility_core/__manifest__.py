@@ -51,6 +51,7 @@ User Role.
         'views/utility_meter_replacement_views.xml',
         'views/utility_customer_wizard_views.xml',
         'wizards/utility_customer_lifecycle_wizard_views.xml',
+        'wizards/utility_upgrade_validation_wizard_views.xml',
 
         'views/utility_customer_menu.xml',
         'views/utility_network_menu.xml',

@@ -129,4 +129,6 @@ access_utility_period_generator_billing,utility.period.generator.billing,model_u
 access_utility_period_adjust_wizard_admin,utility.period.adjust.wizard.admin,model_utility_period_adjust_wizard,group_utility_admin,1,1,1,1
 access_utility_period_adjust_wizard_billing,utility.period.adjust.wizard.billing,model_utility_period_adjust_wizard,group_utility_billing_manager,1,1,1,1
 access_utility_customer_lifecycle_wizard_all,utility.customer.lifecycle.wizard.all,model_utility_customer_lifecycle_wizard,base.group_user,1,1,1,1
+access_utility_upgrade_validation_wizard_admin,utility.upgrade.validation.wizard.admin,model_utility_upgrade_validation_wizard,group_utility_admin,1,1,1,1
+access_utility_upgrade_validation_line_admin,utility.upgrade.validation.line.admin,model_utility_upgrade_validation_line,group_utility_admin,1,1,1,1
 

@@ -6,3 +6,4 @@ from . import utility_migration_import_wizard
 from . import utility_period_generator
 from . import utility_period_adjust_wizard
 from . import utility_customer_lifecycle_wizard
+from . import utility_upgrade_validation_wizard

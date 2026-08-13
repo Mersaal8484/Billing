@@ -574,6 +574,61 @@ class UtilityMeterExt(models.Model):
             origin=origin,
         )
 
+    @api.model
+    def cron_check_meter_stock_alignment(self, batch_limit=500):
+        """فحص وتدقيق التوافق بين الحالة المنطقية والموقع المخزني الفعلي.
+        الدالة تكتشف وتسجل الفروقات في نموذج Exception Log (utility.meter.integrity.issue)
+        دون أي تعديل آلي لحماية بيانات الأصول والمحاسبة."""
+        meters = self.search([('active', '=', True)], limit=batch_limit)
+        Issue = self.env['utility.meter.integrity.issue']
+        created_issues = Issue.browse()
+
+        for meter in meters:
+            if not meter.product_id or not meter.lot_id:
+                continue
+
+            current_loc = meter._get_lot_current_location()
+
+            # 1. logical_installed_but_stock_available
+            if meter.customer_id and current_loc and current_loc.usage == 'internal':
+                issue = Issue.create({
+                    'meter_id': meter.id,
+                    'issue_type': 'logical_installed_but_stock_available',
+                    'severity': 'critical',
+                    'lot_id': meter.lot_id.id,
+                    'physical_location_id': current_loc.id,
+                    'logical_customer_id': meter.customer_id.id,
+                    'message': _('العداد معين منطقيًا للمشترك (%s) بينما موقعه المخزني الفعلي موقع داخلي (%s).') % (
+                        meter.customer_id.display_name, current_loc.display_name),
+                })
+                created_issues |= issue
+
+            # 2. logical_unassigned_but_stock_customer
+            elif not meter.customer_id and current_loc and current_loc.usage == 'customer':
+                issue = Issue.create({
+                    'meter_id': meter.id,
+                    'issue_type': 'logical_unassigned_but_stock_customer',
+                    'severity': 'warning',
+                    'lot_id': meter.lot_id.id,
+                    'physical_location_id': current_loc.id,
+                    'message': _('العداد غير معين لأي مشترك منطقيًا ولكن موقعه المخزني الفعلي موقع عميل (%s).') % current_loc.display_name,
+                })
+                created_issues |= issue
+
+            # 3. product_lot_mismatch
+            if meter.lot_id.product_id != meter.product_id:
+                issue = Issue.create({
+                    'meter_id': meter.id,
+                    'issue_type': 'product_lot_mismatch',
+                    'severity': 'critical',
+                    'lot_id': meter.lot_id.id,
+                    'message': _('منتج العداد (%s) لا يطابق منتج الرقم التسلسلي بالمخزون (%s).') % (
+                        meter.product_id.display_name, meter.lot_id.product_id.display_name),
+                })
+                created_issues |= issue
+
+        return len(created_issues)
+
 
 class UtilityMeterModelInventory(models.Model):
     _inherit = 'utility.meter.model'

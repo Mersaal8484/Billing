@@ -262,6 +262,11 @@ class UtilityBillingAPI(http.Controller):
     @http.route('/api/v1/utility/payment_gateway/webhook/<string:reference>', type='json', auth='public', methods=['POST'], csrf=False)
     def payment_gateway_webhook(self, reference, **kwargs):
         params = request.jsonrequest or {}
+        # Acquire row-level lock FOR UPDATE to prevent race conditions on concurrent callbacks
+        request.env.cr.execute(
+            "SELECT id FROM utility_payment_gateway_transaction WHERE name = %s FOR UPDATE",
+            [reference]
+        )
         tx = request.env['utility.payment.gateway.transaction'].sudo().search([
             ('name', '=', reference),
         ], limit=1)
