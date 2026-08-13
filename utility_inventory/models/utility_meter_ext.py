@@ -184,7 +184,62 @@ class UtilityMeterExt(models.Model):
                         'لا يمكن اختيار رقم تسلسلي مكهن أو تالف من مخزن الخردة (%s).'
                     ) % scrap_quant.location_id.display_name)
 
-    # ── Canonical Physical Inventory Execution API ──────────────────────
+    # ── Canonical Multi-Warehouse Resolver ──────────────────────────────
+
+    def _resolve_warehouse(self, warehouse=None, source_loc=None):
+        """Strict deterministic multi-warehouse resolver.
+        1. Explicit warehouse parameter
+        2. Warehouse inferred from source_loc
+        3. Warehouse inferred from the Lot's current internal location
+        4. Safe fallback if company has EXACTLY ONE warehouse
+        5. Raises ValidationError if multi-warehouse and unresolved
+        """
+        # 1. Explicit warehouse
+        if warehouse:
+            return warehouse
+
+        company = (self and self.company_id) or (source_loc and source_loc.company_id) or self.env.company
+
+        # 2. Inferred from source_loc
+        if source_loc:
+            wh = getattr(source_loc, 'warehouse_id', False)
+            if not wh and hasattr(source_loc, 'get_warehouse'):
+                wh = source_loc.get_warehouse()
+            if not wh:
+                wh = self.env['stock.warehouse'].search([
+                    ('company_id', '=', company.id),
+                    '|', ('view_location_id', 'parent_of', source_loc.id),
+                    ('lot_stock_id', 'parent_of', source_loc.id),
+                ], limit=1)
+            if wh:
+                return wh
+
+        # 3. Inferred from current lot location
+        if self and hasattr(self, '_get_lot_current_location'):
+            cur_loc = self._get_lot_current_location()
+            if cur_loc:
+                wh = getattr(cur_loc, 'warehouse_id', False) or (
+                    hasattr(cur_loc, 'get_warehouse') and cur_loc.get_warehouse()
+                )
+                if not wh:
+                    wh = self.env['stock.warehouse'].search([
+                        ('company_id', '=', company.id),
+                        '|', ('view_location_id', 'parent_of', cur_loc.id),
+                        ('lot_stock_id', 'parent_of', cur_loc.id),
+                    ], limit=1)
+                if wh:
+                    return wh
+
+        # 4. Safe single-warehouse company fallback
+        warehouses = self.env['stock.warehouse'].search([('company_id', '=', company.id)])
+        if len(warehouses) == 1:
+            return warehouses[0]
+
+        # 5. Deterministic failure
+        raise ValidationError(_(
+            'لم يتم تحديد المستودع (Warehouse) المطلوب للعملية المخزنية، ويوجد أكثر من مستودع مسجل للشركة %s. '
+            'يرجى اختيار المستودع صراحة في أمر الخدمة أو تفاصيل العملية.'
+        ) % company.name)
 
     def _ensure_physical_identity(self, action_name='حركة مخزنية'):
         self.ensure_one()
@@ -194,60 +249,43 @@ class UtilityMeterExt(models.Model):
                 'لتنفيذ إجراء "%s". لا يمكن تنفيذ عمليات مخزنية مادية لعدادات تراثية غير مهدأة بالمخزون.'
             ) % (self.meter_number or self.operational_number or self.display_name, action_name))
 
-    def _resolve_meter_inspection_location(self, company=None, warehouse=None):
-        company = company or self.company_id or self.env.company
-        if not warehouse:
-            warehouse = self.env['stock.warehouse'].search([('company_id', '=', company.id)], limit=1)
+    def _resolve_meter_inspection_location(self, company=None, warehouse=None, source_loc=None):
+        wh = self._resolve_warehouse(warehouse=warehouse, source_loc=source_loc)
+        wh._ensure_utility_meter_locations()
+        return wh.meter_inspection_location_id
 
-        if warehouse:
-            warehouse._ensure_meter_inspection_location()
-            if warehouse.meter_inspection_location_id:
-                return warehouse.meter_inspection_location_id
-
-        loc = self.env.ref('utility_inventory.stock_location_meter_inspection', raise_if_not_found=False)
-        if not loc:
-            loc = self.env['stock.location'].search([
-                ('name', 'ilike', 'Meter Inspection'),
-                '|', ('company_id', '=', False), ('company_id', '=', company.id),
-            ], limit=1) or self.env['stock.location'].search([
-                ('name', 'ilike', 'فحص العدادات'),
-                '|', ('company_id', '=', False), ('company_id', '=', company.id),
-            ], limit=1)
-        if not loc:
-            parent_loc = self.env.ref('stock.stock_location_locations', raise_if_not_found=False)
-            loc = self.env['stock.location'].create({
-                'name': 'فحص العدادات (Meter Inspection)',
-                'usage': 'internal',
-                'location_id': parent_loc.id if parent_loc else False,
-                'company_id': company.id,
-            })
-        return loc
+    def _resolve_meter_repair_location(self, company=None, warehouse=None, source_loc=None):
+        wh = self._resolve_warehouse(warehouse=warehouse, source_loc=source_loc)
+        wh._ensure_utility_meter_locations()
+        return wh.meter_repair_location_id
 
     def _resolve_meter_picking_type(self, source_loc, dest_loc, warehouse=None, company=None):
-        company = company or self.company_id or self.env.company
+        wh = self._resolve_warehouse(warehouse=warehouse, source_loc=source_loc)
+        
         if source_loc.usage == 'internal' and dest_loc.usage == 'customer':
-            code = 'outgoing'
+            picking_type = wh.out_type_id
             label = 'إخراج / تسليم (Outgoing)'
         elif source_loc.usage == 'customer' and dest_loc.usage == 'internal':
-            code = 'incoming'
+            picking_type = wh.in_type_id
             label = 'إدخال / استلام (Incoming)'
         else:
-            code = 'internal'
+            picking_type = wh.int_type_id
             label = 'نقل داخلي (Internal)'
 
-        domain = [('code', '=', code), ('company_id', '=', company.id)]
-        if warehouse:
-            domain.append(('warehouse_id', '=', warehouse.id))
-
-        picking_type = self.env['stock.picking.type'].search(domain, limit=1)
-        if not picking_type and warehouse:
+        if not picking_type:
+            # Fallback search within exact warehouse
+            code = 'outgoing' if source_loc.usage == 'internal' and dest_loc.usage == 'customer' else (
+                'incoming' if source_loc.usage == 'customer' and dest_loc.usage == 'internal' else 'internal'
+            )
             picking_type = self.env['stock.picking.type'].search([
                 ('code', '=', code),
-                ('company_id', '=', company.id),
+                ('warehouse_id', '=', wh.id),
             ], limit=1)
 
         if not picking_type:
-            raise ValidationError(_('تعذر تحديد نوع الحركة المخزنية (%s - Code: %s) للشركة %s.') % (label, code, company.name))
+            raise ValidationError(_(
+                'تعذر تحديد نوع الحركة المخزنية (%s) للمستودع "%s" بالشركة %s.'
+            ) % (label, wh.name, wh.company_id.name))
         return picking_type
 
     def _validate_physical_meter_location(self, expected_usage=None):
@@ -299,14 +337,15 @@ class UtilityMeterExt(models.Model):
             ('state', '!=', 'cancel'),
         ], limit=1)
 
-    def _create_single_stock_movement(self, source_loc, dest_loc, operation_type, operation_ref=None, origin=None):
+    def _create_single_stock_movement(self, source_loc, dest_loc, operation_type, warehouse=None, operation_ref=None, origin=None):
         self.ensure_one()
         existing = self._get_existing_meter_picking(operation_type, operation_ref)
         if existing:
             return existing
 
-        company = self.company_id or self.env.company
-        picking_type = self._resolve_meter_picking_type(source_loc, dest_loc, company=company)
+        wh = self._resolve_warehouse(warehouse=warehouse, source_loc=source_loc)
+        company = wh.company_id
+        picking_type = self._resolve_meter_picking_type(source_loc, dest_loc, warehouse=wh, company=company)
 
         picking = self.env['stock.picking'].create({
             'picking_type_id': picking_type.id,
@@ -346,12 +385,13 @@ class UtilityMeterExt(models.Model):
         picking.button_validate()
         return picking
 
-    def inventory_install_meter(self, customer=None, origin=None, operation_ref=None):
-        """Execute physical meter installation (Stock -> Customers)."""
+    def inventory_install_meter(self, customer=None, warehouse=None, origin=None, operation_ref=None):
+        """Execute physical meter installation (Warehouse Stock -> Customers)."""
         self.ensure_one()
         self._ensure_physical_identity(_('تركيب عداد'))
 
-        stock_loc = self.env.ref('stock.stock_location_stock', raise_if_not_found=False)
+        wh = self._resolve_warehouse(warehouse=warehouse)
+        stock_loc = wh.lot_stock_id
         cust_loc = self.env.ref('stock.stock_location_customers', raise_if_not_found=False)
         if not stock_loc or not cust_loc:
             raise ValidationError(_('مواقع المخزون (Stock/Customers) غير معرفة في النظام.'))
@@ -363,12 +403,13 @@ class UtilityMeterExt(models.Model):
             source_loc=stock_loc,
             dest_loc=cust_loc,
             operation_type='install',
+            warehouse=wh,
             operation_ref=op_ref,
             origin=origin,
         )
 
-    def inventory_remove_meter(self, origin=None, operation_ref=None, destination='inspection'):
-        """Execute physical meter removal (Customers -> Meter Inspection / Stock / Scrap)."""
+    def inventory_remove_meter(self, warehouse=None, destination='inspection', origin=None, operation_ref=None):
+        """Execute physical meter removal (Customers -> Warehouse Inspection / Repair / Stock / Scrap)."""
         self.ensure_one()
         self._ensure_physical_identity(_('إزالة عداد'))
 
@@ -376,12 +417,16 @@ class UtilityMeterExt(models.Model):
         if not cust_loc:
             raise ValidationError(_('موقع العملاء (Customers Location) غير معرف.'))
 
+        wh = self._resolve_warehouse(warehouse=warehouse)
+
         if destination == 'scrap':
             dest_loc = self.env.ref('stock.stock_location_scrapped', raise_if_not_found=False)
         elif destination == 'stock':
-            dest_loc = self.env.ref('stock.stock_location_stock', raise_if_not_found=False)
+            dest_loc = wh.lot_stock_id
+        elif destination == 'repair':
+            dest_loc = self._resolve_meter_repair_location(warehouse=wh)
         else:
-            dest_loc = self._resolve_meter_inspection_location()
+            dest_loc = self._resolve_meter_inspection_location(warehouse=wh, source_loc=cust_loc)
 
         if not dest_loc:
             raise ValidationError(_('موقع الوجهة المخزنية للإزالة غير معرف.'))
@@ -391,15 +436,17 @@ class UtilityMeterExt(models.Model):
             source_loc=cust_loc,
             dest_loc=dest_loc,
             operation_type='remove',
+            warehouse=wh,
             operation_ref=op_ref,
             origin=origin,
         )
 
-    def inventory_replace_meter(self, new_meter, origin=None, operation_ref=None, old_destination='inspection'):
+    def inventory_replace_meter(self, new_meter, old_warehouse=None, new_warehouse=None, origin=None, operation_ref=None, old_destination='inspection'):
         """Atomic physical meter replacement:
-        1. Validate old & new physical meters completely upfront
-        2. Remove old meter (Customers -> Inspection)
-        3. Install new meter (Stock -> Customers)
+        1. Resolve old_warehouse for old meter and new_warehouse for new meter
+        2. Validate old & new physical meters completely upfront
+        3. Remove old meter (Customers -> old_wh.meter_inspection_location_id)
+        4. Install new meter (new_wh.lot_stock_id -> Customers)
         """
         self.ensure_one()
         old_meter = self
@@ -410,16 +457,14 @@ class UtilityMeterExt(models.Model):
             raise ValidationError(_('يجب تحديد العداد الجديد المراد تركيبه.'))
         new_meter._ensure_physical_identity(_('تركيب عداد للاستبدال'))
 
+        old_wh = old_meter._resolve_warehouse(warehouse=old_warehouse)
+        new_wh = new_meter._resolve_warehouse(warehouse=new_warehouse)
+
         cust_loc = self.env.ref('stock.stock_location_customers', raise_if_not_found=False)
-        stock_loc = self.env.ref('stock.stock_location_stock', raise_if_not_found=False)
-        if not cust_loc or not stock_loc:
+        if not cust_loc or not new_wh.lot_stock_id:
             raise ValidationError(_('مواقع المخزون (Stock/Customers) غير معرفة.'))
 
-        new_meter._validate_physical_meter_for_installation(source_loc=stock_loc)
-
-        company = old_meter.company_id or self.env.company
-        if new_meter.company_id and new_meter.company_id != company:
-            raise ValidationError(_('شركة العداد الجديد تختلف عن شركة العداد القديم.'))
+        new_meter._validate_physical_meter_for_installation(source_loc=new_wh.lot_stock_id)
 
         # 2. Execute Movements
         base_ref = operation_ref or origin or f"REPLACE:{old_meter.id}:{new_meter.id}"
@@ -427,12 +472,14 @@ class UtilityMeterExt(models.Model):
         new_op_ref = f"{base_ref}:REPLACE_INSTALL:{new_meter.id}"
 
         old_picking = old_meter.inventory_remove_meter(
+            warehouse=old_wh,
             origin=origin,
             operation_ref=old_op_ref,
             destination=old_destination,
         )
 
         new_picking = new_meter.inventory_install_meter(
+            warehouse=new_wh,
             origin=origin,
             operation_ref=new_op_ref,
         )
@@ -442,40 +489,74 @@ class UtilityMeterExt(models.Model):
             'new_picking': new_picking,
         }
 
-    def inventory_return_to_stock(self, origin=None, operation_ref=None):
-        """Return meter from Inspection -> Stock."""
+    def inventory_return_to_stock(self, warehouse=None, origin=None, operation_ref=None):
+        """Return meter from Warehouse Inspection -> Warehouse Stock."""
         self.ensure_one()
         self._ensure_physical_identity(_('إعادة العداد للمخزون'))
 
-        inspection_loc = self._resolve_meter_inspection_location()
-        stock_loc = self.env.ref('stock.stock_location_stock', raise_if_not_found=False)
+        wh = self._resolve_warehouse(warehouse=warehouse)
+        inspection_loc = self._resolve_meter_inspection_location(warehouse=wh)
+        stock_loc = wh.lot_stock_id
         if not inspection_loc or not stock_loc:
-            raise ValidationError(_('مواقع المخزون (Inspection/Stock) غير معرفة.'))
+            raise ValidationError(_('مواقع المخزون (Inspection/Stock) غير معرفة للمستودع.'))
 
         op_ref = operation_ref or (f"{origin}:RETURN:{self.id}" if origin else f"RETURN:{self.id}")
         return self._create_single_stock_movement(
             source_loc=inspection_loc,
             dest_loc=stock_loc,
             operation_type='return',
+            warehouse=wh,
             operation_ref=op_ref,
             origin=origin,
         )
 
-    def inventory_scrap_meter(self, origin=None, operation_ref=None):
-        """Route meter from Inspection/Stock -> Scrap."""
+    def inventory_repair_meter(self, action='to_repair', warehouse=None, origin=None, operation_ref=None):
+        """Manage repair movements:
+        - action='to_repair': Inspection -> Repair
+        - action='from_repair': Repair -> Inspection (re-inspection before returning to stock)
+        """
+        self.ensure_one()
+        self._ensure_physical_identity(_('صيانة العداد'))
+
+        wh = self._resolve_warehouse(warehouse=warehouse)
+        inspection_loc = self._resolve_meter_inspection_location(warehouse=wh)
+        repair_loc = self._resolve_meter_repair_location(warehouse=wh)
+
+        if action == 'from_repair':
+            source_loc, dest_loc = repair_loc, inspection_loc
+            op_code = 'from_repair'
+        else:
+            source_loc, dest_loc = inspection_loc, repair_loc
+            op_code = 'to_repair'
+
+        op_ref = operation_ref or (f"{origin}:REPAIR:{op_code}:{self.id}" if origin else f"REPAIR:{op_code}:{self.id}")
+        return self._create_single_stock_movement(
+            source_loc=source_loc,
+            dest_loc=dest_loc,
+            operation_type='repair',
+            warehouse=wh,
+            operation_ref=op_ref,
+            origin=origin,
+        )
+
+    def inventory_scrap_meter(self, warehouse=None, origin=None, operation_ref=None):
+        """Route meter from current location -> Scrap."""
         self.ensure_one()
         self._ensure_physical_identity(_('تكهين عداد'))
 
-        current_loc = self._get_lot_current_location() or self._resolve_meter_inspection_location()
+        current_loc = self._get_lot_current_location()
+        wh = self._resolve_warehouse(warehouse=warehouse, source_loc=current_loc)
+        source_loc = current_loc or wh.meter_inspection_location_id
         scrap_loc = self.env.ref('stock.stock_location_scrapped', raise_if_not_found=False)
-        if not current_loc or not scrap_loc:
+        if not source_loc or not scrap_loc:
             raise ValidationError(_('مواقع المخزون (Scrap Location) غير معرفة.'))
 
         op_ref = operation_ref or (f"{origin}:SCRAP:{self.id}" if origin else f"SCRAP:{self.id}")
         return self._create_single_stock_movement(
-            source_loc=current_loc,
+            source_loc=source_loc,
             dest_loc=scrap_loc,
             operation_type='scrap',
+            warehouse=wh,
             operation_ref=op_ref,
             origin=origin,
         )

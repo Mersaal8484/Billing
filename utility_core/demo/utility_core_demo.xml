@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Sample Regions & Infrastructure -->
+        <record id="demo_region_1" model="utility.region">
+            <field name="name">المنطقة الأولى</field>
+            <field name="code">REGION_1</field>
+            <field name="type">region</field>
+            <field name="recurring_rule_type">biweekly</field>
+        </record>
+        <record id="demo_region_2" model="utility.region">
+            <field name="name">المنطقة الثانية</field>
+            <field name="code">REGION_2</field>
+            <field name="type">region</field>
+            <field name="recurring_rule_type">biweekly</field>
+        </record>
+        <record id="demo_region_3" model="utility.region">
+            <field name="name">المنطقة الثالثة</field>
+            <field name="code">REGION_3</field>
+            <field name="type">region</field>
+            <field name="recurring_rule_type">biweekly</field>
+        </record>
+        <record id="demo_region_4" model="utility.region">
+            <field name="name">المنطقة الرابعة</field>
+            <field name="code">REGION_4</field>
+            <field name="type">region</field>
+            <field name="recurring_rule_type">biweekly</field>
+        </record>
+
+        <record id="demo_area_1" model="utility.region">
+            <field name="name">فرع المنطقة الأولى</field>
+            <field name="code">AREA_1</field>
+            <field name="type">area</field>
+            <field name="parent_id" ref="demo_region_1"/>
+            <field name="recurring_rule_type">biweekly</field>
+        </record>
+        <record id="demo_area_2" model="utility.region">
+            <field name="name">فرع المنطقة الثانية</field>
+            <field name="code">AREA_2</field>
+            <field name="type">area</field>
+            <field name="parent_id" ref="demo_region_2"/>
+            <field name="recurring_rule_type">biweekly</field>
+        </record>
+        <record id="demo_area_3" model="utility.region">
+            <field name="name">فرع المنطقة الثالثة</field>
+            <field name="code">AREA_3</field>
+            <field name="type">area</field>
+            <field name="parent_id" ref="demo_region_3"/>
+            <field name="recurring_rule_type">biweekly</field>
+        </record>
+        <record id="demo_area_4" model="utility.region">
+            <field name="name">فرع المنطقة الرابعة</field>
+            <field name="code">AREA_4</field>
+            <field name="type">area</field>
+            <field name="parent_id" ref="demo_region_4"/>
+            <field name="recurring_rule_type">biweekly</field>
+        </record>
+        <record id="demo_zone_2" model="utility.region">
+            <field name="name">نطاق المنطقة الثانية</field>
+            <field name="code">ZONE_2</field>
+            <field name="type">zone</field>
+            <field name="parent_id" ref="demo_area_2"/>
+            <field name="recurring_rule_type">biweekly</field>
+        </record>
+        <record id="demo_substation_2" model="utility.substation">
+            <field name="name">محطة المنطقة الثانية</field>
+            <field name="code">SUB_2</field>
+            <field name="area_id" ref="demo_area_2"/>
+            <field name="voltage_level">mv</field>
+        </record>
+        <record id="demo_feeder_2" model="utility.feeder">
+            <field name="name">فيدر المنطقة الثانية</field>
+            <field name="code">FEEDER_2</field>
+            <field name="substation_id" ref="demo_substation_2"/>
+            <field name="voltage_level">lv</field>
+            <field name="rated_capacity">500.0</field>
+        </record>
+        <record id="demo_transformer_2" model="utility.transformer">
+            <field name="name">محول المنطقة الثانية</field>
+            <field name="code">TRANS_2</field>
+            <field name="feeder_id" ref="demo_feeder_2"/>
+            <field name="substation_id" ref="demo_substation_2"/>
+            <field name="capacity">250.0</field>
+            <field name="phase">three</field>
+            <field name="status">active</field>
+        </record>
+        <record id="demo_route_2" model="utility.route">
+            <field name="name">مسار المنطقة الثانية</field>
+            <field name="code">ROUTE_2</field>
+            <field name="area_id" ref="demo_area_2"/>
+            <field name="zone_id" ref="demo_zone_2"/>
+        </record>
+
+
+        <!-- Sample Contract Template -->
+        <record id="demo_tmpl_general_biweekly" model="utility.contract.template">
+            <field name="name">تعرفة عامة - نصف شهري (شرائح استهلاكية)</field>
+            <field name="code">TMPL_GENERAL_BI</field>
+            <field name="pricing_mode">tier</field>
+            <field name="recurring_rule_type">bi_monthly</field>
+            <field name="recurring_invoicing_type">postpaid</field>
+            <field name="recurring_interval">1</field>
+            <field name="service_charge">500</field>
+            <field name="subscriber_category_ids" eval="[(6, 0, [ref('utility_core.cat_public'), ref('utility_core.cat_large'), ref('utility_core.cat_government')])]"/>
+            <field name="subscriber_ids" eval="[(6, 0, [ref('utility_core.sub_category_public'), ref('utility_core.sub_public_tenant'), ref('utility_core.sub_public_commercial'), ref('utility_core.sub_public_mosque'), ref('utility_core.sub_public_doctor'), ref('utility_core.sub_public_pasture'), ref('utility_core.sub_public_martyr'), ref('utility_core.sub_category_large'), ref('utility_core.sub_category_government_new'), ref('utility_core.sub_gov_b')])]"/>
+            <field name="scope">global</field>
+            <field name="sale_autoconfirm" eval="True"/>
+            <field name="create_invoice_automatically" eval="True"/>
+            <field name="active" eval="True"/>
+        </record>
+
+        <record id="demo_tmpl_general_biweekly_line1" model="utility.contract.template.line">
+            <field name="template_id" ref="demo_tmpl_general_biweekly"/>
+            <field name="sequence">10</field>
+            <field name="product_id" ref="utility_product_service_charge"/>
+            <field name="name">رسم خدمة ثابت</field>
+            <field name="price_type">fixed</field>
+            <field name="specific_price">500</field>
+            <field name="meter_line_type">service_charge</field>
+        </record>
+    </data>
+</odoo>

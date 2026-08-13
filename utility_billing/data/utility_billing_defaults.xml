@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <function model="res.company" name="write">
+            <value eval="[ref('base.main_company')]"/>
+            <value eval="{
+                'penalty_product_id': ref('utility_core.utility_product_penalty'),
+                'mu_allim_product_id': ref('utility_core.utility_product_mu_allim'),
+                'cleaning_product_id': ref('utility_core.utility_product_cleaning'),
+                'local_fee_product_id': ref('utility_core.utility_product_municipality'),
+            }"/>
+        </function>
+    </data>
+</odoo>

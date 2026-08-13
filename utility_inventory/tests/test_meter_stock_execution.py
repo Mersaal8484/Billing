@@ -230,3 +230,112 @@ class TestMeterStockExecution(TransactionCase):
         self.meter.inventory_install_meter(origin='SO-LIVE-STATE')
         self.assertEqual(self.meter.physical_state, 'installed')
 
+    def test_14_multi_warehouse_execution_and_isolation(self):
+        """Test installation and removal strictly respect designated warehouse."""
+        wh_sanaa = self.env['stock.warehouse'].create({
+            'name': 'مستودع صنعاء',
+            'code': 'WH-SANAA',
+            'company_id': self.env.company.id,
+        })
+        lot_sanaa = self.env['stock.lot'].create({
+            'name': 'SN-SANAA-001',
+            'product_id': self.product_serial.id,
+            'company_id': self.env.company.id,
+        })
+        self.env['stock.quant'].create({
+            'product_id': self.product_serial.id,
+            'location_id': wh_sanaa.lot_stock_id.id,
+            'lot_id': lot_sanaa.id,
+            'quantity': 1.0,
+        })
+        meter_sanaa = self.env['utility.meter'].create({
+            'meter_number': 'MTR-SANAA-01',
+            'product_id': self.product_serial.id,
+            'lot_id': lot_sanaa.id,
+        })
+
+        # Install from WH-SANAA
+        p_inst = meter_sanaa.inventory_install_meter(warehouse=wh_sanaa, origin='SO-SANAA-INST')
+        self.assertEqual(p_inst.location_id, wh_sanaa.lot_stock_id)
+        self.assertEqual(p_inst.picking_type_id, wh_sanaa.out_type_id)
+
+        # Remove to WH-SANAA Meter Inspection
+        p_rem = meter_sanaa.inventory_remove_meter(warehouse=wh_sanaa, origin='SO-SANAA-REM')
+        self.assertEqual(p_rem.location_dest_id, wh_sanaa.meter_inspection_location_id)
+        self.assertEqual(p_rem.picking_type_id, wh_sanaa.in_type_id)
+
+    def test_15_multi_warehouse_replacement(self):
+        """Test replacement across different warehouses (Old -> WH-A Inspection, New WH-B Stock -> Customers)."""
+        wh_a = self.env['stock.warehouse'].create({
+            'name': 'مستودع أ',
+            'code': 'WH-A',
+            'company_id': self.env.company.id,
+        })
+        wh_b = self.env['stock.warehouse'].create({
+            'name': 'مستودع ب',
+            'code': 'WH-B',
+            'company_id': self.env.company.id,
+        })
+
+        meter_old = self.meter
+        meter_old.inventory_install_meter(warehouse=wh_a, origin='SO-OLD-INST')
+
+        lot_b = self.env['stock.lot'].create({
+            'name': 'SN-WHB-99',
+            'product_id': self.product_serial.id,
+            'company_id': self.env.company.id,
+        })
+        self.env['stock.quant'].create({
+            'product_id': self.product_serial.id,
+            'location_id': wh_b.lot_stock_id.id,
+            'lot_id': lot_b.id,
+            'quantity': 1.0,
+        })
+        meter_new = self.env['utility.meter'].create({
+            'meter_number': 'MTR-WHB-99',
+            'product_id': self.product_serial.id,
+            'lot_id': lot_b.id,
+        })
+
+        res = meter_old.inventory_replace_meter(
+            new_meter=meter_new,
+            old_warehouse=wh_a,
+            new_warehouse=wh_b,
+            origin='SO-MULTI-REPLACE',
+        )
+        self.assertEqual(res['old_picking'].location_dest_id, wh_a.meter_inspection_location_id)
+        self.assertEqual(res['new_picking'].location_id, wh_b.lot_stock_id)
+
+    def test_16_repair_lifecycle_inspection_to_repair_and_back(self):
+        """Test meter repair movements: Inspection -> Repair -> Inspection -> Stock."""
+        wh = self.env['stock.warehouse'].create({
+            'name': 'مستودع إصلاح',
+            'code': 'WH-REP',
+            'company_id': self.env.company.id,
+        })
+
+        # Inspection -> Repair
+        p1 = self.meter.inventory_repair_meter(action='to_repair', warehouse=wh, origin='SO-REP-1')
+        self.assertEqual(p1.location_id, wh.meter_inspection_location_id)
+        self.assertEqual(p1.location_dest_id, wh.meter_repair_location_id)
+
+        # Repair -> Inspection (re-inspection)
+        p2 = self.meter.inventory_repair_meter(action='from_repair', warehouse=wh, origin='SO-REP-2')
+        self.assertEqual(p2.location_id, wh.meter_repair_location_id)
+        self.assertEqual(p2.location_dest_id, wh.meter_inspection_location_id)
+
+    def test_17_ambiguous_multi_warehouse_raises_validation_error(self):
+        """Test _resolve_warehouse raises ValidationError if multi-warehouse company context is ambiguous."""
+        multi_company = self.env['res.company'].create({'name': 'شركة متعددة المستودعات'})
+        wh1 = self.env['stock.warehouse'].create({'name': 'WH1', 'code': 'W1', 'company_id': multi_company.id})
+        wh2 = self.env['stock.warehouse'].create({'name': 'WH2', 'code': 'W2', 'company_id': multi_company.id})
+
+        unbound_meter = self.env['utility.meter'].create({
+            'meter_number': 'MTR-AMBIGUOUS',
+            'company_id': multi_company.id,
+        })
+
+        with self.assertRaises(ValidationError):
+            unbound_meter._resolve_warehouse()
+
+

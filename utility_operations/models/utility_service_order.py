@@ -11,6 +11,11 @@ class UtilityServiceOrder(models.Model):
 
     active = fields.Boolean('نشط', default=True)
     company_id = fields.Many2one('res.company', 'الشركة', default=lambda self: self.env.company)
+    warehouse_id = fields.Many2one(
+        'stock.warehouse', string='المستودع المنفذ',
+        default=lambda self: self.env['stock.warehouse'].search([('company_id', '=', self.env.company.id)], limit=1),
+        help='المستودع المعين لتنفيذ حركات الصرف والإرجاع والاستبدال الفيزيائية'
+    )
     order_number = fields.Char('رقم الأمر', required=True, index=True, default=lambda self: _('جديد'))
     date_requested = fields.Datetime('تاريخ الطلب', default=fields.Datetime.now)
     date_scheduled = fields.Datetime('التاريخ المجدول')
@@ -112,6 +117,7 @@ class UtilityServiceOrder(models.Model):
             if self.old_meter_id:
                 self.old_meter_id.inventory_replace_meter(
                     new_meter=self.new_meter_id,
+                    new_warehouse=self.warehouse_id,
                     origin=self.order_number,
                     operation_ref=op_ref,
                     old_destination='inspection',
@@ -124,6 +130,7 @@ class UtilityServiceOrder(models.Model):
             else:
                 self.new_meter_id.inventory_install_meter(
                     customer=self.customer_id,
+                    warehouse=self.warehouse_id,
                     origin=self.order_number,
                     operation_ref=f"{op_ref}:INSTALL",
                 )
@@ -138,6 +145,7 @@ class UtilityServiceOrder(models.Model):
             op_ref = f"SO:{self.order_number}:INSTALL"
             self.meter_id.inventory_install_meter(
                 customer=self.customer_id,
+                warehouse=self.warehouse_id,
                 origin=self.order_number,
                 operation_ref=op_ref,
             )
@@ -150,6 +158,7 @@ class UtilityServiceOrder(models.Model):
         elif self.service_type == 'meter_removal' and self.meter_id:
             op_ref = f"SO:{self.order_number}:REMOVE"
             self.meter_id.inventory_remove_meter(
+                warehouse=self.warehouse_id,
                 origin=self.order_number,
                 operation_ref=op_ref,
                 destination='inspection',
@@ -201,9 +210,7 @@ class UtilityServiceOrder(models.Model):
 
     @api.model
     def cron_detect_zero_consumption_meters(self, batch_limit=500):
-        """الكشف التلقائي عن العدادات الخاملة أو المعطلة ذات الاستهلاك الصفري المتكرر.
-        تبحث الدالة عن العدادات النشطة التي كانت قراءتها أو استهلاكها 0 لآخر 3 قراءات
-        أو انقطعت قراءاتها، وتنشئ لها أمر تفتيش ميداني آلي."""
+        """الكشف التلقائي عن العدادات الخاملة أو المعطلة ذات الاستهلاك الصفري المتكرر."""
         Reading = self.env['utility.reading'].sudo()
         Meter = self.env['utility.meter'].sudo()
 

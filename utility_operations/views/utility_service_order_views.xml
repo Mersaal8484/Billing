@@ -58,6 +58,8 @@
                             <group>
                                 <field name="technician_id"/>
                                 <field name="team_id"/>
+                                <field name="company_id" groups="base.group_multi_company"/>
+                                <field name="warehouse_id" options="{'no_create': True}"/>
                                 <field name="date_requested"/>
                                 <field name="date_scheduled"/>
                                 <field name="date_completed"/>

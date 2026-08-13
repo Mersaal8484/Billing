@@ -71,7 +71,7 @@ class UtilityMeterReplacement(models.Model):
     new_opening_reading = fields.Float(string="القراءة الافتتاحية", digits=(12, 3), required=True, tracking=True)
     new_meter_val = fields.Float(string="معامل الضرب", default=1.0, tracking=True)
 
-    replace_date = fields.Datetime(string="تاريخ الاستبدال", default=fields.Datetime.now, required=True, tracking=True)
+    replace_date = fields.Datetime(string="تاريخ طلب الاستبدال", default=fields.Datetime.now, required=True, tracking=True)
     reason = fields.Selection([
         ('fault', 'عطل فني'),
         ('expired', 'انتهاء العمر الافتراضي'),
