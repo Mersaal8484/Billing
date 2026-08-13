@@ -7,10 +7,12 @@ class ResConfigSettings(models.TransientModel):
 
     legacy_single_phase_meter_model_id = fields.Many2one(
         'utility.meter.model', related='company_id.legacy_single_phase_meter_model_id',
-        readonly=False, string='موديل العداد القديم — أحادي الطور')
+        readonly=False, string='موديل العداد القديم — أحادي الطور',
+        domain=[('phase', '=', 'single')])
     legacy_three_phase_meter_model_id = fields.Many2one(
         'utility.meter.model', related='company_id.legacy_three_phase_meter_model_id',
-        readonly=False, string='موديل العداد القديم — ثلاثي الطور')
+        readonly=False, string='موديل العداد القديم — ثلاثي الطور',
+        domain=[('phase', '=', 'three')])
 
     pos_epson_printer_ip = fields.Char(
         string='عنوان IP طابعة Epson',

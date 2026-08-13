@@ -6,9 +6,11 @@ class ResCompany(models.Model):
 
     legacy_single_phase_meter_model_id = fields.Many2one(
         'utility.meter.model', string='موديل العداد القديم — أحادي الطور',
+        domain=[('phase', '=', 'single')],
         check_company=False)
     legacy_three_phase_meter_model_id = fields.Many2one(
         'utility.meter.model', string='موديل العداد القديم — ثلاثي الطور',
+        domain=[('phase', '=', 'three')],
         check_company=False)
 
     # --- Accounting ---

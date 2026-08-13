@@ -46,6 +46,11 @@ class TestMigrationHardening(TransactionCase):
             'code': 'MDL-1P',
             'phase': 'single',
         })
+        self.meter_model_three = self.env['utility.meter.model'].create({
+            'name': 'عداد ثلاثي 3P',
+            'code': 'MDL-3P',
+            'phase': 'three',
+        })
         self.company.legacy_single_phase_meter_model_id = self.meter_model_single
 
         # Setup master data for other company
@@ -110,6 +115,30 @@ class TestMigrationHardening(TransactionCase):
                 'area_id': self.area.id,  # Two targets set!
                 'company_id': self.company.id,
             })
+
+    def test_legacy_meter_model_domains_match_configured_phase(self):
+        """إعدادات موديلات العدادات القديمة تعرض الطور المتوافق فقط."""
+        company_fields = self.env['res.company']._fields
+        settings_fields = self.env['res.config.settings']._fields
+        self.assertIn("('phase', '=', 'single')", str(company_fields['legacy_single_phase_meter_model_id'].domain))
+        self.assertIn("('phase', '=', 'three')", str(company_fields['legacy_three_phase_meter_model_id'].domain))
+        self.assertIn("('phase', '=', 'single')", str(settings_fields['legacy_single_phase_meter_model_id'].domain))
+        self.assertIn("('phase', '=', 'three')", str(settings_fields['legacy_three_phase_meter_model_id'].domain))
+
+        self.company.legacy_single_phase_meter_model_id = self.meter_model_three
+        self.assertEqual(self.company.legacy_single_phase_meter_model_id, self.meter_model_three)
+        # ORM/runtime validation remains the final guard for imports and legacy data.
+        staging = self.env['utility.migration.customer'].create({
+            'name': 'عميل طور غير متوافق', 'customer_number': 'CUST-PHASE-MISMATCH',
+            'meter_number': 'MTR-PHASE-MISMATCH', 'phase': 'single',
+            'category_id': self.category.id, 'subscriber_type_id': self.subscriber_type.id,
+            'contract_template_id': self.contract_template.id, 'region_id': self.region.id,
+            'area_id': self.area.id, 'company_id': self.company.id,
+        })
+        staging.action_import_data()
+        self.assertEqual(staging.state, 'error')
+        self.assertIn('LEGACY_DEFAULT_METER_MODEL_PHASE_MISMATCH', staging.error_message)
+        self.company.legacy_single_phase_meter_model_id = self.meter_model_single
 
     def test_customer_migration_execution_and_idempotency(self):
         """اختبار تهيئة المشترك والعداد وقراءة الافتتاح 0 وتوفّر created_reading_id."""
@@ -184,6 +213,10 @@ class TestMigrationHardening(TransactionCase):
 
         self.assertEqual(staging.created_customer_id.id, cust_id)
         self.assertEqual(staging.created_meter_id.id, meter_id)
+        self.assertEqual(staging.created_meter_id.operational_number, staging.meter_number)
+        self.assertEqual(self.env['utility.meter'].search_count([
+            ('company_id', '=', self.company.id), ('meter_number', '=', staging.meter_number),
+        ]), 1)
 
     def test_customer_migration_uses_configured_default_not_phase_search(self):
         """الموديلات الأخرى ذات الطور نفسه لا تسبب غموضًا."""
@@ -252,6 +285,17 @@ class TestMigrationHardening(TransactionCase):
         self.assertEqual(staging_feeder.created_reading_id.reading_purpose, 'opening')
         self.assertEqual(staging_feeder.created_reading_id.reading_value, 0.0)
 
+        feeder_id = staging_feeder.created_feeder_id.id
+        meter_id = staging_feeder.created_meter_id.id
+        staging_feeder.state = 'draft'
+        staging_feeder.action_import_data()
+        self.assertEqual(staging_feeder.created_feeder_id.id, feeder_id)
+        self.assertEqual(staging_feeder.created_meter_id.id, meter_id)
+        self.assertEqual(staging_feeder.created_meter_id.operational_number, staging_feeder.meter_number)
+        self.assertEqual(self.env['utility.meter'].search_count([
+            ('company_id', '=', self.company.id), ('meter_number', '=', staging_feeder.meter_number),
+        ]), 1)
+
     def test_feeder_production_area_classification_is_explicit_and_idempotent(self):
         staging = self.env['utility.migration.feeder'].create({
             'name': 'فيدر إنتاج صريح',
@@ -297,6 +341,35 @@ class TestMigrationHardening(TransactionCase):
         self.assertEqual(staging_trans.created_meter_id.operational_number, 'MTR-TR-001')
         self.assertEqual(staging_trans.created_reading_id.reading_category, 'transformer')
         self.assertEqual(staging_trans.created_reading_id.reading_value, 150.5)
+
+        transformer_id = staging_trans.created_transformer_id.id
+        meter_id = staging_trans.created_meter_id.id
+        staging_trans.state = 'draft'
+        staging_trans.action_import_data()
+        self.assertEqual(staging_trans.created_transformer_id.id, transformer_id)
+        self.assertEqual(staging_trans.created_meter_id.id, meter_id)
+        self.assertEqual(staging_trans.created_meter_id.operational_number, staging_trans.meter_number)
+        self.assertEqual(self.env['utility.meter'].search_count([
+            ('company_id', '=', self.company.id), ('meter_number', '=', staging_trans.meter_number),
+        ]), 1)
+
+    def test_legacy_operational_number_is_unique_per_company(self):
+        """الرقم التشغيلي يساوي رقم العداد، وفريد داخل الشركة فقط."""
+        meter_model = self.meter_model_single
+        self.env['utility.meter'].create({
+            'meter_number': 'MTR-UNIQUE-001', 'operational_number': 'MTR-UNIQUE-001',
+            'model_id': meter_model, 'company_id': self.company.id,
+        })
+        with self.assertRaises(Exception):
+            self.env['utility.meter'].create({
+                'meter_number': 'MTR-UNIQUE-002', 'operational_number': 'MTR-UNIQUE-001',
+                'model_id': meter_model, 'company_id': self.company.id,
+            })
+        other_meter = self.env['utility.meter'].create({
+            'meter_number': 'MTR-UNIQUE-001', 'operational_number': 'MTR-UNIQUE-001',
+            'model_id': meter_model, 'company_id': self.other_company.id,
+        })
+        self.assertEqual(other_meter.company_id, self.other_company)
 
     def test_wizard_blank_vs_zero_and_presence_semantics(self):
         """اختبار دقة معالج الاستيراد في التمييز بين الخلية الفارغة وقيمة الصفر."""

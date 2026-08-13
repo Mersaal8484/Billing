@@ -271,7 +271,7 @@
                                 <label for="legacy_single_phase_meter_model_id"/>
                                 <div class="text-muted">الموديل الافتراضي للعدادات القديمة أحادية الطور</div>
                                 <div class="content-group">
-                                    <div class="mt16"><field name="legacy_single_phase_meter_model_id" class="o_light_label"/></div>
+                                    <div class="mt16"><field name="legacy_single_phase_meter_model_id" domain="[('phase', '=', 'single')]" class="o_light_label"/></div>
                                 </div>
                             </div>
                         </div>
@@ -280,7 +280,7 @@
                                 <label for="legacy_three_phase_meter_model_id"/>
                                 <div class="text-muted">الموديل الافتراضي للعدادات القديمة ثلاثية الطور</div>
                                 <div class="content-group">
-                                    <div class="mt16"><field name="legacy_three_phase_meter_model_id" class="o_light_label"/></div>
+                                    <div class="mt16"><field name="legacy_three_phase_meter_model_id" domain="[('phase', '=', 'three')]" class="o_light_label"/></div>
                                 </div>
                             </div>
                         </div>
