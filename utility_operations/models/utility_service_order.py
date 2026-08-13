@@ -121,77 +121,83 @@ class UtilityServiceOrder(models.Model):
         if self.service_type == 'new_connection':
             if not self.customer_id:
                 raise ValidationError(_('أمر التوصيل الجديد يتطلب تحديد حساب المشترك (customer_id).'))
-            if not self.new_meter_id:
-                raise ValidationError(_('أمر التوصيل الجديد يتطلب تحديد العداد الجديد المراد تركيبه (new_meter_id).'))
+            target_meter = self.meter_id or self.new_meter_id
+            if not target_meter:
+                raise ValidationError(_('أمر التوصيل الجديد يتطلب تحديد العداد الجديد المراد تركيبه (meter_id أو new_meter_id).'))
 
         elif self.service_type == 'meter_replacement':
-            if not self.old_meter_id or not self.new_meter_id:
+            old_meter = self.old_meter_id or self.meter_id
+            new_meter = self.new_meter_id
+            if not old_meter or not new_meter:
                 raise ValidationError(_('أمر استبدال العداد يتطلب تحديد العداد القديم والعداد الجديد صراحة.'))
+            if old_meter == new_meter:
+                raise ValidationError(_('لا يمكن استبدال العداد بنفس العداد.'))
 
-        elif self.service_type in ('meter_removal', 'disconnection'):
-            if not self.old_meter_id and not self.meter_id:
-                raise ValidationError(_('أمر الفصل/الرفع يتطلب تحديد العداد المراد رفعه.'))
+        elif self.service_type == 'meter_removal':
+            target_meter = self.meter_id or self.old_meter_id
+            if not target_meter:
+                raise ValidationError(_('أمر الفصل/الرفع يتطلب تحديد العداد المراد رفعه (meter_id أو old_meter_id).'))
+
+        elif self.service_type in ('disconnection', 'reconnection'):
+            if not self.customer_id and not (self.meter_id or self.old_meter_id):
+                raise ValidationError(_('أمر الفصل/إعادة التوصيل يتطلب تحديد المشترك أو العداد.'))
 
     def action_complete(self):
         self._check_state_transition(['in_progress'])
         self._validate_completion_requirements()
         ctx = dict(self.env.context, skip_implicit_log=True, allow_log_update=True)
 
-        if self.service_type == 'meter_replacement' and self.new_meter_id:
+        if self.service_type == 'meter_replacement':
+            old_meter = self.old_meter_id or self.meter_id
+            new_meter = self.new_meter_id
             op_ref = f"SO:{self.order_number}"
-            if self.old_meter_id:
-                self.old_meter_id.inventory_replace_meter(
-                    new_meter=self.new_meter_id,
-                    old_warehouse=self.warehouse_id,
-                    new_warehouse=self.warehouse_id,
-                    origin=self.order_number,
-                    operation_ref=op_ref,
-                    old_destination='inspection',
-                )
-                self.old_meter_id.with_context(ctx).write({'customer_id': False})
-                self.env['utility.meter.log'].with_context(ctx)._create_log(
-                    self.old_meter_id, 'removal',
-                    _('رفع العداد عبر أمر خدمة %s: %s') % (self.order_number, self.description),
-                    ref_record=self)
-            else:
-                self.new_meter_id.inventory_install_meter(
-                    customer=self.customer_id,
-                    warehouse=self.warehouse_id,
-                    origin=self.order_number,
-                    operation_ref=f"{op_ref}:INSTALL",
-                )
-
-            self.new_meter_id.with_context(ctx).write({'customer_id': self.customer_id.id})
+            old_meter.inventory_replace_meter(
+                new_meter=new_meter,
+                old_warehouse=self.warehouse_id,
+                new_warehouse=self.warehouse_id,
+                origin=self.order_number,
+                operation_ref=op_ref,
+                old_destination='inspection',
+            )
+            old_meter.with_context(ctx).write({'customer_id': False})
             self.env['utility.meter.log'].with_context(ctx)._create_log(
-                self.new_meter_id, 'replacement',
+                old_meter, 'removal',
+                _('رفع العداد عبر أمر خدمة %s: %s') % (self.order_number, self.description),
+                ref_record=self)
+
+            new_meter.with_context(ctx).write({'customer_id': self.customer_id.id})
+            self.env['utility.meter.log'].with_context(ctx)._create_log(
+                new_meter, 'replacement',
                 _('تركيب عداد عبر أمر خدمة %s: %s') % (self.order_number, self.description),
                 ref_record=self)
 
-        elif self.service_type == 'new_connection' and self.meter_id:
+        elif self.service_type == 'new_connection':
+            target_meter = self.meter_id or self.new_meter_id
             op_ref = f"SO:{self.order_number}:INSTALL"
-            self.meter_id.inventory_install_meter(
+            target_meter.inventory_install_meter(
                 customer=self.customer_id,
                 warehouse=self.warehouse_id,
                 origin=self.order_number,
                 operation_ref=op_ref,
             )
-            self.meter_id.with_context(ctx).write({'customer_id': self.customer_id.id})
+            target_meter.with_context(ctx).write({'customer_id': self.customer_id.id})
             self.env['utility.meter.log'].with_context(ctx)._create_log(
-                self.meter_id, 'install',
+                target_meter, 'install',
                 _('تركيب عداد جديد عبر أمر خدمة %s: %s') % (self.order_number, self.description),
                 ref_record=self)
 
-        elif self.service_type == 'meter_removal' and self.meter_id:
+        elif self.service_type == 'meter_removal':
+            target_meter = self.meter_id or self.old_meter_id
             op_ref = f"SO:{self.order_number}:REMOVE"
-            self.meter_id.inventory_remove_meter(
+            target_meter.inventory_remove_meter(
                 warehouse=self.warehouse_id,
                 origin=self.order_number,
                 operation_ref=op_ref,
                 destination='inspection',
             )
-            self.meter_id.with_context(ctx).write({'customer_id': False})
+            target_meter.with_context(ctx).write({'customer_id': False})
             self.env['utility.meter.log'].with_context(ctx)._create_log(
-                self.meter_id, 'removal',
+                target_meter, 'removal',
                 _('رفع العداد عبر أمر خدمة %s: %s') % (self.order_number, self.description),
                 ref_record=self)
 
@@ -199,24 +205,27 @@ class UtilityServiceOrder(models.Model):
             self.customer_id.with_context(
                 lifecycle_service_order=True).action_disconnect(
                     reason=self.description, service_order=self)
-            if self.meter_id:
+            target_meter = self.meter_id or self.old_meter_id
+            if target_meter:
                 self.env['utility.meter.log'].with_context(ctx)._create_log(
-                    self.meter_id, 'disconnection',
+                    target_meter, 'disconnection',
                     _('فصل العداد عبر أمر خدمة %s: %s') % (self.order_number, self.description),
                     ref_record=self)
         elif self.service_type == 'reconnection' and self.customer_id:
             self.customer_id.with_context(
                 lifecycle_service_order=True).action_reconnect(
                     reason=self.description, service_order=self)
-            if self.meter_id:
+            target_meter = self.meter_id or self.new_meter_id or self.old_meter_id
+            if target_meter:
                 self.env['utility.meter.log'].with_context(ctx)._create_log(
-                    self.meter_id, 'reconnection',
+                    target_meter, 'reconnection',
                     _('إعادة خدمة العداد عبر أمر خدمة %s: %s') % (self.order_number, self.description),
                     ref_record=self)
 
-        if self.meter_id and self.service_type not in ('meter_replacement', 'disconnection', 'reconnection', 'new_connection', 'meter_removal'):
+        target_meter = self.meter_id or self.new_meter_id or self.old_meter_id
+        if target_meter and self.service_type not in ('meter_replacement', 'disconnection', 'reconnection', 'new_connection', 'meter_removal'):
             self.env['utility.meter.log'].with_context(ctx)._create_log(
-                self.meter_id, 'service_order',
+                target_meter, 'service_order',
                 _('أمر خدمة %s: %s') % (self.order_number, self.description),
                 ref_record=self)
 

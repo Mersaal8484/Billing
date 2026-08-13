@@ -118,3 +118,72 @@ class TestOperationsStockDelegation(TransactionCase):
         with self.assertRaises(ValidationError):
             so.action_complete()
         self.assertEqual(so.state, 'in_progress')
+
+    def test_06_service_order_new_connection_with_new_meter_id_field(self):
+        """Service order completion works whether meter_id or new_meter_id is populated."""
+        so = self.env['utility.service.order'].create({
+            'service_type': 'new_connection',
+            'customer_id': self.customer.id,
+            'new_meter_id': self.meter.id,
+            'description': 'توصيلة عبر new_meter_id',
+            'state': 'in_progress',
+        })
+        so.action_complete()
+        self.assertEqual(so.state, 'completed')
+        self.assertEqual(self.meter.customer_id, self.customer)
+        self.assertEqual(so.picking_count, 1)
+
+    def test_07_service_order_removal_with_old_meter_id_field(self):
+        """Service order removal works whether meter_id or old_meter_id is populated."""
+        self.meter.inventory_install_meter(origin='PRE-INST-07')
+        self.meter.write({'customer_id': self.customer.id})
+
+        so = self.env['utility.service.order'].create({
+            'service_type': 'meter_removal',
+            'customer_id': self.customer.id,
+            'old_meter_id': self.meter.id,
+            'description': 'رفع عداد عبر old_meter_id',
+            'state': 'in_progress',
+        })
+        so.action_complete()
+        self.assertEqual(so.state, 'completed')
+        self.assertFalse(self.meter.customer_id)
+        self.assertEqual(self.meter.physical_state, 'inspection')
+
+    def test_08_service_order_meter_replacement_field_consistency(self):
+        """Service order replacement requires old and new meters and performs replacement stock flow."""
+        lot_2 = self.env['stock.lot'].create({
+            'name': 'SN-OP-102',
+            'product_id': self.product_serial.id,
+            'company_id': self.env.company.id,
+        })
+        self.env['stock.quant'].create({
+            'product_id': self.product_serial.id,
+            'location_id': self.stock_location.id,
+            'lot_id': lot_2.id,
+            'quantity': 1.0,
+        })
+        new_meter = self.env['utility.meter'].create({
+            'meter_number': 'MTR-OP-102',
+            'product_id': self.product_serial.id,
+            'lot_id': lot_2.id,
+        })
+
+        self.meter.inventory_install_meter(origin='PRE-INST-08')
+        self.meter.write({'customer_id': self.customer.id})
+
+        so = self.env['utility.service.order'].create({
+            'service_type': 'meter_replacement',
+            'customer_id': self.customer.id,
+            'old_meter_id': self.meter.id,
+            'new_meter_id': new_meter.id,
+            'description': 'استبدال عداد ميداني',
+            'state': 'in_progress',
+        })
+        so.action_complete()
+        self.assertEqual(so.state, 'completed')
+        self.assertFalse(self.meter.customer_id)
+        self.assertEqual(self.meter.physical_state, 'inspection')
+        self.assertEqual(new_meter.customer_id, self.customer)
+        self.assertEqual(new_meter.physical_state, 'installed')
+

@@ -31,11 +31,15 @@ class UtilityMeterExt(models.Model):
         self.ensure_one()
         if not self.lot_id:
             return False
-        quant = self.env['stock.quant'].search([
+        quants = self.env['stock.quant'].search([
             ('lot_id', '=', self.lot_id.id),
             ('quantity', '>', 0),
-        ], limit=1)
-        return quant.location_id if quant else False
+        ])
+        if len(quants) > 1:
+            raise ValidationError(_(
+                'خلل في تكامل البيانات المخزنية: الرقم التسلسلي %s يتواجد بكمية موجبة في أكثر من موقع (%s).'
+            ) % (self.lot_id.name, ', '.join(quants.mapped('location_id.display_name'))))
+        return quants.location_id if quants else False
 
     @api.depends('lot_id', 'product_id')
     def _compute_physical_state(self):
