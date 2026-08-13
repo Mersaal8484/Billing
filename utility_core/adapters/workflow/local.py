@@ -47,7 +47,7 @@ class LocalWorkflowAdapter(AbstractWorkflowAdapter):
                     })
             except IntegrityError as e:
                 pgcode = getattr(e, 'pgcode', None)
-                if pgcode and pgcode != '23505':
+                if pgcode != '23505':
                     raise
                 cmd = cmd_model.search([('idempotency_key', '=', idempotency_key)], limit=1)
                 if not cmd:
@@ -224,7 +224,7 @@ class LocalWorkflowAdapter(AbstractWorkflowAdapter):
                     })
             except IntegrityError as e:
                 pgcode = getattr(e, 'pgcode', None)
-                if pgcode and pgcode != '23505':
+                if pgcode != '23505':
                     raise
                 cmd = cmd_model.search([('idempotency_key', '=', idempotency_key)], limit=1)
                 if not cmd:

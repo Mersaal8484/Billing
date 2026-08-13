@@ -99,3 +99,42 @@ class TestWorkflowAtomicClaim(TransactionCase):
                 )
         finally:
             cmd_model.__class__.create = original_create
+
+    def test_workflow_command_actual_23505_create_race_recovery(self):
+        """التحقق من أن حدوث خطأ 23505 عند الإنشاء يسترجع الأمر القائم بأمان دون تكرار تنفيذ الإجراء."""
+        from psycopg2 import IntegrityError
+        from unittest.mock import MagicMock
+
+        # Create pre-existing command
+        key = f"TEST_23505:{self.period.period_code}"
+        cmd_existing = self.env['utility.workflow.command'].create({
+            'name': 'CMD-TEST-23505',
+            'idempotency_key': key,
+            'period_id': self.period.id,
+            'action_type': 'test_23505',
+            'state': 'executed',
+            'result_summary': 'النتيجة المنجزة سابقاً',
+        })
+
+        # Mock create() to simulate 23505 unique_violation race
+        err_23505 = IntegrityError()
+        err_23505.pgcode = '23505'
+        mock_create = MagicMock(side_effect=err_23505)
+
+        counter = {'calls': 0}
+        cmd_model = self.env['utility.workflow.command'].sudo()
+        original_create = cmd_model.__class__.create
+
+        try:
+            cmd_model.__class__.create = mock_create
+            res = self.adapter._dispatch_command(
+                self.period, 'test_23505',
+                lambda: counter.update(calls=counter['calls'] + 1),
+                "ملخص جديد"
+            )
+            # Payload MUST NOT execute on existing executed command
+            self.assertEqual(counter['calls'], 0)
+            # Result MUST be existing summary
+            self.assertEqual(res, 'النتيجة المنجزة سابقاً')
+        finally:
+            cmd_model.__class__.create = original_create
