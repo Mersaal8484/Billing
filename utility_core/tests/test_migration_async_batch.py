@@ -323,3 +323,88 @@ class TestMigrationAsyncBatch(TransactionCase):
         self.assertFalse(stg.region_id)  # Mapping NOT run during upload
         self.assertFalse(stg.created_partner_id)  # Canonical NOT created
         self.assertFalse(stg.created_customer_id)
+
+    def test_08_large_batch_continuation_across_cron_runs(self):
+        """التحقق من أن الـ Batch الكبير عند تقسيمه على دفعات، يعود لحالة queued ليستمر في الدورات التالية مباشرة."""
+        customers_vals = []
+        for i in range(12):
+            customers_vals.append({
+                'name': f'عميل دفعة {i}',
+                'customer_number': f'CUST-MULTI-{i:03d}',
+                'meter_number': f'MTR-MULTI-{i:03d}',
+                'phase': 'single',
+                'legacy_region': 'REG01',
+                'legacy_area': 'AREA01',
+                'legacy_category': 'CAT01',
+                'legacy_subscriber_type': 'SUB01',
+                'legacy_contract': 'CNTR01',
+                'company_id': self.company.id,
+            })
+        records = self.env['utility.migration.customer'].create(customers_vals)
+
+        res = records.action_queue_migration()
+        batch = self.env['utility.migration.batch'].browse(res['res_id'])
+
+        # First run: limit to 5 records
+        batch.action_process_batch(max_records_per_run=5)
+
+        # Assert 5 records processed, 7 remain queued, batch state stays 'queued' for next run
+        self.assertEqual(len(records.filtered(lambda r: r.state == 'imported')), 5)
+        self.assertEqual(len(records.filtered(lambda r: r.state == 'queued')), 7)
+        self.assertEqual(batch.state, 'queued')
+        self.assertTrue(batch.started_at)
+        self.assertFalse(batch.finished_at)
+
+        # Second run: limit to 5 records
+        batch.action_process_batch(max_records_per_run=5)
+        self.assertEqual(len(records.filtered(lambda r: r.state == 'imported')), 10)
+        self.assertEqual(len(records.filtered(lambda r: r.state == 'queued')), 2)
+        self.assertEqual(batch.state, 'queued')
+
+        # Third run: process remaining 2 records
+        batch.action_process_batch(max_records_per_run=5)
+        self.assertEqual(len(records.filtered(lambda r: r.state == 'imported')), 12)
+        self.assertEqual(batch.state, 'done')
+        self.assertTrue(batch.finished_at)
+
+    def test_09_errored_records_not_retried_automatically_in_subsequent_runs(self):
+        """التحقق من أن السجلات التي فشلت (error) لا يتم إعادة محاولتها تلقائياً في الدورات التالية بنفس الـ Batch."""
+        customers_vals = []
+        for i in range(10):
+            # Record #2 has invalid mapping to produce an error
+            reg = 'UNKNOWN_REG' if i == 2 else 'REG01'
+            customers_vals.append({
+                'name': f'عميل اختبار {i}',
+                'customer_number': f'CUST-ERRTEST-{i:03d}',
+                'meter_number': f'MTR-ERRTEST-{i:03d}',
+                'phase': 'single',
+                'legacy_region': reg,
+                'legacy_area': 'AREA01',
+                'legacy_category': 'CAT01',
+                'legacy_subscriber_type': 'SUB01',
+                'legacy_contract': 'CNTR01',
+                'company_id': self.company.id,
+            })
+        records = self.env['utility.migration.customer'].create(customers_vals)
+
+        res = records.action_queue_migration()
+        batch = self.env['utility.migration.batch'].browse(res['res_id'])
+
+        # First run: max 5 records (records 0..4, where record #2 fails)
+        batch.action_process_batch(max_records_per_run=5)
+
+        self.assertEqual(records[2].state, 'error')
+        self.assertEqual(len(records.filtered(lambda r: r.state == 'imported')), 4)
+        self.assertEqual(len(records.filtered(lambda r: r.state == 'queued')), 5)
+        self.assertEqual(batch.state, 'queued')
+
+        # Second run: max 5 records (records 5..9). Record #2 MUST NOT be retried in this run!
+        batch.action_process_batch(max_records_per_run=5)
+
+        self.assertEqual(records[2].state, 'error')  # Still in error
+        self.assertEqual(len(records.filtered(lambda r: r.state == 'imported')), 9)
+        self.assertEqual(len(records.filtered(lambda r: r.state == 'queued')), 0)
+        self.assertEqual(batch.state, 'partial')  # Batch completes as partial
+        self.assertEqual(batch.error_count, 1)
+        self.assertEqual(batch.success_count, 9)
+

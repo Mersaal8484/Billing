@@ -50,7 +50,7 @@
         <field name="view_mode">tree,form</field>
     </record>
 
-    <menuitem id="menu_utility_subscriber_category" name="Subscriber Categories" parent="utility_core.menu_utility_config" action="action_utility_subscriber_category" sequence="65"/>
+    <menuitem id="menu_utility_subscriber_category" name="فئات المشتركين الرئيسية" parent="utility_core.menu_utility_master_data" action="action_utility_subscriber_category" sequence="10"/>
 
     <!-- ===================== FORMULA VIEWS ===================== -->
     <record id="view_utility_formula_tree" model="ir.ui.view">
@@ -164,5 +164,5 @@
         <field name="view_mode">tree,form</field>
     </record>
 
-    <menuitem id="menu_utility_formula" name="Formulas" parent="utility_core.menu_utility_config" action="action_utility_formula" sequence="75"/>
+    <menuitem id="menu_utility_formula" name="المعادلات وصيغ الاحتساب" parent="utility_core.menu_utility_master_data" action="action_utility_formula" sequence="40"/>
 </odoo>

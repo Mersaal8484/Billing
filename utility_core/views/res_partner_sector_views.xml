@@ -69,5 +69,5 @@
     </record>
 
     <!-- Menu Item -->
-    <menuitem id="menu_utility_res_partner_sector" name="قطاعات المشتركين" parent="menu_utility_config" action="action_res_partner_sector" sequence="86"/>
+    <menuitem id="menu_utility_res_partner_sector" name="قطاعات المشتركين" parent="menu_utility_master_data" action="action_res_partner_sector" sequence="30"/>
 </odoo>

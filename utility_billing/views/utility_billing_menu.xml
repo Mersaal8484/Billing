@@ -48,8 +48,8 @@
         <field name="view_mode">tree,form</field>
     </record>
 
-    <menuitem id="menu_utility_penalty_type" name="أنواع الغرامات"
-              parent="utility_core.menu_utility_config" sequence="45"
+    <menuitem id="menu_utility_penalty_type" name="أنواع الغرامات والجزاءات"
+              parent="utility_core.menu_utility_master_data" sequence="70"
               action="action_utility_penalty_type"/>
 </odoo>
 

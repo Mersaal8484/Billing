@@ -192,7 +192,7 @@
     </record>
 
     <menuitem id="menu_utility_migration_feeder"
-              name="بيانات الفيدرات / الخلايا (Staging)"
+              name="بيانات المغذيات والخلايا (المؤقتة)"
               parent="menu_utility_migration_root"
               action="action_utility_migration_feeder"
               sequence="15"/>

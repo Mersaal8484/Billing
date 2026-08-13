@@ -111,8 +111,7 @@
         </field>
     </record>
 
-    <!-- Menu Items under Utility Core Configuration -->
-    <menuitem id="menu_sale_order_type" name="أنواع أوامر البيع"
-              parent="utility_core.menu_utility_config" sequence="50"
+    <menuitem id="menu_sale_order_type" name="أنواع الفواتير والمبيعات"
+              parent="utility_core.menu_utility_master_data" sequence="60"
               action="action_sale_order_type"/>
 </odoo>

@@ -403,9 +403,9 @@
     </record>
 
     <menuitem id="menu_utility_date_range_root"
-              name="الفترات الزمنية"
-              parent="utility_core.menu_utility_config"
-              sequence="85"/>
+              name="الفترات الزمنية والأنشطة"
+              parent="utility_core.menu_utility_master_data"
+              sequence="50"/>
 
     <menuitem id="menu_utility_date_range"
               name="جميع الفترات"

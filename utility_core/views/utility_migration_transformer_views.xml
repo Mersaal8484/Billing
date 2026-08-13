@@ -196,7 +196,7 @@
     </record>
 
     <menuitem id="menu_utility_migration_transformer"
-              name="بيانات المحولات (Staging)"
+              name="بيانات المحولات (المؤقتة)"
               parent="menu_utility_migration_root"
               action="action_utility_migration_transformer"
               sequence="18"/>

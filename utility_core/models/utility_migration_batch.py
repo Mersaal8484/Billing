@@ -106,15 +106,27 @@ class UtilityMigrationBatch(models.Model):
             if batch.state in ('done', 'cancelled'):
                 continue
 
-            batch.started_at = fields.Datetime.now()
+            if not batch.started_at:
+                batch.started_at = fields.Datetime.now()
             batch.state = 'processing'
 
             pending_records = batch._get_batch_records().filtered(
-                lambda r: r.state in ('queued', 'processing', 'draft', 'error')
+                lambda r: r.state in ('queued', 'processing')
             )
 
             if not pending_records:
-                batch.state = 'done'
+                records = batch._get_batch_records()
+                err_count = len(records.filtered(lambda r: r.state == 'error'))
+                imp_count = len(records.filtered(lambda r: r.state == 'imported'))
+
+                if err_count == 0 and imp_count > 0:
+                    batch.state = 'done'
+                elif imp_count > 0 and err_count > 0:
+                    batch.state = 'partial'
+                elif imp_count == 0 and err_count > 0:
+                    batch.state = 'partial'
+                else:
+                    batch.state = 'done'
                 batch.finished_at = fields.Datetime.now()
                 continue
 
@@ -136,14 +148,14 @@ class UtilityMigrationBatch(models.Model):
                 batch.finished_at = fields.Datetime.now()
                 continue
 
-            # Re-evaluate remaining pending records in batch
+            # Re-evaluate remaining pending records in batch (queued or stuck processing)
             remaining_pending = batch._get_batch_records().filtered(
-                lambda r: r.state in ('queued', 'processing', 'draft')
+                lambda r: r.state in ('queued', 'processing')
             )
 
             if remaining_pending:
-                # Still records left to process in subsequent cron runs
-                batch.state = 'processing'
+                # Still pending records left for subsequent cron runs -> reset state to queued
+                batch.state = 'queued'
             else:
                 # All records evaluated
                 records = batch._get_batch_records()
@@ -233,9 +245,13 @@ class UtilityMigrationBatch(models.Model):
                     (batch.id,)
                 )
                 batch.action_process_batch()
-            except OperationalError:
-                _logger.debug("Batch %s (%s) is currently locked by another worker process.", batch.id, batch.name)
+            except OperationalError as e:
+                if getattr(e, 'pgcode', None) == '55P03':
+                    _logger.debug("Batch %s (%s) is currently locked by another worker process (55P03).", batch.id, batch.name)
+                else:
+                    _logger.warning("OperationalError locking batch %s (%s): %s", batch.id, batch.name, e)
                 continue
             except Exception as e:
                 _logger.error("Unexpected error processing migration batch %s (%s): %s", batch.id, batch.name, e)
                 continue
+

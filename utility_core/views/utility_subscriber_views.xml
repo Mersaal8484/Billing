@@ -73,7 +73,7 @@
     </record>
 
     <!-- Menu Item (Assuming it will be placed in configuration) -->
-    <menuitem id="menu_utility_subscriber" name="المشتركين (الأنواع)"
-              parent="utility_core.menu_utility_config" sequence="65"
+    <menuitem id="menu_utility_subscriber" name="أنواع المشتركين"
+              parent="utility_core.menu_utility_master_data" sequence="20"
               action="action_utility_subscriber"/>
 </odoo>

@@ -220,7 +220,7 @@
               sequence="100"/>
 
     <menuitem id="menu_utility_migration_customer"
-              name="بيانات العملاء (Staging)"
+              name="بيانات العملاء (المؤقتة)"
               parent="menu_utility_migration_root"
               action="action_utility_migration_customer"
               sequence="10"/>
