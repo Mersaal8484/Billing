@@ -23,11 +23,13 @@ class UtilityMigrationCustomer(models.Model):
 
     meter_number = fields.Char('رقم العداد')
     last_reading = fields.Float('اخر قراءة مسجلة', digits=(12, 3))
+    has_last_reading = fields.Boolean('تم إدخال آخر قراءة مسجلة')
 
     char_code = fields.Char('رقم الحرف')
     subscriber_no = fields.Char('الرقم الجديد')
     meter_reading = fields.Integer('قراءة العداد في النظام')
     opening_reading = fields.Integer('قراءة الافتتاح')
+    has_opening_reading = fields.Boolean('تم إدخال قراءة افتتاح')
 
     legacy_region = fields.Char('رمز المنطقة')
     legacy_area = fields.Char('رمز الفرع')
@@ -58,10 +60,36 @@ class UtilityMigrationCustomer(models.Model):
 
     error_message = fields.Text('رسالة الخطأ', readonly=True)
 
-    created_partner_id = fields.Many2one('res.partner', 'جهة الاتصال المنشأة', readonly=True)
-    created_customer_id = fields.Many2one('utility.customer', 'حساب العميل المنشأ', readonly=True)
-    created_meter_id = fields.Many2one('utility.meter', 'العداد المنشأ', readonly=True)
-    opening_move_id = fields.Many2one('account.move', 'قيد الرصيد الافتتاحي', readonly=True)
+    created_partner_id = fields.Many2one('res.partner', 'جهة الاتصال المنشأة', readonly=True, copy=False)
+    created_customer_id = fields.Many2one('utility.customer', 'حساب العميل المنشأ', readonly=True, copy=False)
+    created_meter_id = fields.Many2one('utility.meter', 'العداد المنشأ', readonly=True, copy=False)
+    created_reading_id = fields.Many2one('utility.reading', 'القراءة الافتتاحية المنشأة', readonly=True, copy=False)
+    opening_move_id = fields.Many2one('account.move', 'قيد الرصيد الافتتاحي', readonly=True, copy=False)
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if 'last_reading' in vals and vals['last_reading'] is not False and vals['last_reading'] is not None:
+                vals['has_last_reading'] = True
+            if 'opening_reading' in vals and vals['opening_reading'] is not False and vals['opening_reading'] is not None:
+                vals['has_opening_reading'] = True
+        return super().create(vals_list)
+
+    def write(self, vals):
+        if 'last_reading' in vals and vals['last_reading'] is not False and vals['last_reading'] is not None:
+            vals['has_last_reading'] = True
+        if 'opening_reading' in vals and vals['opening_reading'] is not False and vals['opening_reading'] is not None:
+            vals['has_opening_reading'] = True
+        return super().write(vals)
+
+    def _get_staging_opening_reading_value(self):
+        """إرجاع قيمة قراءة الافتتاح بدقة (تميز بين عدم الإدخال وقيمة الصفر)."""
+        self.ensure_one()
+        if self.has_last_reading:
+            return float(self.last_reading)
+        if self.has_opening_reading:
+            return float(self.opening_reading)
+        return None
 
     # -------------------------------------------------------------------------
     # Helper Actions (model-level)
@@ -110,16 +138,21 @@ class UtilityMigrationCustomer(models.Model):
         }
 
     # -------------------------------------------------------------------------
-    # Code Mapping (Batched & Company-Scoped)
+    # Code Mapping (Batch Cache & Strict Missing Enforcement)
     # -------------------------------------------------------------------------
 
-    def action_map_codes(self):
-        """مطابقة الرموز القديمة عبر ذاكرة التخزين المؤقت للترميز المحصورة بالشركة."""
+    def action_map_codes(self, caches=None):
+        """مطابقة الرموز القديمة مع التحقق الصارم بدفعة واحدة لمنع N+1 queries."""
+        if caches is None:
+            caches = {}
+
         for rec in self:
             if rec.state == 'imported':
                 continue
             company_id = rec.company_id.id or self.env.company.id
-            cache = self.env['utility.migration.mapping'].get_mapping_cache(company_id)
+            if company_id not in caches:
+                caches[company_id] = self.env['utility.migration.mapping'].get_mapping_cache(company_id)
+            cache = caches[company_id]
             missing = []
 
             if rec.legacy_region:
@@ -127,38 +160,42 @@ class UtilityMigrationCustomer(models.Model):
                 if val:
                     rec.region_id = val.id
                 else:
-                    missing.append(f"MISSING_REGION_MAPPING: {rec.legacy_region}")
+                    missing.append(f"MISSING_REGION_MAPPING: لم يتم العثور على ترميز المنطقة ({rec.legacy_region})")
 
             if rec.legacy_area:
                 val = cache.get(('area', rec.legacy_area.strip()))
                 if val:
                     rec.area_id = val.id
                 else:
-                    missing.append(f"MISSING_AREA_MAPPING: {rec.legacy_area}")
+                    missing.append(f"MISSING_AREA_MAPPING: لم يتم العثور على ترميز الفرع ({rec.legacy_area})")
 
             if rec.legacy_category:
                 val = cache.get(('category', rec.legacy_category.strip()))
                 if val:
                     rec.category_id = val.id
                 else:
-                    missing.append(f"MISSING_CATEGORY_MAPPING: {rec.legacy_category}")
+                    missing.append(f"MISSING_CATEGORY_MAPPING: لم يتم العثور على ترميز الفئة ({rec.legacy_category})")
 
             if rec.legacy_subscriber_type:
                 val = cache.get(('subscriber', rec.legacy_subscriber_type.strip()))
                 if val:
                     rec.subscriber_type_id = val.id
                 else:
-                    missing.append(f"MISSING_SUBSCRIBER_MAPPING: {rec.legacy_subscriber_type}")
+                    missing.append(f"MISSING_SUBSCRIBER_MAPPING: لم يتم العثور على ترميز نوع المشترك ({rec.legacy_subscriber_type})")
 
             if rec.legacy_contract:
                 val = cache.get(('contract', rec.legacy_contract.strip()))
                 if val:
                     rec.contract_template_id = val.id
                 else:
-                    missing.append(f"MISSING_CONTRACT_MAPPING: {rec.legacy_contract}")
+                    missing.append(f"MISSING_CONTRACT_MAPPING: لم يتم العثور على ترميز قالب العقد ({rec.legacy_contract})")
 
             if missing:
-                rec.error_message = "\n".join(missing)
+                err = "\n".join(missing)
+                rec.error_message = err
+                raise ValidationError(err)
+            else:
+                rec.error_message = False
 
     # -------------------------------------------------------------------------
     # Private helpers
@@ -423,7 +460,7 @@ class UtilityMigrationCustomer(models.Model):
         account_partner = customer.partner_id
         account_partner.write(self._build_customer_partner_vals())
 
-        # 2. Create / link meter (NO direct write to readonly meter.phase)
+        # 2. Create / link meter (NO direct write to readonly meter.phase or related transformer_id/feeder_id)
         model = self._resolve_meter_model()
         status_active = self.env['utility.meter.status'].search([('code', '=', 'ACTIVE')], limit=1)
 
@@ -438,10 +475,6 @@ class UtilityMigrationCustomer(models.Model):
             meter_vals['model_id'] = model.id
         if status_active:
             meter_vals['status_id'] = status_active.id
-        if transformer:
-            meter_vals['transformer_id'] = transformer.id
-            if transformer.feeder_id:
-                meter_vals['feeder_id'] = transformer.feeder_id.id
 
         meter = self.created_meter_id
         if not meter:
@@ -462,7 +495,8 @@ class UtilityMigrationCustomer(models.Model):
             transformer.write({'coupling_meter_id': meter.id})
 
         # 3. Create opening reading (Zero reading is VALID!)
-        if self.last_reading is not False and self.last_reading is not None:
+        opening_val = self._get_staging_opening_reading_value()
+        if opening_val is not None:
             existing_reading = self.created_reading_id
             if not existing_reading:
                 existing_reading = self.env['utility.reading'].search([
@@ -472,7 +506,7 @@ class UtilityMigrationCustomer(models.Model):
 
             reading_vals = {
                 'meter_id': meter.id,
-                'reading_value': self.last_reading,
+                'reading_value': opening_val,
                 'reading_date': fields.Datetime.now(),
                 'reading_type': 'manual',
                 'reading_purpose': 'opening',
@@ -498,12 +532,13 @@ class UtilityMigrationCustomer(models.Model):
     # -------------------------------------------------------------------------
 
     def action_import_data(self):
+        caches = {}
         for rec in self:
             if rec.state == 'imported':
                 continue
             try:
                 with self.env.cr.savepoint():
-                    rec.action_map_codes()
+                    rec.action_map_codes(caches=caches)
                     partner = rec._upsert_partner()
                     rec.created_partner_id = partner.id
 
@@ -516,18 +551,3 @@ class UtilityMigrationCustomer(models.Model):
             except Exception as e:
                 rec.state = 'error'
                 rec.error_message = str(e)
-
-    def action_activate_inactive(self):
-        for rec in self:
-            if rec.state != 'imported':
-                raise UserError(_('يجب أن يكون السجل في حالة "تم الرفع" قبل التفعيل.\nالعميل: %s') % rec.name)
-            if rec.created_customer_id:
-                raise UserError(_('العميل "%s" لديه حساب مشترك بالفعل (رقم: %s).\nلا يمكن إنشاء حساب مكرر.') % (rec.name, rec.created_customer_id.customer_number))
-            if not rec.created_partner_id:
-                raise UserError(_('لا توجد جهة اتصال مرتبطة بالعميل "%s".\nيرجى إعادة رفع البيانات أولاً.') % rec.name)
-
-            partner = rec.created_partner_id
-            partner.write(rec._build_customer_partner_vals())
-            rec._create_customer_account(partner)
-            rec.is_active = True
-            partner.subscriber_active_status = 'active'

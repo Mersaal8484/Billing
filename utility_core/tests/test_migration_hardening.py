@@ -9,7 +9,7 @@ class TestMigrationHardening(TransactionCase):
         self.company = self.env.company
         self.other_company = self.env['res.company'].create({'name': 'شركة الاختبار الثانوية'})
 
-        # Setup master data
+        # Setup master data for primary company
         self.region = self.env['utility.region'].create({
             'name': 'المنطقة الشمالية',
             'code': 'REG-NORTH',
@@ -46,8 +46,16 @@ class TestMigrationHardening(TransactionCase):
             'phase': 'single',
         })
 
+        # Setup master data for other company
+        self.region_b = self.env['utility.region'].create({
+            'name': 'المنطقة الجنوبية',
+            'code': 'REG-SOUTH',
+            'type': 'region',
+            'company_id': self.other_company.id,
+        })
+
     def test_mapping_orm_constraints_and_normalization(self):
-        """اختبار القيود والقواعد لنموذج جدول الترميز."""
+        """اختبار القيود والقواعد لنموذج جدول الترميز واستقلالية الشركات."""
         # 1. Whitspace normalization
         mapping = self.env['utility.migration.mapping'].create({
             'mapping_type': 'region',
@@ -66,16 +74,25 @@ class TestMigrationHardening(TransactionCase):
                 'company_id': self.company.id,
             })
 
-        # 3. Same code in another company is allowed
+        # 3. Target company consistency: linking company B mapping to company A region must fail
+        with self.assertRaises(ValidationError):
+            self.env['utility.migration.mapping'].create({
+                'mapping_type': 'region',
+                'legacy_code': 'REG_001',
+                'region_id': self.region.id,  # Company A region
+                'company_id': self.other_company.id,  # Company B
+            })
+
+        # 4. Correct multi-company mapping is allowed
         other_mapping = self.env['utility.migration.mapping'].create({
             'mapping_type': 'region',
             'legacy_code': 'REG_001',
-            'region_id': self.region.id,
+            'region_id': self.region_b.id,
             'company_id': self.other_company.id,
         })
         self.assertTrue(other_mapping.id)
 
-        # 4. Target field constraint validation
+        # 5. Target field constraint validation (Exactly one target matching mapping_type)
         with self.assertRaises(ValidationError):
             self.env['utility.migration.mapping'].create({
                 'mapping_type': 'area',
@@ -83,9 +100,17 @@ class TestMigrationHardening(TransactionCase):
                 'company_id': self.company.id,
             })
 
+        with self.assertRaises(ValidationError):
+            self.env['utility.migration.mapping'].create({
+                'mapping_type': 'region',
+                'legacy_code': 'MULTI_TARGET_ERR',
+                'region_id': self.region.id,
+                'area_id': self.area.id,  # Two targets set!
+                'company_id': self.company.id,
+            })
+
     def test_customer_migration_execution_and_idempotency(self):
-        """اختبار تهيئة المشترك والعداد (دون كتابة phase المباشرة) وقراءة الافتتاح 0."""
-        # Create mapping records
+        """اختبار تهيئة المشترك والعداد وقراءة الافتتاح 0 وتوفّر created_reading_id."""
         self.env['utility.migration.mapping'].create({
             'mapping_type': 'region',
             'legacy_code': 'LEG_REG',
@@ -136,9 +161,9 @@ class TestMigrationHardening(TransactionCase):
         self.assertEqual(staging.state, 'imported')
         self.assertTrue(staging.created_customer_id)
         self.assertTrue(staging.created_meter_id)
-        self.assertTrue(staging.created_reading_id)
+        self.assertTrue(staging.created_reading_id)  # Field created_reading_id verified
 
-        # Meter model should be set to single phase model, phase on meter is related
+        # Meter model should be set to single phase model
         self.assertEqual(staging.created_meter_id.model_id, self.meter_model_single)
         self.assertEqual(staging.created_meter_id.phase, 'single')
 
@@ -147,7 +172,7 @@ class TestMigrationHardening(TransactionCase):
         self.assertEqual(staging.created_reading_id.reading_purpose, 'opening')
         self.assertEqual(staging.created_reading_id.reading_category, 'customer')
 
-        # Test idempotency (re-run does not create duplicates)
+        # Test idempotency
         cust_id = staging.created_customer_id.id
         meter_id = staging.created_meter_id.id
         staging.state = 'draft'
@@ -158,7 +183,6 @@ class TestMigrationHardening(TransactionCase):
 
     def test_customer_migration_ambiguous_meter_model(self):
         """اختبار التنبيه عند خطأ غموض موديل العداد."""
-        # Create second single phase model
         self.env['utility.meter.model'].create({
             'name': 'عداد أحادي ثانوي',
             'code': 'MDL-1P-2',
@@ -182,7 +206,7 @@ class TestMigrationHardening(TransactionCase):
         self.assertIn('AMBIGUOUS_METER_MODEL', staging.error_message)
 
     def test_feeder_migration_execution(self):
-        """اختبار تهيئة الفيدر وعداد الرصد وقراءة الافتتاح."""
+        """اختبار تهيئة الفيدر وعداد الرصد وقراءة الافتتاح الصفرية."""
         staging_feeder = self.env['utility.migration.feeder'].create({
             'name': 'فيدر المصانع الشمالي',
             'feeder_code': 'FDR-NORTH-01',
@@ -197,7 +221,6 @@ class TestMigrationHardening(TransactionCase):
         self.assertTrue(staging_feeder.created_meter_id)
         self.assertTrue(staging_feeder.created_reading_id)
 
-        # Topology derived automatically from meter_id on reading
         self.assertEqual(staging_feeder.created_reading_id.meter_id, staging_feeder.created_meter_id)
         self.assertEqual(staging_feeder.created_reading_id.feeder_id, staging_feeder.created_feeder_id)
         self.assertEqual(staging_feeder.created_reading_id.reading_category, 'feeder')
@@ -205,7 +228,7 @@ class TestMigrationHardening(TransactionCase):
         self.assertEqual(staging_feeder.created_reading_id.reading_value, 0.0)
 
     def test_transformer_migration_execution(self):
-        """اختبار تهيئة المحول وتحديد الهوية المرجعية وقراءة الافتتاح."""
+        """اختبار تهيئة المحول وتحديد الهوية المرجعية واختيار قراءة بداية الاشتراك (150.5)."""
         staging_feeder = self.env['utility.migration.feeder'].create({
             'name': 'فيدر الخلايا',
             'feeder_code': 'FDR-CELL-01',

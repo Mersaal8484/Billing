@@ -41,19 +41,29 @@ class UtilityMigrationMapping(models.Model):
         self.subscriber_type_id = False
         self.contract_template_id = False
 
-    @api.constrains('mapping_type', 'region_id', 'area_id', 'category_id', 'subscriber_type_id', 'contract_template_id')
+    @api.constrains('company_id', 'mapping_type', 'region_id', 'area_id', 'category_id', 'subscriber_type_id', 'contract_template_id')
     def _check_mapping_target(self):
         for rec in self:
-            if rec.mapping_type == 'region' and not rec.region_id:
-                raise ValidationError(_('يجب تحديد المنطقة Target عند اختيار نوع الترميز "المنطقة".'))
-            elif rec.mapping_type == 'area' and not rec.area_id:
-                raise ValidationError(_('يجب تحديد الفرع Target عند اختيار نوع الترميز "الفرع".'))
-            elif rec.mapping_type == 'category' and not rec.category_id:
-                raise ValidationError(_('يجب تحديد الفئة Target عند اختيار نوع الترميز "الفئة".'))
-            elif rec.mapping_type == 'subscriber' and not rec.subscriber_type_id:
-                raise ValidationError(_('يجب تحديد نوع المشترك Target عند اختيار نوع الترميز "نوع المشترك".'))
-            elif rec.mapping_type == 'contract' and not rec.contract_template_id:
-                raise ValidationError(_('يجب تحديد قالب العقد Target عند اختيار نوع الترميز "قالب العقد".'))
+            targets = {
+                'region': rec.region_id,
+                'area': rec.area_id,
+                'category': rec.category_id,
+                'subscriber': rec.subscriber_type_id,
+                'contract': rec.contract_template_id,
+            }
+            target_val = targets.get(rec.mapping_type)
+            if not target_val:
+                raise ValidationError(_('يجب تحديد التعيين المطلوب (Target) لنوع الترميز "%s".') % rec.mapping_type)
+
+            # Enforce that all other 4 target fields are EMPTY
+            other_targets = [val for k, val in targets.items() if k != rec.mapping_type and val]
+            if other_targets:
+                raise ValidationError(_('يجب تحديد تعيين واحد فقط (Target) يطابق نوع الترميز المطابق (%s).') % rec.mapping_type)
+
+            # Enforce target company consistency where target has company_id
+            if hasattr(target_val, 'company_id') and target_val.company_id and target_val.company_id != rec.company_id:
+                raise ValidationError(_('الهدف المحدد (Target) تابع لشركة (%s) يختلف عن شركة جدول الترميز (%s).') % (
+                    target_val.company_id.name, rec.company_id.name))
 
     @api.model_create_multi
     def create(self, vals_list):

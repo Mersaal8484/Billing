@@ -24,7 +24,9 @@ class UtilityMigrationFeeder(models.Model):
     meter_number = fields.Char('رقم العداد (عداد الفيدر)')
     meter_multiplier = fields.Float('معامل الضرب للعداد', default=1.0)
     current_reading = fields.Float('القراءة الحالية', digits=(12, 3))
+    has_current_reading = fields.Boolean('تم إدخال قراءة حالية')
     opening_reading = fields.Float('قراءة بداية الاشتراك', digits=(12, 3))
+    has_opening_reading = fields.Boolean('تم إدخال قراءة بداية الاشتراك')
 
     is_calculation_cell = fields.Boolean('خلية إحتساب', default=True)
 
@@ -42,9 +44,34 @@ class UtilityMigrationFeeder(models.Model):
 
     error_message = fields.Text('رسالة الخطأ', readonly=True)
 
-    created_feeder_id = fields.Many2one('utility.feeder', 'الفيدر المنشأ', readonly=True)
-    created_meter_id = fields.Many2one('utility.meter', 'العداد المنشأ', readonly=True)
-    created_reading_id = fields.Many2one('utility.reading', 'القراءة الافتتاحية', readonly=True)
+    created_feeder_id = fields.Many2one('utility.feeder', 'الفيدر المنشأ', readonly=True, copy=False)
+    created_meter_id = fields.Many2one('utility.meter', 'العداد المنشأ', readonly=True, copy=False)
+    created_reading_id = fields.Many2one('utility.reading', 'القراءة الافتتاحية المنشأة', readonly=True, copy=False)
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if 'current_reading' in vals and vals['current_reading'] is not False and vals['current_reading'] is not None:
+                vals['has_current_reading'] = True
+            if 'opening_reading' in vals and vals['opening_reading'] is not False and vals['opening_reading'] is not None:
+                vals['has_opening_reading'] = True
+        return super().create(vals_list)
+
+    def write(self, vals):
+        if 'current_reading' in vals and vals['current_reading'] is not False and vals['current_reading'] is not None:
+            vals['has_current_reading'] = True
+        if 'opening_reading' in vals and vals['opening_reading'] is not False and vals['opening_reading'] is not None:
+            vals['has_opening_reading'] = True
+        return super().write(vals)
+
+    def _get_staging_opening_reading_value(self):
+        """إرجاع قيمة قراءة الافتتاح بدقة (تميز بين عدم الإدخال وقيمة الصفر)."""
+        self.ensure_one()
+        if self.has_current_reading:
+            return float(self.current_reading)
+        if self.has_opening_reading:
+            return float(self.opening_reading)
+        return None
 
     # -------------------------------------------------------------------------
     # Helper Actions (model-level)
@@ -85,16 +112,21 @@ class UtilityMigrationFeeder(models.Model):
         }
 
     # -------------------------------------------------------------------------
-    # Code Mapping
+    # Code Mapping (Batch Cache & Strict Missing Enforcement)
     # -------------------------------------------------------------------------
 
-    def action_map_codes(self):
-        """مطابقة رمز المنطقة ورمز الفرع عبر ذاكرة التخزين المؤقت للشركة."""
+    def action_map_codes(self, caches=None):
+        """مطابقة الرموز القديمة مع التحقق الصارم بدفعة واحدة لمنع N+1 queries."""
+        if caches is None:
+            caches = {}
+
         for rec in self:
             if rec.state == 'imported':
                 continue
             company_id = rec.company_id.id or self.env.company.id
-            cache = self.env['utility.migration.mapping'].get_mapping_cache(company_id)
+            if company_id not in caches:
+                caches[company_id] = self.env['utility.migration.mapping'].get_mapping_cache(company_id)
+            cache = caches[company_id]
             missing = []
 
             if rec.legacy_region:
@@ -102,44 +134,40 @@ class UtilityMigrationFeeder(models.Model):
                 if val:
                     rec.region_id = val.id
                 else:
-                    missing.append(f"MISSING_REGION_MAPPING: {rec.legacy_region}")
+                    missing.append(f"MISSING_REGION_MAPPING: لم يتم العثور على ترميز المنطقة ({rec.legacy_region})")
 
             if rec.legacy_area:
                 val = cache.get(('area', rec.legacy_area.strip()))
                 if val:
                     rec.area_id = val.id
                 else:
-                    missing.append(f"MISSING_AREA_MAPPING: {rec.legacy_area}")
+                    missing.append(f"MISSING_AREA_MAPPING: لم يتم العثور على ترميز الفرع ({rec.legacy_area})")
 
             if missing:
-                rec.error_message = "\n".join(missing)
+                err = "\n".join(missing)
+                rec.error_message = err
+                raise ValidationError(err)
+            else:
+                rec.error_message = False
 
     # -------------------------------------------------------------------------
     # Main Actions
     # -------------------------------------------------------------------------
 
     def action_import_data(self):
-        """
-        اعتماد ورفع بيانات الفيدرات والخلايا:
-        - إنشاء / تحديث utility.feeder محصور بالشركة ومحدد الهوية
-        - إنشاء / تحديث utility.meter وتعيين connection_type = 'feeder' و is_coupling_meter = True
-        - إنشاء القراءة الافتتاحية utility.reading (state='billed' أو 'approved') بدون كتابة مباشرة للـ feeder_id الـ related
-        """
+        caches = {}
         for rec in self:
             if rec.state == 'imported':
                 continue
             try:
                 with self.env.cr.savepoint():
-                    rec.action_map_codes()
+                    rec.action_map_codes(caches=caches)
                     company_id = rec.company_id.id or self.env.company.id
 
-                    # 1. Stable Business Identity
+                    # 1. Deterministic Identity: feeder_code -> legacy_analytic_id
                     code = (rec.feeder_code or rec.legacy_analytic_id or '').strip()
                     if not code:
-                        if rec.name:
-                            code = rec.name.strip()
-                        else:
-                            raise ValidationError(_('MISSING_FEEDER_IDENTITY: يلزم توفر رمز الفيدر أو الحساب التحليلي لتحديد الهوية المرجعية.'))
+                        raise ValidationError(_('MISSING_FEEDER_IDENTITY: يلزم توفر رمز الفيدر (feeder_code) أو الحساب التحليلي لتحديد الهوية المرجعية.'))
 
                     feeder_name = rec.feeder_name or rec.name or code
 
@@ -208,8 +236,8 @@ class UtilityMigrationFeeder(models.Model):
                     feeder.write({'coupling_meter_id': meter.id})
 
                     # 3. Create initial/opening reading (Zero reading 0.0 is VALID!)
-                    curr_val = rec.current_reading if (rec.current_reading is not False and rec.current_reading is not None) else rec.opening_reading
-                    if curr_val is not False and curr_val is not None:
+                    opening_val = rec._get_staging_opening_reading_value()
+                    if opening_val is not None:
                         reading = rec.created_reading_id
                         if not reading:
                             reading = self.env['utility.reading'].search([
@@ -217,10 +245,9 @@ class UtilityMigrationFeeder(models.Model):
                                 ('reading_purpose', '=', 'opening')
                             ], limit=1)
 
-                        # Note: feeder_id is related to meter_id on utility.reading; DO NOT pass directly
                         reading_vals = {
                             'meter_id': meter.id,
-                            'reading_value': float(curr_val),
+                            'reading_value': opening_val,
                             'reading_date': fields.Datetime.now(),
                             'reading_type': 'manual',
                             'reading_purpose': 'opening',
