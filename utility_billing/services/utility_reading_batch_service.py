@@ -1,6 +1,7 @@
 import base64
 import json
 import logging
+from psycopg2 import OperationalError
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
 
@@ -17,6 +18,18 @@ class UtilityReadingBatchService(models.AbstractModel):
         batch = self.env['utility.reading.batch'].sudo().browse(batch_id)
         if not batch or not batch.exists():
             raise ValidationError(_("دفعة القراءات غير موجودة."))
+
+        try:
+            self.env.cr.execute(
+                "SELECT id FROM utility_reading_batch WHERE id = %s FOR UPDATE NOWAIT",
+                (batch_id,)
+            )
+        except OperationalError as e:
+            pgcode = getattr(e, 'pgcode', None)
+            if pgcode == '55P03':
+                _logger.info("Reading batch %s is currently locked by another worker (55P03). Skipping concurrent execution.", batch.id)
+                return {'status': 'locked', 'reason': 'batch_locked'}
+            raise
 
         _logger.info("Starting persistent line batch processing for batch %s", batch.name)
 

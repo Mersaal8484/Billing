@@ -195,9 +195,19 @@ class UtilityMigrationBatch(models.Model):
                     batch.state = 'partial'
                 else:
                     batch.state = 'done'
+                batch.finished_at = fields.Datetime.now()
+
+    # TEMPORARY TEST-ONLY:
+    # Manual synchronous execution for migration verification.
+    # Normal production execution must remain queued/background via Cron.
+    # Remove or disable before final Production Release Gate.
     def action_run_now(self):
-        """تشغيل معالجة الدفعة يدويًا وفوراً من شاشة المستخدم."""
+        """تنفيذ الدفعة فوراً ⚠ للاختبار فقط."""
+        if not self.env.user.has_group('utility_core.group_utility_admin'):
+            raise UserError(_('هذا الإجراء مخصص لمدراء النظام فقط لأغراض الاختبار اليدوي.'))
         for batch in self:
+            if batch.state in ('done', 'cancelled', 'processing'):
+                raise UserError(_('لا يمكن تنفيذ الدفعة اليدوي في حالتها الحالية (%s).') % batch.state)
             batch.action_process_batch()
         return True
 
@@ -255,7 +265,10 @@ class UtilityMigrationBatch(models.Model):
                 'state': 'draft',
                 'error_message': _('تم إلغاء عملية الدفعة (%s)') % batch.name
             })
-            batch.state = 'cancelled'
+            batch.write({
+                'state': 'cancelled',
+                'finished_at': fields.Datetime.now(),
+            })
 
     @api.model
     def cron_process_pending_batches(self):

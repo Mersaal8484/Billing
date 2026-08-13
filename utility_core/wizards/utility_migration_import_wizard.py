@@ -238,11 +238,11 @@ class UtilityMigrationImportWizard(models.TransientModel):
             return self._import_feeders(sheet, header_row, header_map)
         return self._import_transformers(sheet, header_row, header_map)
 
-    def _identity_guard(self, seen, identity, row, code=None):
+    def _identity_guard(self, seen, identity, row):
         if identity in seen:
-            return True
+            return seen[identity]
         seen[identity] = row
-        return False
+        return None
 
     def _import_customers(self, sheet, header_row, header_map):
         model = self.env['utility.migration.customer']
@@ -256,8 +256,8 @@ class UtilityMigrationImportWizard(models.TransientModel):
                 continue
             if not number:
                 raise self._error('MISSING_CUSTOMER_NUMBER', row_number, 'customer_number', number)
-            if self._identity_guard(seen, number, row_number, 'DUPLICATE_CUSTOMER_NUMBER_IN_FILE'):
-                continue
+            dup_source_row = self._identity_guard(seen, number, row_number)
+            is_dup = dup_source_row is not None
             values = {
                 'name': name,
                 'mobile': str(self._cell(row, header_map, 'mobile') or '').strip(),
@@ -277,19 +277,26 @@ class UtilityMigrationImportWizard(models.TransientModel):
                 'phase': self.parse_phase(self._cell(row, header_map, 'phase'), row_number),
                 'is_private_transformer': self.parse_bool(self._cell(row, header_map, 'is_private_transformer'), False, 'is_private_transformer', row_number),
                 'owner_reference': str(self._cell(row, header_map, 'owner_reference') or '').strip(),
-                'company_id': company_id, 'state': 'draft', 'source_row_number': row_number,
+                'company_id': company_id,
+                'state': 'error' if is_dup else 'draft',
+                'source_row_number': row_number,
             }
+            if is_dup:
+                values['error_message'] = _('تكرار هوية في ملف الإكسل: الصف %s مكرر مع الصف %s (الهوية: %s)') % (row_number, dup_source_row, number)
             meter_reading = self.parse_reading(self._cell(row, header_map, 'meter_reading'), 'meter_reading', row_number)
             opening_reading = self.parse_reading(self._cell(row, header_map, 'opening_reading'), 'opening_reading', row_number)
             canonical_reading = opening_reading if opening_reading is not None else meter_reading
             if canonical_reading is not None:
                 values.update(last_reading=canonical_reading, opening_reading=canonical_reading)
-            existing = model.search([('company_id', '=', company_id), ('customer_number', '=', number)])
-            if len(existing) > 1:
-                raise self._error('AMBIGUOUS_CUSTOMER_IDENTITY', row_number, 'customer_number', number)
-            record = existing or model.create(values)
-            if existing:
-                record.write(values)
+            if is_dup:
+                record = model.create(values)
+            else:
+                existing = model.search([('company_id', '=', company_id), ('customer_number', '=', number)])
+                if len(existing) > 1:
+                    raise self._error('AMBIGUOUS_CUSTOMER_IDENTITY', row_number, 'customer_number', number)
+                record = existing or model.create(values)
+                if existing:
+                    record.write(values)
             records |= record
         return self._show_success_notification(len(records))
 
@@ -305,8 +312,8 @@ class UtilityMigrationImportWizard(models.TransientModel):
                 if not any(self._has_cell_value(v) for v in row):
                     continue
                 raise self._error('MISSING_FEEDER_IDENTITY', row_number, 'feeder_code/legacy_analytic_id', identity)
-            if self._identity_guard(seen, identity, row_number, 'DUPLICATE_FEEDER_IDENTITY_IN_FILE'):
-                continue
+            dup_source_row = self._identity_guard(seen, identity, row_number)
+            is_dup = dup_source_row is not None
             values = {
                 'name': str(self._cell(row, header_map, 'feeder_name') or identity).strip(),
                 'feeder_code': code, 'legacy_analytic_id': analytic,
@@ -319,20 +326,27 @@ class UtilityMigrationImportWizard(models.TransientModel):
                 'meter_multiplier': self._parse_multiplier(self._cell(row, header_map, 'meter_multiplier'), row_number, 'meter_multiplier'),
                 'is_calculation_cell': self.parse_bool(self._cell(row, header_map, 'is_calculation_cell'), True, 'is_calculation_cell', row_number),
                 'description': str(self._cell(row, header_map, 'description') or '').strip(),
-                'company_id': company_id, 'state': 'draft', 'source_row_number': row_number,
+                'company_id': company_id,
+                'state': 'error' if is_dup else 'draft',
+                'source_row_number': row_number,
             }
+            if is_dup:
+                values['error_message'] = _('تكرار هوية في ملف الإكسل: الصف %s مكرر مع الصف %s (الهوية: %s)') % (row_number, dup_source_row, identity)
             current = self.parse_reading(self._cell(row, header_map, 'current_reading'), 'current_reading', row_number)
             opening = self.parse_reading(self._cell(row, header_map, 'opening_reading'), 'opening_reading', row_number)
             if current is not None:
                 values['current_reading'] = current
             elif opening is not None:
                 values['opening_reading'] = opening
-            existing = model.search([('company_id', '=', company_id), '|', ('feeder_code', '=', identity), ('legacy_analytic_id', '=', identity)])
-            if len(existing) > 1:
-                raise self._error('AMBIGUOUS_FEEDER_IDENTITY', row_number, 'identity', identity)
-            record = existing or model.create(values)
-            if existing:
-                record.write(values)
+            if is_dup:
+                record = model.create(values)
+            else:
+                existing = model.search([('company_id', '=', company_id), '|', ('feeder_code', '=', identity), ('legacy_analytic_id', '=', identity)])
+                if len(existing) > 1:
+                    raise self._error('AMBIGUOUS_FEEDER_IDENTITY', row_number, 'identity', identity)
+                record = existing or model.create(values)
+                if existing:
+                    record.write(values)
             records |= record
         return self._show_success_notification(len(records))
 
@@ -349,8 +363,8 @@ class UtilityMigrationImportWizard(models.TransientModel):
                 if not any(self._has_cell_value(v) for v in row):
                     continue
                 raise self._error('MISSING_TRANSFORMER_IDENTITY', row_number, 'reference/transformer_code/legacy_analytic_id', identity)
-            if self._identity_guard(seen, identity, row_number, 'DUPLICATE_TRANSFORMER_IDENTITY_IN_FILE'):
-                continue
+            dup_source_row = self._identity_guard(seen, identity, row_number)
+            is_dup = dup_source_row is not None
             values = {
                 'name': str(self._cell(row, header_map, 'transformer_name') or identity).strip(),
                 'reference': reference, 'transformer_code': code, 'legacy_analytic_id': analytic,
@@ -365,20 +379,27 @@ class UtilityMigrationImportWizard(models.TransientModel):
                 'cell_meter_number': str(self._cell(row, header_map, 'cell_meter_number') or '').strip(),
                 'cell_meter_multiplier': self._parse_multiplier(self._cell(row, header_map, 'cell_meter_multiplier'), row_number, 'cell_meter_multiplier'),
                 'description': str(self._cell(row, header_map, 'description') or '').strip(),
-                'company_id': company_id, 'state': 'draft', 'source_row_number': row_number,
+                'company_id': company_id,
+                'state': 'error' if is_dup else 'draft',
+                'source_row_number': row_number,
             }
+            if is_dup:
+                values['error_message'] = _('تكرار هوية في ملف الإكسل: الصف %s مكرر مع الصف %s (الهوية: %s)') % (row_number, dup_source_row, identity)
             current = self.parse_reading(self._cell(row, header_map, 'current_reading'), 'current_reading', row_number)
             opening = self.parse_reading(self._cell(row, header_map, 'opening_reading'), 'opening_reading', row_number)
             if current is not None:
                 values['current_reading'] = current
             elif opening is not None:
                 values['opening_reading'] = opening
-            existing = model.search([('company_id', '=', company_id), '|', ('reference', '=', identity), '|', ('transformer_code', '=', identity), ('legacy_analytic_id', '=', identity)])
-            if len(existing) > 1:
-                raise self._error('AMBIGUOUS_TRANSFORMER_IDENTITY', row_number, 'identity', identity)
-            record = existing or model.create(values)
-            if existing:
-                record.write(values)
+            if is_dup:
+                record = model.create(values)
+            else:
+                existing = model.search([('company_id', '=', company_id), '|', ('reference', '=', identity), '|', ('transformer_code', '=', identity), ('legacy_analytic_id', '=', identity)])
+                if len(existing) > 1:
+                    raise self._error('AMBIGUOUS_TRANSFORMER_IDENTITY', row_number, 'identity', identity)
+                record = existing or model.create(values)
+                if existing:
+                    record.write(values)
             records |= record
         return self._show_success_notification(len(records))
 

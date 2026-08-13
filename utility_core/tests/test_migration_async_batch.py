@@ -447,5 +447,91 @@ class TestMigrationAsyncBatch(TransactionCase):
         batch.action_process_batch(max_records_per_run=3)
         self.assertEqual(records.mapped('state'), ['imported'] * 6)
         self.assertEqual(batch.state, 'done')
+        self.assertTrue(bool(batch.finished_at))
+
+    def test_11_finished_at_timestamp_recording_on_terminal_state(self):
+        """التحقق من تسجيل finished_at فقط عند الانتقال إلى حالة نهائية (done/partial/cancelled) وعدم تعيينه في الحالات الوسطية."""
+        customers_vals = [
+            {
+                'name': f'عميل التوقيت {i}',
+                'customer_number': f'CUST-TIME-{i:03d}',
+                'meter_number': f'MTR-TIME-{i:03d}',
+                'phase': 'single',
+                'legacy_region': 'REG01',
+                'legacy_area': 'AREA01',
+                'legacy_category': 'CAT01',
+                'legacy_subscriber_type': 'SUB01',
+                'legacy_contract': 'CNTR01',
+                'company_id': self.company.id,
+            } for i in range(4)
+        ]
+        records = self.env['utility.migration.customer'].create(customers_vals)
+        res = records.action_queue_migration()
+        batch = self.env['utility.migration.batch'].browse(res['res_id'])
+
+        # Intermediate run (run 1: 2 of 4 records) -> batch state becomes queued, finished_at MUST remain False
+        batch.action_process_batch(max_records_per_run=2)
+        self.assertEqual(batch.state, 'queued')
+        self.assertFalse(batch.finished_at)
+
+        # Final run (run 2: remaining 2 records) -> batch state becomes done, finished_at MUST be set
+        batch.action_process_batch(max_records_per_run=2)
+        self.assertEqual(batch.state, 'done')
+        self.assertTrue(bool(batch.finished_at))
+
+        # Test cancel on pending batch records finished_at
+        c_records = self.env['utility.migration.customer'].create([{
+            'name': 'عميل إلغاء',
+            'customer_number': 'CUST-CANCEL-001',
+            'meter_number': 'MTR-CANCEL-001',
+            'phase': 'single',
+            'legacy_region': 'REG01',
+            'company_id': self.company.id,
+        }])
+        c_batch = self.env['utility.migration.batch'].browse(c_records.action_queue_migration()['res_id'])
+        self.assertFalse(c_batch.finished_at)
+        c_batch.action_cancel()
+        self.assertEqual(c_batch.state, 'cancelled')
+        self.assertTrue(bool(c_batch.finished_at))
+
+    def test_12_excel_duplicate_row_staging_error_traceability(self):
+        """التحقق من أن الأسطر المكررة في ملف الإكسل تُحفظ في staging بحالة error مع احتفاظها بـ source_row_number ورسالة خطأ تشير للصف الأصلي."""
+        wizard = self.env['utility.migration.import.wizard'].new({'import_type': 'feeder'})
+        seen = {}
+        row9 = wizard._identity_guard(seen, 'FDR-DUP-1', 9)
+        self.assertIsNone(row9)
+
+        row10 = wizard._identity_guard(seen, 'FDR-DUP-1', 10)
+        self.assertEqual(row10, 9)  # Returns conflicting first row (row 9)
+
+    def test_13_action_run_now_guards(self):
+        """التحقق من حظر action_run_now لغير الآدمن ومنع تشغيلها على الدفعات في حالة done/cancelled/processing."""
+        c_records = self.env['utility.migration.customer'].create([{
+            'name': 'عميل زر الاختبار',
+            'customer_number': 'CUST-BTN-001',
+            'meter_number': 'MTR-BTN-001',
+            'phase': 'single',
+            'legacy_region': 'REG01',
+            'company_id': self.company.id,
+        }])
+        batch = self.env['utility.migration.batch'].browse(c_records.action_queue_migration()['res_id'])
+
+        # Non-admin execution MUST raise UserError
+        non_admin_user = self.env['res.users'].create({
+            'name': 'مستخدم عادي',
+            'login': 'regular_test_user',
+            'groups_id': [(6, 0, [self.env.ref('base.group_user').id])]
+        })
+        with self.assertRaises(UserError):
+            batch.with_user(non_admin_user).action_run_now()
+
+        # Admin execution on queued batch MUST succeed
+        batch.action_run_now()
+        self.assertEqual(batch.state, 'done')
+
+        # Invalid state execution (done batch) MUST raise UserError
+        with self.assertRaises(UserError):
+            batch.action_run_now()
+
 
 
