@@ -4,6 +4,13 @@ from odoo import api, fields, models
 class ResCompany(models.Model):
     _inherit = 'res.company'
 
+    legacy_single_phase_meter_model_id = fields.Many2one(
+        'utility.meter.model', string='موديل العداد القديم — أحادي الطور',
+        check_company=False)
+    legacy_three_phase_meter_model_id = fields.Many2one(
+        'utility.meter.model', string='موديل العداد القديم — ثلاثي الطور',
+        check_company=False)
+
     # --- Accounting ---
     fine_account_id = fields.Many2one(
         'account.account',

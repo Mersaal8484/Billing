@@ -268,6 +268,24 @@
                         </div>
                         <div class="col-12 col-lg-6 o_setting_box">
                             <div class="o_setting_right_pane">
+                                <label for="legacy_single_phase_meter_model_id"/>
+                                <div class="text-muted">الموديل الافتراضي للعدادات القديمة أحادية الطور</div>
+                                <div class="content-group">
+                                    <div class="mt16"><field name="legacy_single_phase_meter_model_id" class="o_light_label"/></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_right_pane">
+                                <label for="legacy_three_phase_meter_model_id"/>
+                                <div class="text-muted">الموديل الافتراضي للعدادات القديمة ثلاثية الطور</div>
+                                <div class="content-group">
+                                    <div class="mt16"><field name="legacy_three_phase_meter_model_id" class="o_light_label"/></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_right_pane">
                                 <label for="sales_journal_id"/>
                                 <div class="text-muted">يومية مبيعات الكهرباء (الفواتير)</div>
                                 <div class="content-group">

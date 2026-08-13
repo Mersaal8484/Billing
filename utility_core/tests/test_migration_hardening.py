@@ -46,6 +46,7 @@ class TestMigrationHardening(TransactionCase):
             'code': 'MDL-1P',
             'phase': 'single',
         })
+        self.company.legacy_single_phase_meter_model_id = self.meter_model_single
 
         # Setup master data for other company
         self.region_b = self.env['utility.region'].create({
@@ -159,7 +160,7 @@ class TestMigrationHardening(TransactionCase):
         })
 
         staging.action_import_data()
-        self.assertEqual(staging.state, 'imported')
+        self.assertEqual(staging.state, 'imported', staging.error_message)
         self.assertTrue(staging.created_customer_id)
         self.assertTrue(staging.created_meter_id)
         self.assertTrue(staging.created_reading_id)  # Field created_reading_id verified
@@ -184,9 +185,9 @@ class TestMigrationHardening(TransactionCase):
         self.assertEqual(staging.created_customer_id.id, cust_id)
         self.assertEqual(staging.created_meter_id.id, meter_id)
 
-    def test_customer_migration_ambiguous_meter_model(self):
-        """اختبار التنبيه عند خطأ غموض موديل العداد."""
-        self.env['utility.meter.model'].create({
+    def test_customer_migration_uses_configured_default_not_phase_search(self):
+        """الموديلات الأخرى ذات الطور نفسه لا تسبب غموضًا."""
+        other_model = self.env['utility.meter.model'].create({
             'name': 'عداد أحادي ثانوي',
             'code': 'MDL-1P-2',
             'phase': 'single',
@@ -201,12 +202,31 @@ class TestMigrationHardening(TransactionCase):
             'category_id': self.category.id,
             'subscriber_type_id': self.subscriber_type.id,
             'contract_template_id': self.contract_template.id,
+            'region_id': self.region.id,
+            'area_id': self.area.id,
             'company_id': self.company.id,
         })
 
         staging.action_import_data()
+        self.assertEqual(staging.state, 'imported', staging.error_message)
+        self.assertEqual(staging.created_meter_id.model_id, self.meter_model_single)
+        self.assertNotEqual(staging.created_meter_id.model_id, other_model)
+
+    def test_customer_migration_missing_default_model_is_explicit(self):
+        self.company.legacy_single_phase_meter_model_id = False
+        staging = self.env['utility.migration.customer'].create({
+            'name': 'عميل بلا موديل افتراضي', 'customer_number': 'CUST-NO-DEFAULT',
+            'meter_number': 'MTR-NO-DEFAULT', 'phase': 'single',
+            'category_id': self.category.id,
+            'subscriber_type_id': self.subscriber_type.id,
+            'contract_template_id': self.contract_template.id,
+            'region_id': self.region.id,
+            'area_id': self.area.id,
+            'company_id': self.company.id,
+        })
+        staging.action_import_data()
         self.assertEqual(staging.state, 'error')
-        self.assertIn('AMBIGUOUS_METER_MODEL', staging.error_message)
+        self.assertIn('LEGACY_SINGLE_PHASE_METER_MODEL_NOT_CONFIGURED', staging.error_message)
 
     def test_feeder_migration_execution(self):
         """اختبار تهيئة الفيدر وعداد الرصد وقراءة الافتتاح الصفرية."""

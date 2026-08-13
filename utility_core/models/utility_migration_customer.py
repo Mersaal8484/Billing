@@ -212,14 +212,24 @@ class UtilityMigrationCustomer(models.Model):
         if not self.phase:
             raise ValidationError(_('MISSING_METER_PHASE: يجب تحديد طور العداد للعميل %s.') % self.customer_number)
 
-        models = self.env['utility.meter.model'].search([
-            ('phase', '=', self.phase),
-        ])
-        if not models:
-            raise ValidationError(_('METER_MODEL_NOT_FOUND: لا يوجد موديل عداد متوافق مع الطور (%s).') % self.phase)
-        if len(models) > 1:
-            raise ValidationError(_('AMBIGUOUS_METER_MODEL: تعددت موديلات العدادات المتوافقة مع الطور (%s).') % self.phase)
-        return models[0]
+        company = self.company_id or self.env.company
+        model = (
+            company.legacy_single_phase_meter_model_id
+            if self.phase == 'single'
+            else company.legacy_three_phase_meter_model_id
+        )
+        if not model:
+            code = (
+                'LEGACY_SINGLE_PHASE_METER_MODEL_NOT_CONFIGURED'
+                if self.phase == 'single'
+                else 'LEGACY_THREE_PHASE_METER_MODEL_NOT_CONFIGURED'
+            )
+            raise ValidationError(_('%s: لم يتم إعداد موديل العداد الافتراضي للعميل %s والعداد %s (الطور: %s، صف Excel: %s).') % (
+                code, self.customer_number, self.meter_number,
+                self.phase, self.source_row_number or '?'))
+        if model.phase != self.phase:
+            raise ValidationError(_('LEGACY_DEFAULT_METER_MODEL_PHASE_MISMATCH: موديل العداد الافتراضي لا يطابق الطور %s.') % self.phase)
+        return model
 
     def _get_pec_credit(self):
         """Parse previous_balance safely."""
