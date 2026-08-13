@@ -67,7 +67,7 @@ class UtilityInspection(models.Model):
 
     def action_cancel(self):
         for rec in self:
-            if rec.state == 'completed':
-                raise UserError(_('لا يمكن إلغاء معاينة مكتملة.'))
+            if rec.state != 'scheduled':
+                raise UserError(_('لا يمكن إلغاء المعاينة إلا عندما تكون مجدولة.'))
             rec.state = 'cancelled'
 

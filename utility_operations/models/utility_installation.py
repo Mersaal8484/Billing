@@ -63,6 +63,8 @@ class UtilityInstallation(models.Model):
                 rec.installation_date = fields.Datetime.now()
             if not rec.meter_serial_snapshot and rec.meter_id:
                 rec.meter_serial_snapshot = getattr(rec.meter_id, 'serial_number', False) or rec.meter_id._get_physical_serial()
+            if not rec.meter_serial_snapshot:
+                raise ValidationError(_('لا يمكن إتمام التركيب بدون الرقم التسلسلي المادي للعداد.'))
             rec.state = 'installed'
 
     def action_verify(self):

@@ -104,7 +104,7 @@ class UtilityWorkOrder(models.Model):
 
     def action_cancel(self):
         for order in self:
-            if order.state == 'verified':
-                raise UserError(_('لا يمكن إلغاء أمر عمل مُتحقّق منه.'))
+            if order.state not in ('draft', 'assigned', 'in_progress', 'completed'):
+                raise UserError(_('لا يمكن إلغاء أمر العمل في حالته الحالية.'))
             order.state = 'cancelled'
 

@@ -84,12 +84,13 @@ class TestUtilityOperationsHardening(TransactionCase):
         self.assertTrue(bool(wo.date_started))
 
         # Invalid dates constraint test: date_started > date_completed MUST fail
-        wo.date_started = '2026-08-14 12:00:00'
-        wo.date_completed = '2026-08-14 10:00:00'
         with self.assertRaises(ValidationError):
-            wo._check_work_order_dates()
+            wo.write({
+                'date_started': '2026-08-14 12:00:00',
+                'date_completed': '2026-08-14 10:00:00',
+            })
 
-        wo.date_completed = '2026-08-14 14:00:00'
+        wo.write({'date_started': '2026-08-14 10:00:00', 'date_completed': '2026-08-14 14:00:00'})
         wo.action_complete()
         self.assertEqual(wo.state, 'completed')
 
@@ -111,9 +112,8 @@ class TestUtilityOperationsHardening(TransactionCase):
         self.assertEqual(insp.state, 'scheduled')
 
         # Invalid rating range (e.g. 6) MUST fail
-        insp.condition_rating = 6
         with self.assertRaises(ValidationError):
-            insp._check_condition_rating()
+            insp.write({'condition_rating': 6})
 
         # Valid rating (e.g. 4)
         insp.condition_rating = 4
