@@ -7,10 +7,15 @@ from odoo import api, fields, models, _
 
 _logger = logging.getLogger(__name__)
 
-SENSITIVE_PAYLOAD_KEYS = {
-    'token', 'callback_token', 'access_token', 'signature', 'authorization',
-    'api_key', 'apikey', 'secret', 'password', 'jwt', 'auth_token', 'webhook_secret',
-}
+SENSITIVE_SUBSTRINGS = (
+    'token', 'secret', 'password', 'authorization', 'signature',
+    'api_key', 'apikey', 'private_key', 'auth_', 'jwt', 'cvv', 'pin',
+)
+
+
+def _is_key_sensitive(key):
+    k_lower = str(key).lower().replace('-', '_')
+    return any(sub in k_lower for sub in SENSITIVE_SUBSTRINGS)
 
 
 def sanitize_sensitive_payload(payload):
@@ -22,14 +27,14 @@ def sanitize_sensitive_payload(payload):
     if isinstance(payload, str):
         try:
             data = json.loads(payload)
-            if isinstance(data, dict):
+            if isinstance(data, (dict, list)):
                 return json.dumps(sanitize_sensitive_payload(data), ensure_ascii=False)
         except Exception:
             pass
         try:
             import ast
             data = ast.literal_eval(payload)
-            if isinstance(data, dict):
+            if isinstance(data, (dict, list)):
                 return str(sanitize_sensitive_payload(data))
         except Exception:
             pass
@@ -38,15 +43,16 @@ def sanitize_sensitive_payload(payload):
     if isinstance(payload, dict):
         clean_dict = {}
         for k, v in payload.items():
-            if str(k).lower() in SENSITIVE_PAYLOAD_KEYS:
+            if _is_key_sensitive(k):
                 clean_dict[k] = '***REDACTED***'
-            elif isinstance(v, dict):
+            elif isinstance(v, (dict, list)):
                 clean_dict[k] = sanitize_sensitive_payload(v)
-            elif isinstance(v, list):
-                clean_dict[k] = [sanitize_sensitive_payload(item) if isinstance(item, dict) else item for item in v]
             else:
                 clean_dict[k] = v
         return clean_dict
+
+    if isinstance(payload, list):
+        return [sanitize_sensitive_payload(item) if isinstance(item, (dict, list)) else item for item in payload]
 
     return payload
 
@@ -253,18 +259,24 @@ class UtilityIntegrationProvider(models.Model):
                 headers=self._build_headers(),
                 timeout=self.timeout or 15,
             )
+            raw_response = response.text or ''
+            sanitized_response = str(sanitize_sensitive_payload(raw_response))
+            is_success = 200 <= response.status_code < 300
+            err_msg = False if is_success else sanitized_response[:1000]
+
             log.write({
                 'http_status': response.status_code,
-                'response_payload': response.text[:4000],
-                'state': 'success' if 200 <= response.status_code < 300 else 'failed',
-                'error_message': False if 200 <= response.status_code < 300 else response.text[:1000],
+                'response_payload': sanitized_response[:4000],
+                'state': 'success' if is_success else 'failed',
+                'error_message': err_msg,
             })
-            if not 200 <= response.status_code < 300:
-                self.last_error = response.text[:1000]
+            if not is_success:
+                self.last_error = err_msg
         except Exception as exc:
             _logger.exception('Utility integration call failed')
-            log.write({'state': 'failed', 'error_message': str(exc)})
-            self.last_error = str(exc)
+            sanitized_exc = str(sanitize_sensitive_payload(str(exc)))[:1000]
+            log.write({'state': 'failed', 'error_message': sanitized_exc})
+            self.last_error = sanitized_exc
         return log
 
 
