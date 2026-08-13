@@ -127,7 +127,7 @@
                             </t>
 
                             <t t-if="props.reading.rejection_reason">
-                                <div class="alert alert-danger p-2 text-xs mb-3">
+                                <div class="alert alert-danger p-2 text-xs mb-3" role="alert">
                                     <strong>سبب الرفض السابق:</strong><br/>
                                     <t t-esc="props.reading.rejection_reason"/>
                                 </div>

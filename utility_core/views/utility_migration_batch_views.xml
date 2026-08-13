@@ -36,6 +36,7 @@
         <field name="arch" type="xml">
             <form string="دفعة تنفيذ الميجريشن">
                 <header>
+                    <button name="action_run_now" type="object" string="تنفيذ الدفعة فوراً" class="btn-success" icon="fa-play" attrs="{'invisible': [('state', 'in', ('done', 'cancelled'))]}"/>
                     <button name="action_open_records" type="object" string="عرض السجلات" class="oe_highlight" icon="fa-list"/>
                     <button name="action_open_errors" type="object" string="عرض الأخطاء" class="btn-warning" icon="fa-exclamation-triangle" attrs="{'invisible': [('error_count', '=', 0)]}"/>
                     <button name="action_retry_errors" type="object" string="إعادة محاولة الأخطاء" class="btn-primary" icon="fa-refresh" attrs="{'invisible': ['|', ('error_count', '=', 0), ('state', '=', 'processing')]}"/>

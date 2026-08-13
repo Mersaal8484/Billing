@@ -238,10 +238,11 @@ class UtilityMigrationImportWizard(models.TransientModel):
             return self._import_feeders(sheet, header_row, header_map)
         return self._import_transformers(sheet, header_row, header_map)
 
-    def _identity_guard(self, seen, identity, row, code):
+    def _identity_guard(self, seen, identity, row, code=None):
         if identity in seen:
-            raise self._error(code, '%s and %s' % (seen[identity], row), 'identity', identity)
+            return True
         seen[identity] = row
+        return False
 
     def _import_customers(self, sheet, header_row, header_map):
         model = self.env['utility.migration.customer']
@@ -255,7 +256,8 @@ class UtilityMigrationImportWizard(models.TransientModel):
                 continue
             if not number:
                 raise self._error('MISSING_CUSTOMER_NUMBER', row_number, 'customer_number', number)
-            self._identity_guard(seen, number, row_number, 'DUPLICATE_CUSTOMER_NUMBER_IN_FILE')
+            if self._identity_guard(seen, number, row_number, 'DUPLICATE_CUSTOMER_NUMBER_IN_FILE'):
+                continue
             values = {
                 'name': name,
                 'mobile': str(self._cell(row, header_map, 'mobile') or '').strip(),
@@ -303,7 +305,8 @@ class UtilityMigrationImportWizard(models.TransientModel):
                 if not any(self._has_cell_value(v) for v in row):
                     continue
                 raise self._error('MISSING_FEEDER_IDENTITY', row_number, 'feeder_code/legacy_analytic_id', identity)
-            self._identity_guard(seen, identity, row_number, 'DUPLICATE_FEEDER_IDENTITY_IN_FILE')
+            if self._identity_guard(seen, identity, row_number, 'DUPLICATE_FEEDER_IDENTITY_IN_FILE'):
+                continue
             values = {
                 'name': str(self._cell(row, header_map, 'feeder_name') or identity).strip(),
                 'feeder_code': code, 'legacy_analytic_id': analytic,
@@ -346,7 +349,8 @@ class UtilityMigrationImportWizard(models.TransientModel):
                 if not any(self._has_cell_value(v) for v in row):
                     continue
                 raise self._error('MISSING_TRANSFORMER_IDENTITY', row_number, 'reference/transformer_code/legacy_analytic_id', identity)
-            self._identity_guard(seen, identity, row_number, 'DUPLICATE_TRANSFORMER_IDENTITY_IN_FILE')
+            if self._identity_guard(seen, identity, row_number, 'DUPLICATE_TRANSFORMER_IDENTITY_IN_FILE'):
+                continue
             values = {
                 'name': str(self._cell(row, header_map, 'transformer_name') or identity).strip(),
                 'reference': reference, 'transformer_code': code, 'legacy_analytic_id': analytic,

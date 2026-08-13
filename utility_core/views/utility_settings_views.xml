@@ -11,7 +11,7 @@
                         <div class="col-12 col-lg-12">
                             <div class="alert alert-info d-flex align-items-center justify-content-between mb-0" role="alert">
                                 <div>
-                                    <h4 class="alert-heading mb-1"><i class="fa fa-magic me-2"/>تهيئة وتوليد البيانات الناقصة</h4>
+                                    <h4 class="alert-heading mb-1" role="status"><i class="fa fa-magic me-2"/>تهيئة وتوليد البيانات الناقصة</h4>
                                     <span>اضغط على الزر لفحص وتوليد الحسابات واليوميات والمنتجات وموديلات العدادات الناقصة تلقائياً لقاعدة البيانات.</span>
                                 </div>
                                 <button name="action_populate_missing_defaults"

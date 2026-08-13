@@ -195,8 +195,11 @@ class UtilityMigrationBatch(models.Model):
                     batch.state = 'partial'
                 else:
                     batch.state = 'done'
-                batch.finished_at = fields.Datetime.now()
-
+    def action_run_now(self):
+        """تشغيل معالجة الدفعة يدويًا وفوراً من شاشة المستخدم."""
+        for batch in self:
+            batch.action_process_batch()
+        return True
 
     def action_open_records(self):
         self.ensure_one()
