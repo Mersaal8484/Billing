@@ -578,56 +578,124 @@ class UtilityMeterExt(models.Model):
     def cron_check_meter_stock_alignment(self, batch_limit=500):
         """فحص وتدقيق التوافق بين الحالة المنطقية والموقع المخزني الفعلي.
         الدالة تكتشف وتسجل الفروقات في نموذج Exception Log (utility.meter.integrity.issue)
-        دون أي تعديل آلي لحماية بيانات الأصول والمحاسبة."""
+        دون أي تعديل آلي لحماية بيانات الأصول والمحاسبة، مع تطبيق منع التكرار (Deduplication)."""
         meters = self.search([('active', '=', True)], limit=batch_limit)
         Issue = self.env['utility.meter.integrity.issue']
-        created_issues = Issue.browse()
+        Quant = self.env['stock.quant']
+        processed_issues = Issue.browse()
+
+        def _log_or_update_issue(meter, issue_type, severity, message, lot=None, loc=None, cust=None, wh=None):
+            existing = Issue.search([
+                ('meter_id', '=', meter.id),
+                ('issue_type', '=', issue_type),
+                ('resolved', '=', False),
+            ], limit=1)
+            if existing:
+                existing.write({
+                    'detected_at': fields.Datetime.now(),
+                    'message': message,
+                    'severity': severity,
+                    'physical_location_id': loc.id if loc else existing.physical_location_id.id,
+                    'logical_customer_id': cust.id if cust else existing.logical_customer_id.id,
+                    'warehouse_id': wh.id if wh else existing.warehouse_id.id,
+                })
+                return existing
+            else:
+                return Issue.create({
+                    'meter_id': meter.id,
+                    'issue_type': issue_type,
+                    'severity': severity,
+                    'lot_id': lot.id if lot else meter.lot_id.id,
+                    'physical_location_id': loc.id if loc else False,
+                    'logical_customer_id': cust.id if cust else meter.customer_id.id,
+                    'warehouse_id': wh.id if wh else False,
+                    'message': message,
+                })
 
         for meter in meters:
-            if not meter.product_id or not meter.lot_id:
+            # 1. lot_missing
+            if not meter.lot_id:
+                issue = _log_or_update_issue(
+                    meter, 'lot_missing', 'critical',
+                    _('العداد مفقود الهوية التسلسلية بالمخزون (لا يملك الرقم التسلسلي lot_id).')
+                )
+                processed_issues |= issue
                 continue
 
             current_loc = meter._get_lot_current_location()
 
-            # 1. logical_installed_but_stock_available
+            # 2. logical_installed_but_stock_available
             if meter.customer_id and current_loc and current_loc.usage == 'internal':
-                issue = Issue.create({
-                    'meter_id': meter.id,
-                    'issue_type': 'logical_installed_but_stock_available',
-                    'severity': 'critical',
-                    'lot_id': meter.lot_id.id,
-                    'physical_location_id': current_loc.id,
-                    'logical_customer_id': meter.customer_id.id,
-                    'message': _('العداد معين منطقيًا للمشترك (%s) بينما موقعه المخزني الفعلي موقع داخلي (%s).') % (
+                issue = _log_or_update_issue(
+                    meter, 'logical_installed_but_stock_available', 'critical',
+                    _('العداد معين منطقيًا للمشترك (%s) بينما موقعه المخزني الفعلي موقع داخلي (%s).') % (
                         meter.customer_id.display_name, current_loc.display_name),
-                })
-                created_issues |= issue
+                    lot=meter.lot_id, loc=current_loc, cust=meter.customer_id
+                )
+                processed_issues |= issue
 
-            # 2. logical_unassigned_but_stock_customer
+            # 3. logical_unassigned_but_stock_customer
             elif not meter.customer_id and current_loc and current_loc.usage == 'customer':
-                issue = Issue.create({
-                    'meter_id': meter.id,
-                    'issue_type': 'logical_unassigned_but_stock_customer',
-                    'severity': 'warning',
-                    'lot_id': meter.lot_id.id,
-                    'physical_location_id': current_loc.id,
-                    'message': _('العداد غير معين لأي مشترك منطقيًا ولكن موقعه المخزني الفعلي موقع عميل (%s).') % current_loc.display_name,
-                })
-                created_issues |= issue
+                issue = _log_or_update_issue(
+                    meter, 'logical_unassigned_but_stock_customer', 'warning',
+                    _('العداد غير معين لأي مشترك منطقيًا ولكن موقعه المخزني الفعلي موقع عميل (%s).') % current_loc.display_name,
+                    lot=meter.lot_id, loc=current_loc
+                )
+                processed_issues |= issue
 
-            # 3. product_lot_mismatch
-            if meter.lot_id.product_id != meter.product_id:
-                issue = Issue.create({
-                    'meter_id': meter.id,
-                    'issue_type': 'product_lot_mismatch',
-                    'severity': 'critical',
-                    'lot_id': meter.lot_id.id,
-                    'message': _('منتج العداد (%s) لا يطابق منتج الرقم التسلسلي بالمخزون (%s).') % (
+            # 4. product_lot_mismatch
+            if meter.product_id and meter.lot_id.product_id != meter.product_id:
+                issue = _log_or_update_issue(
+                    meter, 'product_lot_mismatch', 'critical',
+                    _('منتج العداد (%s) لا يطابق منتج الرقم التسلسلي بالمخزون (%s).') % (
                         meter.product_id.display_name, meter.lot_id.product_id.display_name),
-                })
-                created_issues |= issue
+                    lot=meter.lot_id
+                )
+                processed_issues |= issue
 
-        return len(created_issues)
+            # 5. multiple_positive_quants
+            positive_quants = Quant.search([
+                ('lot_id', '=', meter.lot_id.id),
+                ('quantity', '>', 0),
+                ('location_id.usage', '=', 'internal'),
+            ])
+            if len(positive_quants) > 1:
+                issue = _log_or_update_issue(
+                    meter, 'multiple_positive_quants', 'critical',
+                    _('الرقم التسلسلي للعداد (%s) لديه أرصدة موجبة مكررة في (%d) مواقع مخزنية داخلية.') % (
+                        meter.lot_id.name, len(positive_quants)),
+                    lot=meter.lot_id
+                )
+                processed_issues |= issue
+
+            # 6. scrapped_but_active
+            scrapped_quants = Quant.search([
+                ('lot_id', '=', meter.lot_id.id),
+                ('quantity', '>', 0),
+                ('location_id.scrap_location', '=', True),
+            ])
+            if scrapped_quants and meter.active:
+                issue = _log_or_update_issue(
+                    meter, 'scrapped_but_active', 'critical',
+                    _('العداد نشط في النظام بينما تم تكهين رقمه التسلسلي بالمخزون في موقع التكهين (%s).') % (
+                        scrapped_quants[0].location_id.display_name),
+                    lot=meter.lot_id, loc=scrapped_quants[0].location_id
+                )
+                processed_issues |= issue
+
+            # 7. wrong_warehouse
+            if current_loc and current_loc.warehouse_id and meter.company_id:
+                wh = current_loc.warehouse_id
+                if wh.company_id != meter.company_id:
+                    issue = _log_or_update_issue(
+                        meter, 'wrong_warehouse', 'critical',
+                        _('المستودع الفعلي للعداد (%s) تابع لشركة (%s) بينما العداد تابع لشركة (%s).') % (
+                            wh.name, wh.company_id.name, meter.company_id.name),
+                        lot=meter.lot_id, loc=current_loc, wh=wh
+                    )
+                    processed_issues |= issue
+
+        return len(processed_issues)
 
 
 class UtilityMeterModelInventory(models.Model):

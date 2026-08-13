@@ -112,8 +112,29 @@ class UtilityServiceOrder(models.Model):
         self._check_state_transition(['scheduled'])
         self.state = 'in_progress'
 
+    def _validate_completion_requirements(self):
+        """فحص الشروط المسبقة الصريحة لاستكمال أمر الخدمة حسب نوع العملية."""
+        self.ensure_one()
+        if not self.warehouse_id:
+            raise ValidationError(_('يجب تحديد المستودع المسؤول (warehouse_id) لإكمال أمر الخدمة الميدانية.'))
+
+        if self.service_type == 'new_connection':
+            if not self.customer_id:
+                raise ValidationError(_('أمر التوصيل الجديد يتطلب تحديد حساب المشترك (customer_id).'))
+            if not self.new_meter_id:
+                raise ValidationError(_('أمر التوصيل الجديد يتطلب تحديد العداد الجديد المراد تركيبه (new_meter_id).'))
+
+        elif self.service_type == 'meter_replacement':
+            if not self.old_meter_id or not self.new_meter_id:
+                raise ValidationError(_('أمر استبدال العداد يتطلب تحديد العداد القديم والعداد الجديد صراحة.'))
+
+        elif self.service_type in ('meter_removal', 'disconnection'):
+            if not self.old_meter_id and not self.meter_id:
+                raise ValidationError(_('أمر الفصل/الرفع يتطلب تحديد العداد المراد رفعه.'))
+
     def action_complete(self):
         self._check_state_transition(['in_progress'])
+        self._validate_completion_requirements()
         ctx = dict(self.env.context, skip_implicit_log=True, allow_log_update=True)
 
         if self.service_type == 'meter_replacement' and self.new_meter_id:

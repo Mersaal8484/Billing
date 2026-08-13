@@ -22,15 +22,15 @@ class UtilityUpgradeValidationWizard(models.TransientModel):
         self.line_ids.unlink()
         lines = []
 
-        # 1. XML IDs Section
+        # 1. XML IDs Section (Checking Canonical utility_core XML IDs)
         required_xmlids = [
             ('utility_core.meter_type_subscriber', 'utility.meter.type', 'نوع عداد المشترك الأساسي'),
             ('utility_core.meter_type_feeder', 'utility.meter.type', 'نوع عداد الفيدر الأساسي'),
             ('utility_core.meter_type_transformer', 'utility.meter.type', 'نوع عداد المحول الأساسي'),
             ('utility_core.meter_status_in_service', 'utility.meter.status', 'حالة العداد في الخدمة'),
-            ('utility_billing.account_income_electricity', 'account.account', 'حساب إيرادات الكهرباء'),
-            ('utility_billing.utility_product_consumption', 'product.product', 'منتج استهلاك الكهرباء'),
-            ('utility_billing.utility_product_penalty', 'product.product', 'منتج الغرامات والمخالفات'),
+            ('utility_core.account_income_electricity', 'account.account', 'حساب إيرادات الكهرباء'),
+            ('utility_core.utility_product_consumption', 'product.product', 'منتج استهلاك الكهرباء'),
+            ('utility_core.utility_product_penalty', 'product.product', 'منتج الغرامات والمخالفات'),
         ]
 
         for xmlid, expected_model, label in required_xmlids:
@@ -57,8 +57,10 @@ class UtilityUpgradeValidationWizard(models.TransientModel):
                     'detail': f"تمت المطابقة بنجاح للسجل ({record.display_name}).",
                 }))
 
-        # 2. Meter Integrity Section
+        # 2. Meter Integrity & Duplicates Section
         Meter = self.env['utility.meter']
+
+        # 2a. Duplicate meter_number
         duplicate_numbers = Meter.read_group(
             [('meter_number', '!=', False)], ['meter_number'], ['meter_number'], having=[('meter_number:count', '>', 1)])
         if duplicate_numbers:
@@ -75,6 +77,85 @@ class UtilityUpgradeValidationWizard(models.TransientModel):
                 'status': 'pass',
                 'check_name': 'فحص عدم تكرار أرقام العدادات',
                 'detail': 'جميع أرقام العدادات المسجلة فريدة كلياً.',
+            }))
+
+        # 2b. Duplicate operational_number
+        duplicate_op_numbers = Meter.read_group(
+            [('operational_number', '!=', False)], ['operational_number'], ['operational_number'], having=[('operational_number:count', '>', 1)])
+        if duplicate_op_numbers:
+            for item in duplicate_op_numbers:
+                lines.append((0, 0, {
+                    'section': 'meter',
+                    'status': 'warning',
+                    'check_name': 'فحص تكرار الرقم التشغيلي للعداد',
+                    'detail': f"الرقم التشغيلي للعداد ({item['operational_number']}) مكرر في ({item['operational_number_count']}) سجلات.",
+                }))
+        else:
+            lines.append((0, 0, {
+                'section': 'meter',
+                'status': 'pass',
+                'check_name': 'فحص عدم تكرار الأرقام التشغيلية للعدادات',
+                'detail': 'جميع الأرقام التشغيلية للعدادات فريدة كلياً.',
+            }))
+
+        # 2c. Duplicate Active Lot Assignment
+        active_lot_meters = Meter.read_group(
+            [('lot_id', '!=', False), ('active', '=', True)], ['lot_id'], ['lot_id'], having=[('lot_id:count', '>', 1)])
+        if active_lot_meters:
+            for item in active_lot_meters:
+                lot = self.env['stock.lot'].browse(item['lot_id'][0])
+                lines.append((0, 0, {
+                    'section': 'meter',
+                    'status': 'fail',
+                    'check_name': 'فحص تكرار الرقم التسلسلي بين عدادات نشطة',
+                    'detail': f"الرقم التسلسلي ({lot.name}) مرتبط بأكثر من عداد نشط في وقت واحد.",
+                }))
+        else:
+            lines.append((0, 0, {
+                'section': 'meter',
+                'status': 'pass',
+                'check_name': 'فحص توحد تعيين الأرقام التسلسلية للعدادات النشطة',
+                'detail': 'كل رقم تسلسلي مادي مرتبط بعداد نشط واحد كحد أقصى.',
+            }))
+
+        # 2d. Meter / Lot Product Mismatch & Company Mismatch
+        mismatch_meters = Meter.search([('lot_id', '!=', False), ('active', '=', True)])
+        mismatch_count = 0
+        company_mismatch_count = 0
+        for m in mismatch_meters:
+            if hasattr(m, 'product_id') and m.product_id and m.lot_id.product_id != m.product_id:
+                mismatch_count += 1
+            if m.company_id and m.customer_id and m.customer_id.company_id and m.company_id != m.customer_id.company_id:
+                company_mismatch_count += 1
+
+        if mismatch_count > 0:
+            lines.append((0, 0, {
+                'section': 'meter',
+                'status': 'fail',
+                'check_name': 'فحص عدم تطابق منتج العداد مع الرقم التسلسلي',
+                'detail': f"توجد ({mismatch_count}) عدادات يختلف منتجها عن منتج الرقم التسلسلي بالمخزون.",
+            }))
+        else:
+            lines.append((0, 0, {
+                'section': 'meter',
+                'status': 'pass',
+                'check_name': 'فحص مطابقة منتج العداد والرقم التسلسلي',
+                'detail': 'منتجات جميع العدادات تتطابق تماماً مع الأرقام التسلسلية المربوطة بها.',
+            }))
+
+        if company_mismatch_count > 0:
+            lines.append((0, 0, {
+                'section': 'relation',
+                'status': 'fail',
+                'check_name': 'فحص تعارض الشركة بين العداد وحساب المشترك',
+                'detail': f"توجد ({company_mismatch_count}) حالات يتعارض فيها رمز الشركة بين العداد وحساب المشترك.",
+            }))
+        else:
+            lines.append((0, 0, {
+                'section': 'relation',
+                'status': 'pass',
+                'check_name': 'فحص مطابقة شركات العدادات والمشتركين',
+                'detail': 'شركات العدادات والمشتركين متطابقة بالكامل.',
             }))
 
         # 3. Stock Integrity Section
@@ -99,7 +180,27 @@ class UtilityUpgradeValidationWizard(models.TransientModel):
                 'detail': 'لا توجد أرصدة موجبة مكررة لأي رقم تسلسلي مادي.',
             }))
 
-        # 4. Billing Defaults Section
+        # 3b. Warehouse Inspection & Repair Locations Setup
+        Warehouse = self.env['stock.warehouse']
+        for wh in Warehouse.search([]):
+            insp_loc = getattr(wh, 'meter_inspection_location_id', False)
+            rep_loc = getattr(wh, 'meter_repair_location_id', False)
+            if not insp_loc or not rep_loc:
+                lines.append((0, 0, {
+                    'section': 'stock',
+                    'status': 'warning',
+                    'check_name': f"فحص مواقع فحص وصيانة العدادات للمستودع: {wh.name}",
+                    'detail': f"المستودع ({wh.name}) ينقصه إعداد موقع الفحص أو موقع الصيانة للعدادات.",
+                }))
+            else:
+                lines.append((0, 0, {
+                    'section': 'stock',
+                    'status': 'pass',
+                    'check_name': f"فحص مواقع فحص وصيانة العدادات للمستودع: {wh.name}",
+                    'detail': f"مواقع الفحص والصيانة مجهزة بنجاح للمستودع ({wh.name}).",
+                }))
+
+        # 4. Billing Defaults, Accounts & Journals Section
         Company = self.env['res.company']
         for company in Company.search([]):
             if not getattr(company, 'penalty_product_id', False):
@@ -116,6 +217,51 @@ class UtilityUpgradeValidationWizard(models.TransientModel):
                     'check_name': f"فحص إعدادات الفوترة للشركة: {company.name}",
                     'detail': f"جميع منتجات الفوترة والغرامات الافتراضية معينة بنجاح للشركة.",
                 }))
+
+            # Check Sales & Payment Journals
+            journals = self.env['account.journal'].search([('company_id', '=', company.id)])
+            sale_journals = journals.filtered(lambda j: j.type == 'sale')
+            bank_journals = journals.filtered(lambda j: j.type in ('bank', 'cash'))
+            if not sale_journals:
+                lines.append((0, 0, {
+                    'section': 'billing',
+                    'status': 'fail',
+                    'check_name': f"فحص دفاتر المبيعات للشركة: {company.name}",
+                    'detail': f"لا يوجد دفتر مبيعات (Sales Journal) معرف للشركة ({company.name}).",
+                }))
+            else:
+                lines.append((0, 0, {
+                    'section': 'billing',
+                    'status': 'pass',
+                    'check_name': f"فحص دفاتر المبيعات للشركة: {company.name}",
+                    'detail': f"دفتر المبيعات متاح وجاهز للشركة.",
+                }))
+
+            if not bank_journals:
+                lines.append((0, 0, {
+                    'section': 'billing',
+                    'status': 'warning',
+                    'check_name': f"فحص دفاتر البنك/النقدية للشركة: {company.name}",
+                    'detail': f"لا يوجد دفتر بنك أو نقدية (Bank/Cash Journal) معرف للشركة ({company.name}).",
+                }))
+
+        # 5. Broken Customer / Partner Relations Section
+        Customer = self.env['utility.customer']
+        orphan_customers = Customer.search([('partner_id', '=', False)])
+        if orphan_customers:
+            lines.append((0, 0, {
+                'section': 'relation',
+                'status': 'fail',
+                'check_name': 'فحص ارتباط حساب المشترك بالشريك المحاسبي',
+                'detail': f"توجد ({len(orphan_customers)}) حسابات مشتركين غير مرتبطة بشريك محاسبي (res.partner).",
+            }))
+        else:
+            lines.append((0, 0, {
+                'section': 'relation',
+                'status': 'pass',
+                'check_name': 'فحص ارتباط حسابات المشتركين بالشركاء المحاسبيين',
+                'detail': 'جميع حسابات المشتركين مرتبطة بشكل صحيح بالشركاء المحاسبيين.',
+            }))
 
         # Calculate Summary Metrics
         p_cnt = sum(1 for _, _, l in lines if l['status'] == 'pass')
