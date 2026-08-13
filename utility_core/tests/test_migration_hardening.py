@@ -252,3 +252,37 @@ class TestMigrationHardening(TransactionCase):
         self.assertEqual(staging_trans.created_transformer_id.feeder_id, staging_feeder.created_feeder_id)
         self.assertEqual(staging_trans.created_reading_id.reading_category, 'transformer')
         self.assertEqual(staging_trans.created_reading_id.reading_value, 150.5)
+
+    def test_wizard_blank_vs_zero_and_presence_semantics(self):
+        """اختبار دقة معالج الاستيراد في التمييز بين الخلية الفارغة وقيمة الصفر."""
+        wizard = self.env['utility.migration.import.wizard'].create({
+            'import_type': 'transformer',
+            'import_file': b'dummy',
+            'file_name': 'test.xlsx'
+        })
+        # 1. Blank cell parsing
+        self.assertFalse(wizard._has_cell_value(None))
+        self.assertFalse(wizard._has_cell_value('   '))
+        self.assertTrue(wizard._has_cell_value(0))
+        self.assertTrue(wizard._has_cell_value('0.0'))
+        self.assertTrue(wizard._has_cell_value('150.5'))
+
+        # 2. Staging model creation without reading fields maintains has_opening_reading = False
+        staging_blank = self.env['utility.migration.transformer'].create({
+            'name': 'محول فارغ القراءة',
+            'reference': 'TR-BLANK-01',
+            'company_id': self.company.id,
+        })
+        self.assertFalse(staging_blank.has_current_reading)
+        self.assertFalse(staging_blank.has_opening_reading)
+        self.assertIsNone(staging_blank._get_staging_opening_reading_value())
+
+        # 3. Staging model creation with opening_reading = 150.5 sets has_opening_reading = True
+        staging_val = self.env['utility.migration.transformer'].create({
+            'name': 'محول بقراءة افتتاحية',
+            'reference': 'TR-VAL-01',
+            'opening_reading': 150.5,
+            'company_id': self.company.id,
+        })
+        self.assertTrue(staging_val.has_opening_reading)
+        self.assertEqual(staging_val._get_staging_opening_reading_value(), 150.5)
