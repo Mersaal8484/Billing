@@ -1,6 +1,11 @@
+import logging
 from datetime import timedelta
+from psycopg2 import OperationalError
+
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
+
+_logger = logging.getLogger(__name__)
 
 
 class UtilityMigrationBatch(models.Model):
@@ -95,8 +100,8 @@ class UtilityMigrationBatch(models.Model):
                 vals['name'] = seq
         return super().create(vals_list)
 
-    def action_process_batch(self):
-        """معالجة الدفعة في خلفية النظام على دفعات جزئية (Chunked execution) مع حفظ savepoint لكل سجل."""
+    def action_process_batch(self, max_records_per_run=1000):
+        """معالجة الدفعة في خلفية النظام على دفعات جزئية (Chunked execution) محددة لكل دورة لتجنب تجاوز المهلة."""
         for batch in self:
             if batch.state in ('done', 'cancelled'):
                 continue
@@ -104,20 +109,22 @@ class UtilityMigrationBatch(models.Model):
             batch.started_at = fields.Datetime.now()
             batch.state = 'processing'
 
-            records = batch._get_batch_records().filtered(
+            pending_records = batch._get_batch_records().filtered(
                 lambda r: r.state in ('queued', 'processing', 'draft', 'error')
             )
 
-            if not records:
+            if not pending_records:
                 batch.state = 'done'
                 batch.finished_at = fields.Datetime.now()
                 continue
 
+            # Limit records in single invocation to prevent cron execution timeouts on huge datasets
+            run_records = pending_records[:max_records_per_run] if max_records_per_run else pending_records
             chunk_size = max(1, batch.chunk_size or 200)
 
             try:
-                for i in range(0, len(records), chunk_size):
-                    chunk = records[i:i + chunk_size]
+                for i in range(0, len(run_records), chunk_size):
+                    chunk = run_records[i:i + chunk_size]
                     for rec in chunk:
                         with self.env.cr.savepoint():
                             rec.state = 'processing'
@@ -129,21 +136,29 @@ class UtilityMigrationBatch(models.Model):
                 batch.finished_at = fields.Datetime.now()
                 continue
 
-            # Evaluate final batch state cleanly
-            records = batch._get_batch_records()
-            err_count = len(records.filtered(lambda r: r.state == 'error'))
-            imp_count = len(records.filtered(lambda r: r.state == 'imported'))
+            # Re-evaluate remaining pending records in batch
+            remaining_pending = batch._get_batch_records().filtered(
+                lambda r: r.state in ('queued', 'processing', 'draft')
+            )
 
-            if err_count == 0 and imp_count > 0:
-                batch.state = 'done'
-            elif imp_count > 0 and err_count > 0:
-                batch.state = 'partial'
-            elif imp_count == 0 and err_count > 0:
-                batch.state = 'partial'
+            if remaining_pending:
+                # Still records left to process in subsequent cron runs
+                batch.state = 'processing'
             else:
-                batch.state = 'done'
+                # All records evaluated
+                records = batch._get_batch_records()
+                err_count = len(records.filtered(lambda r: r.state == 'error'))
+                imp_count = len(records.filtered(lambda r: r.state == 'imported'))
 
-            batch.finished_at = fields.Datetime.now()
+                if err_count == 0 and imp_count > 0:
+                    batch.state = 'done'
+                elif imp_count > 0 and err_count > 0:
+                    batch.state = 'partial'
+                elif imp_count == 0 and err_count > 0:
+                    batch.state = 'partial'
+                else:
+                    batch.state = 'done'
+                batch.finished_at = fields.Datetime.now()
 
     def action_open_records(self):
         self.ensure_one()
@@ -218,5 +233,9 @@ class UtilityMigrationBatch(models.Model):
                     (batch.id,)
                 )
                 batch.action_process_batch()
-            except Exception:
+            except OperationalError:
+                _logger.debug("Batch %s (%s) is currently locked by another worker process.", batch.id, batch.name)
+                continue
+            except Exception as e:
+                _logger.error("Unexpected error processing migration batch %s (%s): %s", batch.id, batch.name, e)
                 continue
