@@ -83,10 +83,22 @@ class UtilityReaderAPI(http.Controller):
                     or (period.region_ids and region not in period.region_ids)):
                 return {'success': False, 'error': 'المنطقة غير صالحة لهذه الفترة'}
 
+        total_readings_raw = params.get('total_readings', 0)
+        try:
+            total_readings = int(total_readings_raw)
+            if total_readings < 0:
+                raise ValueError()
+        except (TypeError, ValueError):
+            return {
+                'success': False,
+                'code': 'INVALID_TOTAL_READINGS',
+                'error': 'total_readings must be a non-negative integer'
+            }
+
         batch = request.env['utility.reading.batch'].create({
             'date_range_id': date_range_id,
             'region_id': region_id or False,
-            'total_readings': int(params.get('total_readings', 0)),
+            'total_readings': total_readings,
         })
         return {
             'success': True,
@@ -109,7 +121,7 @@ class UtilityReaderAPI(http.Controller):
         params = request.jsonrequest
         batch_id = params.get('batch_id')
         data = params.get('data')
-        if not batch_id or not data:
+        if not batch_id or data is None:
             return {'success': False, 'error': 'batch_id and data are required'}
 
         batch = self._get_owned_batch(batch_id)
@@ -118,23 +130,28 @@ class UtilityReaderAPI(http.Controller):
         if batch.state != 'uploaded':
             return {'success': False, 'error': 'لا يمكن تعديل دفعة تمت معالجتها'}
 
-        # تحويل البيانات إلى JSON string ثم Base64
-        if isinstance(data, dict):
-            json_str = json.dumps(data, ensure_ascii=False)
-        elif isinstance(data, str):
+        # تحويل البيانات وإثبات صحة الـ JSON قبل تنفيذ أي عملية كتابة
+        if isinstance(data, str):
+            try:
+                parsed = json.loads(data)
+            except Exception:
+                return {'success': False, 'code': 'INVALID_JSON', 'error': 'data must be valid JSON object'}
             json_str = data
+        elif isinstance(data, dict):
+            parsed = data
+            json_str = json.dumps(data, ensure_ascii=False)
         else:
-            return {'success': False, 'error': 'data must be dict or string'}
+            return {'success': False, 'code': 'INVALID_JSON', 'error': 'data must be dict or string'}
+
+        if not isinstance(parsed, dict):
+            return {'success': False, 'code': 'INVALID_JSON', 'error': 'data must be valid JSON object'}
+
+        readings_list = parsed.get('readings')
+        if readings_list is not None and not isinstance(readings_list, list):
+            return {'success': False, 'code': 'INVALID_JSON', 'error': 'readings must be a list'}
 
         encoded = base64.b64encode(json_str.encode('utf-8'))
-
-        # حساب عدد القراءات من المحتوى
-        try:
-            parsed = json.loads(json_str) if isinstance(data, str) else data
-            readings_list = parsed.get('readings', [])
-            total = len(readings_list)
-        except Exception:
-            total = 0
+        total = len(readings_list) if isinstance(readings_list, list) else 0
 
         batch.write({
             'data_file': encoded,
@@ -280,7 +297,9 @@ class UtilityReaderAPI(http.Controller):
         جلب الفترات (الأشهر) المتاحة لربط القراءات بها.
         """
         periods = request.env['date.range'].search([
-            ('type_id.billing_period', '=', True),
+            ('period_role', '=', 'reading'),
+            ('state', '=', 'open'),
+            '|', ('company_id', '=', False), ('company_id', '=', request.env.company.id)
         ], order='date_start desc', limit=12)
 
         return {
@@ -338,8 +357,14 @@ class UtilityReaderAPI(http.Controller):
         """
         جلب دفعات الجابي الحالي (آخر 20 دفعة).
         """
-        params = request.jsonrequest
-        limit = params.get('limit', 20)
+        params = request.jsonrequest or {}
+        limit_raw = params.get('limit', 20)
+        try:
+            limit = int(limit_raw)
+        except (TypeError, ValueError):
+            return {'success': False, 'code': 'INVALID_LIMIT', 'error': 'limit must be an integer'}
+
+        limit = max(1, min(limit, 100))
 
         batches = request.env['utility.reading.batch'].search([
             ('user_id', '=', request.env.uid),

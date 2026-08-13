@@ -1,4 +1,5 @@
 from odoo import api, fields, models, _
+from odoo.exceptions import UserError, ValidationError
 
 
 class UtilityInstallation(models.Model):
@@ -49,3 +50,30 @@ class UtilityInstallation(models.Model):
                 if meter:
                     vals['meter_serial_snapshot'] = getattr(meter, 'serial_number', False) or meter._get_physical_serial()
         return super().create(vals_list)
+
+    def action_install(self):
+        for rec in self:
+            if rec.state != 'draft':
+                raise UserError(_('لا يمكن تنفيذ التركيب إلا للتركيبات في حالة المسودة.'))
+            if not rec.customer_id:
+                raise ValidationError(_('العميل مطلوب لإتمام التركيب.'))
+            if not rec.meter_id:
+                raise ValidationError(_('العداد مطلوب لإتمام التركيب.'))
+            if not rec.installation_date:
+                rec.installation_date = fields.Datetime.now()
+            if not rec.meter_serial_snapshot and rec.meter_id:
+                rec.meter_serial_snapshot = getattr(rec.meter_id, 'serial_number', False) or rec.meter_id._get_physical_serial()
+            rec.state = 'installed'
+
+    def action_verify(self):
+        for rec in self:
+            if rec.state != 'installed':
+                raise UserError(_('لا يمكن التحقق إلا من التركيبات المنفذة (مُرَكّب).'))
+            rec.state = 'verified'
+
+    def action_fail(self):
+        for rec in self:
+            if rec.state not in ('draft', 'installed'):
+                raise UserError(_('لا يمكن تسجيل فشل التركيبة في حالتها الحالية.'))
+            rec.state = 'failed'
+

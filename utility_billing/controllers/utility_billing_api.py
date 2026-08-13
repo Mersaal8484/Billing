@@ -263,16 +263,14 @@ class UtilityBillingAPI(http.Controller):
     @http.route('/api/v1/utility/payment_gateway/webhook/<string:reference>', type='json', auth='public', methods=['POST'], csrf=False)
     def payment_gateway_webhook(self, reference, **kwargs):
         params = request.jsonrequest or {}
-        # Acquire row-level lock FOR UPDATE to prevent race conditions on concurrent callbacks
-        request.env.cr.execute(
-            "SELECT id FROM utility_payment_gateway_transaction WHERE name = %s FOR UPDATE",
-            [reference]
-        )
+        # 1. Search transaction by reference WITHOUT locking first
         tx = request.env['utility.payment.gateway.transaction'].sudo().search([
             ('name', '=', reference),
         ], limit=1)
         if not tx:
             return {'error': 'Transaction not found'}
+
+        # 2. Verify callback token BEFORE acquiring DB row-level lock
         token = params.get('token') or params.get('callback_token') or params.get('signature')
         if not token or not tx.access_token:
             _logger.warning('Payment webhook missing token for reference %s', reference)
@@ -282,12 +280,20 @@ class UtilityBillingAPI(http.Controller):
         if len(expected) != len(received) or not hmac.compare_digest(expected, received):
             _logger.warning('Payment webhook invalid token for reference %s', reference)
             return {'error': 'Invalid token'}
+
+        # 3. Acquire FOR UPDATE row-level lock ONLY AFTER authentication succeeds
+        request.env.cr.execute(
+            "SELECT id FROM utility_payment_gateway_transaction WHERE name = %s FOR UPDATE",
+            [reference]
+        )
+        tx.invalidate_recordset(['state', 'payment_id', 'callback_payload', 'error_message'])
+
         status = params.get('status')
         if not status:
             return {'error': 'Payment status is required'}
         provider_reference = params.get('provider_reference') or params.get('reference')
         if tx.state == 'done':
-            return {'success': True, 'state': tx.state, 'payment_id': tx.payment_id.id}
+            return {'success': True, 'state': tx.state, 'payment_id': tx.payment_id.id if tx.payment_id else False}
         if tx.state != 'pending':
             return {'error': 'Only pending payment transactions can receive callbacks'}
         if status in ('success', 'done', 'paid') and not provider_reference:
@@ -301,7 +307,7 @@ class UtilityBillingAPI(http.Controller):
             })
             return {'success': False, 'state': tx.state}
         tx.action_confirm_payment(provider_reference=provider_reference, callback_payload=sanitized_params)
-        return {'success': True, 'state': tx.state, 'payment_id': tx.payment_id.id}
+        return {'success': True, 'state': tx.state, 'payment_id': tx.payment_id.id if tx.payment_id else False}
 
     @http.route('/api/v1/utility/operations/service_request', type='json', auth='user', methods=['POST'])
     def service_request(self, **kwargs):
@@ -376,7 +382,7 @@ class UtilityBillingAPI(http.Controller):
         alarms_domain = [
             ('customer_id', 'in', allowed_ids),
             ('alarm_date', '>=', start_dt), ('alarm_date', '<=', end_dt),
-            ('state', 'not in', ('resolved', 'closed')),
+            ('state', 'not in', ('resolved', 'dismissed')),
         ]
         active_alarms = request.env['utility.alarm'].search_count(alarms_domain)
 

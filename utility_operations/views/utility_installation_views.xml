@@ -23,7 +23,10 @@
             <field name="arch" type="xml">
                 <form>
                     <header>
-                        <field name="state" widget="statusbar"/>
+                        <button name="action_install" type="object" string="تنفيذ التركيب" class="btn-primary" states="draft"/>
+                        <button name="action_verify" type="object" string="التحقق من التركيب" class="btn-success" states="installed"/>
+                        <button name="action_fail" type="object" string="تسجيل فشل" class="btn-danger" states="draft,installed" confirm="هل أنت متاكد من تسجيل فشل هذه التركيبة؟"/>
+                        <field name="state" widget="statusbar" statusbar_visible="draft,installed,verified"/>
                     </header>
                     <sheet>
                         <h1>

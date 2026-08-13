@@ -1,4 +1,5 @@
 from odoo import api, fields, models, _
+from odoo.exceptions import UserError, ValidationError
 
 
 class UtilityInspection(models.Model):
@@ -37,9 +38,36 @@ class UtilityInspection(models.Model):
         ('cancelled', 'ملغاة'),
     ], string='الحالة', default='scheduled')
 
+    @api.constrains('condition_rating')
+    def _check_condition_rating(self):
+        for rec in self:
+            if rec.condition_rating and not (1 <= rec.condition_rating <= 5):
+                raise ValidationError(_('تقييم الحالة يجب أن يكون بين 1 و 5.'))
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
             if vals.get('name', _('جديد')) == _('جديد'):
                 vals['name'] = self.env['ir.sequence'].next_by_code('utility.inspection') or _('جديد')
         return super().create(vals_list)
+
+    def action_complete(self):
+        for rec in self:
+            if rec.state != 'scheduled':
+                raise UserError(_('لا يمكن إكمال المعاينة إلا عندما تكون مجدولة.'))
+            if not rec.inspection_type:
+                raise ValidationError(_('نوع المعاينة مطلوب لإتمام المعاينة.'))
+            if not rec.inspector_id:
+                raise ValidationError(_('اسم المُفتّش مطلوب لإتمام المعاينة.'))
+            if not rec.inspection_date:
+                rec.inspection_date = fields.Datetime.now()
+            if rec.condition_rating and not (1 <= rec.condition_rating <= 5):
+                raise ValidationError(_('تقييم الحالة يجب أن يكون بين 1 و 5.'))
+            rec.state = 'completed'
+
+    def action_cancel(self):
+        for rec in self:
+            if rec.state == 'completed':
+                raise UserError(_('لا يمكن إلغاء معاينة مكتملة.'))
+            rec.state = 'cancelled'
+

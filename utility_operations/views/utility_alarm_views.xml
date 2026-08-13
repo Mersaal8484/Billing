@@ -23,15 +23,12 @@
             <field name="arch" type="xml">
                 <form>
                     <header>
-                        <field name="state" widget="statusbar"/>
-                        <button name="action_acknowledge" string="تأكيد الاستلام" type="object"
-                                states="open" class="btn-primary"/>
-                        <button name="action_resolve" string="حل" type="object"
-                                states="acknowledged,investigating" class="btn-primary"/>
-                        <button name="action_close" string="إغلاق" type="object"
-                                states="resolved" class="btn-primary"/>
-                        <button name="action_create_service_order" string="إنشاء أمر خدمة / قضية تلاعب" type="object"
-                                states="open,acknowledged,investigating" class="btn-secondary"/>
+                        <button name="action_acknowledge" string="تأكيد الاستلام" type="object" states="open" class="btn-primary"/>
+                        <button name="action_start" string="بدء التحقيق" type="object" states="acknowledged" class="btn-primary"/>
+                        <button name="action_resolve" string="حل الإنذار" type="object" states="investigating" class="btn-success"/>
+                        <button name="action_close" string="رفض / إغلاق" type="object" states="open,acknowledged,investigating" class="btn-secondary"/>
+                        <button name="action_create_service_order" string="إنشاء أمر خدمة / قضية تلاعب" type="object" states="open,acknowledged,investigating" class="btn-info"/>
+                        <field name="state" widget="statusbar" statusbar_visible="open,acknowledged,investigating,resolved,dismissed"/>
                     </header>
                     <sheet>
                         <h1>

@@ -23,7 +23,9 @@
             <field name="arch" type="xml">
                 <form>
                     <header>
-                        <field name="state" widget="statusbar"/>
+                        <button name="action_complete" type="object" string="إكمال المعاينة" class="btn-success" states="scheduled"/>
+                        <button name="action_cancel" type="object" string="إلغاء المعاينة" class="btn-secondary" states="scheduled" confirm="هل أنت متاكد من إلغاء المعاينة؟"/>
+                        <field name="state" widget="statusbar" statusbar_visible="scheduled,completed"/>
                     </header>
                     <sheet>
                         <h1>

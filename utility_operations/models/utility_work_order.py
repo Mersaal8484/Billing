@@ -1,4 +1,5 @@
 from odoo import api, fields, models, _
+from odoo.exceptions import UserError, ValidationError
 
 
 class UtilityWorkOrder(models.Model):
@@ -56,9 +57,54 @@ class UtilityWorkOrder(models.Model):
     ], string='الحالة', default='draft')
     notes = fields.Text('ملاحظات')
 
+    @api.constrains('date_started', 'date_completed')
+    def _check_work_order_dates(self):
+        for order in self:
+            if order.date_started and order.date_completed and order.date_started > order.date_completed:
+                raise ValidationError(_('تاريخ البدء لا يمكن أن يكون بعد تاريخ الإكمال.'))
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
             if vals.get('work_order_number', _('جديد')) == _('جديد'):
                 vals['work_order_number'] = self.env['ir.sequence'].next_by_code('utility.work.order') or _('جديد')
         return super().create(vals_list)
+
+    def action_assign(self):
+        for order in self:
+            if order.state != 'draft':
+                raise UserError(_('لا يمكن تعيين أمر العمل إلا من حالة المسودة.'))
+            if not order.assigned_technician_id and not order.team_id:
+                raise ValidationError(_('يجب تحديد الفني أو الفريق المُعيّن قبل التعيين.'))
+            order.state = 'assigned'
+
+    def action_start(self):
+        for order in self:
+            if order.state != 'assigned':
+                raise UserError(_('لا يمكن بدء أمر العمل إلا بعد التعيين (مُعيّن).'))
+            if not order.date_started:
+                order.date_started = fields.Datetime.now()
+            order.state = 'in_progress'
+
+    def action_complete(self):
+        for order in self:
+            if order.state != 'in_progress':
+                raise UserError(_('لا يمكن إكمال أمر العمل إلا عندما يكون قيد التنفيذ.'))
+            if not order.date_completed:
+                order.date_completed = fields.Datetime.now()
+            if order.date_started and order.date_started > order.date_completed:
+                raise ValidationError(_('تاريخ البدء لا يمكن أن يكون بعد تاريخ الإكمال.'))
+            order.state = 'completed'
+
+    def action_verify(self):
+        for order in self:
+            if order.state != 'completed':
+                raise UserError(_('لا يمكن التحقق من أمر العمل إلا بعد إكتماله (مكتمل).'))
+            order.state = 'verified'
+
+    def action_cancel(self):
+        for order in self:
+            if order.state == 'verified':
+                raise UserError(_('لا يمكن إلغاء أمر عمل مُتحقّق منه.'))
+            order.state = 'cancelled'
+

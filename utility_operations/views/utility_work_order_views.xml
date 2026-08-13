@@ -25,7 +25,12 @@
             <field name="arch" type="xml">
                 <form>
                     <header>
-                        <field name="state" widget="statusbar"/>
+                        <button name="action_assign" type="object" string="تعيين أمر العمل" class="btn-primary" states="draft"/>
+                        <button name="action_start" type="object" string="بدء التنفيذ" class="btn-primary" states="assigned"/>
+                        <button name="action_complete" type="object" string="إكمال العمل" class="btn-success" states="in_progress"/>
+                        <button name="action_verify" type="object" string="تحقق من العمل" class="btn-success" states="completed"/>
+                        <button name="action_cancel" type="object" string="إلغاء أمر العمل" class="btn-secondary" states="draft,assigned,in_progress,completed" confirm="هل أنت متاكد من إلغاء امر العمل؟"/>
+                        <field name="state" widget="statusbar" statusbar_visible="draft,assigned,in_progress,completed,verified"/>
                     </header>
                     <sheet>
                         <h1>

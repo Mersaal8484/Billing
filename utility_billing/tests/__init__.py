@@ -12,3 +12,4 @@ from . import test_payment_allocation_concurrency
 from . import test_financial_lifecycle
 from . import test_meter_operational_api
 from . import test_reading_batch_concurrency
+from . import test_reader_and_webhook_api_hardening
