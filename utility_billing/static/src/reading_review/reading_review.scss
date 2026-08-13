@@ -11,18 +11,96 @@
         }
     }
 
-    .cursor-pointer {
-        cursor: pointer;
+    .meter-image-container {
+        position: relative;
+        display: inline-block;
+
+        .meter-thumb-img {
+            transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.25s ease-in-out, border-color 0.25s ease-in-out;
+            cursor: pointer;
+            transform-origin: center center;
+            
+            &:hover {
+                transform: scale(2.1);
+                z-index: 9999 !important;
+                position: relative;
+                box-shadow: 0 14px 35px rgba(0, 0, 0, 0.5) !important;
+                border-color: #0d6efd !important;
+            }
+        }
+
+        .hover-preview-hint {
+            position: absolute;
+            bottom: -35px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(13, 110, 253, 0.9);
+            color: #ffffff;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 20px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s ease-in-out, bottom 0.2s ease-in-out;
+            white-space: nowrap;
+            z-index: 10000;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        &:hover .hover-preview-hint {
+            opacity: 1;
+            bottom: -40px;
+        }
+    }
+
+    .badge {
+        font-weight: 700 !important;
+        letter-spacing: 0.3px;
+    }
+
+    .badge-soft-primary {
+        background-color: #e7f1ff !important;
+        color: #0c63e4 !important;
+        border: 1px solid #b6d4fe !important;
+    }
+    .badge-soft-success {
+        background-color: #d1e7dd !important;
+        color: #0f5132 !important;
+        border: 1px solid #badbcc !important;
+    }
+    .badge-soft-info {
+        background-color: #cff4fc !important;
+        color: #055160 !important;
+        border: 1px solid #b6effb !important;
+    }
+    .badge-soft-warning {
+        background-color: #fff3cd !important;
+        color: #664d03 !important;
+        border: 1px solid #ffecb5 !important;
+    }
+    .badge-soft-danger {
+        background-color: #f8d7da !important;
+        color: #842029 !important;
+        border: 1px solid #f5c2c7 !important;
+    }
+    .badge-soft-dark {
+        background-color: #e2e3e5 !important;
+        color: #141619 !important;
+        border: 1px solid #d3d6d8 !important;
     }
 
     .table {
         position: relative;
 
-        th {
-            font-size: 0.82rem;
+        thead th {
+            font-size: 0.88rem;
+            font-weight: 700;
             letter-spacing: 0.2px;
-            padding-top: 0.6rem;
-            padding-bottom: 0.6rem;
+            padding-top: 0.75rem;
+            padding-bottom: 0.75rem;
+            color: #ffffff !important;
+            background-color: #1e293b !important;
         }
         td {
             padding-top: 0.4rem;

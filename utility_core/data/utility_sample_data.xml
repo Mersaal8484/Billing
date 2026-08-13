@@ -183,6 +183,10 @@ if products:
             <field name="name">HEXING Single Phase Smart</field>
             <field name="manufacturer">Hexing Electrical</field>
             <field name="meter_type_id" ref="demo_meter_type_smart_single" />
+            <field name="phase">single</field>
+            <field name="voltage">230.0</field>
+            <field name="current_rating">60.0</field>
+            <field name="power_rating">13.8</field>
             <field name="sts_supported" eval="True" />
             <field name="communication_types">PLC, GPRS</field>
             <field name="product_id" ref="utility_product_meter_single" />
@@ -191,6 +195,10 @@ if products:
             <field name="name">HEXING Three Phase Smart</field>
             <field name="manufacturer">Hexing Electrical</field>
             <field name="meter_type_id" ref="demo_meter_type_smart_three" />
+            <field name="phase">three</field>
+            <field name="voltage">400.0</field>
+            <field name="current_rating">60.0</field>
+            <field name="power_rating">41.5</field>
             <field name="sts_supported" eval="True" />
             <field name="communication_types">PLC, 4G</field>
             <field name="product_id" ref="utility_product_meter_three" />
@@ -227,6 +235,10 @@ if products:
             <field name="name">L&amp;T Single Phase Mechanical</field>
             <field name="manufacturer">L&amp;T</field>
             <field name="meter_type_id" ref="demo_meter_type_mech_single" />
+            <field name="phase">single</field>
+            <field name="voltage">230.0</field>
+            <field name="current_rating">40.0</field>
+            <field name="power_rating">9.2</field>
             <field name="sts_supported" eval="False" />
             <field name="product_id" ref="utility_product_meter_mech_single" />
         </record>
@@ -234,6 +246,10 @@ if products:
             <field name="name">L&amp;T Three Phase Mechanical</field>
             <field name="manufacturer">L&amp;T</field>
             <field name="meter_type_id" ref="demo_meter_type_mech_three" />
+            <field name="phase">three</field>
+            <field name="voltage">400.0</field>
+            <field name="current_rating">100.0</field>
+            <field name="power_rating">69.0</field>
             <field name="sts_supported" eval="False" />
             <field name="product_id" ref="utility_product_meter_mech_three" />
         </record>
@@ -241,6 +257,10 @@ if products:
             <field name="name">HEXING Three Phase CT Smart</field>
             <field name="manufacturer">Hexing Electrical</field>
             <field name="meter_type_id" ref="demo_meter_type_smart_three" />
+            <field name="phase">three</field>
+            <field name="voltage">400.0</field>
+            <field name="current_rating">250.0</field>
+            <field name="power_rating">173.0</field>
             <field name="sts_supported" eval="True" />
             <field name="communication_types">PLC, 4G, RS485</field>
             <field name="product_id" ref="utility_product_meter_ct_three" />

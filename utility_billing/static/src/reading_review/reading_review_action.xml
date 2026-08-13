@@ -232,23 +232,23 @@
                                         <input type="checkbox" class="form-check-input" t-on-change="toggleSelectAll"/>
                                     </th>
                                     <th style="width: 50px;" class="text-center">#</th>
-                                    <th style="width: 90px;" class="text-center">صورة العداد</th>
+                                    <th style="width: 210px;" class="text-center">صورة العداد</th>
                                     <th style="width: 120px;">رقم العداد</th>
-                                    <th style="width: 180px;">اسم الحساب / العميل</th>
+                                    <th style="width: 220px;">اسم الحساب / العميل</th>
                                     <th style="width: 100px;">المنطقة</th>
                                     <th style="width: 110px;" class="text-end">القراءة السابقة</th>
                                     <th style="width: 110px;" class="text-end">القراءة الحالية</th>
                                     <th style="width: 110px;" class="text-end">الاستهلاك</th>
                                     <th style="width: 140px;">تاريخ القراءة</th>
                                     <th style="width: 180px;" class="text-center">السياق</th>
-                                    <th style="width: 150px;">التنبيهات الفنية VEE</th>
-                                    <th style="width: 100px;" class="text-center">الحالة</th>
+                                    <th style="width: 160px;">التنبيهات الفنية VEE</th>
+                                    <th style="width: 130px;" class="text-center">الحالة</th>
                                     <th style="width: 160px;" class="text-center">إجراءات المراجعة</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <t t-foreach="state.items" t-as="item" t-key="item.id">
-                                    <tr t-att-class="item.state === 'approved' ? 'table-success bg-opacity-25' : (item.state === 'draft' and item.rejection_reason ? 'table-danger bg-opacity-25' : '')">
+                                    <tr style="height: 250px;" t-att-class="item.state === 'approved' ? 'table-success bg-opacity-25' : (item.state === 'draft' and item.rejection_reason ? 'table-danger bg-opacity-25' : '')">
                                         <!-- Selection Checkbox -->
                                         <td class="text-center">
                                             <input type="checkbox" class="form-check-input" t-att-checked="state.selectedIds.includes(item.id)" t-on-change="() => this.toggleSelectRow(item.id)"/>
@@ -260,31 +260,38 @@
                                         </td>
 
                                         <!-- Thumbnail Image -->
-                                        <td class="text-center p-1 position-relative">
+                                        <td class="text-center p-1 position-relative" style="width: 210px;">
                                             <t t-if="item.thumbnail_url">
-                                                <img t-att-src="item.thumbnail_url" loading="lazy" alt="صورة العداد" class="rounded border shadow-sm cursor-pointer hover-zoom" style="width: 60px; height: 60px; object-fit: cover;" t-on-click="() => this.onOpenLightbox(item)"/>
+                                                <div class="meter-image-container position-relative d-inline-block">
+                                                    <img t-att-src="item.thumbnail_url" loading="lazy" alt="صورة العداد" class="rounded border shadow-sm cursor-pointer meter-thumb-img" style="width: 200px; height: 200px; object-fit: cover;" t-on-click="() => this.onOpenLightbox(item)"/>
+                                                    <div class="hover-preview-hint">
+                                                        <i class="fa fa-search-plus me-1"/> انقر للمعاينة المكبرة
+                                                    </div>
+                                                </div>
                                             </t>
                                             <t t-else="">
-                                                <div class="rounded border bg-light text-muted d-flex align-items-center justify-content-center mx-auto" style="width: 60px; height: 60px;">
-                                                    <i class="fa fa-camera-retro fa-lg opacity-50"/>
+                                                <div class="rounded border bg-light text-muted d-flex align-items-center justify-content-center mx-auto" style="width: 200px; height: 200px;">
+                                                    <i class="fa fa-camera-retro fa-2x opacity-50"/>
                                                 </div>
                                             </t>
                                         </td>
 
                                         <!-- Meter Number -->
-                                        <td class="fw-bold text-primary">
+                                        <td class="fw-bold text-primary" style="font-size: 1.05rem;">
                                             <t t-esc="item.meter_number"/>
                                         </td>
 
                                         <!-- Account Name & Code -->
                                         <td>
-                                            <div class="fw-bold text-dark text-truncate" style="max-width: 170px;"><t t-esc="item.account_name"/></div>
-                                            <small class="text-muted"><t t-esc="item.subscriber_code"/></small>
+                                            <div class="fw-bold text-dark mb-2" style="font-size: 1.05rem; line-height: 1.45; word-wrap: break-word; white-space: normal;">
+                                                <t t-esc="item.account_name"/>
+                                            </div>
+                                            <span class="badge badge-soft-primary px-2 py-1"><i class="fa fa-id-card me-1"/><t t-esc="item.subscriber_code"/></span>
                                         </td>
 
                                         <!-- Region -->
                                         <td>
-                                            <span class="badge bg-light text-dark border"><t t-esc="item.region_name"/></span>
+                                            <span class="badge badge-soft-dark"><t t-esc="item.region_name"/></span>
                                         </td>
 
                                         <!-- Previous Reading -->
@@ -309,35 +316,42 @@
 
                                         <!-- Reading Context Badge -->
                                         <td class="text-center">
-                                            <span t-if="item.reading_purpose === 'periodic'" class="badge bg-primary">دورية</span>
-                                            <span t-elif="item.reading_purpose === 'opening'" class="badge bg-info">افتتاحية</span>
-                                            <span t-elif="item.reading_purpose === 'replacement_closing'" class="badge bg-warning text-dark">إغلاق استبدال</span>
-                                            <span t-elif="item.reading_purpose === 'closing'" class="badge bg-danger">ختامية</span>
-                                            <span t-if="item.reading_event === 'replacement'" class="badge bg-secondary ms-1">استبدال</span>
-                                            <span t-elif="item.reading_event === 'installation'" class="badge bg-secondary ms-1">تركيب</span>
-                                            <span t-if="item.reading_category === 'feeder' || (item.reading_category === 'transformer' &amp;&amp; !item.is_private_transformer)" class="badge bg-dark ms-1">شبكي</span>
+                                            <div class="d-flex flex-column gap-1 align-items-center justify-content-center">
+                                                <span t-if="item.reading_purpose === 'periodic'" class="badge badge-soft-primary px-3 py-2 shadow-sm" style="font-size: 0.88rem;"><i class="fa fa-history me-1"/> دورية</span>
+                                                <span t-elif="item.reading_purpose === 'opening'" class="badge badge-soft-info px-3 py-2 shadow-sm" style="font-size: 0.88rem;"><i class="fa fa-play-circle me-1"/> افتتاحية</span>
+                                                <span t-elif="item.reading_purpose === 'replacement_closing'" class="badge badge-soft-warning px-3 py-2 shadow-sm" style="font-size: 0.88rem;"><i class="fa fa-refresh me-1"/> إغلاق استبدال</span>
+                                                <span t-elif="item.reading_purpose === 'closing'" class="badge badge-soft-danger px-3 py-2 shadow-sm" style="font-size: 0.88rem;"><i class="fa fa-stop-circle me-1"/> ختامية</span>
+
+                                                <div class="d-flex gap-1 flex-wrap justify-content-center mt-1">
+                                                    <span t-if="item.reading_event === 'replacement'" class="badge badge-soft-dark px-2 py-1" style="font-size: 0.8rem;"><i class="fa fa-exchange me-1"/> استبدال</span>
+                                                    <span t-elif="item.reading_event === 'installation'" class="badge badge-soft-dark px-2 py-1" style="font-size: 0.8rem;"><i class="fa fa-plus-circle me-1"/> تركيب</span>
+                                                    <span t-if="item.reading_category === 'feeder' || (item.reading_category === 'transformer' &amp;&amp; !item.is_private_transformer)" class="badge badge-soft-dark px-2 py-1" style="font-size: 0.8rem;"><i class="fa fa-bolt me-1"/> شبكي</span>
+                                                </div>
+                                            </div>
                                         </td>
 
                                         <!-- VEE Anomaly Badges -->
                                         <td>
                                             <t t-if="item.vee_flags and item.vee_flags.length">
-                                                <t t-foreach="item.vee_flags" t-as="flag" t-key="flag.code">
-                                                    <span t-att-class="'badge bg-' + flag.level + ' me-1 mb-1 d-inline-block'">
-                                                        <t t-esc="flag.label"/>
-                                                    </span>
-                                                </t>
+                                                <div class="d-flex flex-column gap-1">
+                                                    <t t-foreach="item.vee_flags" t-as="flag" t-key="flag.code">
+                                                        <span t-att-class="'badge bg-' + flag.level + ' text-white px-2.5 py-1.5 shadow-sm d-inline-flex align-items-center'" style="font-size: 0.85rem;">
+                                                            <i class="fa fa-exclamation-triangle me-1"/> <t t-esc="flag.label"/>
+                                                        </span>
+                                                    </t>
+                                                </div>
                                             </t>
                                             <t t-else="">
-                                                <span class="badge bg-success bg-opacity-10 text-success border border-success">سليمة ✓</span>
+                                                <span class="badge badge-soft-success px-3 py-2 shadow-sm fw-bold" style="font-size: 0.88rem;"><i class="fa fa-check-circle me-1"/> سليمة ✓</span>
                                             </t>
                                         </td>
 
                                         <!-- State Badge -->
                                         <td class="text-center">
-                                            <span t-if="item.state === 'under_review'" class="badge bg-warning text-dark">قيد المراجعة</span>
-                                            <span t-if="item.state === 'approved'" class="badge bg-success">معتمدة</span>
-                                            <span t-if="item.state === 'draft' and item.rejection_reason" class="badge bg-danger" t-att-title="item.rejection_reason">مرفوضة</span>
-                                            <span t-if="item.state === 'billed'" class="badge bg-info">مفوترة</span>
+                                            <span t-if="item.state === 'under_review'" class="badge badge-soft-warning px-3 py-2 shadow-sm d-inline-block fw-bold" style="font-size: 0.9rem;"><i class="fa fa-clock-o me-1"/> قيد المراجعة</span>
+                                            <span t-if="item.state === 'approved'" class="badge badge-soft-success px-3 py-2 shadow-sm d-inline-block fw-bold" style="font-size: 0.9rem;"><i class="fa fa-check-circle me-1"/> معتمدة</span>
+                                            <span t-if="item.state === 'draft' and item.rejection_reason" class="badge badge-soft-danger px-3 py-2 shadow-sm d-inline-block fw-bold" style="font-size: 0.9rem;" t-att-title="item.rejection_reason"><i class="fa fa-times-circle me-1"/> مرفوضة</span>
+                                            <span t-if="item.state === 'billed'" class="badge badge-soft-info px-3 py-2 shadow-sm d-inline-block fw-bold" style="font-size: 0.9rem;"><i class="fa fa-file-text-o me-1"/> مفوترة</span>
                                         </td>
 
                                         <!-- Action Buttons -->

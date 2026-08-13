@@ -143,6 +143,14 @@ All third-party Python packages required by any module must be tracked in the gl
 
 The old `utility.transformer.reading` model has been deleted. Reading of transformers, cells, and subscribers is now unified under the main `utility.reading` model in `utility_core` (with financial extensions in `utility_billing`). Each `utility.reading` supports reading classifications (subscriber, cell, feeder, transformer). Refer to `docs/MOVE_READING_MODEL_TO_CORE.md` for details.
 
+## Technical specs ownership (`manufacturer` / `phase` / `voltage` / `current_rating` / `power_rating`)
+
+`utility.meter.model` is the single source of truth for meter technical specs: `manufacturer`, `phase`, `voltage`, `current_rating`, `power_rating` (plus existing `voltage_range`/`current_range`/`sts_supported`/`communication_types`/`product_id`).
+
+On `utility.meter` these same-named fields are **read-only `related` projections from `model_id`** (`store=True`, `readonly=True`) for compatibility with existing screens — never edited directly on the meter. `phase` and `meter_type_id` remain **operational** on `utility.meter` (used by replacement workflow, search filters, `_name_search_domain`); an `@api.onchange('model_id')` inherits defaults for empty `phase`/`meter_type_id` from the selected model. Core does not depend on `stock` for these specs — the inventory bridge (`utility_inventory`) only adds `product_id`/`lot_id`/`serial_number`.
+
+Existing DB meters that carry these specs without a linked `model_id` keep their stored columns, but their live values are the projections; to display them, link a `utility.meter.model` with the matching specs.
+
 ## Transformer/cell hierarchy (`utility.transformer`)
 
 Both cells and transformers share the same model `utility.transformer` with `_parent_store` hierarchy. A cell (`is_cell=True`) can have multiple child transformers (`parent_id` → cell). Cell-specific fields (`coupling_meter_id`, `cell_account_ids`, distribution, loss) apply to both cells and standalone transformers. Customers link to their transformer via `cell_id`.

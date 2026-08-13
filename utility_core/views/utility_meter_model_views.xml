@@ -8,6 +8,10 @@
                 <field name="name" />
                 <field name="manufacturer" optional="show" />
                 <field name="meter_type_id" />
+                <field name="phase" optional="show" />
+                <field name="voltage" />
+                <field name="current_rating" />
+                <field name="power_rating" />
                 <field name="sts_supported" widget="boolean_toggle" />
                 <field name="product_id" optional="show" />
             </tree>
@@ -46,6 +50,10 @@
                             <field name="name" />
                             <field name="manufacturer" />
                             <field name="meter_type_id" />
+                            <field name="phase" />
+                            <field name="voltage" />
+                            <field name="current_rating" />
+                            <field name="power_rating" />
                         </group>
                         <group>
                             <field name="sts_supported" />

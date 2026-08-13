@@ -46,12 +46,17 @@ class UtilityCustomerWizardInventory(models.TransientModel):
         vals = super()._prepare_meter_vals()
         if not self.create_meter:
             return vals
+        if not self.meter_product_id and not self.lot_id:
+            # Physical inventory data is optional on subscriber onboarding;
+            # it stays separate from the logical operational identifier and
+            # can be completed later when the physical meter is assigned.
+            return vals
         if not self.meter_product_id:
-            raise ValidationError(_('يجب اختيار منتج العداد التسلسلي.'))
+            raise ValidationError(_('يجب اختيار منتج العداد عند ربط الرقم المادي.'))
         if self.meter_product_id.tracking != 'serial':
             raise ValidationError(_('منتج العداد يجب أن يستخدم التتبع التسلسلي.'))
         if not self.lot_id:
-            raise ValidationError(_('يجب اختيار Lot/Serial للعداد.'))
+            raise ValidationError(_('يجب اختيار Lot/Serial للعداد عند ربط الرقم المادي.'))
         if self.lot_id.product_id != self.meter_product_id:
             raise ValidationError(_('Lot/Serial المختار لا يطابق منتج العداد.'))
         if self.lot_id.company_id and self.lot_id.company_id != self.env.company:

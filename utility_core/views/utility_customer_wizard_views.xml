@@ -46,7 +46,7 @@
                                     <field name="create_meter"/>
                                     <field name="payment_type" attrs="{'invisible': [('create_meter', '=', False)]}"/>
                                     <field name="meter_number" readonly="1" attrs="{'invisible': [('create_meter', '=', False)]}"/>
-                                    <field name="operational_number" attrs="{'invisible': [('create_meter', '=', False)]}"/>
+                                    <field name="operational_number" attrs="{'invisible': [('create_meter', '=', False)], 'required': [('create_meter', '=', True)]}"/>
                                 </group>
                             </group>
                         </page>

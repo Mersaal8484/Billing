@@ -295,9 +295,18 @@ class UtilityCustomerWizard(models.TransientModel):
             'is_private': True,
         })
 
+    def _validate_operational_number_required_for_new_meter(self):
+        """Subscriber onboarding requires the logical operational number when a
+        new meter is created; the physical serial (stock.lot) is never required
+        here and stays under Odoo Inventory control."""
+        self.ensure_one()
+        if self.create_meter and not (self.operational_number or '').strip():
+            raise ValidationError(_('الرقم التشغيلي للعداد مطلوب عند إنشاء وربط عداد للمشترك.'))
+
     def action_create_customer(self):
         self.ensure_one()
-        
+        self._validate_operational_number_required_for_new_meter()
+
         if self.subscriber_id and self.category_id and self.subscriber_id.category_id != self.category_id:
             raise ValidationError(
                 _("نوع المشترك '%s' يجب أن ينتمي إلى فئة المشترك الرئيسية المحددة '%s'.")

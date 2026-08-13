@@ -108,6 +108,9 @@
                             <field name="voltage"/>
                             <field name="current_rating"/>
                             <field name="power_rating"/>
+                            <div class="text-muted">
+                                القيم تُورث من موديل العداد وتظهر هنا للقراءة فقط.
+                            </div>
                         </group>
                         <group string="الصيانة والتدقيق">
                             <field name="idle_months"/>

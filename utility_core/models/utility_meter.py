@@ -31,7 +31,10 @@ class UtilityMeter(models.Model):
     company_id = fields.Many2one('res.company', 'الشركة', default=lambda self: self.env.company)
     meter_number = fields.Char('رقم العداد', required=True, index=True, default=lambda self: _('جديد'))
     operational_number = fields.Char('الرقم التشغيلي', index=True, tracking=True)
-    manufacturer = fields.Char('الشركة المصنّعة')
+    # المواصفات الفنية مصدر حقيقتها عداد الموديل (utility.meter.model)؛
+    # الحقول هنا مجرد إسقاطات للقراءة فقط للتوافق مع الشاشات القديمة.
+    manufacturer = fields.Char(
+        'الشركة المصنّعة', related='model_id.manufacturer', store=True, readonly=True)
     model_id = fields.Many2one('utility.meter.model', 'الموديل')
     payment_type = fields.Selection([
         ('postpaid', 'آجل الدفع'),
@@ -43,10 +46,13 @@ class UtilityMeter(models.Model):
     phase = fields.Selection([
         ('single', 'طور واحد'),
         ('three', 'ثلاثة أطوار'),
-    ], string='الطور')
-    voltage = fields.Float('الجهد (فولت)')
-    current_rating = fields.Float('شدة التيار (أمبير)')
-    power_rating = fields.Float('القدرة (كيلوواط)')
+    ], string='الطور', help='الطور التشغيلي للعداد؛ يُورث من الموديل عند اختياره')
+    voltage = fields.Float(
+        'الجهد (فولت)', related='model_id.voltage', store=True, readonly=True)
+    current_rating = fields.Float(
+        'شدة التيار (أمبير)', related='model_id.current_rating', store=True, readonly=True)
+    power_rating = fields.Float(
+        'القدرة (كيلوواط)', related='model_id.power_rating', store=True, readonly=True)
     customer_id = fields.Many2one('utility.customer', 'العميل/العقد', index=True)
     account_id = fields.Many2one('utility.customer', string='الحساب', related='customer_id', store=True)
 
@@ -98,6 +104,16 @@ class UtilityMeter(models.Model):
     def _compute_reading_count(self):
         for m in self:
             m.reading_count = len(m.reading_ids)
+
+    @api.onchange('model_id')
+    def _onchange_model_id(self):
+        if not self.model_id:
+            return
+        model = self.model_id
+        if not self.phase:
+            self.phase = model.phase
+        if not self.meter_type_id:
+            self.meter_type_id = model.meter_type_id
 
     def _update_last_reading(self):
         for m in self:
@@ -401,6 +417,13 @@ class UtilityMeterModel(models.Model):
     code = fields.Char('Code')
     manufacturer = fields.Char('الشركة المصنّعة')
     meter_type_id = fields.Many2one('utility.meter.type', 'النوع')
+    phase = fields.Selection([
+        ('single', 'طور واحد'),
+        ('three', 'ثلاثة أطوار'),
+    ], string='الطور', help='القدرة الطورية الافتراضية لهذا الموديل')
+    voltage = fields.Float('الجهد (فولت)')
+    current_rating = fields.Float('شدة التيار (أمبير)')
+    power_rating = fields.Float('القدرة (كيلوواط)')
     voltage_range = fields.Char('Voltage Range')
     current_range = fields.Char('Current Range')
     sts_supported = fields.Boolean('يدعم STS')
