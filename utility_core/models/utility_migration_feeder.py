@@ -43,6 +43,7 @@ class UtilityMigrationFeeder(models.Model):
     ], string='الحالة', default='draft')
 
     error_message = fields.Text('رسالة الخطأ', readonly=True)
+    source_row_number = fields.Integer('صف المصدر في Excel', readonly=True, index=True)
 
     created_feeder_id = fields.Many2one('utility.feeder', 'الفيدر المنشأ', readonly=True, copy=False)
     created_meter_id = fields.Many2one('utility.meter', 'العداد المنشأ', readonly=True, copy=False)
@@ -152,7 +153,8 @@ class UtilityMigrationFeeder(models.Model):
                 rec.error_message = False
 
         if strict and has_missing:
-            raise ValidationError(_('توجد سجلات تحتوي على رموز غير معرّفة في جدول الترميز.'))
+            err_details = [rec.error_message for rec in self if rec.error_message]
+            raise ValidationError("\n".join(err_details) if err_details else _('توجد سجلات تحتوي على رموز غير معرّفة في جدول الترميز.'))
 
     # -------------------------------------------------------------------------
     # Main Actions
@@ -211,10 +213,13 @@ class UtilityMigrationFeeder(models.Model):
 
                     meter = rec.created_meter_id
                     if not meter:
-                        meter = self.env['utility.meter'].search([
+                        meters = self.env['utility.meter'].search([
                             ('company_id', '=', company_id),
                             ('meter_number', '=', meter_num),
-                        ], limit=1)
+                        ])
+                        if len(meters) > 1:
+                            raise ValidationError(_('AMBIGUOUS_METER_IDENTITY: تكرر رقم العداد (%s) داخل الشركة.') % meter_num)
+                        meter = meters[:1]
 
                     status_active = self.env['utility.meter.status'].search([('code', '=', 'ACTIVE')], limit=1)
 

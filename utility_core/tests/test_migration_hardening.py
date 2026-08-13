@@ -1,3 +1,4 @@
+import base64
 from odoo.tests.common import TransactionCase
 from odoo.exceptions import ValidationError, UserError
 
@@ -78,7 +79,7 @@ class TestMigrationHardening(TransactionCase):
         with self.assertRaises(ValidationError):
             self.env['utility.migration.mapping'].create({
                 'mapping_type': 'region',
-                'legacy_code': 'REG_001',
+                'legacy_code': 'REG_002',
                 'region_id': self.region.id,  # Company A region
                 'company_id': self.other_company.id,  # Company B
             })
@@ -86,7 +87,7 @@ class TestMigrationHardening(TransactionCase):
         # 4. Correct multi-company mapping is allowed
         other_mapping = self.env['utility.migration.mapping'].create({
             'mapping_type': 'region',
-            'legacy_code': 'REG_001',
+            'legacy_code': 'REG_003',
             'region_id': self.region_b.id,
             'company_id': self.other_company.id,
         })
@@ -257,7 +258,7 @@ class TestMigrationHardening(TransactionCase):
         """اختبار دقة معالج الاستيراد في التمييز بين الخلية الفارغة وقيمة الصفر."""
         wizard = self.env['utility.migration.import.wizard'].create({
             'import_type': 'transformer',
-            'import_file': b'dummy',
+            'import_file': base64.b64encode(b'dummy_excel_data'),
             'file_name': 'test.xlsx'
         })
         # 1. Blank cell parsing
@@ -305,6 +306,11 @@ class TestMigrationHardening(TransactionCase):
         staging.action_map_codes(strict=False)
         self.assertIn('MISSING_REGION_MAPPING', staging.error_message)
 
-        # 2. Business import (strict=True) blocks execution when missing mappings exist
+        # 2. Strict mapping raises ValidationError directly
         with self.assertRaises(ValidationError):
-            staging.action_import_data()
+            staging.action_map_codes(strict=True)
+
+        # 3. Business import (action_import_data) catches the error, sets state to 'error' and updates error_message
+        staging.action_import_data()
+        self.assertEqual(staging.state, 'error')
+        self.assertIn('MISSING_REGION_MAPPING', staging.error_message)

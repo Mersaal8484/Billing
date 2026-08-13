@@ -8,4 +8,4 @@ from . import test_external_customer_qr_reference
 from . import test_customer_wizard_meter_onboarding
 from . import test_meter_model_architecture
 from . import test_migration_hardening
-
+from . import test_migration_template_contract

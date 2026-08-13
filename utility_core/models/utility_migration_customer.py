@@ -28,7 +28,7 @@ class UtilityMigrationCustomer(models.Model):
     char_code = fields.Char('رقم الحرف')
     subscriber_no = fields.Char('الرقم الجديد')
     meter_reading = fields.Integer('قراءة العداد في النظام')
-    opening_reading = fields.Integer('قراءة الافتتاح')
+    opening_reading = fields.Float('قراءة الافتتاح', digits=(12, 3))
     has_opening_reading = fields.Boolean('تم إدخال قراءة افتتاح')
 
     legacy_region = fields.Char('رمز المنطقة')
@@ -43,11 +43,12 @@ class UtilityMigrationCustomer(models.Model):
     subscriber_type_id = fields.Many2one('utility.subscriber', string='نوع المشترك (Odoo)')
     contract_template_id = fields.Many2one('utility.contract.template', string="قالب العقد (النظام)")
     meter_model_id = fields.Many2one('utility.meter.model', string='موديل العداد (Odoo)')
+    meter_model_code = fields.Char('رمز موديل العداد القديم')
 
     phase = fields.Selection([
         ('single', '1 Phase'),
         ('three', '3 Phase')
-    ], string='الطور', default='single')
+    ], string='الطور')
     is_private_transformer = fields.Boolean(string='هل المحول خاص؟')
 
     is_active = fields.Boolean('هل فعال؟', default=True)
@@ -59,6 +60,7 @@ class UtilityMigrationCustomer(models.Model):
     ], string='الحالة', default='draft')
 
     error_message = fields.Text('رسالة الخطأ', readonly=True)
+    source_row_number = fields.Integer('صف المصدر في Excel', readonly=True, index=True)
 
     created_partner_id = fields.Many2one('res.partner', 'جهة الاتصال المنشأة', readonly=True, copy=False)
     created_customer_id = fields.Many2one('utility.customer', 'حساب العميل المنشأ', readonly=True, copy=False)
@@ -199,7 +201,8 @@ class UtilityMigrationCustomer(models.Model):
                 rec.error_message = False
 
         if strict and has_missing:
-            raise ValidationError(_('توجد سجلات تحتوي على رموز غير معرّفة في جدول الترميز.'))
+            err_details = [rec.error_message for rec in self if rec.error_message]
+            raise ValidationError("\n".join(err_details) if err_details else _('توجد سجلات تحتوي على رموز غير معرّفة في جدول الترميز.'))
 
     # -------------------------------------------------------------------------
     # Private helpers
@@ -210,12 +213,20 @@ class UtilityMigrationCustomer(models.Model):
         self.ensure_one()
         if self.meter_model_id:
             return self.meter_model_id
+        if self.meter_model_code:
+            models = self.env['utility.meter.model'].search([
+                ('code', '=', self.meter_model_code.strip()),
+            ])
+            if not models:
+                raise ValidationError(_('METER_MODEL_NOT_FOUND: لم يتم العثور على موديل العداد (%s).') % self.meter_model_code)
+            if len(models) > 1:
+                raise ValidationError(_('AMBIGUOUS_METER_MODEL_CODE: تكرر رمز موديل العداد (%s).') % self.meter_model_code)
+            return models
         if not self.phase:
             return self.env['utility.meter.model']
 
         models = self.env['utility.meter.model'].search([
             ('phase', '=', self.phase),
-            ('active', '=', True)
         ])
         if not models:
             raise ValidationError(_('لم يتم العثور على موديل عداد متوافق مع الطور (%s).') % self.phase)
@@ -245,8 +256,8 @@ class UtilityMigrationCustomer(models.Model):
             'subscriber_active_status': 'active' if self.is_active else 'inactive',
             'char_code': self.char_code,
             'subscriber_no': self.subscriber_no or self.customer_number,
-            'meter_reading': self.meter_reading or int(self.last_reading or 0),
-            'opening_reading': self.opening_reading or int(self.last_reading or 0),
+            'meter_reading': self.meter_reading if self.meter_reading is not False else (self.last_reading or 0),
+            'opening_reading': self.opening_reading if self.has_opening_reading else (self.last_reading or 0),
             'meter_number': self.meter_number,
         }
         if self.subscriber_type_id:
@@ -430,10 +441,13 @@ class UtilityMigrationCustomer(models.Model):
         # 1. Create or update utility.customer (Check created_customer_id first)
         customer = self.created_customer_id
         if not customer:
-            customer = self.env['utility.customer'].search([
+            customers = self.env['utility.customer'].search([
                 ('customer_number', '=', self.customer_number),
                 ('company_id', '=', company_id)
-            ], limit=1)
+            ])
+            if len(customers) > 1:
+                raise ValidationError(_('AMBIGUOUS_CUSTOMER_IDENTITY: تكرر رقم المشترك (%s) داخل الشركة.') % self.customer_number)
+            customer = customers[:1]
 
         customer_vals = {
             'customer_number': self.customer_number,
@@ -482,10 +496,13 @@ class UtilityMigrationCustomer(models.Model):
 
         meter = self.created_meter_id
         if not meter:
-            meter = self.env['utility.meter'].search([
+            meters = self.env['utility.meter'].search([
                 ('company_id', '=', company_id),
                 ('meter_number', '=', self.meter_number)
-            ], limit=1)
+            ])
+            if len(meters) > 1:
+                raise ValidationError(_('AMBIGUOUS_METER_IDENTITY: تكرر رقم العداد (%s) داخل الشركة.') % self.meter_number)
+            meter = meters[:1]
 
         if not meter:
             meter = self.env['utility.meter'].create(meter_vals)
