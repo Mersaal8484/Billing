@@ -167,6 +167,8 @@ class TestMigrationHardening(TransactionCase):
         # Meter model should be set to single phase model
         self.assertEqual(staging.created_meter_id.model_id, self.meter_model_single)
         self.assertEqual(staging.created_meter_id.phase, 'single')
+        self.assertEqual(staging.created_meter_id.meter_number, 'MTR-MIG-001')
+        self.assertEqual(staging.created_meter_id.operational_number, 'MTR-MIG-001')
 
         # Opening reading value 0 is created
         self.assertEqual(staging.created_reading_id.reading_value, 0.0)
@@ -220,6 +222,8 @@ class TestMigrationHardening(TransactionCase):
         self.assertEqual(staging_feeder.state, 'imported')
         self.assertTrue(staging_feeder.created_feeder_id)
         self.assertTrue(staging_feeder.created_meter_id)
+        self.assertEqual(staging_feeder.created_meter_id.meter_number, 'MTR-FDR-001')
+        self.assertEqual(staging_feeder.created_meter_id.operational_number, 'MTR-FDR-001')
         self.assertTrue(staging_feeder.created_reading_id)
 
         self.assertEqual(staging_feeder.created_reading_id.meter_id, staging_feeder.created_meter_id)
@@ -227,6 +231,24 @@ class TestMigrationHardening(TransactionCase):
         self.assertEqual(staging_feeder.created_reading_id.reading_category, 'feeder')
         self.assertEqual(staging_feeder.created_reading_id.reading_purpose, 'opening')
         self.assertEqual(staging_feeder.created_reading_id.reading_value, 0.0)
+
+    def test_feeder_production_area_classification_is_explicit_and_idempotent(self):
+        staging = self.env['utility.migration.feeder'].create({
+            'name': 'فيدر إنتاج صريح',
+            'feeder_code': 'FDR-PROD-01',
+            'meter_number': 'MTR-PROD-001',
+            'is_production_area': True,
+            'company_id': self.company.id,
+        })
+        staging.action_import_data()
+        self.assertEqual(staging.state, 'imported')
+        feeder_id = staging.created_feeder_id.id
+        self.assertEqual(staging.created_feeder_id.feeder_type, 'production_area')
+
+        staging.state = 'draft'
+        staging.action_import_data()
+        self.assertEqual(staging.created_feeder_id.id, feeder_id)
+        self.assertEqual(self.env['utility.feeder'].search_count([('code', '=', 'FDR-PROD-01'), ('company_id', '=', self.company.id)]), 1)
 
     def test_transformer_migration_execution(self):
         """اختبار تهيئة المحول وتحديد الهوية المرجعية واختيار قراءة بداية الاشتراك (150.5)."""
@@ -251,6 +273,8 @@ class TestMigrationHardening(TransactionCase):
         self.assertEqual(staging_trans.state, 'imported')
         self.assertTrue(staging_trans.created_transformer_id)
         self.assertEqual(staging_trans.created_transformer_id.feeder_id, staging_feeder.created_feeder_id)
+        self.assertEqual(staging_trans.created_meter_id.meter_number, 'MTR-TR-001')
+        self.assertEqual(staging_trans.created_meter_id.operational_number, 'MTR-TR-001')
         self.assertEqual(staging_trans.created_reading_id.reading_category, 'transformer')
         self.assertEqual(staging_trans.created_reading_id.reading_value, 150.5)
 

@@ -38,7 +38,6 @@
                 <field name="current_balance"/>
                 <field name="meter_reading"/>
                 <field name="phase"/>
-                <field name="meter_model_id"/>
                 <field name="company_id" groups="base.group_multi_company"/>
                 <field name="state" widget="badge"
                        decoration-info="state=='draft'"
@@ -132,7 +131,6 @@
                             <field name="opening_reading"
                                    attrs="{'invisible': [('is_active', '=', False)]}"/>
                             <field name="phase"/>
-                            <field name="meter_model_id"/>
                             <field name="is_private_transformer"/>
                         </group>
                         <group string="بيانات أخرى">
@@ -158,6 +156,7 @@
                                 <field name="created_customer_id"/>
                                 <field name="created_meter_id"/>
                                 <field name="opening_move_id"/>
+                                <field name="source_row_number"/>
                             </group>
                         </page>
                     </notebook>

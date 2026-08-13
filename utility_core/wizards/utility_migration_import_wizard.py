@@ -17,7 +17,7 @@ class UtilityMigrationImportWizard(models.TransientModel):
     _name = 'utility.migration.import.wizard'
     _description = 'معالج استيراد بيانات التهيئة والميجريشن'
 
-    TEMPLATE_VERSION = 2
+    TEMPLATE_VERSIONS = {'customer': 4, 'feeder': 3, 'transformer': 3}
     CONTRACTS = {
         'customer': {
             'required': ('name', 'customer_number', 'meter_number'),
@@ -28,7 +28,6 @@ class UtilityMigrationImportWizard(models.TransientModel):
                 'legacy_contract', 'meter_number', 'meter_reading',
                 'opening_reading', 'previous_balance', 'current_balance',
                 'phase', 'is_private_transformer', 'owner_reference',
-                'meter_model_code',
             ),
         },
         'feeder': {
@@ -37,7 +36,7 @@ class UtilityMigrationImportWizard(models.TransientModel):
                 'legacy_region', 'legacy_area', 'is_active', 'feeder_code',
                 'feeder_name', 'meter_number', 'meter_multiplier',
                 'current_reading', 'is_calculation_cell', 'description',
-                'legacy_analytic_id', 'opening_reading',
+                'legacy_analytic_id', 'opening_reading', 'is_production_area',
             ),
         },
         'transformer': {
@@ -72,7 +71,6 @@ class UtilityMigrationImportWizard(models.TransientModel):
         'phase': ('phase', 'نوع الفاز', 'نوع الفاز (single/three)', 'الطور'),
         'is_private_transformer': ('is_private_transformer', 'محول خاص?', 'محول خاص؟ (نعم/لا)'),
         'owner_reference': ('owner_reference', 'مرجع المالك القديم'),
-        'meter_model_code': ('meter_model_code', 'رمز موديل العداد', 'meter model code'),
         'feeder_code': ('feeder_code', 'رمز الفيدر / الخلية *', 'رمز الفيدر / الحساب التحليلي'),
         'feeder_name': ('feeder_name', 'اسم الفيدر / الخلية *', 'اسم الفيدر / الخلية'),
         'meter_multiplier': ('meter_multiplier', 'معامل الضرب للعداد'),
@@ -80,6 +78,7 @@ class UtilityMigrationImportWizard(models.TransientModel):
         'is_calculation_cell': ('is_calculation_cell', 'خلية إحتساب'),
         'description': ('description', 'الوصف'),
         'legacy_analytic_id': ('legacy_analytic_id', 'معرف الحساب التحليلي'),
+        'is_production_area': ('is_production_area', 'منطقة إنتاج؟', 'منطقة إنتاج', 'منطقة إنتاج؟ (نعم/لا)'),
         'transformer_code': ('transformer_code', 'رمز المحول *', 'رمز المحول / الحساب التحليلي'),
         'transformer_name': ('transformer_name', 'اسم المحول *', 'اسم المحول / الشريك'),
         'total_consumption': ('total_consumption', 'إجمالي الاستهلاك'),
@@ -130,7 +129,11 @@ class UtilityMigrationImportWizard(models.TransientModel):
             result = float(value)
         except (ValueError, TypeError):
             raise self._error('INVALID_NUMERIC_VALUE', row or '?', field_name, value)
-        if result < 0:
+        return result
+
+    def parse_reading(self, value, field_name='reading', row=None):
+        result = self.parse_float(value, field_name, row)
+        if result is not None and result < 0:
             raise self._error('INVALID_READING_VALUE', row or '?', field_name, value)
         return result
 
@@ -178,7 +181,7 @@ class UtilityMigrationImportWizard(models.TransientModel):
         return 1  # immediately previous templates had no metadata
 
     def _read_contract(self, workbook):
-        if self._metadata_version(workbook) not in (1, self.TEMPLATE_VERSION):
+        if self._metadata_version(workbook) not in (1, self.TEMPLATE_VERSIONS[self.import_type]):
             raise UserError('UNSUPPORTED_MIGRATION_TEMPLATE_VERSION')
         contract = self.CONTRACTS[self.import_type]
         aliases = {}
@@ -272,11 +275,10 @@ class UtilityMigrationImportWizard(models.TransientModel):
                 'phase': self.parse_phase(self._cell(row, header_map, 'phase'), row_number),
                 'is_private_transformer': self.parse_bool(self._cell(row, header_map, 'is_private_transformer'), False, 'is_private_transformer', row_number),
                 'owner_reference': str(self._cell(row, header_map, 'owner_reference') or '').strip(),
-                'meter_model_code': str(self._cell(row, header_map, 'meter_model_code') or '').strip(),
                 'company_id': company_id, 'state': 'draft', 'source_row_number': row_number,
             }
-            meter_reading = self.parse_float(self._cell(row, header_map, 'meter_reading'), 'meter_reading', row_number)
-            opening_reading = self.parse_float(self._cell(row, header_map, 'opening_reading'), 'opening_reading', row_number)
+            meter_reading = self.parse_reading(self._cell(row, header_map, 'meter_reading'), 'meter_reading', row_number)
+            opening_reading = self.parse_reading(self._cell(row, header_map, 'opening_reading'), 'opening_reading', row_number)
             canonical_reading = opening_reading if opening_reading is not None else meter_reading
             if canonical_reading is not None:
                 values.update(last_reading=canonical_reading, opening_reading=canonical_reading)
@@ -311,14 +313,15 @@ class UtilityMigrationImportWizard(models.TransientModel):
                 'legacy_region': str(self._cell(row, header_map, 'legacy_region') or '').strip(),
                 'legacy_area': str(self._cell(row, header_map, 'legacy_area') or '').strip(),
                 'is_active': self.parse_bool(self._cell(row, header_map, 'is_active'), True, 'is_active', row_number),
+                'is_production_area': self.parse_bool(self._cell(row, header_map, 'is_production_area'), False, 'is_production_area', row_number),
                 'meter_number': str(self._cell(row, header_map, 'meter_number') or '').strip(),
                 'meter_multiplier': self._parse_multiplier(self._cell(row, header_map, 'meter_multiplier'), row_number, 'meter_multiplier'),
                 'is_calculation_cell': self.parse_bool(self._cell(row, header_map, 'is_calculation_cell'), True, 'is_calculation_cell', row_number),
                 'description': str(self._cell(row, header_map, 'description') or '').strip(),
                 'company_id': company_id, 'state': 'draft', 'source_row_number': row_number,
             }
-            current = self.parse_float(self._cell(row, header_map, 'current_reading'), 'current_reading', row_number)
-            opening = self.parse_float(self._cell(row, header_map, 'opening_reading'), 'opening_reading', row_number)
+            current = self.parse_reading(self._cell(row, header_map, 'current_reading'), 'current_reading', row_number)
+            opening = self.parse_reading(self._cell(row, header_map, 'opening_reading'), 'opening_reading', row_number)
             if current is not None:
                 values['current_reading'] = current
             elif opening is not None:
@@ -357,15 +360,15 @@ class UtilityMigrationImportWizard(models.TransientModel):
                 'is_active': self.parse_bool(self._cell(row, header_map, 'is_active'), True, 'is_active', row_number),
                 'meter_number': str(self._cell(row, header_map, 'meter_number') or '').strip(),
                 'meter_multiplier': self._parse_multiplier(self._cell(row, header_map, 'meter_multiplier'), row_number, 'meter_multiplier'),
-                'total_consumption': self.parse_float(self._cell(row, header_map, 'total_consumption'), 'total_consumption', row_number) or 0.0,
+                'total_consumption': self.parse_reading(self._cell(row, header_map, 'total_consumption'), 'total_consumption', row_number) or 0.0,
                 'image_status': str(self._cell(row, header_map, 'image_status') or '').strip(),
                 'cell_meter_number': str(self._cell(row, header_map, 'cell_meter_number') or '').strip(),
                 'cell_meter_multiplier': self._parse_multiplier(self._cell(row, header_map, 'cell_meter_multiplier'), row_number, 'cell_meter_multiplier'),
                 'description': str(self._cell(row, header_map, 'description') or '').strip(),
                 'company_id': company_id, 'state': 'draft', 'source_row_number': row_number,
             }
-            current = self.parse_float(self._cell(row, header_map, 'current_reading'), 'current_reading', row_number)
-            opening = self.parse_float(self._cell(row, header_map, 'opening_reading'), 'opening_reading', row_number)
+            current = self.parse_reading(self._cell(row, header_map, 'current_reading'), 'current_reading', row_number)
+            opening = self.parse_reading(self._cell(row, header_map, 'opening_reading'), 'opening_reading', row_number)
             if current is not None:
                 values['current_reading'] = current
             elif opening is not None:

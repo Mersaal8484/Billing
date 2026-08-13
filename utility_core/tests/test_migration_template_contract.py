@@ -17,15 +17,16 @@ class TestMigrationTemplateContract(TransactionCase):
     def test_actual_templates_have_supported_contract(self):
         wizard = self.env['utility.migration.import.wizard'].new({})
         expected = {
-            'Migration_Template.xlsx': ('customer_number', 'meter_number', 'opening_reading', 'phase', 'meter_model_code'),
-            'Feeder_Migration_Template.xlsx': ('feeder_code', 'feeder_name', 'meter_number', 'current_reading', 'legacy_analytic_id', 'opening_reading'),
+            'Migration_Template.xlsx': ('customer_number', 'meter_number', 'opening_reading', 'phase'),
+            'Feeder_Migration_Template.xlsx': ('feeder_code', 'feeder_name', 'meter_number', 'current_reading', 'legacy_analytic_id', 'opening_reading', 'is_production_area'),
             'Transformer_Migration_Template.xlsx': ('reference', 'transformer_code', 'transformer_name', 'meter_number', 'current_reading', 'opening_reading', 'legacy_analytic_id'),
         }
         for filename, fields in expected.items():
             workbook = load_workbook(self._template_path(filename), data_only=True)
             self.assertIn('بيانات التهيئة', workbook.sheetnames)
             instructions = workbook['تعليمات الاستيراد']
-            self.assertEqual(instructions['B3'].value, 2)
+            expected_version = 4 if filename == 'Migration_Template.xlsx' else 3
+            self.assertEqual(instructions['B3'].value, expected_version)
             headers = [wizard._normalize_header(c.value) for c in workbook['بيانات التهيئة'][4]]
             aliases = {wizard._normalize_header(alias): field for field, values in wizard.ALIASES.items() for alias in values}
             mapped = [aliases.get(header) for header in headers]
@@ -39,6 +40,11 @@ class TestMigrationTemplateContract(TransactionCase):
         wizard = self.env['utility.migration.import.wizard'].new({})
         self.assertEqual(wizard.parse_float(0, 'reading', 8), 0.0)
         self.assertIsNone(wizard.parse_float(None, 'reading', 8))
+        self.assertEqual(wizard.parse_float(-100, 'balance', 8), -100.0)
+        self.assertEqual(wizard.parse_float(500, 'current_balance', 8), 500.0)
+        self.assertEqual(wizard.parse_float(0, 'current_balance', 8), 0.0)
+        with self.assertRaises(ValidationError):
+            wizard.parse_reading(-1, 'reading', 8)
         self.assertEqual(wizard.parse_phase('three', 8), 'three')
         with self.assertRaises(ValidationError):
             wizard.parse_float('15O.5', 'reading', 8)

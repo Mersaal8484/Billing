@@ -42,8 +42,6 @@ class UtilityMigrationCustomer(models.Model):
     category_id = fields.Many2one('utility.subscriber.category', string='الفئة (Odoo)')
     subscriber_type_id = fields.Many2one('utility.subscriber', string='نوع المشترك (Odoo)')
     contract_template_id = fields.Many2one('utility.contract.template', string="قالب العقد (النظام)")
-    meter_model_id = fields.Many2one('utility.meter.model', string='موديل العداد (Odoo)')
-    meter_model_code = fields.Char('رمز موديل العداد القديم')
 
     phase = fields.Selection([
         ('single', '1 Phase'),
@@ -211,27 +209,16 @@ class UtilityMigrationCustomer(models.Model):
     def _resolve_meter_model(self):
         """تحديد موديل العداد بأمان وفقًا للمعمارية الحالية (الطور readonly projection من الموديل)."""
         self.ensure_one()
-        if self.meter_model_id:
-            return self.meter_model_id
-        if self.meter_model_code:
-            models = self.env['utility.meter.model'].search([
-                ('code', '=', self.meter_model_code.strip()),
-            ])
-            if not models:
-                raise ValidationError(_('METER_MODEL_NOT_FOUND: لم يتم العثور على موديل العداد (%s).') % self.meter_model_code)
-            if len(models) > 1:
-                raise ValidationError(_('AMBIGUOUS_METER_MODEL_CODE: تكرر رمز موديل العداد (%s).') % self.meter_model_code)
-            return models
         if not self.phase:
-            return self.env['utility.meter.model']
+            raise ValidationError(_('MISSING_METER_PHASE: يجب تحديد طور العداد للعميل %s.') % self.customer_number)
 
         models = self.env['utility.meter.model'].search([
             ('phase', '=', self.phase),
         ])
         if not models:
-            raise ValidationError(_('لم يتم العثور على موديل عداد متوافق مع الطور (%s).') % self.phase)
+            raise ValidationError(_('METER_MODEL_NOT_FOUND: لا يوجد موديل عداد متوافق مع الطور (%s).') % self.phase)
         if len(models) > 1:
-            raise ValidationError(_('AMBIGUOUS_METER_MODEL: تعددت موديلات العدادات المتوافقة مع الطور (%s)؛ يرجى تحديد موديل العداد صراحة.') % self.phase)
+            raise ValidationError(_('AMBIGUOUS_METER_MODEL: تعددت موديلات العدادات المتوافقة مع الطور (%s).') % self.phase)
         return models[0]
 
     def _get_pec_credit(self):
@@ -484,6 +471,7 @@ class UtilityMigrationCustomer(models.Model):
 
         meter_vals = {
             'meter_number': self.meter_number,
+            'operational_number': self.meter_number,
             'connection_type': 'subscriber',
             'customer_id': customer.id,
             'company_id': company_id,

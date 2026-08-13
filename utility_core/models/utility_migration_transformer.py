@@ -252,6 +252,7 @@ class UtilityMigrationTransformer(models.Model):
 
                     meter_vals = {
                         'meter_number': meter_num,
+                        'operational_number': meter_num,
                         'multiplier': multiplier,
                         'connection_type': 'transformer',
                         'linked_transformer_id': transformer.id,

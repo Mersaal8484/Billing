@@ -16,6 +16,7 @@ class UtilityMigrationFeeder(models.Model):
     legacy_area = fields.Char('رمز الفرع')
     legacy_analytic_id = fields.Char('معرف الحساب التحليلي')
     is_active = fields.Boolean('هل فعال؟', default=True)
+    is_production_area = fields.Boolean('منطقة إنتاج', default=False)
 
     feeder_code = fields.Char('رمز الفيدر / الحساب التحليلي')
     feeder_name = fields.Char('اسم الفيدر / الخلية')
@@ -194,6 +195,7 @@ class UtilityMigrationFeeder(models.Model):
                         'notes': rec.description,
                         'company_id': company_id,
                         'active': rec.is_active,
+                        'feeder_type': 'production_area' if rec.is_production_area else (feeder.feeder_type if feeder else 'distribution'),
                     }
                     if rec.area_id:
                         feeder_vals['area_id'] = rec.area_id.id
@@ -225,6 +227,7 @@ class UtilityMigrationFeeder(models.Model):
 
                     meter_vals = {
                         'meter_number': meter_num,
+                        'operational_number': meter_num,
                         'multiplier': multiplier,
                         'connection_type': 'feeder',
                         'linked_feeder_id': feeder.id,
