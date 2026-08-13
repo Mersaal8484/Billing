@@ -65,3 +65,37 @@ class TestWorkflowAtomicClaim(TransactionCase):
         )
         self.assertEqual(counter['calls'], 0)  # Payload MUST NOT execute on processing command
         self.assertEqual(res, 'جاري المعالجة بواسطة Worker 1')
+
+    def test_workflow_command_create_race_integrity_error_recovery(self):
+        """التحقق من أن سباق إنشاء الأمر IntegrityError 23505 يتم استرجاعه بسلاسة بينما يُعاد رفع الاستثناءات الأخرى."""
+        from psycopg2 import IntegrityError
+        from unittest.mock import MagicMock
+
+        # Create pre-existing command
+        key = f"TEST_RACE:{self.period.period_code}"
+        cmd_existing = self.env['utility.workflow.command'].create({
+            'name': 'CMD-TEST-RACE',
+            'idempotency_key': key,
+            'period_id': self.period.id,
+            'action_type': 'test_race',
+            'state': 'executed',
+            'result_summary': 'تم الإنجاز السابق',
+        })
+
+        # Test non-23505 IntegrityError (e.g. 23502 not-null violation) MUST be re-raised
+        err_other = IntegrityError()
+        err_other.pgcode = '23502'
+        mock_create = MagicMock(side_effect=err_other)
+        
+        cmd_model = self.env['utility.workflow.command'].sudo()
+        original_create = cmd_model.__class__.create
+
+        try:
+            cmd_model.__class__.create = mock_create
+            with self.assertRaises(IntegrityError):
+                self.adapter._dispatch_command(
+                    self.period, 'test_race_other_err',
+                    lambda: True, "ملخص"
+                )
+        finally:
+            cmd_model.__class__.create = original_create

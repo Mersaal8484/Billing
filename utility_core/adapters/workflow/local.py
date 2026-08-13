@@ -45,8 +45,13 @@ class LocalWorkflowAdapter(AbstractWorkflowAdapter):
                         'workflow_run_id': period.workflow_run_id,
                         'payload_json': payload_str,
                     })
-            except (IntegrityError, Exception):
+            except IntegrityError as e:
+                pgcode = getattr(e, 'pgcode', None)
+                if pgcode and pgcode != '23505':
+                    raise
                 cmd = cmd_model.search([('idempotency_key', '=', idempotency_key)], limit=1)
+                if not cmd:
+                    raise
 
         if not cmd:
             raise ValidationError(_("فشل الحصول على أمر مسار العمل."))
@@ -217,8 +222,13 @@ class LocalWorkflowAdapter(AbstractWorkflowAdapter):
                         'state': 'pending',
                         'payload_json': json.dumps({'batch_id': batch.id, 'batch_uuid': batch.batch_uuid, 'retry_count': getattr(batch, 'retry_count', 0)}, ensure_ascii=False),
                     })
-            except (IntegrityError, Exception):
+            except IntegrityError as e:
+                pgcode = getattr(e, 'pgcode', None)
+                if pgcode and pgcode != '23505':
+                    raise
                 cmd = cmd_model.search([('idempotency_key', '=', idempotency_key)], limit=1)
+                if not cmd:
+                    raise
 
         if not cmd:
             raise ValidationError(_("فشل الحصول على أمر مسار العمل للدفعة."))
