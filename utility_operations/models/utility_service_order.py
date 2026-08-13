@@ -11,9 +11,13 @@ class UtilityServiceOrder(models.Model):
 
     active = fields.Boolean('نشط', default=True)
     company_id = fields.Many2one('res.company', 'الشركة', default=lambda self: self.env.company)
+    def _default_warehouse_id(self):
+        warehouses = self.env['stock.warehouse'].search([('company_id', '=', self.env.company.id)])
+        return warehouses[:1] if len(warehouses) == 1 else False
+
     warehouse_id = fields.Many2one(
         'stock.warehouse', string='المستودع المنفذ',
-        default=lambda self: self.env['stock.warehouse'].search([('company_id', '=', self.env.company.id)], limit=1),
+        default=_default_warehouse_id,
         help='المستودع المعين لتنفيذ حركات الصرف والإرجاع والاستبدال الفيزيائية'
     )
     order_number = fields.Char('رقم الأمر', required=True, index=True, default=lambda self: _('جديد'))
@@ -117,6 +121,7 @@ class UtilityServiceOrder(models.Model):
             if self.old_meter_id:
                 self.old_meter_id.inventory_replace_meter(
                     new_meter=self.new_meter_id,
+                    old_warehouse=self.warehouse_id,
                     new_warehouse=self.warehouse_id,
                     origin=self.order_number,
                     operation_ref=op_ref,

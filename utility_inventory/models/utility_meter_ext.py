@@ -323,6 +323,19 @@ class UtilityMeterExt(models.Model):
                 'الرقم التسلسلي (%s) موجود في موقع التكهين/الخردة (%s) ولا يمكن تركيبه.'
             ) % (self.lot_id.name, scrap_quant.location_id.display_name))
 
+        if source_loc and source_loc.usage == 'internal':
+            quant = self.env['stock.quant'].search([
+                ('lot_id', '=', self.lot_id.id),
+                ('product_id', '=', self.product_id.id),
+                ('location_id', 'child_of', source_loc.id),
+                ('quantity', '>', 0),
+            ], limit=1)
+            if not quant:
+                raise ValidationError(_(
+                    'العداد المادي "%s" (رقم تسلسلي %s) غير متوفر مخزنيًا برصيد موجب (> 0) '
+                    'في الموقع المخزني المحدد (%s).'
+                ) % (self.display_name, self.lot_id.name, source_loc.complete_name))
+
         if source_loc and source_loc.usage == 'customer':
             current_loc = self._get_lot_current_location()
             if current_loc and current_loc.usage == 'customer':

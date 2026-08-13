@@ -246,7 +246,7 @@ class UtilityCollectionSettlement(models.Model):
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _order = 'settlement_date desc, id desc'
 
-    name = fields.Char('المرجع', required=True, readonly=True, copy=False)
+    name = fields.Char('رقم التسوية', required=True, readonly=True, copy=False)
     company_id = fields.Many2one(
         'res.company', required=True, default=lambda self: self.env.company,
         index=True)
@@ -296,7 +296,7 @@ class UtilityCollectionSettlement(models.Model):
     ], default='draft', tracking=True)
     account_move_id = fields.Many2one(
         'account.move', readonly=True, copy=False)
-    reference = fields.Char('المرجع')
+    reference = fields.Char('المرجع الميداني / البنكي')
     notes = fields.Text('ملاحظات')
 
     _sql_constraints = [

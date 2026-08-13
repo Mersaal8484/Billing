@@ -112,7 +112,7 @@
         <record id="demo_tmpl_general_biweekly_line1" model="utility.contract.template.line">
             <field name="template_id" ref="demo_tmpl_general_biweekly"/>
             <field name="sequence">10</field>
-            <field name="product_id" ref="utility_product_service_charge"/>
+            <field name="product_id" ref="utility_billing.utility_product_service_charge"/>
             <field name="name">رسم خدمة ثابت</field>
             <field name="price_type">fixed</field>
             <field name="specific_price">500</field>
