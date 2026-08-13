@@ -35,7 +35,7 @@ class TestMigrationHardening(TransactionCase):
         self.contract_template = self.env['utility.contract.template'].create({
             'name': 'قالب توريد الطاقة',
             'code': 'TMPL-POWER',
-            'category_ids': [(4, self.category.id)],
+            'subscriber_category_ids': [(4, self.category.id)],
             'subscriber_ids': [(4, self.subscriber_type.id)],
             'region_ids': [(4, self.region.id)],
             'area_ids': [(4, self.area.id)],
@@ -267,7 +267,11 @@ class TestMigrationHardening(TransactionCase):
         self.assertTrue(wizard._has_cell_value('0.0'))
         self.assertTrue(wizard._has_cell_value('150.5'))
 
-        # 2. Staging model creation without reading fields maintains has_opening_reading = False
+        # 2. Invalid numeric parsing raises ValidationError
+        with self.assertRaises(ValidationError):
+            wizard.parse_float('15O.5')
+
+        # 3. Staging model creation without reading fields maintains has_opening_reading = False
         staging_blank = self.env['utility.migration.transformer'].create({
             'name': 'محول فارغ القراءة',
             'reference': 'TR-BLANK-01',
@@ -277,7 +281,7 @@ class TestMigrationHardening(TransactionCase):
         self.assertFalse(staging_blank.has_opening_reading)
         self.assertIsNone(staging_blank._get_staging_opening_reading_value())
 
-        # 3. Staging model creation with opening_reading = 150.5 sets has_opening_reading = True
+        # 4. Staging model creation with opening_reading = 150.5 sets has_opening_reading = True
         staging_val = self.env['utility.migration.transformer'].create({
             'name': 'محول بقراءة افتتاحية',
             'reference': 'TR-VAL-01',
@@ -286,3 +290,21 @@ class TestMigrationHardening(TransactionCase):
         })
         self.assertTrue(staging_val.has_opening_reading)
         self.assertEqual(staging_val._get_staging_opening_reading_value(), 150.5)
+
+    def test_upload_mapping_flexible_vs_import_data_strict(self):
+        """اختبار مرونة مطابقة الرموز في الـ Upload مقابل الصرامة التامة عند الاعتماد."""
+        staging = self.env['utility.migration.customer'].create({
+            'name': 'عميل بترميز مفقود',
+            'customer_number': 'CUST-MISSING-01',
+            'meter_number': 'MTR-MISSING-01',
+            'legacy_region': 'LEG_UNKNOWN_REG',
+            'company_id': self.company.id,
+        })
+
+        # 1. Upload-time mapping (strict=False) records error message without raising exception
+        staging.action_map_codes(strict=False)
+        self.assertIn('MISSING_REGION_MAPPING', staging.error_message)
+
+        # 2. Business import (strict=True) blocks execution when missing mappings exist
+        with self.assertRaises(ValidationError):
+            staging.action_import_data()

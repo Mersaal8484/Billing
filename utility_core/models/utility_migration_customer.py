@@ -138,14 +138,15 @@ class UtilityMigrationCustomer(models.Model):
         }
 
     # -------------------------------------------------------------------------
-    # Code Mapping (Batch Cache & Strict Missing Enforcement)
+    # Code Mapping (Batch Cache & Flexible Strict/Non-Strict Mode)
     # -------------------------------------------------------------------------
 
-    def action_map_codes(self, caches=None):
-        """مطابقة الرموز القديمة مع التحقق الصارم بدفعة واحدة لمنع N+1 queries."""
+    def action_map_codes(self, caches=None, strict=True):
+        """مطابقة الرموز القديمة مع الدعم المرن للـ Upload والمنع الصارم عند الاعتماد (Business Import)."""
         if caches is None:
             caches = {}
 
+        has_missing = False
         for rec in self:
             if rec.state == 'imported':
                 continue
@@ -191,11 +192,14 @@ class UtilityMigrationCustomer(models.Model):
                     missing.append(f"MISSING_CONTRACT_MAPPING: لم يتم العثور على ترميز قالب العقد ({rec.legacy_contract})")
 
             if missing:
+                has_missing = True
                 err = "\n".join(missing)
                 rec.error_message = err
-                raise ValidationError(err)
             else:
                 rec.error_message = False
+
+        if strict and has_missing:
+            raise ValidationError(_('توجد سجلات تحتوي على رموز غير معرّفة في جدول الترميز.'))
 
     # -------------------------------------------------------------------------
     # Private helpers
@@ -538,7 +542,7 @@ class UtilityMigrationCustomer(models.Model):
                 continue
             try:
                 with self.env.cr.savepoint():
-                    rec.action_map_codes(caches=caches)
+                    rec.action_map_codes(caches=caches, strict=True)
                     partner = rec._upsert_partner()
                     rec.created_partner_id = partner.id
 
@@ -551,3 +555,25 @@ class UtilityMigrationCustomer(models.Model):
             except Exception as e:
                 rec.state = 'error'
                 rec.error_message = str(e)
+
+    def action_activate_inactive(self):
+        """تفعيل عميل غير فعال (Server Action / Button)."""
+        for rec in self:
+            if rec.state != 'imported':
+                raise UserError(_(
+                    'يجب أن يكون السجل في حالة "تم الرفع" قبل التفعيل.\nالعميل: %s'
+                ) % rec.name)
+            if rec.created_customer_id:
+                raise UserError(_(
+                    'العميل "%s" لديه حساب مشترك بالفعل (رقم: %s).\nلا يمكن إنشاء حساب مكرر.'
+                ) % (rec.name, rec.created_customer_id.customer_number))
+            if not rec.created_partner_id:
+                raise UserError(_(
+                    'لا توجد جهة اتصال مرتبطة بالعميل "%s".\nيرجى إعادة رفع البيانات أولاً.'
+                ) % rec.name)
+
+            partner = rec.created_partner_id
+            partner.write(rec._build_customer_partner_vals())
+            rec._create_customer_account(partner)
+            rec.is_active = True
+            partner.subscriber_active_status = 'active'

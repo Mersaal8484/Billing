@@ -116,14 +116,15 @@ class UtilityMigrationTransformer(models.Model):
         }
 
     # -------------------------------------------------------------------------
-    # Code Mapping (Batch Cache & Strict Missing Enforcement)
+    # Code Mapping (Batch Cache & Flexible Strict/Non-Strict Mode)
     # -------------------------------------------------------------------------
 
-    def action_map_codes(self, caches=None):
-        """مطابقة الرموز القديمة مع التحقق الصارم بدفعة واحدة لمنع N+1 queries."""
+    def action_map_codes(self, caches=None, strict=True):
+        """مطابقة الرموز القديمة مع الدعم المرن للـ Upload والمنع الصارم عند الاعتماد (Business Import)."""
         if caches is None:
             caches = {}
 
+        has_missing = False
         for rec in self:
             if rec.state == 'imported':
                 continue
@@ -168,11 +169,14 @@ class UtilityMigrationTransformer(models.Model):
                     rec.feeder_id = feeder.id
 
             if missing:
+                has_missing = True
                 err = "\n".join(missing)
                 rec.error_message = err
-                raise ValidationError(err)
             else:
                 rec.error_message = False
+
+        if strict and has_missing:
+            raise ValidationError(_('توجد سجلات تحتوي على رموز غير معرّفة في جدول الترميز.'))
 
     # -------------------------------------------------------------------------
     # Main Actions
@@ -185,7 +189,7 @@ class UtilityMigrationTransformer(models.Model):
                 continue
             try:
                 with self.env.cr.savepoint():
-                    rec.action_map_codes(caches=caches)
+                    rec.action_map_codes(caches=caches, strict=True)
                     company_id = rec.company_id.id or self.env.company.id
 
                     # 1. Preferred Identity Order: reference -> transformer_code -> legacy_analytic_id

@@ -48,17 +48,21 @@ class UtilityMigrationImportWizard(models.TransientModel):
         """التحقق التام من توفر قيمة حقيقية داخل خلية الإكسل (تمييز الفارغ عن الصفر)."""
         return val is not None and str(val).strip() != ''
 
-    def parse_float(self, val):
-        try:
-            return float(val) if self._has_cell_value(val) else 0.0
-        except (ValueError, TypeError):
+    def parse_float(self, val, field_name="الرقم"):
+        if not self._has_cell_value(val):
             return 0.0
-
-    def parse_int(self, val):
         try:
-            return int(float(val)) if self._has_cell_value(val) else 0
+            return float(val)
         except (ValueError, TypeError):
+            raise ValidationError(_('قيمة رقمية غير صالحة للحقل (%s): "%s" ليست رقماً صحياً.') % (field_name, val))
+
+    def parse_int(self, val, field_name="العدد"):
+        if not self._has_cell_value(val):
             return 0
+        try:
+            return int(float(val))
+        except (ValueError, TypeError):
+            raise ValidationError(_('قيمة رقمية غير صالحة للحقل (%s): "%s" ليست رقماً صحياً.') % (field_name, val))
 
     def parse_bool(self, val, default=True):
         if not self._has_cell_value(val):
@@ -136,7 +140,7 @@ class UtilityMigrationImportWizard(models.TransientModel):
 
             meter_number = str(row[12] or '').strip() if len(row) > 12 else ''
             previous_balance = str(row[15] or '').strip() if len(row) > 15 else ''
-            current_balance = self.parse_float(row[16]) if len(row) > 16 else 0.0
+            current_balance = self.parse_float(row[16], field_name="الرصيد الافتتاحي") if len(row) > 16 else 0.0
 
             phase_val = str(row[17] if len(row) > 17 else '').strip().lower()
             phase = 'three' if '3' in phase_val or 'three' in phase_val or 'ثلاث' in phase_val else 'single'
@@ -147,7 +151,7 @@ class UtilityMigrationImportWizard(models.TransientModel):
             if not name:
                 continue
             if not customer_number:
-                customer_number = f"CUST-{row_idx}"
+                raise ValidationError(_('MISSING_CUSTOMER_NUMBER: رقم المشترك إلزامي في البيانات التاريخية (الصف %d).') % row_idx)
 
             vals = {
                 'name': name,
@@ -174,9 +178,9 @@ class UtilityMigrationImportWizard(models.TransientModel):
 
             # Preserve cell presence semantics: pass reading fields ONLY if cell has value
             if len(row) > 13 and self._has_cell_value(row[13]):
-                vals['meter_reading'] = self.parse_int(row[13])
+                vals['meter_reading'] = self.parse_int(row[13], field_name="قراءة العداد")
             if len(row) > 14 and self._has_cell_value(row[14]):
-                val_reading = self.parse_float(row[14])
+                val_reading = self.parse_float(row[14], field_name="قراءة الافتتاح")
                 vals['opening_reading'] = int(val_reading)
                 vals['last_reading'] = val_reading
 
@@ -192,10 +196,7 @@ class UtilityMigrationImportWizard(models.TransientModel):
                 created_records |= new_record
 
         if created_records:
-            try:
-                created_records.action_map_codes()
-            except ValidationError:
-                pass
+            created_records.action_map_codes(strict=False)
 
         return self._show_success_notification(len(created_records))
 
@@ -220,20 +221,24 @@ class UtilityMigrationImportWizard(models.TransientModel):
             feeder_code = str(row[3] or '').strip() if len(row) > 3 else ''
             feeder_name = str(row[4] or '').strip() if len(row) > 4 else ''
             meter_number = str(row[5] or '').strip() if len(row) > 5 else ''
-            meter_multiplier = self.parse_float(row[6]) if len(row) > 6 else 1.0
+            meter_multiplier = self.parse_float(row[6], field_name="معامل الضرب") if len(row) > 6 else 1.0
             is_calc_cell = self.parse_bool(row[8], default=True) if len(row) > 8 else True
             description = str(row[9] or '').strip() if len(row) > 9 else ''
 
-            if not feeder_code and not feeder_name and not meter_number and not description:
-                continue
+            # Strict Deterministic Identity: feeder_code or legacy_analytic_id
+            code_identity = feeder_code or description if (description and description.isalnum()) else ''
+            if not feeder_code and not code_identity:
+                if not feeder_name and not meter_number and not description:
+                    continue
+                raise ValidationError(_('MISSING_FEEDER_IDENTITY: يلزم إدخال رمز الفيدر (feeder_code) في الصف %d.') % row_idx)
 
-            display_name = feeder_name or feeder_code or description or f"Feeder-{row_idx}"
-            code_identity = feeder_code or feeder_name or display_name
+            code_key = feeder_code or code_identity
+            display_name = feeder_name or code_key
 
             vals = {
                 'name': display_name,
-                'feeder_code': feeder_code or code_identity,
-                'feeder_name': feeder_name,
+                'feeder_code': code_key,
+                'feeder_name': feeder_name or display_name,
                 'legacy_region': legacy_region,
                 'legacy_area': legacy_area,
                 'is_active': is_active,
@@ -247,11 +252,11 @@ class UtilityMigrationImportWizard(models.TransientModel):
 
             # Preserve cell presence semantics: pass reading ONLY if cell has value
             if len(row) > 7 and self._has_cell_value(row[7]):
-                vals['current_reading'] = self.parse_float(row[7])
+                vals['current_reading'] = self.parse_float(row[7], field_name="القراءة الحالية")
 
             existing = feeder_obj.search([
                 ('company_id', '=', company_id),
-                '|', ('feeder_code', '=', code_identity), ('name', '=', display_name)
+                ('feeder_code', '=', code_key)
             ], limit=1)
             if existing:
                 existing.write(vals)
@@ -261,10 +266,7 @@ class UtilityMigrationImportWizard(models.TransientModel):
                 created_records |= new_rec
 
         if created_records:
-            try:
-                created_records.action_map_codes()
-            except ValidationError:
-                pass
+            created_records.action_map_codes(strict=False)
 
         return self._show_success_notification(len(created_records))
 
@@ -289,24 +291,27 @@ class UtilityMigrationImportWizard(models.TransientModel):
             transformer_code = str(row[3] or '').strip() if len(row) > 3 else ''
             transformer_name = str(row[4] or '').strip() if len(row) > 4 else ''
             meter_number = str(row[5] or '').strip() if len(row) > 5 else ''
-            meter_multiplier = self.parse_float(row[6]) if len(row) > 6 else 1.0
-            total_consumption = self.parse_float(row[8]) if len(row) > 8 else 0.0
+            meter_multiplier = self.parse_float(row[6], field_name="معامل الضرب") if len(row) > 6 else 1.0
+            total_consumption = self.parse_float(row[8], field_name="إجمالي الاستهلاك") if len(row) > 8 else 0.0
             image_status = str(row[9] or '').strip() if len(row) > 9 else ''
             cell_meter_number = str(row[10] or '').strip() if len(row) > 10 else ''
-            cell_meter_multiplier = self.parse_float(row[11]) if len(row) > 11 else 1.0
+            cell_meter_multiplier = self.parse_float(row[11], field_name="معامل ضرب الخلية") if len(row) > 11 else 1.0
             reference = str(row[12] or '').strip() if len(row) > 12 else ''
             description = str(row[13] or '').strip() if len(row) > 13 else ''
 
-            if not transformer_code and not transformer_name and not meter_number and not reference and not description:
-                continue
+            # Strict Deterministic Identity: reference -> transformer_code
+            code_identity = reference or transformer_code
+            if not code_identity:
+                if not transformer_name and not meter_number and not description:
+                    continue
+                raise ValidationError(_('MISSING_TRANSFORMER_IDENTITY: يلزم توفر مرجع (reference) أو رمز المحول لتحديد الهوية المرجعية في الصف %d.') % row_idx)
 
-            display_name = transformer_name or transformer_code or description or f"Transformer-{row_idx}"
-            code_identity = reference or transformer_code or display_name
+            display_name = transformer_name or code_identity
 
             vals = {
                 'name': display_name,
                 'transformer_code': transformer_code or code_identity,
-                'transformer_name': transformer_name,
+                'transformer_name': transformer_name or display_name,
                 'legacy_region': legacy_region,
                 'legacy_area': legacy_area,
                 'is_active': is_active,
@@ -324,9 +329,9 @@ class UtilityMigrationImportWizard(models.TransientModel):
 
             # Preserve cell presence semantics for current_reading & opening_reading
             if len(row) > 7 and self._has_cell_value(row[7]):
-                vals['current_reading'] = self.parse_float(row[7])
+                vals['current_reading'] = self.parse_float(row[7], field_name="القراءة الحالية")
             if len(row) > 14 and self._has_cell_value(row[14]):
-                vals['opening_reading'] = self.parse_float(row[14])
+                vals['opening_reading'] = self.parse_float(row[14], field_name="قراءة بداية الاشتراك")
 
             existing = transformer_obj.search([
                 ('company_id', '=', company_id),
@@ -340,10 +345,7 @@ class UtilityMigrationImportWizard(models.TransientModel):
                 created_records |= new_rec
 
         if created_records:
-            try:
-                created_records.action_map_codes()
-            except ValidationError:
-                pass
+            created_records.action_map_codes(strict=False)
 
         return self._show_success_notification(len(created_records))
 
