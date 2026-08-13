@@ -291,15 +291,24 @@ class UtilityMigrationFeeder(models.Model):
                 rec.error_message = str(e)
 
     def action_queue_migration(self):
-        """إنشاء دفعة تنفيذ وإضافة الفيدرات المحددة إلى قائمة الانتظار للميجريشن."""
+        """إنشاء دفعة تنفيذ وإضافة الفيدرات المحددة إلى قائمة الانتظار للميجريشن (Pure Queueing)."""
         if not self:
             raise UserError(_('لم يتم تحديد أي سجلات للميجريشن.'))
 
-        companies = self.mapped('company_id')
+        locked_records = self.search([('id', 'in', self.ids)], order='id asc')
+        try:
+            self.env.cr.execute(
+                "SELECT id FROM utility_migration_feeder WHERE id IN %s FOR UPDATE NOWAIT",
+                (tuple(self.ids),)
+            )
+        except Exception:
+            raise UserError(_('السجلات المحددة قيد التعديل أو المعالجة بواسطة مستخدم آخر حالياً.'))
+
+        companies = locked_records.mapped('company_id')
         if len(companies) > 1:
             raise UserError(_('يجب أن تنتمي جميع السجلات المحددة إلى شركة واحدة فقط.'))
 
-        invalid_records = self.filtered(lambda r: r.state in ('queued', 'processing'))
+        invalid_records = locked_records.filtered(lambda r: r.state in ('queued', 'processing'))
         if invalid_records:
             raise UserError(_('توجد سجلات قيد المعالجة أو في الانتظار بالفعل (مثل: %s).') % invalid_records[0].name)
 
@@ -311,13 +320,11 @@ class UtilityMigrationFeeder(models.Model):
             'state': 'queued',
         })
 
-        self.write({
+        locked_records.write({
             'state': 'queued',
             'last_batch_id': batch.id,
             'error_message': False,
         })
-
-        batch.action_process_batch()
 
         return {
             'type': 'ir.actions.act_window',

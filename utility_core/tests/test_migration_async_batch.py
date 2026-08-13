@@ -1,3 +1,7 @@
+import base64
+import io
+from openpyxl import Workbook
+
 from odoo.tests.common import TransactionCase
 from odoo.exceptions import UserError, ValidationError
 
@@ -100,8 +104,8 @@ class TestMigrationAsyncBatch(TransactionCase):
         self.assertFalse(cust.created_customer_id)
         self.assertFalse(cust.created_meter_id)
 
-    def test_02_server_action_queueing_and_batch_creation(self):
-        """التحقق من إنشاء دفعة تنفيذ عند طلب السيرفر أكشن وإضافة السجلات لقائمة الانتظار."""
+    def test_02_server_action_pure_queueing_and_batch_creation(self):
+        """التحقق من أن الـ Server Action يكتفي بالـ Queueing وإنشاء الـ Batch دون المعالجة الفورية المتزامنة."""
         c1 = self.env['utility.migration.customer'].create({
             'name': 'عميل 1',
             'customer_number': 'CUST-Q-01',
@@ -131,11 +135,25 @@ class TestMigrationAsyncBatch(TransactionCase):
         batch_id = res['res_id']
         batch = self.env['utility.migration.batch'].browse(batch_id)
 
+        # Assert state after Server Action is QUEUED (Not yet processed synchronously)
         self.assertTrue(batch.exists())
         self.assertEqual(batch.migration_type, 'customer')
         self.assertEqual(batch.company_id, self.company)
         self.assertEqual(batch.record_count, 2)
-        self.assertIn(c1.state, ('queued', 'imported'))
+        self.assertEqual(batch.state, 'queued')
+        self.assertEqual(c1.state, 'queued')
+        self.assertEqual(c2.state, 'queued')
+        self.assertFalse(c1.created_customer_id)
+
+        # Now trigger background processing via cron or batch.action_process_batch()
+        self.env['utility.migration.batch'].cron_process_pending_batches()
+
+        # Assert records are now processed and imported
+        self.assertEqual(c1.state, 'imported')
+        self.assertEqual(c2.state, 'imported')
+        self.assertEqual(batch.state, 'done')
+        self.assertTrue(c1.created_customer_id)
+        self.assertTrue(c2.created_customer_id)
 
     def test_03_mixed_company_selection_rejected(self):
         """منع تحديد سجلات تنتمي لأكثر من شركة في دفعة واحدة."""
@@ -176,12 +194,11 @@ class TestMigrationAsyncBatch(TransactionCase):
             'company_id': self.company.id,
         })
 
-        batch = self.env['utility.migration.batch'].create({
-            'migration_type': 'customer',
-            'company_id': self.company.id,
-            'state': 'queued',
-        })
-        (c1 | c2).write({'state': 'queued', 'last_batch_id': batch.id})
+        res = (c1 | c2).action_queue_migration()
+        batch = self.env['utility.migration.batch'].browse(res['res_id'])
+
+        # State before execution is queued
+        self.assertEqual(batch.state, 'queued')
 
         batch.action_process_batch()
 
@@ -211,6 +228,9 @@ class TestMigrationAsyncBatch(TransactionCase):
 
         res = c2.action_queue_migration()
         new_batch = self.env['utility.migration.batch'].browse(res['res_id'])
+        self.assertEqual(c2.state, 'queued')
+
+        new_batch.action_process_batch()
 
         self.assertEqual(c2.state, 'imported')
         self.assertEqual(new_batch.state, 'done')
@@ -235,6 +255,8 @@ class TestMigrationAsyncBatch(TransactionCase):
 
         res_f = feeder_stg.action_queue_migration()
         batch_f = self.env['utility.migration.batch'].browse(res_f['res_id'])
+        self.assertEqual(feeder_stg.state, 'queued')
+        batch_f.action_process_batch()
         self.assertEqual(feeder_stg.state, 'imported')
         self.assertEqual(batch_f.state, 'done')
         self.assertTrue(feeder_stg.created_feeder_id)
@@ -252,6 +274,52 @@ class TestMigrationAsyncBatch(TransactionCase):
 
         res_t = trans_stg.action_queue_migration()
         batch_t = self.env['utility.migration.batch'].browse(res_t['res_id'])
+        self.assertEqual(trans_stg.state, 'queued')
+        batch_t.action_process_batch()
         self.assertEqual(trans_stg.state, 'imported')
         self.assertEqual(batch_t.state, 'done')
         self.assertTrue(trans_stg.created_transformer_id)
+
+    def test_07_real_xlsx_upload_creates_draft_staging_only(self):
+        """اختبار حقيقي لرفع ملف Excel عبر معالج الاستيراد للتأكد من نزول السجلات كـ Draft فقط دون ترحيل."""
+        wb = Workbook()
+        ws_info = wb.active
+        ws_info.title = 'تعليمات الاستيراد'
+        ws_info['A1'] = 'إصدار القالب'
+        ws_info['B3'] = 4
+
+        ws_data = wb.create_sheet(title='بيانات التهيئة')
+        # Headers matching contract
+        ws_data.append([
+            'الاسم *', 'الموبايل *', 'رقم المشترك *', 'رمز المنطقة', 'رمز الفرع',
+            'رمز الفئة', 'رمز نوع المشترك', 'رمز قالب العقد *', 'رقم العداد *', 'نوع الفاز (single/three)'
+        ])
+        # Data row
+        ws_data.append([
+            'مشترك من إكسل', '0599000111', 'CUST-XLSX-99', 'REG01', 'AREA01',
+            'CAT01', 'SUB01', 'CNTR01', 'MTR-XLSX-99', 'single'
+        ])
+
+        stream = io.BytesIO()
+        wb.save(stream)
+        file_content = base64.b64encode(stream.getvalue())
+
+        wizard = self.env['utility.migration.import.wizard'].create({
+            'import_type': 'customer',
+            'import_file': file_content,
+            'file_name': 'Migration_Template.xlsx',
+        })
+
+        res = wizard.action_import_file()
+        self.assertEqual(res['type'], 'ir.actions.act_window_close')
+
+        stg = self.env['utility.migration.customer'].search([
+            ('company_id', '=', self.company.id),
+            ('customer_number', '=', 'CUST-XLSX-99')
+        ])
+
+        self.assertTrue(stg.exists())
+        self.assertEqual(stg.state, 'draft')
+        self.assertFalse(stg.region_id)  # Mapping NOT run during upload
+        self.assertFalse(stg.created_partner_id)  # Canonical NOT created
+        self.assertFalse(stg.created_customer_id)

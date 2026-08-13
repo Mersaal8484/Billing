@@ -1,3 +1,4 @@
+from datetime import timedelta
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError, ValidationError
 
@@ -202,7 +203,20 @@ class UtilityMigrationBatch(models.Model):
 
     @api.model
     def cron_process_pending_batches(self):
-        """Cron function processing queued or stuck processing migration batches."""
-        pending = self.search([('state', 'in', ('queued', 'processing'))], limit=10)
+        """Cron function processing queued or stuck processing migration batches in background."""
+        stuck_threshold = fields.Datetime.now() - timedelta(minutes=15)
+        domain = [
+            '|',
+            ('state', '=', 'queued'),
+            '&', ('state', '=', 'processing'), ('started_at', '<', stuck_threshold)
+        ]
+        pending = self.search(domain, order='id asc', limit=10)
         for batch in pending:
-            batch.action_process_batch()
+            try:
+                self.env.cr.execute(
+                    "SELECT id FROM utility_migration_batch WHERE id = %s FOR UPDATE NOWAIT",
+                    (batch.id,)
+                )
+                batch.action_process_batch()
+            except Exception:
+                continue
