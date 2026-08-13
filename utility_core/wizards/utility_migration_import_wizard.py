@@ -289,8 +289,6 @@ class UtilityMigrationImportWizard(models.TransientModel):
             if existing:
                 record.write(values)
             records |= record
-        if records:
-            records.action_map_codes(strict=False)
         return self._show_success_notification(len(records))
 
     def _import_feeders(self, sheet, header_row, header_map):
@@ -333,8 +331,6 @@ class UtilityMigrationImportWizard(models.TransientModel):
             if existing:
                 record.write(values)
             records |= record
-        if records:
-            records.action_map_codes(strict=False)
         return self._show_success_notification(len(records))
 
     def _import_transformers(self, sheet, header_row, header_map):
@@ -380,8 +376,6 @@ class UtilityMigrationImportWizard(models.TransientModel):
             if existing:
                 record.write(values)
             records |= record
-        if records:
-            records.action_map_codes(strict=False)
         return self._show_success_notification(len(records))
 
     def _parse_multiplier(self, value, row, field):

@@ -11,7 +11,9 @@
         <field name="model">utility.migration.customer</field>
         <field name="arch" type="xml">
             <tree string="بيانات التهيئة"
-                  decoration-info="state=='draft'"
+                  decoration-muted="state=='draft'"
+                  decoration-info="state=='queued'"
+                  decoration-warning="state=='processing'"
                   decoration-success="state=='imported'"
                   decoration-danger="state=='error'">
                 <header>
@@ -19,12 +21,8 @@
                             string="⬇ تحميل القالب"
                             type="action"
                             class="btn-primary"/>
-                    <button name="action_map_codes"
-                            string="🔗 مطابقة الترميز"
-                            type="object"
-                            class="btn-secondary"/>
-                    <button name="action_import_data"
-                            string="✅ اعتماد ورفع البيانات"
+                    <button name="action_queue_migration"
+                            string="🚀 مطابقة واستيراد السجلات المحددة"
                             type="object"
                             class="btn-success"/>
                 </header>
@@ -38,9 +36,12 @@
                 <field name="current_balance"/>
                 <field name="meter_reading"/>
                 <field name="phase"/>
+                <field name="last_batch_id"/>
                 <field name="company_id" groups="base.group_multi_company"/>
                 <field name="state" widget="badge"
-                       decoration-info="state=='draft'"
+                       decoration-muted="state=='draft'"
+                       decoration-info="state=='queued'"
+                       decoration-warning="state=='processing'"
                        decoration-success="state=='imported'"
                        decoration-danger="state=='error'"/>
             </tree>
@@ -74,7 +75,7 @@
                                 ('is_active', '=', True),
                                 ('created_customer_id', '!=', False)
                             ]}"/>
-                    <field name="state" widget="statusbar" statusbar_visible="draft,imported,error"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,queued,processing,imported,error"/>
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
@@ -132,6 +133,7 @@
                                    attrs="{'invisible': [('is_active', '=', False)]}"/>
                             <field name="phase"/>
                             <field name="is_private_transformer"/>
+                            <field name="last_batch_id" readonly="1"/>
                         </group>
                         <group string="بيانات أخرى">
                             <field name="char_code"/>
@@ -174,16 +176,21 @@
                 <field name="name"/>
                 <field name="mobile"/>
                 <field name="national_id"/>
+                <field name="last_batch_id"/>
                 <field name="company_id" groups="base.group_multi_company"/>
                 <filter string="العملاء الفعالين"    name="filter_active"   domain="[('is_active', '=', True)]"/>
                 <filter string="العملاء غير الفعالين" name="filter_inactive" domain="[('is_active', '=', False)]"/>
+                <separator/>
                 <filter string="مسودة"   name="filter_draft"    domain="[('state', '=', 'draft')]"/>
+                <filter string="في الانتظار" name="filter_queued" domain="[('state', '=', 'queued')]"/>
+                <filter string="قيد المعالجة" name="filter_processing" domain="[('state', '=', 'processing')]"/>
                 <filter string="تم الرفع" name="filter_imported" domain="[('state', '=', 'imported')]"/>
                 <filter string="خطأ"     name="filter_error"    domain="[('state', '=', 'error')]"/>
                 <filter string="بانتظار التفعيل" name="filter_pending_activation"
                         domain="[('state', '=', 'imported'), ('is_active', '=', False), ('created_customer_id', '=', False)]"/>
                 <group expand="0" string="تجميع حسب...">
                     <filter string="الحالة"  name="group_by_state"  context="{'group_by': 'state'}"/>
+                    <filter string="الدفعة الأخيرة" name="group_by_batch" context="{'group_by': 'last_batch_id'}"/>
                     <filter string="المنطقة" name="group_by_region" context="{'group_by': 'region_id'}"/>
                     <filter string="هل فعال؟" name="group_by_active" context="{'group_by': 'is_active'}"/>
                     <filter string="الشركة" name="group_by_company" context="{'group_by': 'company_id'}" groups="base.group_multi_company"/>
@@ -217,6 +224,13 @@
               parent="menu_utility_migration_root"
               action="action_utility_migration_customer"
               sequence="10"/>
+
+    <menuitem id="menu_utility_migration_batch"
+              name="دفعات تنفيذ الميجريشن"
+              parent="menu_utility_migration_root"
+              action="action_utility_migration_batch"
+              sequence="15"/>
+
     <menuitem id="menu_utility_migration_mapping"
               name="جدول الترميز"
               parent="menu_utility_migration_root"
@@ -235,3 +249,4 @@
               sequence="40"/>
 
 </odoo>
+

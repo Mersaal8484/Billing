@@ -39,9 +39,15 @@ class UtilityMigrationFeeder(models.Model):
 
     state = fields.Selection([
         ('draft', 'مسودة'),
+        ('queued', 'في الانتظار'),
+        ('processing', 'قيد المعالجة'),
         ('imported', 'تم الرفع'),
         ('error', 'خطأ')
-    ], string='الحالة', default='draft')
+    ], string='الحالة', default='draft', index=True)
+
+    last_batch_id = fields.Many2one(
+        'utility.migration.batch', string='دفعة التنفيذ الأخيرة',
+        readonly=True, copy=False, index=True)
 
     error_message = fields.Text('رسالة الخطأ', readonly=True)
     source_row_number = fields.Integer('صف المصدر في Excel', readonly=True, index=True)
@@ -283,3 +289,41 @@ class UtilityMigrationFeeder(models.Model):
             except Exception as e:
                 rec.state = 'error'
                 rec.error_message = str(e)
+
+    def action_queue_migration(self):
+        """إنشاء دفعة تنفيذ وإضافة الفيدرات المحددة إلى قائمة الانتظار للميجريشن."""
+        if not self:
+            raise UserError(_('لم يتم تحديد أي سجلات للميجريشن.'))
+
+        companies = self.mapped('company_id')
+        if len(companies) > 1:
+            raise UserError(_('يجب أن تنتمي جميع السجلات المحددة إلى شركة واحدة فقط.'))
+
+        invalid_records = self.filtered(lambda r: r.state in ('queued', 'processing'))
+        if invalid_records:
+            raise UserError(_('توجد سجلات قيد المعالجة أو في الانتظار بالفعل (مثل: %s).') % invalid_records[0].name)
+
+        company_id = companies[0].id if companies else self.env.company.id
+
+        batch = self.env['utility.migration.batch'].create({
+            'migration_type': 'feeder',
+            'company_id': company_id,
+            'state': 'queued',
+        })
+
+        self.write({
+            'state': 'queued',
+            'last_batch_id': batch.id,
+            'error_message': False,
+        })
+
+        batch.action_process_batch()
+
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('دفعة التنفيذ (%s)') % batch.name,
+            'res_model': 'utility.migration.batch',
+            'view_mode': 'form',
+            'res_id': batch.id,
+            'target': 'current',
+        }

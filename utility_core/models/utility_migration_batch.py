@@ -1,0 +1,208 @@
+from odoo import api, fields, models, _
+from odoo.exceptions import UserError, ValidationError
+
+
+class UtilityMigrationBatch(models.Model):
+    _name = 'utility.migration.batch'
+    _description = 'دفعة تنفيذ الميجريشن (Execution Batch)'
+    _order = 'id desc'
+
+    name = fields.Char(
+        'رقم الدفعة', required=True, copy=False, readonly=True,
+        default=lambda self: _('جديد'), index=True)
+    
+    company_id = fields.Many2one(
+        'res.company', string='الشركة', required=True,
+        default=lambda self: self.env.company, index=True)
+
+    migration_type = fields.Selection([
+        ('customer', 'عملاء'),
+        ('feeder', 'فيدرات/خلايا'),
+        ('transformer', 'محولات')
+    ], string='نوع الميجريشن', required=True, index=True)
+
+    state = fields.Selection([
+        ('draft', 'مسودة'),
+        ('queued', 'في الانتظار'),
+        ('processing', 'قيد المعالجة'),
+        ('done', 'مكتمل'),
+        ('partial', 'مكتمل بنجاح جزئي'),
+        ('failed', 'فشل فني'),
+        ('cancelled', 'ملغى')
+    ], string='الحالة', default='queued', required=True, index=True)
+
+    chunk_size = fields.Integer(
+        'حجم الدفعة الجزئية', default=200, required=True,
+        help='عدد السجلات المعالجة في كل دفعة جزئية لتفادي التجاوز المفرط للذاكرة.')
+
+    record_count = fields.Integer('إجمالي السجلات', compute='_compute_counts', store=True)
+    processed_count = fields.Integer('السجلات المعالجة', compute='_compute_counts', store=True)
+    success_count = fields.Integer('السجلات الناجحة', compute='_compute_counts', store=True)
+    error_count = fields.Integer('سجلات الأخطاء', compute='_compute_counts', store=True)
+
+    queued_at = fields.Datetime('تاريخ الإضافة للانتظار', default=fields.Datetime.now, readonly=True)
+    started_at = fields.Datetime('تاريخ بداية المعالجة', readonly=True)
+    finished_at = fields.Datetime('تاريخ انتهاء المعالجة', readonly=True)
+
+    last_error = fields.Text('آخر خطأ فني', readonly=True)
+    job_reference = fields.Char('مرجع المهمة', readonly=True)
+
+    customer_ids = fields.One2many(
+        'utility.migration.customer', 'last_batch_id', string='سجلات العملاء')
+    feeder_ids = fields.One2many(
+        'utility.migration.feeder', 'last_batch_id', string='سجلات الفيدرات')
+    transformer_ids = fields.One2many(
+        'utility.migration.transformer', 'last_batch_id', string='سجلات المحولات')
+
+    @api.depends(
+        'migration_type',
+        'customer_ids.state', 'feeder_ids.state', 'transformer_ids.state'
+    )
+    def _compute_counts(self):
+        for batch in self:
+            records = batch._get_batch_records()
+            batch.record_count = len(records)
+            batch.success_count = len(records.filtered(lambda r: r.state == 'imported'))
+            batch.error_count = len(records.filtered(lambda r: r.state == 'error'))
+            batch.processed_count = batch.success_count + batch.error_count
+
+    def _get_batch_records(self):
+        self.ensure_one()
+        if self.migration_type == 'customer':
+            return self.customer_ids
+        elif self.migration_type == 'feeder':
+            return self.feeder_ids
+        elif self.migration_type == 'transformer':
+            return self.transformer_ids
+        return self.env['utility.migration.customer']
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            if not vals.get('name') or vals.get('name') == _('جديد'):
+                mtype = vals.get('migration_type', 'customer')
+                prefix_map = {
+                    'customer': 'MIG-CUST-',
+                    'feeder': 'MIG-FDR-',
+                    'transformer': 'MIG-TRF-'
+                }
+                prefix = prefix_map.get(mtype, 'MIG-')
+                seq = self.env['ir.sequence'].next_by_code('utility.migration.batch')
+                if not seq:
+                    count = self.search_count([('migration_type', '=', mtype)]) + 1
+                    seq = f"{prefix}{count:05d}"
+                vals['name'] = seq
+        return super().create(vals_list)
+
+    def action_process_batch(self):
+        """معالجة الدفعة في خلفية النظام على دفعات جزئية (Chunked execution) مع حفظ savepoint لكل سجل."""
+        for batch in self:
+            if batch.state in ('done', 'cancelled'):
+                continue
+
+            batch.started_at = fields.Datetime.now()
+            batch.state = 'processing'
+
+            records = batch._get_batch_records().filtered(
+                lambda r: r.state in ('queued', 'processing', 'draft', 'error')
+            )
+
+            if not records:
+                batch.state = 'done'
+                batch.finished_at = fields.Datetime.now()
+                continue
+
+            chunk_size = max(1, batch.chunk_size or 200)
+
+            try:
+                for i in range(0, len(records), chunk_size):
+                    chunk = records[i:i + chunk_size]
+                    for rec in chunk:
+                        with self.env.cr.savepoint():
+                            rec.state = 'processing'
+                            rec.action_import_data()
+
+            except Exception as e:
+                batch.last_error = str(e)
+                batch.state = 'failed'
+                batch.finished_at = fields.Datetime.now()
+                continue
+
+            # Evaluate final batch state cleanly
+            records = batch._get_batch_records()
+            err_count = len(records.filtered(lambda r: r.state == 'error'))
+            imp_count = len(records.filtered(lambda r: r.state == 'imported'))
+
+            if err_count == 0 and imp_count > 0:
+                batch.state = 'done'
+            elif imp_count > 0 and err_count > 0:
+                batch.state = 'partial'
+            elif imp_count == 0 and err_count > 0:
+                batch.state = 'partial'
+            else:
+                batch.state = 'done'
+
+            batch.finished_at = fields.Datetime.now()
+
+    def action_open_records(self):
+        self.ensure_one()
+        records = self._get_batch_records()
+        model_map = {
+            'customer': 'utility.migration.customer',
+            'feeder': 'utility.migration.feeder',
+            'transformer': 'utility.migration.transformer',
+        }
+        res_model = model_map[self.migration_type]
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('سجلات الدفعة (%s)') % self.name,
+            'res_model': res_model,
+            'domain': [('id', 'in', records.ids)],
+            'view_mode': 'tree,form',
+            'target': 'current',
+        }
+
+    def action_open_errors(self):
+        self.ensure_one()
+        records = self._get_batch_records().filtered(lambda r: r.state == 'error')
+        model_map = {
+            'customer': 'utility.migration.customer',
+            'feeder': 'utility.migration.feeder',
+            'transformer': 'utility.migration.transformer',
+        }
+        res_model = model_map[self.migration_type]
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('سجلات الأخطاء للدفعة (%s)') % self.name,
+            'res_model': res_model,
+            'domain': [('id', 'in', records.ids)],
+            'view_mode': 'tree,form',
+            'target': 'current',
+        }
+
+    def action_retry_errors(self):
+        self.ensure_one()
+        errored_records = self._get_batch_records().filtered(lambda r: r.state == 'error')
+        if not errored_records:
+            raise UserError(_('لا توجد سجلات أخطاء لإعادة محاولتها في هذه الدفعة.'))
+        return errored_records.action_queue_migration()
+
+    def action_cancel(self):
+        for batch in self:
+            if batch.state == 'done':
+                raise UserError(_('لا يمكن إلغاء دفعة مكتملة بالفعل.'))
+            pending_records = batch._get_batch_records().filtered(
+                lambda r: r.state in ('queued', 'processing')
+            )
+            pending_records.write({
+                'state': 'draft',
+                'error_message': _('تم إلغاء عملية الدفعة (%s)') % batch.name
+            })
+            batch.state = 'cancelled'
+
+    @api.model
+    def cron_process_pending_batches(self):
+        """Cron function processing queued or stuck processing migration batches."""
+        pending = self.search([('state', 'in', ('queued', 'processing'))], limit=10)
+        for batch in pending:
+            batch.action_process_batch()

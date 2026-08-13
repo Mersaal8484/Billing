@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Sequence for Migration Batch -->
+    <record id="seq_utility_migration_batch" model="ir.sequence">
+        <field name="name">تسلسل دفعات الميجريشن</field>
+        <field name="code">utility.migration.batch</field>
+        <field name="prefix">MIG-%(year)s-</field>
+        <field name="padding">5</field>
+        <field name="company_id" eval="False"/>
+    </record>
+
+    <!-- Migration Batch Tree View -->
+    <record id="view_utility_migration_batch_tree" model="ir.ui.view">
+        <field name="name">utility.migration.batch.tree</field>
+        <field name="model">utility.migration.batch</field>
+        <field name="arch" type="xml">
+            <tree string="دفعات تنفيذ الميجريشن" default_order="id desc" decoration-info="state == 'queued'" decoration-warning="state == 'processing'" decoration-success="state == 'done'" decoration-danger="state == 'failed'" decoration-muted="state == 'cancelled'">
+                <field name="name"/>
+                <field name="migration_type"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="record_count"/>
+                <field name="processed_count"/>
+                <field name="success_count"/>
+                <field name="error_count"/>
+                <field name="queued_at"/>
+                <field name="finished_at"/>
+                <field name="state" widget="badge" decoration-info="state == 'queued'" decoration-warning="state == 'processing'" decoration-success="state == 'done'" decoration-primary="state == 'partial'" decoration-danger="state == 'failed'" decoration-muted="state == 'cancelled'"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Migration Batch Form View -->
+    <record id="view_utility_migration_batch_form" model="ir.ui.view">
+        <field name="name">utility.migration.batch.form</field>
+        <field name="model">utility.migration.batch</field>
+        <field name="arch" type="xml">
+            <form string="دفعة تنفيذ الميجريشن">
+                <header>
+                    <button name="action_open_records" type="object" string="عرض السجلات" class="oe_highlight" icon="fa-list"/>
+                    <button name="action_open_errors" type="object" string="عرض الأخطاء" class="btn-warning" icon="fa-exclamation-triangle" attrs="{'invisible': [('error_count', '=', 0)]}"/>
+                    <button name="action_retry_errors" type="object" string="إعادة محاولة الأخطاء" class="btn-primary" icon="fa-refresh" attrs="{'invisible': ['|', ('error_count', '=', 0), ('state', '=', 'processing')]}"/>
+                    <button name="action_cancel" type="object" string="إلغاء الدفعة" class="btn-secondary" confirm="هل أنت تأكد من إلغاء الدفعة واستعادة السجلات إلى حالة المسودة؟" attrs="{'invisible': [('state', 'in', ('done', 'cancelled'))]}"/>
+                    <field name="state" widget="statusbar" statusbar_visible="queued,processing,partial,done"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_open_records" type="object" class="oe_stat_button" icon="fa-database">
+                            <div class="o_stat_info">
+                                <field name="record_count" class="o_stat_value"/>
+                                <span class="o_stat_text">إجمالي السجلات</span>
+                            </div>
+                        </button>
+                        <button name="action_open_records" type="object" class="oe_stat_button" icon="fa-check-circle" attrs="{'invisible': [('success_count', '=', 0)]}">
+                            <div class="o_stat_info">
+                                <field name="success_count" class="o_stat_value text-success"/>
+                                <span class="o_stat_text">تم استيرادها</span>
+                            </div>
+                        </button>
+                        <button name="action_open_errors" type="object" class="oe_stat_button" icon="fa-times-circle" attrs="{'invisible': [('error_count', '=', 0)]}">
+                            <div class="o_stat_info">
+                                <field name="error_count" class="o_stat_value text-danger"/>
+                                <span class="o_stat_text">أخطاء</span>
+                            </div>
+                        </button>
+                    </div>
+
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+
+                    <group>
+                        <group string="بيانات الدفعة">
+                            <field name="migration_type" readonly="1"/>
+                            <field name="company_id" groups="base.group_multi_company" readonly="1"/>
+                            <field name="chunk_size" attrs="{'readonly': [('state', '!=', 'draft')]}"/>
+                        </group>
+                        <group string="توقيت المعالجة والإحصائيات">
+                            <field name="queued_at" readonly="1"/>
+                            <field name="started_at" readonly="1"/>
+                            <field name="finished_at" readonly="1"/>
+                            <field name="processed_count" readonly="1"/>
+                        </group>
+                    </group>
+
+                    <group attrs="{'invisible': [('last_error', '=', False)]}" string="تفاصيل آخر خطأ فني">
+                        <field name="last_error" readonly="1" nolabel="1" class="text-danger"/>
+                    </group>
+
+                    <notebook>
+                        <page string="سجلات العملاء" attrs="{'invisible': [('migration_type', '!=', 'customer')]}">
+                            <field name="customer_ids" readonly="1">
+                                <tree string="العملاء">
+                                    <field name="customer_number"/>
+                                    <field name="name"/>
+                                    <field name="meter_number"/>
+                                    <field name="phase"/>
+                                    <field name="state" widget="badge"/>
+                                    <field name="error_message"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="سجلات الفيدرات" attrs="{'invisible': [('migration_type', '!=', 'feeder')]}">
+                            <field name="feeder_ids" readonly="1">
+                                <tree string="الفيدرات">
+                                    <field name="feeder_code"/>
+                                    <field name="feeder_name"/>
+                                    <field name="meter_number"/>
+                                    <field name="state" widget="badge"/>
+                                    <field name="error_message"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="سجلات المحولات" attrs="{'invisible': [('migration_type', '!=', 'transformer')]}">
+                            <field name="transformer_ids" readonly="1">
+                                <tree string="المحولات">
+                                    <field name="reference"/>
+                                    <field name="transformer_code"/>
+                                    <field name="transformer_name"/>
+                                    <field name="meter_number"/>
+                                    <field name="state" widget="badge"/>
+                                    <field name="error_message"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Migration Batch Search View -->
+    <record id="view_utility_migration_batch_search" model="ir.ui.view">
+        <field name="name">utility.migration.batch.search</field>
+        <field name="model">utility.migration.batch</field>
+        <field name="arch" type="xml">
+            <search string="البحث في دفعات الميجريشن">
+                <field name="name"/>
+                <field name="migration_type"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <filter string="في الانتظار" name="filter_queued" domain="[('state', '=', 'queued')]"/>
+                <filter string="قيد المعالجة" name="filter_processing" domain="[('state', '=', 'processing')]"/>
+                <filter string="مكتمل" name="filter_done" domain="[('state', '=', 'done')]"/>
+                <filter string="مكتمل جزئياً" name="filter_partial" domain="[('state', '=', 'partial')]"/>
+                <filter string="فشلت" name="filter_failed" domain="[('state', '=', 'failed')]"/>
+                <group expand="0" string="تجميع حسب">
+                    <filter string="نوع الميجريشن" name="group_type" domain="[]" context="{'group_by': 'migration_type'}"/>
+                    <filter string="الحالة" name="group_state" domain="[]" context="{'group_by': 'state'}"/>
+                    <filter string="الشركة" name="group_company" domain="[]" context="{'group_by': 'company_id'}" groups="base.group_multi_company"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Window Action for Migration Batch -->
+    <record id="action_utility_migration_batch" model="ir.actions.act_window">
+        <field name="name">دفعات تنفيذ الميجريشن</field>
+        <field name="res_model">utility.migration.batch</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_utility_migration_batch_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                لا توجد دفعات تنفيذ ميجريشن حتى الآن.
+            </p>
+            <p>
+                يتم إنشاء دفعات التنفيذ تلقائياً عند قيامك بتحديد سجلات من قائمة الميجريشن وتشغيل إجراء "مطابقة واستيراد السجلات المحددة".
+            </p>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_server_queue_customer_migration" model="ir.actions.server">
+        <field name="name">مطابقة واستيراد سجلات العملاء المحددة</field>
+        <field name="model_id" ref="model_utility_migration_customer"/>
+        <field name="binding_model_id" ref="model_utility_migration_customer"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">
+action = records.action_queue_migration()
+        </field>
+    </record>
+
+    <record id="action_server_queue_feeder_migration" model="ir.actions.server">
+        <field name="name">مطابقة واستيراد الفيدرات المحددة</field>
+        <field name="model_id" ref="model_utility_migration_feeder"/>
+        <field name="binding_model_id" ref="model_utility_migration_feeder"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">
+action = records.action_queue_migration()
+        </field>
+    </record>
+
+    <record id="action_server_queue_transformer_migration" model="ir.actions.server">
+        <field name="name">مطابقة واستيراد المحولات المحددة</field>
+        <field name="model_id" ref="model_utility_migration_transformer"/>
+        <field name="binding_model_id" ref="model_utility_migration_transformer"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">
+action = records.action_queue_migration()
+        </field>
+    </record>
+</odoo>

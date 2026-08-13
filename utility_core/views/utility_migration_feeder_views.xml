@@ -11,7 +11,9 @@
         <field name="model">utility.migration.feeder</field>
         <field name="arch" type="xml">
             <tree string="بيانات تهيئة الفيدرات والخلايا"
-                  decoration-info="state=='draft'"
+                  decoration-muted="state=='draft'"
+                  decoration-info="state=='queued'"
+                  decoration-warning="state=='processing'"
                   decoration-success="state=='imported'"
                   decoration-danger="state=='error'">
                 <header>
@@ -19,12 +21,8 @@
                             string="⬇ تحميل قالب الفيدرات"
                             type="action"
                             class="btn-primary"/>
-                    <button name="action_map_codes"
-                            string="🔗 مطابقة الترميز"
-                            type="object"
-                            class="btn-secondary"/>
-                    <button name="action_import_data"
-                            string="✅ اعتماد ورفع البيانات"
+                    <button name="action_queue_migration"
+                            string="🚀 مطابقة واستيراد الفيدرات المحددة"
                             type="object"
                             class="btn-success"/>
                 </header>
@@ -36,9 +34,12 @@
                 <field name="current_reading"/>
                 <field name="is_calculation_cell"/>
                 <field name="region_id"/>
+                <field name="last_batch_id"/>
                 <field name="company_id" groups="base.group_multi_company"/>
                 <field name="state" widget="badge"
-                       decoration-info="state=='draft'"
+                       decoration-muted="state=='draft'"
+                       decoration-info="state=='queued'"
+                       decoration-warning="state=='processing'"
                        decoration-success="state=='imported'"
                        decoration-danger="state=='error'"/>
             </tree>
@@ -51,17 +52,7 @@
         <field name="arch" type="xml">
             <form string="تهيئة الفيدر / الخلية">
                 <header>
-                    <button name="action_map_codes"
-                            string="🔗 مطابقة الترميز"
-                            type="object"
-                            class="btn-secondary"
-                            attrs="{'invisible': [('state', '=', 'imported')]}"/>
-                    <button name="action_import_data"
-                            string="✅ رفع وتوليد البيانات"
-                            type="object"
-                            class="oe_highlight"
-                            attrs="{'invisible': [('state', '=', 'imported')]}"/>
-                    <field name="state" widget="statusbar" statusbar_visible="draft,imported,error"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,queued,processing,imported,error"/>
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
@@ -175,13 +166,17 @@
                 <field name="feeder_code"/>
                 <field name="meter_number"/>
                 <field name="legacy_region"/>
+                <field name="last_batch_id"/>
                 <field name="company_id" groups="base.group_multi_company"/>
                 <filter string="مسودة" name="filter_draft" domain="[('state', '=', 'draft')]"/>
+                <filter string="في الانتظار" name="filter_queued" domain="[('state', '=', 'queued')]"/>
+                <filter string="قيد المعالجة" name="filter_processing" domain="[('state', '=', 'processing')]"/>
                 <filter string="تم الرفع" name="filter_imported" domain="[('state', '=', 'imported')]"/>
                 <filter string="خطأ" name="filter_error" domain="[('state', '=', 'error')]"/>
                 <filter string="خلايا إحتساب" name="filter_calc_cell" domain="[('is_calculation_cell', '=', True)]"/>
                 <group expand="0" string="تجميع حسب...">
                     <filter string="الحالة" name="group_by_state" context="{'group_by': 'state'}"/>
+                    <filter string="الدفعة الأخيرة" name="group_by_batch" context="{'group_by': 'last_batch_id'}"/>
                     <filter string="المنطقة" name="group_by_region" context="{'group_by': 'region_id'}"/>
                     <filter string="خلية إحتساب" name="group_by_calc_cell" context="{'group_by': 'is_calculation_cell'}"/>
                     <filter string="الشركة" name="group_by_company" context="{'group_by': 'company_id'}" groups="base.group_multi_company"/>
