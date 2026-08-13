@@ -179,7 +179,7 @@ class UtilityReaderAPI(http.Controller):
         max_size = int(request.env['ir.config_parameter'].sudo().get_param(
             'utility.max_image_size_kb', 100))
         try:
-            decoded = base64.b64decode(image_data)
+            decoded = base64.b64decode(image_data, validate=True)
             size_kb = len(decoded) / 1024
             if size_kb > max_size:
                 return {
@@ -187,7 +187,8 @@ class UtilityReaderAPI(http.Controller):
                     'error': f'حجم الصورة ({size_kb:.0f} KB) يتجاوز الحد الأقصى ({max_size} KB)',
                 }
         except Exception as e:
-            return {'success': False, 'error': f'بيانات الصورة غير صالحة: {e}'}
+            _logger.warning("Invalid base64 image data uploaded for batch %s: %s", batch_id, str(e))
+            return {'success': False, 'error': 'بيانات الصورة غير صالحة (Base64 Decode Error)', 'code': 'INVALID_BASE64'}
 
         media_asset = request.env['utility.media.service'].sudo().store_media(
             file_data=decoded,
@@ -235,7 +236,8 @@ class UtilityReaderAPI(http.Controller):
                 'total_images': len(batch.image_ids),
             }
         except Exception as e:
-            return {'success': False, 'error': str(e)}
+            _logger.exception("Failed to confirm reading batch %s: %s", batch_id, str(e))
+            return {'success': False, 'error': 'حدث خطأ أثناء تأكيد الدفعة', 'code': 'PROCESSING_ERROR'}
 
     # ================================================================
     # استعلام: حالة الدفعة (Polling)
