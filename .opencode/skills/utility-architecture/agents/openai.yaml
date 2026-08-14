@@ -1,0 +1,4 @@
+interface:
+  display_name: "Utility Architecture"
+  short_description: "Route Utility ERP architecture decisions"
+  default_prompt: "Use $utility-architecture to review a Utility ERP architecture change."

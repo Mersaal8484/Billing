@@ -1,0 +1,8 @@
+# .cursorrules — Utility ERP execution & skill routing
+
+This repository uses `AGENTS.md` and `skills/` as the canonical routing and skill execution system for all AI agents.
+
+Please refer to:
+- AGENTS.md for source-of-truth hierarchy, routing tables, and engineering guardrails.
+- skills/<skill-name>/SKILL.md for domain-specific execution discipline.
+- docs/DOCUMENT_INDEX.md as the canonical documentation entry point.

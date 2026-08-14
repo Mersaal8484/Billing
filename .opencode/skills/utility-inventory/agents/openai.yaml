@@ -1,0 +1,4 @@
+interface:
+  display_name: "Utility Inventory"
+  short_description: "Review meters, stock, custody, replacement"
+  default_prompt: "Use $utility-inventory to review a Utility ERP inventory workflow."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Utility Accounting"
+  short_description: "Protect Odoo accounting source of truth"
+  default_prompt: "Use $utility-accounting to review a Utility ERP accounting change."

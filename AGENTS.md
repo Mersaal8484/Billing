@@ -25,6 +25,7 @@ Do not present TARGET V2 proposals, a UI affordance, a test file, or an empty CI
 | REST, callbacks, webhooks, media, error contracts | `utility-api` | API specification, integration, security, reading batches, UAT |
 | Staging, templates, mappings, import/retry controls | `utility-migration` | data migration, baseline, technical architecture |
 | Static/runtime/UAT evidence and release verdicts | `utility-release-gate` | index, baseline, ADR, UAT, go-live, traceability |
+| Odoo 16 ORM performance, OCA code quality, N+1, XML, sudo | `odoo-framework-best-practices` | skills/odoo-framework-best-practices/SKILL.md |
 
 ## Project and dependency invariants
 

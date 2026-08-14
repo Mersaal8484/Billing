@@ -1,0 +1,4 @@
+interface:
+  display_name: "Utility Operations"
+  short_description: "Review field operations workflows and UX"
+  default_prompt: "Use $utility-operations to review a Utility ERP operations workflow."
