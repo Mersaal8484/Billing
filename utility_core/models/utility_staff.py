@@ -367,8 +367,23 @@ class UtilityStaff(models.Model):
                 }
             }
 
+    @api.model
+    def _get_implied_group_closure(self, groups):
+        """Recursively compute all implied groups down the hierarchy without relying on unstandardized fields."""
+        if not groups:
+            return self.env['res.groups']
+        result = groups
+        pending = groups
+        while pending:
+            implied = pending.mapped('implied_ids') - result
+            if not implied:
+                break
+            result |= implied
+            pending = implied
+        return result
+
     def _sync_user_groups(self, old_users=None):
-        """Synchronize Utility role root groups to linked users cleanly respecting implied_ids."""
+        """Synchronize Utility role root groups to linked users cleanly respecting recursive implied_ids."""
         Role = self.env['utility.user.role']
         all_role_groups = Role.search([]).mapped('group_ids')
         if not all_role_groups:
@@ -382,14 +397,8 @@ class UtilityStaff(models.Model):
             staff_records = self.search([('user_id', '=', user.id), ('active', '=', True)])
             target_root_groups = staff_records.mapped('role_ids.group_ids')
 
-            # Calculate closure of all implied groups across target root groups
-            implied_closure = self.env['res.groups']
-            for g in target_root_groups:
-                implied_closure |= g
-                if hasattr(g, 'transitive_implied_ids') and g.transitive_implied_ids:
-                    implied_closure |= g.transitive_implied_ids
-                elif hasattr(g, 'implied_ids') and g.implied_ids:
-                    implied_closure |= g.implied_ids
+            # Calculate recursive closure of all groups implied by the target root groups
+            implied_closure = self._get_implied_group_closure(target_root_groups)
 
             # Revoke role root groups only if not in target root groups AND not implied by any target role
             groups_to_revoke = (all_role_groups - target_root_groups) - implied_closure
