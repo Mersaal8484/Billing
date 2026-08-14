@@ -199,12 +199,18 @@ class UtilityCustomer(models.Model):
             # against the acting user's organizational scope.
             # region_id and area_id are related-stored from partner_id, so we check
             # their resolved values post-create, not raw vals entries.
-            # Migration and admin contexts bypass this check.
+            #
+            # SECURITY: utility_scope_bypass is ONLY honored when the env is running
+            # as superuser (migration scripts) OR the user is a Utility Admin.
+            # It CANNOT be used as a Privilege Escalation vector via crafted RPC context.
+            _bypass_allowed = (
+                self.env.su
+                or self.env.user.has_group('utility_core.group_utility_admin')
+            )
             if not (
-                self.env.context.get('utility_scope_bypass')
+                (self.env.context.get('utility_scope_bypass') and _bypass_allowed)
                 or self.env.user._is_global_utility_scope()
             ):
-                # Use resolved stored values (already computed after super().create())
                 customer_region = customer.partner_id.region_id
                 customer_area = customer.partner_id.area_id
                 effective_branches = self.env.user._get_effective_branch_ids()
@@ -213,9 +219,13 @@ class UtilityCustomer(models.Model):
                     (customer_area and customer_area.id in effective_branches)
                     or (customer_region and customer_region.id in effective_regions)
                 )
-                if not in_scope and (customer_region or customer_area):
+                # FAIL-CLOSED: utility.customer is the organizational anchor.
+                # A restricted user MUST create customers with a resolvable region/branch.
+                # No geography = no scope = reject. This prevents 'unscoped' record creation.
+                if not in_scope:
                     raise AccessError(_(
-                        'لا يمكنك إنشاء حساب كهربائي خارج نطاقك التنظيمي المخصص.'
+                        'لا يمكنك إنشاء حساب كهربائي خارج نطاقك التنظيمي المخصص، أو بدون منطقة/فرع محدد. '
+                        'يجب أن يكون للشريك المحاسبي منطقة أو فرع ضمن نطاقك.'
                     ))
         return customers
 
@@ -282,10 +292,14 @@ class UtilityCustomer(models.Model):
                         ) % transformer.display_name)
                     transformer.sudo().write({'private_customer_id': customer.id})
         # Cross-scope mutation integrity on write:
-        # If route_id is being changed, validate the new route is consistent with
-        # the acting user's organizational scope. Route changes can shift effective scope.
+        # If route_id is being changed, validate the customer geography is in scope.
+        # SECURITY: bypass gated to superuser / Utility Admin only.
+        _bypass_allowed = (
+            self.env.su
+            or self.env.user.has_group('utility_core.group_utility_admin')
+        )
         if 'route_id' in vals and not (
-            self.env.context.get('utility_scope_bypass')
+            (self.env.context.get('utility_scope_bypass') and _bypass_allowed)
             or self.env.user._is_global_utility_scope()
         ):
             effective_branches = self.env.user._get_effective_branch_ids()
@@ -297,7 +311,8 @@ class UtilityCustomer(models.Model):
                     (customer_area and customer_area.id in effective_branches)
                     or (customer_region and customer_region.id in effective_regions)
                 )
-                if not in_scope and (customer_region or customer_area):
+                # FAIL-CLOSED: reject even when customer has no geography
+                if not in_scope:
                     raise AccessError(_(
                         'لا يمكنك تعديل خط سير لحساب خارج نطاقك التنظيمي المخصص.'
                     ))

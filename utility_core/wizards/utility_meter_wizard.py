@@ -34,10 +34,17 @@ class UtilityMeterSubscriberWizard(models.TransientModel):
         # Scope guard: verify the meter is within the acting user's organizational scope.
         # Prevents restricted users from creating customers via meters outside their region.
         self.env.user.check_record_scope(meter)
+        # Inherit geography from the meter's canonical location into the new partner.
+        # This ensures the resulting utility.customer has a resolvable region/area,
+        # satisfying the fail-closed scope check in utility.customer.create().
+        # For not_connected meters (visible only to global/admin users), meter.region_id
+        # and meter.area_id are False — the admin bypass in create() handles that case.
         partner = self.env['res.partner'].create({
             'name': self.partner_name,
             'mobile': self.mobile,
             'street': self.street or False,
+            'region_id': meter.region_id.id if meter.region_id else False,
+            'area_id': meter.area_id.id if meter.area_id else False,
         })
         vals = {
             'partner_id': partner.id,

@@ -300,10 +300,21 @@ class UtilityMeter(models.Model):
         and will not appear in vals directly. The real attack vector is changing the
         canonical owner (customer_id, linked_transformer_id, etc.) to an out-of-scope record.
 
-        This method inspects ownership-determining fields in vals and checks the
-        resolved geography of the target canonical owner.
+        SECURITY (P0): utility_scope_bypass is ONLY honored when env.su=True (superuser/migration)
+        or the acting user is a Utility Admin. It CANNOT be exploited via crafted RPC context.
+
+        SECURITY (P1): Fail-closed — if connection_type is subscriber/transformer/feeder/etc.
+        and the canonical owner exists but has no resolvable geography, REJECT.
+        Only 'not_connected' meters are exempt (no canonical owner by design).
         """
-        if self.env.context.get('utility_scope_bypass') or self.env.user._is_global_utility_scope():
+        _bypass_allowed = (
+            self.env.su
+            or self.env.user.has_group('utility_core.group_utility_admin')
+        )
+        if (
+            (self.env.context.get('utility_scope_bypass') and _bypass_allowed)
+            or self.env.user._is_global_utility_scope()
+        ):
             return
         effective_branches = self.env.user._get_effective_branch_ids()
         effective_regions = self.env.user._get_effective_region_ids()
@@ -314,9 +325,6 @@ class UtilityMeter(models.Model):
                 or (region and region.id in effective_regions)
             )
 
-        # Determine the canonical owner from connection_type in vals (or existing record)
-        # Ownership-shifting keys: customer_id, linked_transformer_id,
-        # linked_private_transformer_id, linked_feeder_id, connection_type
         ownership_keys = {
             'customer_id', 'linked_transformer_id',
             'linked_private_transformer_id', 'linked_feeder_id', 'connection_type',
@@ -324,17 +332,22 @@ class UtilityMeter(models.Model):
         if not ownership_keys.intersection(vals.keys()):
             return  # No ownership-changing field — skip
 
-        # For each record being mutated, resolve the target canonical owner geography
         for meter in self:
             ct = vals.get('connection_type', meter.connection_type)
+
+            if ct == 'not_connected':
+                continue  # No canonical owner — allowed explicitly
+
             region = False
             area = False
+            owner_found = False
 
             if ct == 'subscriber':
                 cust_id = vals.get('customer_id', meter.customer_id.id if meter.customer_id else False)
                 if cust_id:
                     cust = self.env['utility.customer'].sudo().browse(cust_id).exists()
                     if cust:
+                        owner_found = True
                         region = cust.partner_id.region_id
                         area = cust.partner_id.area_id
             elif ct in ('transformer', 'private_transformer'):
@@ -343,6 +356,7 @@ class UtilityMeter(models.Model):
                 if t_id:
                     transformer = self.env['utility.transformer'].sudo().browse(t_id).exists()
                     if transformer:
+                        owner_found = True
                         region = transformer.region_id
                         area = transformer.area_id
             elif ct == 'feeder':
@@ -350,12 +364,16 @@ class UtilityMeter(models.Model):
                 if f_id:
                     feeder = self.env['utility.feeder'].sudo().browse(f_id).exists()
                     if feeder:
+                        owner_found = True
                         region = feeder.region_id
                         area = feeder.area_id
 
-            if (region or area) and not _in_scope(region, area):
+            # FAIL-CLOSED: if canonical owner found but has no geography, reject.
+            # If no canonical owner specified (no id in vals), skip — owner not being changed.
+            if owner_found and not _in_scope(region, area):
                 raise AccessError(_(
-                    'لا يمكنك ربط عداد بعنصر (عميل أو محول أو فيدر) خارج نطاقك التنظيمي المخصص.'
+                    'لا يمكنك ربط عداد بعنصر (عميل أو محول أو فيدر) خارج نطاقك التنظيمي المخصص، '
+                    'أو بدون منطقة/فرع محددة على العنصر المستهدف.'
                 ))
 
     @api.model_create_multi
@@ -366,8 +384,13 @@ class UtilityMeter(models.Model):
             if vals.get('meter_number', _('جديد')) == _('جديد'):
                 vals['meter_number'] = self.env['ir.sequence'].next_by_code('utility.meter') or _('جديد')
         # Validate canonical ownership scope before creating meters.
+        # SECURITY: bypass gated to superuser / Utility Admin only.
+        _bypass_allowed = (
+            self.env.su
+            or self.env.user.has_group('utility_core.group_utility_admin')
+        )
         if not (
-            self.env.context.get('utility_scope_bypass')
+            (self.env.context.get('utility_scope_bypass') and _bypass_allowed)
             or self.env.user._is_global_utility_scope()
         ):
             for vals in vals_list:
@@ -378,8 +401,19 @@ class UtilityMeter(models.Model):
     def _check_create_scope_vals(self, vals):
         """Scope check for meter creation (no existing record yet).
         Resolves canonical geography from vals and validates against user scope.
+
+        SECURITY (P0): bypass gated to env.su or Utility Admin.
+        SECURITY (P1): Fail-closed — if canonical owner has no geography, reject.
+        Only 'not_connected' meters are exempt.
         """
-        if self.env.context.get('utility_scope_bypass') or self.env.user._is_global_utility_scope():
+        _bypass_allowed = (
+            self.env.su
+            or self.env.user.has_group('utility_core.group_utility_admin')
+        )
+        if (
+            (self.env.context.get('utility_scope_bypass') and _bypass_allowed)
+            or self.env.user._is_global_utility_scope()
+        ):
             return
         effective_branches = self.env.user._get_effective_branch_ids()
         effective_regions = self.env.user._get_effective_region_ids()
@@ -391,14 +425,20 @@ class UtilityMeter(models.Model):
             )
 
         ct = vals.get('connection_type', 'not_connected')
+
+        if ct == 'not_connected':
+            return  # No canonical owner — allowed explicitly
+
         region = False
         area = False
+        owner_found = False
 
         if ct == 'subscriber':
             cust_id = vals.get('customer_id')
             if cust_id:
                 cust = self.env['utility.customer'].sudo().browse(cust_id).exists()
                 if cust:
+                    owner_found = True
                     region = cust.partner_id.region_id
                     area = cust.partner_id.area_id
         elif ct in ('transformer', 'private_transformer'):
@@ -407,6 +447,7 @@ class UtilityMeter(models.Model):
             if t_id:
                 transformer = self.env['utility.transformer'].sudo().browse(t_id).exists()
                 if transformer:
+                    owner_found = True
                     region = transformer.region_id
                     area = transformer.area_id
         elif ct == 'feeder':
@@ -414,12 +455,15 @@ class UtilityMeter(models.Model):
             if f_id:
                 feeder = self.env['utility.feeder'].sudo().browse(f_id).exists()
                 if feeder:
+                    owner_found = True
                     region = feeder.region_id
                     area = feeder.area_id
 
-        if (region or area) and not _in_scope(region, area):
+        # FAIL-CLOSED: owner found but geography unresolvable or out of scope = reject
+        if owner_found and not _in_scope(region, area):
             raise AccessError(_(
-                'لا يمكنك إنشاء عداد مرتبط بعنصر (عميل أو محول أو فيدر) خارج نطاقك التنظيمي المخصص.'
+                'لا يمكنك إنشاء عداد مرتبط بعنصر (عميل أو محول أو فيدر) '
+                'خارج نطاقك التنظيمي المخصص، أو بدون منطقة/فرع محددة على العنصر المستهدف.'
             ))
 
     @api.model

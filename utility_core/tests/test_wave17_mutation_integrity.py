@@ -1,15 +1,19 @@
-"""
-Wave 17 — Canonical Mutation Integrity Tests
+﻿"""
+Wave 17 (+1) — Canonical Mutation Integrity Tests
 
 Verifies that restricted organizational users cannot create or write
 utility.customer / utility.meter records whose resolved canonical
 geography falls outside their assigned scope.
 
-Key design decisions (per P1 corrections):
-- utility.customer.region_id/area_id are related-stored from partner_id,
-  so we check post-create resolved geography, not raw vals keys.
-- utility.meter.region_id/area_id are computed-stored from _compute_location_fields;
-  we check canonical ownership fields (customer_id, linked_transformer_id, etc.).
+Key design decisions:
+- utility.customer.region_id/area_id are related-stored from partner_id.
+  Scope check is post-create on resolved partner_id.region_id/area_id.
+- utility.meter.region_id/area_id are computed-stored from _compute_location_fields.
+  Scope check validates canonical ownership fields per connection_type.
+- utility_scope_bypass context is gated to env.su OR group_utility_admin ONLY.
+  A restricted user passing it via RPC will NOT get the bypass (P0 fix).
+- Fail-closed: restricted user creating utility.customer with NO geography = rejected.
+- Fail-closed: meter with non-'not_connected' type and unresolved owner geography = rejected.
 """
 from odoo.exceptions import AccessError
 from odoo.tests.common import TransactionCase
@@ -42,12 +46,12 @@ class TestWave17MutationIntegrity(TransactionCase):
         subs = cls.env['utility.subscriber'].search([], limit=1)
         cls.subscriber = subs if subs else cls.env['utility.subscriber'].create({'name': 'W17MI Sub', 'category_id': cls.category.id})
 
+        # Admin (superuser-context) creates baseline customers to avoid scope blocking
         cls.customer_a = cls.env['utility.customer'].with_context(utility_scope_bypass=True).create({
             'partner_id': cls.partner_a.id,
             'category_id': cls.category.id,
             'subscriber_id': cls.subscriber.id,
         })
-
         partner_b_cust = Partner.create({'name': 'W17MI Partner B Cust', 'region_id': cls.region_b.id, 'area_id': cls.branch_b.id})
         cls.customer_b = cls.env['utility.customer'].with_context(utility_scope_bypass=True).create({
             'partner_id': partner_b_cust.id,
@@ -58,6 +62,7 @@ class TestWave17MutationIntegrity(TransactionCase):
         cls.route_a = cls.env['utility.route'].create({'name': 'W17MI Route A', 'code': 'W17MI-RTA', 'region_id': cls.region_a.id, 'area_id': cls.branch_a.id})
         cls.route_b = cls.env['utility.route'].create({'name': 'W17MI Route B', 'code': 'W17MI-RTB', 'region_id': cls.region_b.id, 'area_id': cls.branch_b.id})
 
+        # Restricted user: Region A only
         cls.user_a = cls.env['res.users'].create({
             'name': 'W17MI User Region A',
             'login': 'w17mi_user_a@test.local',
@@ -66,8 +71,15 @@ class TestWave17MutationIntegrity(TransactionCase):
             'assigned_region_ids': [(4, cls.region_a.id)],
         })
 
+    # -----------------------------------------------------------------------
+    # 1. utility.customer CREATE cross-scope — rejected
+    # -----------------------------------------------------------------------
+
     def test_01_customer_create_foreign_region_rejected(self):
-        partner_b_new = self.env['res.partner'].create({'name': 'W17MI New B', 'region_id': self.region_b.id, 'area_id': self.branch_b.id})
+        """Restricted Region A user cannot create a customer in Region B."""
+        partner_b_new = self.env['res.partner'].create({
+            'name': 'W17MI New B', 'region_id': self.region_b.id, 'area_id': self.branch_b.id,
+        })
         with self.assertRaises(AccessError):
             self.env['utility.customer'].with_user(self.user_a).create({
                 'partner_id': partner_b_new.id,
@@ -76,7 +88,10 @@ class TestWave17MutationIntegrity(TransactionCase):
             })
 
     def test_02_customer_create_own_region_allowed(self):
-        partner_a_new = self.env['res.partner'].create({'name': 'W17MI New A', 'region_id': self.region_a.id, 'area_id': self.branch_a.id})
+        """Restricted Region A user CAN create a customer in Region A."""
+        partner_a_new = self.env['res.partner'].create({
+            'name': 'W17MI New A', 'region_id': self.region_a.id, 'area_id': self.branch_a.id,
+        })
         cust = self.env['utility.customer'].with_user(self.user_a).create({
             'partner_id': partner_a_new.id,
             'category_id': self.category.id,
@@ -84,24 +99,42 @@ class TestWave17MutationIntegrity(TransactionCase):
         })
         self.assertTrue(cust.id)
 
-    def test_03_customer_create_no_geography_allowed(self):
+    # -----------------------------------------------------------------------
+    # 2. utility.customer CREATE with NO geography — FAIL-CLOSED (P1 fix)
+    # -----------------------------------------------------------------------
+
+    def test_03_customer_create_no_geography_fail_closed(self):
+        """FAIL-CLOSED: restricted user creating utility.customer whose partner has
+        no region/area is REJECTED. utility.customer is the organizational anchor —
+        unscoped customers are forbidden for restricted users."""
         partner_no_geo = self.env['res.partner'].create({'name': 'W17MI No Geo'})
-        cust = self.env['utility.customer'].with_user(self.user_a).create({
-            'partner_id': partner_no_geo.id,
-            'category_id': self.category.id,
-            'subscriber_id': self.subscriber.id,
-        })
-        self.assertTrue(cust.id)
+        with self.assertRaises(AccessError, msg="Expected AccessError for customer with no geography"):
+            self.env['utility.customer'].with_user(self.user_a).create({
+                'partner_id': partner_no_geo.id,
+                'category_id': self.category.id,
+                'subscriber_id': self.subscriber.id,
+            })
+
+    # -----------------------------------------------------------------------
+    # 3. utility.customer WRITE cross-scope
+    # -----------------------------------------------------------------------
 
     def test_04_customer_write_foreign_route_rejected(self):
+        """Restricted Region A user cannot assign Route B to a customer."""
         with self.assertRaises(AccessError):
             self.customer_a.with_user(self.user_a).write({'route_id': self.route_b.id})
 
     def test_05_customer_write_own_route_allowed(self):
+        """Restricted Region A user CAN assign Route A to their customer."""
         self.customer_a.with_user(self.user_a).write({'route_id': self.route_a.id})
         self.assertEqual(self.customer_a.route_id, self.route_a)
 
+    # -----------------------------------------------------------------------
+    # 4. utility.meter CREATE with foreign canonical owner
+    # -----------------------------------------------------------------------
+
     def test_06_meter_create_subscriber_foreign_customer_rejected(self):
+        """Restricted Region A user cannot create a meter linked to customer_b (Region B)."""
         with self.assertRaises(AccessError):
             self.env['utility.meter'].with_user(self.user_a).create({
                 'meter_number': 'W17MI-MTR-FAIL',
@@ -111,6 +144,7 @@ class TestWave17MutationIntegrity(TransactionCase):
             })
 
     def test_07_meter_create_subscriber_own_customer_allowed(self):
+        """Restricted Region A user CAN create a meter linked to customer_a (Region A)."""
         meter = self.env['utility.meter'].with_user(self.user_a).create({
             'meter_number': 'W17MI-MTR-OK',
             'connection_type': 'subscriber',
@@ -120,6 +154,7 @@ class TestWave17MutationIntegrity(TransactionCase):
         self.assertTrue(meter.id)
 
     def test_08_meter_create_not_connected_allowed(self):
+        """Restricted user can create a not_connected meter (no canonical owner)."""
         meter = self.env['utility.meter'].with_user(self.user_a).create({
             'meter_number': 'W17MI-MTR-NC',
             'connection_type': 'not_connected',
@@ -127,7 +162,12 @@ class TestWave17MutationIntegrity(TransactionCase):
         })
         self.assertTrue(meter.id)
 
+    # -----------------------------------------------------------------------
+    # 5. utility.meter WRITE — reassign to foreign canonical owner
+    # -----------------------------------------------------------------------
+
     def test_09_meter_write_reassign_foreign_customer_rejected(self):
+        """Restricted Region A user cannot reassign allowed meter to customer_b (Region B)."""
         meter = self.env['utility.meter'].with_context(utility_scope_bypass=True).create({
             'meter_number': 'W17MI-MTR-REASN',
             'connection_type': 'subscriber',
@@ -137,10 +177,36 @@ class TestWave17MutationIntegrity(TransactionCase):
         with self.assertRaises(AccessError):
             meter.with_user(self.user_a).write({'customer_id': self.customer_b.id})
 
-    def test_10_scope_bypass_allows_cross_scope_create(self):
-        partner_mig = self.env['res.partner'].create({'name': 'W17MI Mig B', 'region_id': self.region_b.id, 'area_id': self.branch_b.id})
-        cust = self.env['utility.customer'].with_user(self.user_a).with_context(utility_scope_bypass=True).create({
-            'partner_id': partner_mig.id,
+    # -----------------------------------------------------------------------
+    # 6. P0 Fix: utility_scope_bypass is NOT a privilege escalation vector
+    # -----------------------------------------------------------------------
+
+    def test_10_non_admin_scope_bypass_context_rejected(self):
+        """P0: A non-admin restricted user passing utility_scope_bypass=True via
+        context (simulating crafted RPC) must NOT get the bypass.
+        This confirms the vulnerability is closed."""
+        partner_b_new = self.env['res.partner'].create({
+            'name': 'W17MI P0 Test B', 'region_id': self.region_b.id, 'area_id': self.branch_b.id,
+        })
+        with self.assertRaises(AccessError,
+                               msg="Non-admin restricted user must NOT benefit from utility_scope_bypass"):
+            self.env['utility.customer'].with_user(self.user_a).with_context(
+                utility_scope_bypass=True  # Simulates crafted RPC context injection
+            ).create({
+                'partner_id': partner_b_new.id,
+                'category_id': self.category.id,
+                'subscriber_id': self.subscriber.id,
+            })
+
+    def test_11_admin_scope_bypass_context_allowed(self):
+        """Admin-context bypass (env.su or group_utility_admin) remains available
+        for legitimate migration/admin operations."""
+        partner_b_admin = self.env['res.partner'].create({
+            'name': 'W17MI Admin Bypass B', 'region_id': self.region_b.id, 'area_id': self.branch_b.id,
+        })
+        # env is admin (running as ORM admin in test) — bypass allowed
+        cust = self.env['utility.customer'].with_context(utility_scope_bypass=True).create({
+            'partner_id': partner_b_admin.id,
             'category_id': self.category.id,
             'subscriber_id': self.subscriber.id,
         })
