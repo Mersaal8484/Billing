@@ -20,6 +20,7 @@ Apply this skill to security changes or reviews. Read the current implementation
 
 - Role-based access comes first; geographic data scope is a separate layer.
 - In `utility.region`, `type='region'` is Region, `type='area'` is the organizational Branch, and `type='zone'` is a lower zone. Do not invent a separate branch model or a security group per geography.
+- Effective access is `Role Permissions ∩ Company Scope ∩ Organizational Scope`.
 - A user with an empty restricted assignment must not receive unrestricted access by accident.
 - UI visibility is usability only; ACLs, record rules, and server-side checks are the boundary.
 - Do not use broad accounting record rules that break invoice, payment, or reconciliation usability.

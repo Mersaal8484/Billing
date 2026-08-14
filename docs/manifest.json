@@ -2,6 +2,7 @@
   "documentation_version": "2.1",
   "repository": "AbdulrhmanBashammmakh/utility_erp",
   "branch": "development",
+  "documentation_root": "docs",
   "implementation_sha": "51e8dba5c47ed8ff9d1485b519e1b1586cb30522",
   "architecture_baseline_sha": "13df4c5263abe2e211fc12dc0c3c62f86e87a048",
   "updated_date": "2026-08-14",

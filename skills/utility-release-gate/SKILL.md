@@ -18,8 +18,9 @@ Apply this skill to release reviews and evidence reports. Separate verified fact
 
 ## Gate discipline
 
-- Static inspection, runtime tests, CI status, and UAT are separate evidence classes.
+- Keep four evidence classes separate: Static Evidence, Runtime Evidence, UAT Evidence, and Load/Profiling Evidence. CI status is reported alongside them, not substituted for them.
 - Do not claim a gate passes from a test file, a UI button, or an empty CI status alone.
+- Treat `statuses: []` as missing runtime/CI proof, never as passing evidence.
 - Classify findings as P0, P1, P2, or P3 with a precise scope and evidence path.
 - Treat performance findings such as N+1 as debt until profiling establishes production impact.
 - Keep release blockers separate from optional cleanup and architecture proposals.

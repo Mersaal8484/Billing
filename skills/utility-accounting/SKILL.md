@@ -23,6 +23,7 @@ Apply this skill to any change that creates, links, posts, allocates, reverses, 
 - Payment allocation must target explicit bills or invoices and must not silently apply partner-wide.
 - Write-offs need guarded lifecycle transitions, exactly-once financial artifacts, permanent links, and safe re-open rules.
 - Posted accounting documents are not ordinary editable business records; use controlled reversal or settlement flows.
+- Analyze the impact on `account.move`, `account.payment`, allocation, and write-off before any geographic Record Rule is introduced; naive restrictions can break standard accounting workflows.
 
 ## Workflow
 
