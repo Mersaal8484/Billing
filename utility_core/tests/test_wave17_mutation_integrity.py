@@ -1,4 +1,4 @@
-﻿"""
+"""
 Wave 17 (+1) — Canonical Mutation Integrity Tests
 
 Verifies that restricted organizational users cannot create or write
@@ -15,7 +15,7 @@ Key design decisions:
 - Fail-closed: restricted user creating utility.customer with NO geography = rejected.
 - Fail-closed: meter with non-'not_connected' type and unresolved owner geography = rejected.
 """
-from odoo.exceptions import AccessError
+from odoo.exceptions import AccessError, ValidationError
 from odoo.tests.common import TransactionCase
 
 
@@ -211,3 +211,31 @@ class TestWave17MutationIntegrity(TransactionCase):
             'subscriber_id': self.subscriber.id,
         })
         self.assertTrue(cust.id)
+
+    # -----------------------------------------------------------------------
+    # 7. Connected meters REQUIRE canonical owner (P1 fix)
+    # -----------------------------------------------------------------------
+
+    def test_12_meter_create_connected_without_owner_rejected(self):
+        """Creating a connected meter (subscriber, transformer, etc.) without specifying
+        the canonical owner record raises ValidationError."""
+        with self.assertRaises(ValidationError):
+            self.env['utility.meter'].with_user(self.user_a).create({
+                'meter_number': 'W17MI-MTR-NO-OWNER',
+                'connection_type': 'subscriber',
+                'payment_type': 'postpaid',
+            })
+
+    def test_13_meter_write_connected_without_owner_rejected(self):
+        """Converting a not_connected meter to subscriber without providing customer_id
+        raises ValidationError."""
+        meter = self.env['utility.meter'].with_user(self.user_a).create({
+            'meter_number': 'W17MI-MTR-TO-SUB',
+            'connection_type': 'not_connected',
+            'payment_type': 'manual',
+        })
+        with self.assertRaises(ValidationError):
+            meter.with_user(self.user_a).write({
+                'connection_type': 'subscriber',
+            })
+

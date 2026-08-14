@@ -368,9 +368,12 @@ class UtilityMeter(models.Model):
                         region = feeder.region_id
                         area = feeder.area_id
 
-            # FAIL-CLOSED: if canonical owner found but has no geography, reject.
-            # If no canonical owner specified (no id in vals), skip — owner not being changed.
-            if owner_found and not _in_scope(region, area):
+            # FAIL-CLOSED: if connected meter has no canonical owner, or owner geography is unresolvable or out of scope = reject
+            if not owner_found:
+                raise ValidationError(_(
+                    'يجب تحديد العنصر المرتبط (مشترك، محول، فيدر) المطابق لنوع الاتصال المحدد للعداد.'
+                ))
+            if not _in_scope(region, area):
                 raise AccessError(_(
                     'لا يمكنك ربط عداد بعنصر (عميل أو محول أو فيدر) خارج نطاقك التنظيمي المخصص، '
                     'أو بدون منطقة/فرع محددة على العنصر المستهدف.'
@@ -403,7 +406,7 @@ class UtilityMeter(models.Model):
         Resolves canonical geography from vals and validates against user scope.
 
         SECURITY (P0): bypass gated to env.su or Utility Admin.
-        SECURITY (P1): Fail-closed — if canonical owner has no geography, reject.
+        SECURITY (P1): Fail-closed — if canonical owner is missing or has no geography, reject.
         Only 'not_connected' meters are exempt.
         """
         _bypass_allowed = (
@@ -459,8 +462,12 @@ class UtilityMeter(models.Model):
                     region = feeder.region_id
                     area = feeder.area_id
 
-        # FAIL-CLOSED: owner found but geography unresolvable or out of scope = reject
-        if owner_found and not _in_scope(region, area):
+        # FAIL-CLOSED: if connected meter has no canonical owner, or owner geography is unresolvable or out of scope = reject
+        if not owner_found:
+            raise ValidationError(_(
+                'يجب تحديد العنصر المرتبط (مشترك، محول، فيدر) عند إنشاء عداد متصل.'
+            ))
+        if not _in_scope(region, area):
             raise AccessError(_(
                 'لا يمكنك إنشاء عداد مرتبط بعنصر (عميل أو محول أو فيدر) '
                 'خارج نطاقك التنظيمي المخصص، أو بدون منطقة/فرع محددة على العنصر المستهدف.'
