@@ -3,16 +3,60 @@
 ### Domain + Application + Data + Integration + Scale + Production Architecture
 
 **Document Type:** Master Target Architecture / Production Architecture
-**Platform:** Odoo 16 Community  
-**Baseline Repository:** `AbdulrhmanBashammmakh/utility_erp`  
-**Architecture Baseline Commit Reviewed:** `13df4c5263abe2e211fc12dc0c3c62f86e87a048`  
-**Architecture Status:** Target Architecture / Production-Hardening / Million-Subscriber Scale
-**Version:** 2.0
-**Date:** 2026-08-09
+**Platform:** Odoo 16 Community
+**Baseline Repository:** `AbdulrhmanBashammmakh/utility_erp`
+**Architecture Baseline SHA:** `13df4c5263abe2e211fc12dc0c3c62f86e87a048`
+**Last Verified Implementation SHA:** `51e8dba5c47ed8ff9d1485b519e1b1586cb30522`
+**Architecture Status:** Current V1 + Target V2 Architecture
+**Version:** 2.1
+**Last Verified Date:** 2026-08-14
 
-**Architecture Precedence:** هذه الوثيقة **تحل محل V1 عند أي تعارض**.  
-**Source Synthesis:** تم دمج المعمارية الوظيفية والتقنية السابقة مع مراجعة السعة والتنفيذ الخاصة بهدف يصل إلى **1,000,000 مشترك**.  
+**Architecture Precedence:** هذه الوثيقة تحفظ قرارات Target V2، لكنها لا تلغي دليل التنفيذ الحالي أو قرارًا معماريًا أحدث مقبولًا.
+**Source Synthesis:** تم دمج المعمارية الوظيفية والتقنية السابقة مع مراجعة السعة والتنفيذ الخاصة بهدف يصل إلى **1,000,000 مشترك**.
 **Current Runtime vs Target Runtime:** يجب التمييز بين ما يعمل حاليًا داخل Odoo وما هو Target Production Architecture؛ وجود Target مستقبلي لا يفرض إدخال بنيته التحتية قبل اجتياز Gates التنفيذية.
+
+---
+
+## Current Implementation Baseline
+
+**Repository:** `AbdulrhmanBashammmakh/utility_erp`
+**Branch:** `development`
+**Implementation SHA:** `51e8dba5c47ed8ff9d1485b519e1b1586cb30522`
+**Documentation Version:** `2.1`
+**Documentation Status:** Current V1 + Target V2
+
+**Architecture baseline:** القرارات المعمارية الأصلية المثبتة في وثائق V2، ومرجعها التاريخي منفصل في `Architecture Baseline SHA`.
+**Implementation baseline:** كود فرع `development` عند `Implementation SHA` أعلاه. أي hardening لاحق لا يُفترض أنه غائب بسبب SHA قديم في وثائق سابقة.
+
+### Mandatory classification
+
+- **CURRENT V1:** سلسلة التشغيل الحالية هي `date_range → utility_core → utility_inventory → utility_operations → utility_billing`. Odoo/PostgreSQL، `account.move`، وStandard Odoo Stock هي مصادر الحقيقة الحالية. `utility_prepaid` خارج V1.
+- **TARGET V2:** PgBouncer، التوسع الأفقي، backend وسائط قابل للتوسع، partition planning، micro-batch billing على نطاق كبير، وHybrid/Temporal orchestration عند الحاجة.
+- **DEFERRED:** runtime/CI proof، load benchmarking، rollout فعلي للتقسيم، وتحسين `stock.quant` N+1 حتى يثبت profiling أثرًا إنتاجيًا.
+- **OUT OF SCOPE:** إدخال customer wallet أو دفتر مالي/مخزون موازٍ، وضم `utility_prepaid` إلى Release V1.
+
+### Current V1 workflow corrections
+
+- `utility.reading` محفوظ بحالات `draft → under_review → approved → queued → billed` مع `error` كحالة فعلية؛ لا يوجد `billing_state` منفصل كتنفيذ حالي.
+- Core يملك operational reading truth، وBilling يرث `utility.reading` ويملك الحقول والسلوك التجاري: `is_billable`, `billing_anchor_id`, `billing_component_ids`, `included_sale_order_id`, `carried_consumption`, `billing_consumption`, `billing_error`.
+- Reading Batch الحالي يستخدم `uploaded → processing → done / partial / error` مع Cron bounded processing و`FOR UPDATE NOWAIT` وSQLSTATE `55P03` handling، ويعرض `image_count`, `progress_percent`, active/attention filters.
+- Bill هو تمثيل تجاري لـ`sale.order`، بينما Accounting Invoice هو `account.move`؛ توجد smart navigation من Bill إلى الفواتير المحاسبية والدفعات.
+- Write-off الحالي هو `draft → approved → applied`، وله invariant: **One write-off → at most one generated Credit Note**.
+- Security CURRENT V1 يثبت Role-Based groups، `assigned_region_ids`/`assigned_route_ids`، وشركة كحد أعلى مع قواعد Region/Route محددة؛ أما unified `GLOBAL/RESTRICTED` Region/Branch isolation الشامل فهو **TARGET V1 SECURITY HARDENING**.
+
+### Current V1 operational diagrams
+
+```text
+Reading → Bill (sale.order) → Accounting Invoice (account.move)
+                           → Payment (account.payment)
+                           → Allocation/Reconciliation → Settlement
+
+Physical stock/serial → installation → operational meter → replacement/removal
+
+Upload → Confirm → Processing → Done / Partial / Error
+```
+
+The current operational lifecycles are also explicit: Installation `draft → installed → verified` with failure paths; Work Order `draft → assigned → in_progress → completed → verified` with terminal cancellation; Inspection `scheduled → completed/cancelled`; Alarm `open → acknowledged → investigating → resolved/dismissed`.
 
 ---
 
@@ -752,11 +796,20 @@ Due Date
 
 # 22. Financial Corrections
 
-Writeoff / Financial Settlement / Penalty Waiver / other adjustments تتبع:
+بالنسبة للـgeneric correction documents غير المرتبطة مباشرة بنموذج `utility.writeoff`، يمكن أن يكون المسار المستهدف:
 
 ```text
 Draft → Review → Approve → Post → Reverse if required
 ```
+
+أما **CURRENT V1 `utility.writeoff`** فله lifecycle مختلف ومحدد:
+
+```text
+draft → approved → applied → Credit Note
+           └──────→ draft    (قبل إنشاء الأثر المالي فقط)
+```
+
+بعد `applied` يمنع `draft` و`approved` وإعادة التطبيق. يحافظ `FOR UPDATE` و`move_id` المرتبط على invariant: **One write-off → at most one generated Credit Note**.
 
 ويحفظ كل مستند:
 
@@ -2379,38 +2432,38 @@ Can the original historical state be reconstructed?
 
 ## ADR-001 — Odoo Remains the System of Record
 
-**Decision:** Odoo/PostgreSQL يحتفظان بالحقيقة التشغيلية والمالية.  
+**Decision:** Odoo/PostgreSQL يحتفظان بالحقيقة التشغيلية والمالية.
 **Reason:** منع انتشار Consistency عبر خدمات عديدة دون حاجة.
 
 ## ADR-002 — Hybrid Workflow Rather Than Temporal Everywhere
 
-**Decision:** Temporal scoped to long-running operations and batch orchestration.  
-**Not Used For:** one invoice, one notification, trivial synchronous transaction.  
+**Decision:** Temporal scoped to long-running operations and batch orchestration.
+**Not Used For:** one invoice, one notification, trivial synchronous transaction.
 **Reason:** Durability حيث تستحقها دون Operational Complexity لكل عملية صغيرة.
 
 ## ADR-003 — Externalized Media Storage
 
-**Decision:** `utility.media.asset` يحتفظ Metadata/identity بينما Target binary payload في Organized Filesystem خارج Odoo، مع NGINX delivery.  
+**Decision:** `utility.media.asset` يحتفظ Metadata/identity بينما Target binary payload في Organized Filesystem خارج Odoo، مع NGINX delivery.
 **Compatibility:** Attachment Adapter يبقى أثناء الانتقال.
 
 ## ADR-004 — Persistent Reading Staging
 
-**Decision:** Batch lines persistent and crash-safe.  
+**Decision:** Batch lines persistent and crash-safe.
 **Reason:** Retry, audit, partial failure, progress visibility.
 
 ## ADR-005 — Explicit Payment Allocation
 
-**Decision:** Payment reconciles only explicitly selected Utility invoice receivable lines.  
+**Decision:** Payment reconciles only explicitly selected Utility invoice receivable lines.
 **Rejected:** partner-wide automatic reconciliation.
 
 ## ADR-006 — Immutable Billing Evidence
 
-**Decision:** billed readings/components/accounting documents لا تعدل destructive.  
+**Decision:** billed readings/components/accounting documents لا تعدل destructive.
 **Correction:** Credit/Debit/Settlement/Reversal documents.
 
 ## ADR-007 — Partition Before Scale Pain
 
-**Decision:** design reading/batch partitioning before 60M+ row lifecycle.  
+**Decision:** design reading/batch partitioning before 60M+ row lifecycle.
 **Reason:** operational maintenance and predictable query/index behavior.
 
 ## ADR-008 — PgBouncer in Scale Topology
@@ -2423,7 +2476,7 @@ Can the original historical state be reconstructed?
 
 ## ADR-010 — Micro-Batch Billing
 
-**Decision:** million-account run splits into independent deterministic transactions.  
+**Decision:** million-account run splits into independent deterministic transactions.
 **Rejected:** one giant monthly transaction.
 
 ---

@@ -1,12 +1,12 @@
 # INTEGRATION ARCHITECTURE
 
-**Platform:** Odoo 16 Community  
-**Architecture Baseline:** `UTILITY_ERP_MASTER_ARCHITECTURE_V2.md`  
-**Repository Baseline Commit:** `13df4c5263abe2e211fc12dc0c3c62f86e87a048`  
-**Target Scale:** Up to 1,000,000 subscribers (capacity-planning baseline)  
-**Architecture Version:** 2.0  
-**Date:** 2026-08-09  
-**Status:** Target / Production-Hardening  
+**Platform:** Odoo 16 Community
+**Architecture Baseline:** `UTILITY_ERP_MASTER_ARCHITECTURE_V2.md`
+**Last Verified Implementation SHA:** `51e8dba5c47ed8ff9d1485b519e1b1586cb30522`
+**Target Scale:** Up to 1,000,000 subscribers (capacity-planning baseline)
+**Documentation Version:** 2.1
+**Last Verified Date:** 2026-08-14
+**Status:** Current V1 + Target V2
 
 **Document Type:** External Integration, Outbox & Workflow Specification
 
@@ -199,3 +199,13 @@ Per provider:
 - secret masked.
 - notification failure after successful payment does not rollback payment.
 - Temporal outage does not corrupt Odoo state.
+
+## V2.1 Current Implementation Synchronization
+
+**CURRENT V1:** Payment gateway callbacks resolve the transaction, authenticate the callback before locking, use constant-time token comparison where applicable, then lock the transaction/invoice/order as needed. Only pending transactions may transition. Payloads are sanitized, provider references are required for successful settlement where applicable, and repeated successful callbacks are idempotent.
+
+**DEFERRED:** runtime callback race proof and full external-provider certification are separate runtime activities; static controls and regression test files must not be reported as production proof.
+
+## Organizational Scope for Integrations
+
+External/API integrations must preserve the same two-axis model: functional role plus company/organizational scope. Current portal/customer ownership checks are narrower than a complete Region/Branch scope implementation. Any future `sudo()` integration path must resolve scope before processing identifiers, and integration reports/aggregates must not leak unauthorized region totals.

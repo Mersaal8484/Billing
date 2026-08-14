@@ -1,12 +1,12 @@
 # API SPECIFICATION
 
-**Platform:** Odoo 16 Community  
-**Architecture Baseline:** `UTILITY_ERP_MASTER_ARCHITECTURE_V2.md`  
-**Repository Baseline Commit:** `13df4c5263abe2e211fc12dc0c3c62f86e87a048`  
-**Target Scale:** Up to 1,000,000 subscribers (capacity-planning baseline)  
-**Architecture Version:** 2.0  
-**Date:** 2026-08-09  
-**Status:** Target / Production-Hardening  
+**Platform:** Odoo 16 Community
+**Architecture Baseline:** `UTILITY_ERP_MASTER_ARCHITECTURE_V2.md`
+**Last Verified Implementation SHA:** `51e8dba5c47ed8ff9d1485b519e1b1586cb30522`
+**Target Scale:** Up to 1,000,000 subscribers (capacity-planning baseline)
+**Documentation Version:** 2.1
+**Last Verified Date:** 2026-08-14
+**Status:** Current V1 + Target V2
 
 **Document Type:** External & Internal API Contract
 
@@ -267,3 +267,25 @@ Never log full secrets or sensitive payload unnecessarily.
 - invalid media.
 - closed period reading.
 - concurrent payment intent confirmation.
+
+## V2.1 Current API Contract
+
+**CURRENT V1 verified scope:** updated Billing and Reader endpoints use:
+
+```json
+{"success": false, "code": "VALIDATION_ERROR", "error": "..."}
+```
+
+Verified stable codes include `VALIDATION_ERROR`, `CUSTOMER_NOT_FOUND`, `ORDER_NOT_FOUND`, `INVALID_LIMIT`, `INVALID_INVOICE`, `INVOICE_REQUIRED`, `AMOUNT_EXCEEDS_RESIDUAL`, `BILL_NOT_PAYABLE`, `PAYMENT_PROVIDER_UNAVAILABLE`, `PAYMENT_DIRECTION_UNSUPPORTED`, `TRANSACTION_NOT_FOUND`, `AUTHENTICATION_REQUIRED`, `INVALID_TOKEN`, `INVALID_TRANSACTION_STATE`, `PAYMENT_FAILED`, `BATCH_NOT_FOUND`, `BATCH_NOT_EDITABLE`, `INVALID_BASE64`, `IMAGE_TOO_LARGE`, and `BUSINESS_RULE_ERROR`. This is not an unverified claim that every repository endpoint has identical payloads.
+
+Reader confirmation translates expected `AccessError`, `UserError`, and `ValidationError` into deterministic business errors. `IntegrityError`, `OperationalError`, unexpected database exceptions, and programming failures are not the desired generic business response.
+
+Gateway callback order is authentication/token verification, constant-time comparison where applicable, then `FOR UPDATE`; only pending transactions transition. Successful callbacks require a provider reference where applicable and are idempotent, producing one `account.payment`.
+
+## Organizational Scope and API Isolation
+
+**CURRENT V1:** authenticated customer ownership and selected company/region checks are implemented for the verified endpoint scope. Internal account resolution still follows the current Odoo environment/rules; the repository does not yet prove a unified user `GLOBAL/RESTRICTED` Region/Branch scope for every endpoint.
+
+**TARGET V1 Security Hardening:** when `sudo()` is required, resolve the authenticated user's allowed company and organizational scope first, include that scope in the lookup/domain, and reject valid-but-out-of-scope identifiers. Never use `sudo().browse(user_supplied_id)` as sufficient authorization.
+
+API acceptance must cover same-role different-region users, multiple regions, region plus explicit branch, empty restricted scope, out-of-scope IDs, dashboards/aggregates, and exports.

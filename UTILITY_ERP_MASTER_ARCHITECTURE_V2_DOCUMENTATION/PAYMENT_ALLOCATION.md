@@ -1,12 +1,12 @@
 # PAYMENT ALLOCATION
 
-**Platform:** Odoo 16 Community  
-**Architecture Baseline:** `UTILITY_ERP_MASTER_ARCHITECTURE_V2.md`  
-**Repository Baseline Commit:** `13df4c5263abe2e211fc12dc0c3c62f86e87a048`  
-**Target Scale:** Up to 1,000,000 subscribers (capacity-planning baseline)  
-**Architecture Version:** 2.0  
-**Date:** 2026-08-09  
-**Status:** Target / Production-Hardening  
+**Platform:** Odoo 16 Community
+**Architecture Baseline:** `UTILITY_ERP_MASTER_ARCHITECTURE_V2.md`
+**Last Verified Implementation SHA:** `51e8dba5c47ed8ff9d1485b519e1b1586cb30522`
+**Target Scale:** Up to 1,000,000 subscribers (capacity-planning baseline)
+**Documentation Version:** 2.1
+**Last Verified Date:** 2026-08-14
+**Status:** Current V1 + Target V2
 
 **Document Type:** Payment Allocation & Reconciliation Specification
 
@@ -189,3 +189,23 @@ Due/late logic uses due date/payment policy rather than Sale Order date alone.
 - cancelled/paid bill rejection.
 - reversal.
 - no unrelated partner line reconciled.
+
+## V2.1 Current Implementation Synchronization
+
+```text
+Payment Entry Point
+        ↓
+Payment Allocation
+        ↓
+Specific Accounting Invoice
+        ↓
+Reconciliation
+        ↓
+Financial Artifacts
+        ↓
+Controlled Reversal
+```
+
+**CURRENT V1:** exact invoice allocation, payment/invoice locking, reconciliation, allocation records, gateway idempotency, and financial reversal orchestration are implemented in the Billing/Accounting boundary. No partner-wide arbitrary reconciliation is permitted.
+
+**DEFERRED:** “Static implementation includes concurrency controls; runtime proof is separately deferred.”

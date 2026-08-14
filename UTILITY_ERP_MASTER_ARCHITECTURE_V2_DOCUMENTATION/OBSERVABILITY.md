@@ -1,12 +1,12 @@
 # OBSERVABILITY
 
-**Platform:** Odoo 16 Community  
-**Architecture Baseline:** `UTILITY_ERP_MASTER_ARCHITECTURE_V2.md`  
-**Repository Baseline Commit:** `13df4c5263abe2e211fc12dc0c3c62f86e87a048`  
-**Target Scale:** Up to 1,000,000 subscribers (capacity-planning baseline)  
-**Architecture Version:** 2.0  
-**Date:** 2026-08-09  
-**Status:** Target / Production-Hardening  
+**Platform:** Odoo 16 Community
+**Architecture Baseline:** `UTILITY_ERP_MASTER_ARCHITECTURE_V2.md`
+**Last Verified Implementation SHA:** `51e8dba5c47ed8ff9d1485b519e1b1586cb30522`
+**Target Scale:** Up to 1,000,000 subscribers (capacity-planning baseline)
+**Documentation Version:** 2.1
+**Last Verified Date:** 2026-08-14
+**Status:** Current V1 + Target V2
 
 **Document Type:** Logging, Metrics, Alerting & Operational Telemetry Specification
 
@@ -207,3 +207,9 @@ Before Go-Live trigger synthetic failures and confirm:
 - operator identifies affected component.
 - trace/correlation reaches business record.
 - no secret exposed.
+
+## V2.1 Classification
+
+**CURRENT V1:** application logging, business-record traceability, sanitized integration payload handling, and operational error/status fields are available in the Odoo boundary. Static code and test existence do not equal an executed production observability proof.
+
+**TARGET V2 / CONDITIONAL:** centralized metrics/traces, queue/backlog dashboards, PgBouncer signals, and Temporal integration signals when those components are actually introduced. **DEFERRED:** load-based alert thresholds and production incident rehearsal.

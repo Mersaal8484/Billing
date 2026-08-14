@@ -1,12 +1,12 @@
 # GO-LIVE RUNBOOK
 
-**Platform:** Odoo 16 Community  
-**Architecture Baseline:** `UTILITY_ERP_MASTER_ARCHITECTURE_V2.md`  
-**Repository Baseline Commit:** `13df4c5263abe2e211fc12dc0c3c62f86e87a048`  
-**Target Scale:** Up to 1,000,000 subscribers (capacity-planning baseline)  
-**Architecture Version:** 2.0  
-**Date:** 2026-08-09  
-**Status:** Target / Production-Hardening  
+**Platform:** Odoo 16 Community
+**Architecture Baseline:** `UTILITY_ERP_MASTER_ARCHITECTURE_V2.md`
+**Last Verified Implementation SHA:** `51e8dba5c47ed8ff9d1485b519e1b1586cb30522`
+**Target Scale:** Up to 1,000,000 subscribers (capacity-planning baseline)
+**Documentation Version:** 2.1
+**Last Verified Date:** 2026-08-14
+**Status:** Current V1 + Target V2
 
 **Document Type:** Production Cutover & Hypercare Runbook
 
@@ -220,3 +220,26 @@ Go-Live moves to normal operations only after:
 - backup after cutover verified.
 - support ownership transferred.
 - runbooks and escalation active.
+
+## V2.1 Gate Classification
+
+### Required static/readiness checks
+
+- Architecture ownership and module-chain review.
+- Security matrix, wizard least privilege, and server-side guard review.
+- Accounting truth, explicit allocation, write-off invariant, and reversal review.
+- Inventory custody and meter replacement confirmation review.
+- Migration staging, bounded processing, and traceability review.
+- API contract, callback authentication, and idempotency review.
+- UI/UX state safety, smart navigation, filters, and terminology review.
+- UAT scenario completeness, backup/restore procedure, and observability checklist review.
+
+### Deferred with risk acceptance
+
+- Runtime/CI proof because current static gate intentionally excludes it.
+- Full concurrency race execution and upgrade rehearsal.
+- Production-scale load/profile validation, including the `stock.quant` N+1 debt.
+
+### Target Scale
+
+PgBouncer, horizontal Odoo workers/nodes, scalable media delivery, partitioning, micro-batch billing, and scoped Temporal orchestration belong to Target V2 and are not prerequisites for the current V1 topology without an accepted trigger.

@@ -1,12 +1,12 @@
 # BACKUP & RESTORE
 
-**Platform:** Odoo 16 Community  
-**Architecture Baseline:** `UTILITY_ERP_MASTER_ARCHITECTURE_V2.md`  
-**Repository Baseline Commit:** `13df4c5263abe2e211fc12dc0c3c62f86e87a048`  
-**Target Scale:** Up to 1,000,000 subscribers (capacity-planning baseline)  
-**Architecture Version:** 2.0  
-**Date:** 2026-08-09  
-**Status:** Target / Production-Hardening  
+**Platform:** Odoo 16 Community
+**Architecture Baseline:** `UTILITY_ERP_MASTER_ARCHITECTURE_V2.md`
+**Last Verified Implementation SHA:** `51e8dba5c47ed8ff9d1485b519e1b1586cb30522`
+**Target Scale:** Up to 1,000,000 subscribers (capacity-planning baseline)
+**Documentation Version:** 2.1
+**Last Verified Date:** 2026-08-14
+**Status:** Current V1 + Target V2
 
 **Document Type:** Backup, Recovery & Disaster Restoration Runbook
 
@@ -95,6 +95,12 @@ Typical:
 4. application code/version.
 5. configuration/secrets.
 6. Temporal DB/workers if applicable.
+
+## V2.1 Classification
+
+**CURRENT V1:** backup/restore scope is the Odoo PostgreSQL database, configured attachments/media compatibility data, repository/configuration inputs, and operational runbooks. Restore timing and end-to-end recovery proof require execution.
+
+**TARGET V2 / CONDITIONAL:** separate media backend and Temporal persistence are included only when those target components are deployed. They are not current V1 prerequisites.
 7. disable external side effects initially.
 8. integrity validation.
 9. re-enable integrations.

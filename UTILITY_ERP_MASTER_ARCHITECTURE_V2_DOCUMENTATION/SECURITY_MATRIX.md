@@ -1,12 +1,12 @@
 # SECURITY MATRIX
 
-**Platform:** Odoo 16 Community  
-**Architecture Baseline:** `UTILITY_ERP_MASTER_ARCHITECTURE_V2.md`  
-**Repository Baseline Commit:** `13df4c5263abe2e211fc12dc0c3c62f86e87a048`  
-**Target Scale:** Up to 1,000,000 subscribers (capacity-planning baseline)  
-**Architecture Version:** 2.0  
-**Date:** 2026-08-09  
-**Status:** Target / Production-Hardening  
+**Platform:** Odoo 16 Community
+**Architecture Baseline:** `UTILITY_ERP_MASTER_ARCHITECTURE_V2.md`
+**Last Verified Implementation SHA:** `51e8dba5c47ed8ff9d1485b519e1b1586cb30522`
+**Target Scale:** Up to 1,000,000 subscribers (capacity-planning baseline)
+**Documentation Version:** 2.1
+**Last Verified Date:** 2026-08-14
+**Status:** Current V1 + Target V2
 
 **Document Type:** Role, Geographic Scope & Authorization Matrix
 
@@ -177,3 +177,45 @@ Provider secrets:
 - masked in UI/logs.
 - not returned by API.
 - rotated with operational procedure.
+
+## V2.1 Current Implementation Synchronization
+
+**CURRENT V1:** broad `base.group_user` access was removed from sensitive operational creation wizards. Supervisor-access operations cover approved operational mutations; private transformer, transformer, and feeder creation remain admin-only network/master mutations. Important actions use server-side `AccessError` guards where implemented.
+
+The governing rule is: wizard access must not be broader than the most sensitive model mutation it performs. UI groups improve permission UX but are not the sole security control. API ownership checks and callback authentication are part of the same boundary.
+
+For gateway callbacks, authentication/token verification occurs before row-level locking; repeated authenticated success is idempotent and must not create a second payment. Sensitive callback payloads are sanitized before persistence/logging.
+
+## Organizational Security & Data Isolation — V2.1
+
+Security has two independent axes:
+
+```text
+Role Permissions ∩ Company Scope ∩ Organizational Scope
+```
+
+### CURRENT V1 evidence
+
+- Functional role groups are authoritative in `utility_core/security/utility_security.xml` and remain independent of geography.
+- `res.users.assigned_region_ids` and `assigned_route_ids` exist.
+- Company boundaries use standard `company_ids` rules on many models.
+- Route/region rules exist for selected Customer, Reading, Sale Order, Payment Allocation/Settlement, Auditor, Collector, and Technician paths.
+- API ownership checks exist for selected customer, billing, service-request, media, and Reader flows.
+
+### TARGET V1 Security Hardening
+
+The following are not claimed as fully implemented: explicit `GLOBAL/RESTRICTED` scope mode, user-level `allowed_branch_ids`, Region-to-Branch automatic expansion, explicit extra-branch assignment, and a complete organizational Record Rule layer across every operational and financial relation.
+
+The canonical hierarchy is `utility.region(type=region → area → zone)`: `type='region'` is Region, `type='area'` is the organizational Branch, and `type='zone'` is the lower operational zone. A separate Branch model must not be introduced. What remains TARGET is user-level Branch assignment, Region-to-area expansion, and comprehensive enforcement.
+
+| Role | Functional capability | Target scope |
+|---|---|---|
+| Meter Reader | Submit readings | Assigned Regions/Branches |
+| Technician | Execute field work | Assigned Regions/Branches |
+| Supervisor | Assign/approve operations | Assigned Regions/Branches |
+| Billing User | Billing operations | Assigned Regions/Branches |
+| Billing Manager | Billing approval/management | Assigned scope or explicit Global |
+| Auditor | Read-only audit | Assigned scope or explicit Global |
+| Utility Admin | System administration | Explicit Global by policy |
+
+Empty restricted scope must be default-deny, never implicit global. Do not create geographic groups such as `Billing Manager Sana'a`.

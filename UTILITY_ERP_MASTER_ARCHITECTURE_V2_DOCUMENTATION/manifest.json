@@ -1,7 +1,20 @@
 {
-  "architecture_version": "2.0",
-  "date": "2026-08-09",
-  "baseline_commit": "13df4c5263abe2e211fc12dc0c3c62f86e87a048",
+  "documentation_version": "2.1",
+  "repository": "AbdulrhmanBashammmakh/utility_erp",
+  "branch": "development",
+  "implementation_sha": "51e8dba5c47ed8ff9d1485b519e1b1586cb30522",
+  "architecture_baseline_sha": "13df4c5263abe2e211fc12dc0c3c62f86e87a048",
+  "updated_date": "2026-08-14",
+  "scope": {
+    "current_v1": [
+      "date_range",
+      "utility_core",
+      "utility_inventory",
+      "utility_operations",
+      "utility_billing"
+    ],
+    "out_of_scope": ["utility_prepaid"]
+  },
   "requested_documents": [
     "MASTER_SPECIFICATION.md",
     "SRS.md",
@@ -27,6 +40,12 @@
   ],
   "included_additional_documents": [
     "DOCUMENT_INDEX.md",
-    "UTILITY_ERP_MASTER_ARCHITECTURE_V2.md"
+    "UTILITY_ERP_MASTER_ARCHITECTURE_V2.md",
+    "CURRENT_V1_IMPLEMENTATION_BASELINE.md",
+    "TARGET_V2_ARCHITECTURE_ROADMAP.md",
+    "ARCHITECTURE_DECISION_LOG.md",
+    "OPERATIONAL_UI_UX_ARCHITECTURE.md",
+    "RELEASE_TRACEABILITY_MATRIX.md",
+    "ORGANIZATIONAL_SECURITY_AND_DATA_ISOLATION.md"
   ]
 }

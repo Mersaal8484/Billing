@@ -1,12 +1,12 @@
 # DEPLOYMENT
 
-**Platform:** Odoo 16 Community  
-**Architecture Baseline:** `UTILITY_ERP_MASTER_ARCHITECTURE_V2.md`  
-**Repository Baseline Commit:** `13df4c5263abe2e211fc12dc0c3c62f86e87a048`  
-**Target Scale:** Up to 1,000,000 subscribers (capacity-planning baseline)  
-**Architecture Version:** 2.0  
-**Date:** 2026-08-09  
-**Status:** Target / Production-Hardening  
+**Platform:** Odoo 16 Community
+**Architecture Baseline:** `UTILITY_ERP_MASTER_ARCHITECTURE_V2.md`
+**Last Verified Implementation SHA:** `51e8dba5c47ed8ff9d1485b519e1b1586cb30522`
+**Target Scale:** Up to 1,000,000 subscribers (capacity-planning baseline)
+**Documentation Version:** 2.1
+**Last Verified Date:** 2026-08-14
+**Status:** Current V1 + Target V2
 
 **Document Type:** Target Production Deployment Specification
 
@@ -193,3 +193,11 @@ Do not autoscale blindly against a saturated DB.
 - secrets unavailable to unauthorized user.
 - migration repeatable in staging.
 - rollback tested.
+
+## V2.1 Current vs Target Topology
+
+**CURRENT V1 supported topology:** one Odoo 16 application deployment using PostgreSQL, installed in dependency order `date_range → utility_core → utility_inventory → utility_operations → utility_billing`, with standard local/Odoo workflow execution and the configured media compatibility path.
+
+**TARGET V2 / CONDITIONAL:** PgBouncer, multiple Odoo workers/nodes, scalable filesystem/NGINX media delivery, Redis helpers, Temporal workers, and partitioned high-volume tables. These are not mandatory V1 runtime dependencies and require load evidence, security review, migration rehearsal, and rollback planning.
+
+**DEFERRED:** deployment runtime proof, upgrade rehearsal, load validation, and production restore timing.

@@ -1,12 +1,12 @@
 # BILLING ENGINE
 
-**Platform:** Odoo 16 Community  
-**Architecture Baseline:** `UTILITY_ERP_MASTER_ARCHITECTURE_V2.md`  
-**Repository Baseline Commit:** `13df4c5263abe2e211fc12dc0c3c62f86e87a048`  
-**Target Scale:** Up to 1,000,000 subscribers (capacity-planning baseline)  
-**Architecture Version:** 2.0  
-**Date:** 2026-08-09  
-**Status:** Target / Production-Hardening  
+**Platform:** Odoo 16 Community
+**Architecture Baseline:** `UTILITY_ERP_MASTER_ARCHITECTURE_V2.md`
+**Last Verified Implementation SHA:** `51e8dba5c47ed8ff9d1485b519e1b1586cb30522`
+**Target Scale:** Up to 1,000,000 subscribers (capacity-planning baseline)
+**Documentation Version:** 2.1
+**Last Verified Date:** 2026-08-14
+**Status:** Current V1 + Target V2
 
 **Document Type:** Billing Domain & Execution Specification
 
@@ -270,3 +270,11 @@ Settlement
 - No duplicate under concurrency.
 - Posted accounting document links back to Utility Bill.
 - Historical tariff interpretation survives future configuration changes.
+
+## V2.1 Current Implementation Synchronization
+
+**CURRENT V1:** `utility_core.models.utility_reading` is operational truth. The Billing extension inherits `utility.reading` and owns commercial fields/behavior: `is_billable`, `billing_anchor_id`, `billing_component_ids`, `included_sale_order_id`, `carried_consumption`, `billing_consumption`, and `billing_error`. Core exposes hooks such as `_requires_billing_review()` and does not dynamically detect Billing installation.
+
+The current reading state compatibility is `draft`, `under_review`, `approved`, `queued`, `billed`, and `error`; a separate `billing_state` is **TARGET / FUTURE OPTIONAL DESIGN** only.
+
+The Bill is `sale.order`, not `account.move`. The current Bill UI links to Accounting Invoices and Payments through smart buttons, then to explicit allocation/reconciliation. Historical evidence is corrected through controlled adjustment/reversal artifacts.

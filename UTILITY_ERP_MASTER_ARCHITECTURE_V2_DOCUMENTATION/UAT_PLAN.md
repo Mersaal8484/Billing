@@ -1,12 +1,12 @@
 # UAT PLAN
 
-**Platform:** Odoo 16 Community  
-**Architecture Baseline:** `UTILITY_ERP_MASTER_ARCHITECTURE_V2.md`  
-**Repository Baseline Commit:** `13df4c5263abe2e211fc12dc0c3c62f86e87a048`  
-**Target Scale:** Up to 1,000,000 subscribers (capacity-planning baseline)  
-**Architecture Version:** 2.0  
-**Date:** 2026-08-09  
-**Status:** Target / Production-Hardening  
+**Platform:** Odoo 16 Community
+**Architecture Baseline:** `UTILITY_ERP_MASTER_ARCHITECTURE_V2.md`
+**Last Verified Implementation SHA:** `51e8dba5c47ed8ff9d1485b519e1b1586cb30522`
+**Target Scale:** Up to 1,000,000 subscribers (capacity-planning baseline)
+**Documentation Version:** 2.1
+**Last Verified Date:** 2026-08-14
+**Status:** Current V1 + Target V2
 
 **Document Type:** User Acceptance Test Plan
 
@@ -212,3 +212,39 @@ Required sign-off representatives:
 - migration validation signed.
 - backup restore signed.
 - go-live rollback decision path approved.
+
+## V2.1 Current Safety Scenarios
+
+The following scenarios are required test coverage targets. They are not marked PASS unless runtime evidence is attached:
+
+| Area | Required scenarios |
+|---|---|
+| Reading | valid periodic reading; invalid reading; billing review; error state; replacement reading |
+| Reading Batch | valid batch; malformed JSON; invalid totals; partial/error batch; retry; ownership restriction; active/attention filters |
+| Installation | `draft → installed → verified`; failed path; invalid transition rejected |
+| Work Order | full lifecycle; cancellation; direct state manipulation is not the user workflow |
+| Inspection | complete; cancel; optional condition rating |
+| Alarm | acknowledge; investigate; resolve; dismiss; create service order; repeated creation attempt |
+| Meter Replacement | confirmation; stock movements; closing/opening readings |
+| Billing | reading → Bill; Bill → Accounting Invoice navigation; Payment navigation; residual correctness |
+| Payment | exact invoice; partial payment; repeated gateway callback; invalid token; wrong provider reference |
+| Write-off | approve; approved → draft; apply; duplicate apply; reopen after applied; exactly one Credit Note; readonly evidence; Credit Note navigation |
+| Security | generic internal user denied sensitive wizards; supervisor operational access; supervisor denied admin network-master creation; admin allowed |
+
+**DEFERRED:** runtime/CI execution, concurrency proof, upgrade verification, and production load validation are separate release activities.
+
+## Organizational Security UAT
+
+These scenarios are required for the planned scope hardening and are not execution results:
+
+1. Same role, different Regions: Region A user cannot read/write/assign/approve Region B data.
+2. Multiple Regions: a Billing Manager assigned A+B can access A/B but not C.
+3. Region plus explicit Branch: A plus B-02 grants all A branches and only B-02, not B-01/B-03.
+4. Explicit Global: a Global user sees all permitted records within allowed companies.
+5. Empty Restricted scope: no assigned Region/Branch yields no scoped operational records, never global access.
+6. Wizard security: out-of-scope Customer, Meter, Route, Transformer, Feeder, Replacement, and operational mutations are rejected server-side.
+7. API security: technically valid out-of-scope IDs are rejected, including when `sudo()` is used internally.
+8. Reporting security: list views, dashboards, exports, reports, `search_count`, and `read_group` exclude out-of-scope data.
+9. Accounting safety: Utility scope rules do not break central posting, reconciliation, payment allocation, or accounting reports.
+
+Until these scenarios have runtime evidence, complete Region/Branch isolation remains **TARGET V1 SECURITY HARDENING**.

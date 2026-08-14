@@ -1,12 +1,12 @@
 # MEDIA ARCHITECTURE
 
-**Platform:** Odoo 16 Community  
-**Architecture Baseline:** `UTILITY_ERP_MASTER_ARCHITECTURE_V2.md`  
-**Repository Baseline Commit:** `13df4c5263abe2e211fc12dc0c3c62f86e87a048`  
-**Target Scale:** Up to 1,000,000 subscribers (capacity-planning baseline)  
-**Architecture Version:** 2.0  
-**Date:** 2026-08-09  
-**Status:** Target / Production-Hardening  
+**Platform:** Odoo 16 Community
+**Architecture Baseline:** `UTILITY_ERP_MASTER_ARCHITECTURE_V2.md`
+**Last Verified Implementation SHA:** `51e8dba5c47ed8ff9d1485b519e1b1586cb30522`
+**Target Scale:** Up to 1,000,000 subscribers (capacity-planning baseline)
+**Documentation Version:** 2.1
+**Last Verified Date:** 2026-08-14
+**Status:** Current V1 + Target V2
 
 **Document Type:** Canonical Evidence & Media Storage Specification
 
@@ -233,3 +233,9 @@ Architecture supports:
 - ETag 304.
 - legacy double-base64 repair.
 - NGINX/X-Accel target delivery.
+
+## V2.1 Current vs Target
+
+**CURRENT V1:** media is represented through the current `utility.media.asset`/attachment compatibility path and protected by ownership/geographic authorization. Reading and batch UIs expose operational image evidence without making media storage a second business truth.
+
+**TARGET V2 / CONDITIONAL:** organized filesystem/NGINX or S3-compatible storage behind a storage-agnostic Media Adapter. Delivery scaling is triggered by measured attachment volume, latency, or backup impact; it is not a current V1 deployment assumption.

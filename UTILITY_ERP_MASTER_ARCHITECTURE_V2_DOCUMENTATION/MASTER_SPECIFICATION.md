@@ -1,14 +1,51 @@
 # MASTER SPECIFICATION
 
-**Platform:** Odoo 16 Community  
-**Architecture Baseline:** `UTILITY_ERP_MASTER_ARCHITECTURE_V2.md`  
-**Repository Baseline Commit:** `13df4c5263abe2e211fc12dc0c3c62f86e87a048`  
-**Target Scale:** Up to 1,000,000 subscribers (capacity-planning baseline)  
-**Architecture Version:** 2.0  
-**Date:** 2026-08-09  
-**Status:** Target / Production-Hardening  
+**Platform:** Odoo 16 Community
+**Architecture Baseline:** `UTILITY_ERP_MASTER_ARCHITECTURE_V2.md`
+**Last Verified Implementation SHA:** `51e8dba5c47ed8ff9d1485b519e1b1586cb30522`
+**Target Scale:** Up to 1,000,000 subscribers (capacity-planning baseline)
+**Documentation Version:** 2.1
+**Last Verified Date:** 2026-08-14
+**Status:** Current V1 + Target V2
 
 **Document Type:** Master Functional & Non-Functional Specification
+
+## Current Implementation Baseline
+
+Repository: `AbdulrhmanBashammmakh/utility_erp`
+Branch: `development`
+Implementation SHA: `51e8dba5c47ed8ff9d1485b519e1b1586cb30522`
+Documentation Version: `2.1`
+Documentation Status: Current V1 + Target V2
+
+This document separates implementation evidence at the reviewed SHA from accepted forward-looking V2 architecture. Current behavior is authoritative for V1; accepted newer ADRs supersede stale documentation. Target V2 components remain target/deferred until their trigger and runtime gate are satisfied.
+
+### Current V1 scope
+
+`date_range → utility_core → utility_inventory → utility_operations → utility_billing`
+
+`utility_prepaid` is **OUT OF SCOPE** for the current V1 release. There is no customer wallet architecture, no parallel financial ledger, and no duplicate stock ledger.
+
+### Current workflow and safety baseline
+
+- `utility.reading`: `draft`, `under_review`, `approved`, `queued`, `billed`, `error`; a separate `billing_state` is **TARGET / FUTURE OPTIONAL DESIGN**, not current V1.
+- `utility.writeoff`: `draft → approved → applied`; only `approved → draft` is allowed before financial application. After application, reopening and duplicate application are forbidden.
+- Operational state changes occur through named actions, not direct statusbar edits, for the hardened critical forms.
+- Runtime/CI proof and production-scale performance validation remain **DEFERRED**.
+
+### Current V1 business path
+
+```text
+Reading → Bill (`sale.order`) → Accounting Invoice (`account.move`)
+                             → Payment (`account.payment`)
+                             → Allocation/Reconciliation → Settlement
+```
+
+The Bill form provides direct smart-button navigation to related Accounting Invoices, Payments, and Billing Adjustments. This is navigation between distinct records, not a claim that a Bill itself is an Accounting Invoice.
+
+### Organizational security classification
+
+Functional role authorization is **CURRENT V1**. User-assigned Regions/Routes and selected company/Region/Route rules are also current. In the canonical `utility.region` hierarchy, `type='area'` is the organizational Branch. Complete `GLOBAL/RESTRICTED` scope mode, user-level explicit Branch assignments, Region-to-area expansion, and comprehensive scope rules across all operational/reporting paths are **TARGET V1 SECURITY HARDENING**. Empty restricted scope must be default-deny, never global.
 
 > المرجع التنفيذي الأعلى للمتطلبات الوظيفية وغير الوظيفية التي يجب أن تحقق المعمارية المستهدفة.
 

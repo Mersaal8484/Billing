@@ -1,0 +1,33 @@
+# Architecture Decision Log
+
+**Repository:** `AbdulrhmanBashammmakh/utility_erp`
+**Reviewed SHA:** `51e8dba5c47ed8ff9d1485b519e1b1586cb30522`
+**Documentation Version:** 2.1
+
+This is a concise ADR index. Detailed implementation belongs in the linked domain documents.
+
+| ADR | Status | Classification | Decision | Consequence / relevant modules |
+|---|---|---|---|---|
+| ADR-001 Odoo/PostgreSQL System of Record | Accepted | CURRENT V1 | Odoo/PostgreSQL is canonical operational and financial persistence. | No shadow operational DB; all modules. |
+| ADR-002 No Customer Wallet | Accepted | CURRENT V1 / OUT OF SCOPE | Postpaid Utility has no customer wallet architecture. | Use bills, payments, allocations, and accounting balances. |
+| ADR-003 Standard Odoo Stock Is Physical Inventory Truth | Accepted | CURRENT V1 | Standard stock/lot/moves are the physical serialized inventory ledger. | `utility_inventory`, `utility_operations`. |
+| ADR-004 Utility Meter Is Logical Meter Identity | Accepted | CURRENT V1 | `utility.meter` carries operational identity while stock carries physical custody. | `utility_core`, `utility_inventory`. |
+| ADR-005 Explicit Invoice Payment Reconciliation | Accepted | CURRENT V1 | Payments reconcile only explicitly selected utility invoice receivable lines. | `utility_billing`, `account.move`, `account.payment`. |
+| ADR-006 Immutable Financial/Billing Evidence | Accepted | CURRENT V1 | Corrections use controlled adjustment/reversal documents, not destructive mutation. | Billing/accounting flows and audit trail. |
+| ADR-007 Core/Billing Reading Ownership | Accepted | CURRENT V1 | Core owns reading truth; Billing inherits and owns commercial fields/behavior. | `utility_core/models/utility_reading.py`, billing extension. |
+| ADR-008 Payment Allocation Entry Point Consolidation | Accepted | CURRENT V1 | Payment entry starts from an explicit utility invoice allocation path. | Payment allocation and gateway flows. |
+| ADR-009 Financial Reversal Orchestration | Accepted | CURRENT V1 | Adjustments, refunds, and write-offs create controlled financial artifacts. | `utility.billing.adjustment`, `utility.writeoff`. |
+| ADR-010 Reader Batch Concurrency Controls | Accepted | CURRENT V1 | Batches use bounded work, NOWAIT locking, and SQLSTATE `55P03` handling. | `utility_billing` batch service. |
+| ADR-011 Migration Bounded Processing | Accepted | CURRENT V1 | Migration staging is persistent, bounded, retryable, and traceable. | `utility_core` migration staging models. |
+| ADR-012 Payment Gateway Callback Authentication Before Lock | Accepted | CURRENT V1 | Authenticate/token-verify before `FOR UPDATE`; then transition only pending transactions. | Billing API/gateway transaction. |
+| ADR-013 Write-off Single Credit Note Invariant | Accepted | CURRENT V1 | One write-off creates at most one generated Credit Note. | `utility.writeoff`, linked `account.move`. |
+| ADR-014 Sensitive Wizard Least Privilege | Accepted | CURRENT V1 | Wizard access cannot exceed the most sensitive mutation it performs. | Core wizard ACLs and server guards. |
+| ADR-015 Action-Based Operational State Transition | Accepted | CURRENT V1 | Workflow actions, not raw state writes, execute operational transitions. | Service/work/install/inspection views. |
+| ADR-016 Runtime/CI Proof Deferred From Current Static Gate | Accepted | DEFERRED | Static implementation and test existence are documented separately from runtime proof. | Release gate and UAT/runbook. |
+| ADR-017 Prepaid Excluded From V1 | Accepted | OUT OF SCOPE | `utility_prepaid` is not part of the current V1 release chain. | Prepaid remains separately documented. |
+| ADR-018 Scale Architecture Remains Target V2 | Accepted | TARGET V2 | PgBouncer, horizontal nodes, scalable media, partitioning, micro-batches, and scoped Temporal require triggers and runtime evidence. | `TARGET_V2_ARCHITECTURE_ROADMAP.md`. |
+| ADR-019 Role-Based Authorization Is Independent From Organizational Scope | Accepted principle | CURRENT roles / TARGET hardening | Roles answer what a user can do; company/region/branch scope answers where. V1 prefers one unified user scope across multiple roles. | `SECURITY_MATRIX.md`, `ORGANIZATIONAL_SECURITY_AND_DATA_ISOLATION.md`. |
+
+## ADR review rule
+
+An accepted newer ADR supersedes stale prose, but implementation evidence remains authoritative for CURRENT V1 behavior. A code change does not silently promote a TARGET V2 decision to deployed architecture.
