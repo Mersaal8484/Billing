@@ -31,6 +31,9 @@ class UtilityMeterSubscriberWizard(models.TransientModel):
             'utility_core.group_utility_admin',
         )
         meter = self.meter_id
+        # Scope guard: verify the meter is within the acting user's organizational scope.
+        # Prevents restricted users from creating customers via meters outside their region.
+        self.env.user.check_record_scope(meter)
         partner = self.env['res.partner'].create({
             'name': self.partner_name,
             'mobile': self.mobile,
@@ -91,6 +94,8 @@ class UtilityMeterPrivateTransformerWizard(models.TransientModel):
         self.ensure_one()
         _require_groups(self.env, 'utility_core.group_utility_admin')
         meter = self.meter_id
+        # Scope guard: verify the meter is within the acting user's organizational scope.
+        self.env.user.check_record_scope(meter)
         partner = self.env['res.partner'].create({
             'name': self.partner_name,
             'mobile': self.mobile,

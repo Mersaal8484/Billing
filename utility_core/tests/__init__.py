@@ -13,3 +13,5 @@ from . import test_migration_async_batch
 from . import test_workflow_atomic_claim
 from . import test_sensitive_wizard_permissions
 from . import test_organizational_scope_security
+from . import test_wave17_mutation_integrity
+from . import test_wave17_multi_role

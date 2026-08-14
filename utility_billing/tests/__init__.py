@@ -16,3 +16,4 @@ from . import test_reader_and_webhook_api_hardening
 from . import test_core_billing_ownership
 from . import test_organizational_scope_billing
 from . import test_organizational_scope_billing_api
+from . import test_wave17_http_api

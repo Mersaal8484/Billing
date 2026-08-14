@@ -117,19 +117,26 @@ class UtilityBillingAPI(http.Controller):
         return {'success': True, 'customer': self._customer_payload(customer)}
 
     def _authorize_order(self, order_id):
-        """التحقق من ملكية الفاتورة وإرجاعها إن وجدت."""
-        user = request.env.user
+        """التحقق من ملكية الفاتورة وإرجاعها ضمن نطاق المستخدم المصرح له.
+
+        للمستخدمين الداخليين تُطبّق Record Rules تلقائياً عبر بيئة ORM العادية،
+        ويُضاف شرط ملكية الحساب بوصفه قيداً خاصاً بالـ endpoint.
+        لمستخدمي البوابة يُستخدم sudo لقراءة الفاتورة بعد التحقق من الملكية.
+        """
         try:
             order_id = int(order_id)
         except (TypeError, ValueError):
             return request.env['sale.order']
-        Order = request.env['sale.order'] if user.has_group('base.group_user') else request.env['sale.order'].sudo()
-        order = Order.browse(order_id)
-        if not order.exists():
-            return Order
-        if order.customer_id in self._get_authorized_accounts():
-            return order
-        return Order.browse()
+        authorized_accounts = self._get_authorized_accounts()
+        # Authorization first: ORM Record Rules enforce org scope for internal users
+        # + explicit customer ownership check for both internal and portal principals.
+        # Do NOT use sudo().browse() before authorization.
+        Order = request.env['sale.order']
+        order = Order.search([
+            ('id', '=', order_id),
+            ('customer_id', 'in', authorized_accounts.ids),
+        ], limit=1)
+        return order
 
     @http.route('/api/v1/utility/billing/balance', type='json', auth='user', methods=['POST'])
     def billing_balance(self, **kwargs):
@@ -353,6 +360,11 @@ class UtilityBillingAPI(http.Controller):
 
     @http.route('/api/v1/utility/operations/service_request', type='json', auth='user', methods=['POST'])
     def service_request(self, **kwargs):
+        """إنشاء طلب خدمة.  التفويض يسبق أي وصول للسجل:
+        - نحدد أولاً الحسابات المصرح بها لهذا المستخدم (ORM Record Rules + ملكية حساب).
+        - نبحث ضمن تلك الحسابات فقط — لا sudo().browse() قبل التفويض.
+        - بعد التحقق من الهوية والملكية، يُنشأ أمر الخدمة.
+        """
         params = request.jsonrequest
         customer_id = params.get('customer_id')
         service_type = params.get('service_type')
@@ -366,14 +378,14 @@ class UtilityBillingAPI(http.Controller):
             customer_id = int(customer_id)
         except (TypeError, ValueError):
             return self._error('VALIDATION_ERROR', 'customer_id must be numeric')
-        account = request.env['utility.customer'].sudo().browse(customer_id)
-        if not account.exists():
-            return self._error('CUSTOMER_NOT_FOUND', 'Customer account not found')
-        if account not in self._get_authorized_accounts():
+        # Authorization FIRST: search within authorized scope, no sudo() before auth.
+        authorized = self._get_authorized_accounts()
+        account = authorized.filtered(lambda c: c.id == customer_id)[:1]
+        if not account:
             return self._error('CUSTOMER_NOT_FOUND', 'Customer account not found')
         try:
             order = request.env['utility.service.order'].sudo().create({
-                'customer_id': customer_id,
+                'customer_id': account.id,
                 'service_type': service_type,
                 'description': description,
                 'state': 'draft',

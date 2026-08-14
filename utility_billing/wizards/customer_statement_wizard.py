@@ -213,4 +213,7 @@ class UtilityCustomerStatementWizard(models.TransientModel):
 
     def action_print_statement(self):
         self.ensure_one()
+        # Organizational scope guard: even for read-only reports, the customer
+        # must be within the acting user's scope to prevent cross-scope data leakage.
+        self.env.user.check_record_scope(self.customer_id)
         return self.env.ref('utility_billing.action_report_customer_statement').report_action(self)

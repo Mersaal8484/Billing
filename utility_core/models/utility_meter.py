@@ -4,7 +4,7 @@ import re
 
 from odoo import api, fields, models, _
 import base64
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import AccessError, UserError, ValidationError
 
 
 PHONE_9_RE = re.compile(r'^\d{9}$')
@@ -293,6 +293,71 @@ class UtilityMeter(models.Model):
             'context': {'default_meter_id': self.id},
         }
 
+    def _check_mutation_scope(self, vals):
+        """Validate canonical ownership of a meter mutation against the acting user's scope.
+
+        utility.meter.region_id/area_id are computed-stored from _compute_location_fields
+        and will not appear in vals directly. The real attack vector is changing the
+        canonical owner (customer_id, linked_transformer_id, etc.) to an out-of-scope record.
+
+        This method inspects ownership-determining fields in vals and checks the
+        resolved geography of the target canonical owner.
+        """
+        if self.env.context.get('utility_scope_bypass') or self.env.user._is_global_utility_scope():
+            return
+        effective_branches = self.env.user._get_effective_branch_ids()
+        effective_regions = self.env.user._get_effective_region_ids()
+
+        def _in_scope(region, area):
+            return (
+                (area and area.id in effective_branches)
+                or (region and region.id in effective_regions)
+            )
+
+        # Determine the canonical owner from connection_type in vals (or existing record)
+        # Ownership-shifting keys: customer_id, linked_transformer_id,
+        # linked_private_transformer_id, linked_feeder_id, connection_type
+        ownership_keys = {
+            'customer_id', 'linked_transformer_id',
+            'linked_private_transformer_id', 'linked_feeder_id', 'connection_type',
+        }
+        if not ownership_keys.intersection(vals.keys()):
+            return  # No ownership-changing field — skip
+
+        # For each record being mutated, resolve the target canonical owner geography
+        for meter in self:
+            ct = vals.get('connection_type', meter.connection_type)
+            region = False
+            area = False
+
+            if ct == 'subscriber':
+                cust_id = vals.get('customer_id', meter.customer_id.id if meter.customer_id else False)
+                if cust_id:
+                    cust = self.env['utility.customer'].sudo().browse(cust_id).exists()
+                    if cust:
+                        region = cust.partner_id.region_id
+                        area = cust.partner_id.area_id
+            elif ct in ('transformer', 'private_transformer'):
+                key = 'linked_transformer_id' if ct == 'transformer' else 'linked_private_transformer_id'
+                t_id = vals.get(key, getattr(meter, key).id if getattr(meter, key, False) else False)
+                if t_id:
+                    transformer = self.env['utility.transformer'].sudo().browse(t_id).exists()
+                    if transformer:
+                        region = transformer.region_id
+                        area = transformer.area_id
+            elif ct == 'feeder':
+                f_id = vals.get('linked_feeder_id', meter.linked_feeder_id.id if meter.linked_feeder_id else False)
+                if f_id:
+                    feeder = self.env['utility.feeder'].sudo().browse(f_id).exists()
+                    if feeder:
+                        region = feeder.region_id
+                        area = feeder.area_id
+
+            if (region or area) and not _in_scope(region, area):
+                raise AccessError(_(
+                    'لا يمكنك ربط عداد بعنصر (عميل أو محول أو فيدر) خارج نطاقك التنظيمي المخصص.'
+                ))
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
@@ -300,7 +365,62 @@ class UtilityMeter(models.Model):
                 vals['operational_number'] = (vals['operational_number'] or '').strip() or False
             if vals.get('meter_number', _('جديد')) == _('جديد'):
                 vals['meter_number'] = self.env['ir.sequence'].next_by_code('utility.meter') or _('جديد')
+        # Validate canonical ownership scope before creating meters.
+        if not (
+            self.env.context.get('utility_scope_bypass')
+            or self.env.user._is_global_utility_scope()
+        ):
+            for vals in vals_list:
+                self._check_create_scope_vals(vals)
         return super().create(vals_list)
+
+    @api.model
+    def _check_create_scope_vals(self, vals):
+        """Scope check for meter creation (no existing record yet).
+        Resolves canonical geography from vals and validates against user scope.
+        """
+        if self.env.context.get('utility_scope_bypass') or self.env.user._is_global_utility_scope():
+            return
+        effective_branches = self.env.user._get_effective_branch_ids()
+        effective_regions = self.env.user._get_effective_region_ids()
+
+        def _in_scope(region, area):
+            return (
+                (area and area.id in effective_branches)
+                or (region and region.id in effective_regions)
+            )
+
+        ct = vals.get('connection_type', 'not_connected')
+        region = False
+        area = False
+
+        if ct == 'subscriber':
+            cust_id = vals.get('customer_id')
+            if cust_id:
+                cust = self.env['utility.customer'].sudo().browse(cust_id).exists()
+                if cust:
+                    region = cust.partner_id.region_id
+                    area = cust.partner_id.area_id
+        elif ct in ('transformer', 'private_transformer'):
+            key = 'linked_transformer_id' if ct == 'transformer' else 'linked_private_transformer_id'
+            t_id = vals.get(key)
+            if t_id:
+                transformer = self.env['utility.transformer'].sudo().browse(t_id).exists()
+                if transformer:
+                    region = transformer.region_id
+                    area = transformer.area_id
+        elif ct == 'feeder':
+            f_id = vals.get('linked_feeder_id')
+            if f_id:
+                feeder = self.env['utility.feeder'].sudo().browse(f_id).exists()
+                if feeder:
+                    region = feeder.region_id
+                    area = feeder.area_id
+
+        if (region or area) and not _in_scope(region, area):
+            raise AccessError(_(
+                'لا يمكنك إنشاء عداد مرتبط بعنصر (عميل أو محول أو فيدر) خارج نطاقك التنظيمي المخصص.'
+            ))
 
     @api.model
     def _name_search(self, name, args=None, operator='ilike', limit=100, name_get_uid=None):
@@ -374,6 +494,8 @@ class UtilityMeter(models.Model):
         vals = dict(vals)
         if 'operational_number' in vals:
             vals['operational_number'] = (vals['operational_number'] or '').strip() or False
+        # Canonical mutation integrity: validate ownership before any DB write.
+        self._check_mutation_scope(vals)
         for meter in self:
             if not self.env.context.get('skip_implicit_log'):
                 if 'status_id' in vals and vals.get('status_id') != meter.status_id.id:
