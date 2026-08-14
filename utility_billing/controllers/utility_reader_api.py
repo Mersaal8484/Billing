@@ -1,8 +1,10 @@
 import base64
+import binascii
 import json
 import logging
 
 from odoo import fields, http
+from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.http import request
 
 _logger = logging.getLogger(__name__)
@@ -10,6 +12,11 @@ _logger = logging.getLogger(__name__)
 
 class UtilityReaderAPI(http.Controller):
     """REST API لتطبيق القارئ (Flutter) — رفع القراءات والصور على شكل دفعات"""
+
+    @staticmethod
+    def _error(code, message):
+        """Return the stable API error envelope without changing success payloads."""
+        return {'success': False, 'code': code, 'error': message}
 
     def _resolve_meter_identifiers(self, params):
         """Resolve supplied meter identifiers and reject contradictory values."""
@@ -59,29 +66,29 @@ class UtilityReaderAPI(http.Controller):
         params = request.jsonrequest
         date_range_id = params.get('date_range_id')
         if not date_range_id:
-            return {'success': False, 'error': 'date_range_id is required'}
+            return self._error('VALIDATION_ERROR', 'date_range_id is required')
 
         # التحقق من صحة المعرف والفترة والشركة قبل إنشاء الدفعة
         try:
             date_range_id = int(date_range_id)
         except (TypeError, ValueError):
-            return {'success': False, 'error': 'date_range_id must be numeric'}
+            return self._error('VALIDATION_ERROR', 'date_range_id must be numeric')
         period = request.env['date.range'].browse(date_range_id)
         if (not period.exists() or period.period_role != 'reading'
                 or period.state != 'open'
                 or period.company_id not in (False, request.env.company)):
-            return {'success': False, 'error': 'الفترة غير موجودة'}
+            return self._error('INVALID_READING_PERIOD', 'الفترة غير موجودة')
 
         region_id = params.get('region_id')
         if region_id:
             try:
                 region_id = int(region_id)
             except (TypeError, ValueError):
-                return {'success': False, 'error': 'region_id must be numeric'}
+                return self._error('VALIDATION_ERROR', 'region_id must be numeric')
             region = request.env['utility.region'].browse(region_id)
             if (not region.exists() or region.type != 'region'
                     or (period.region_ids and region not in period.region_ids)):
-                return {'success': False, 'error': 'المنطقة غير صالحة لهذه الفترة'}
+                return self._error('INVALID_REGION', 'المنطقة غير صالحة لهذه الفترة')
 
         total_readings_raw = params.get('total_readings', 0)
         try:
@@ -89,11 +96,10 @@ class UtilityReaderAPI(http.Controller):
             if total_readings < 0:
                 raise ValueError()
         except (TypeError, ValueError):
-            return {
-                'success': False,
-                'code': 'INVALID_TOTAL_READINGS',
-                'error': 'total_readings must be a non-negative integer'
-            }
+            return self._error(
+                'INVALID_TOTAL_READINGS',
+                'total_readings must be a non-negative integer',
+            )
 
         batch = request.env['utility.reading.batch'].create({
             'date_range_id': date_range_id,
@@ -122,33 +128,33 @@ class UtilityReaderAPI(http.Controller):
         batch_id = params.get('batch_id')
         data = params.get('data')
         if not batch_id or data is None:
-            return {'success': False, 'error': 'batch_id and data are required'}
+            return self._error('VALIDATION_ERROR', 'batch_id and data are required')
 
         batch = self._get_owned_batch(batch_id)
         if not batch.exists():
-            return {'success': False, 'error': 'الدفعة غير موجودة أو غير مملوكة للمستخدم الحالي'}
+            return self._error('BATCH_NOT_FOUND', 'الدفعة غير موجودة أو غير مملوكة للمستخدم الحالي')
         if batch.state != 'uploaded':
-            return {'success': False, 'error': 'لا يمكن تعديل دفعة تمت معالجتها'}
+            return self._error('BATCH_NOT_EDITABLE', 'لا يمكن تعديل دفعة تمت معالجتها')
 
         # تحويل البيانات وإثبات صحة الـ JSON قبل تنفيذ أي عملية كتابة
         if isinstance(data, str):
             try:
                 parsed = json.loads(data)
-            except Exception:
-                return {'success': False, 'code': 'INVALID_JSON', 'error': 'data must be valid JSON object'}
+            except json.JSONDecodeError:
+                return self._error('INVALID_JSON', 'data must be valid JSON object')
             json_str = data
         elif isinstance(data, dict):
             parsed = data
             json_str = json.dumps(data, ensure_ascii=False)
         else:
-            return {'success': False, 'code': 'INVALID_JSON', 'error': 'data must be dict or string'}
+            return self._error('INVALID_JSON', 'data must be dict or string')
 
         if not isinstance(parsed, dict):
-            return {'success': False, 'code': 'INVALID_JSON', 'error': 'data must be valid JSON object'}
+            return self._error('INVALID_JSON', 'data must be valid JSON object')
 
         readings_list = parsed.get('readings')
         if readings_list is not None and not isinstance(readings_list, list):
-            return {'success': False, 'code': 'INVALID_JSON', 'error': 'readings must be a list'}
+            return self._error('INVALID_JSON', 'readings must be a list')
 
         encoded = base64.b64encode(json_str.encode('utf-8'))
         total = len(readings_list) if isinstance(readings_list, list) else 0
@@ -184,13 +190,16 @@ class UtilityReaderAPI(http.Controller):
         image_data = params.get('image')
 
         if not batch_id or not filename or not image_data:
-            return {'success': False, 'error': 'batch_id, filename, and image are required'}
+            return self._error(
+                'VALIDATION_ERROR',
+                'batch_id, filename, and image are required',
+            )
 
         batch = self._get_owned_batch(batch_id)
         if not batch.exists():
-            return {'success': False, 'error': 'الدفعة غير موجودة أو غير مملوكة للمستخدم الحالي'}
+            return self._error('BATCH_NOT_FOUND', 'الدفعة غير موجودة أو غير مملوكة للمستخدم الحالي')
         if batch.state != 'uploaded':
-            return {'success': False, 'error': 'لا يمكن تعديل دفعة تمت معالجتها'}
+            return self._error('BATCH_NOT_EDITABLE', 'لا يمكن تعديل دفعة تمت معالجتها')
 
         # التحقق من حجم الصورة (الحد الأقصى 100 KB)
         max_size = int(request.env['ir.config_parameter'].sudo().get_param(
@@ -199,13 +208,13 @@ class UtilityReaderAPI(http.Controller):
             decoded = base64.b64decode(image_data, validate=True)
             size_kb = len(decoded) / 1024
             if size_kb > max_size:
-                return {
-                    'success': False,
-                    'error': f'حجم الصورة ({size_kb:.0f} KB) يتجاوز الحد الأقصى ({max_size} KB)',
-                }
-        except Exception as e:
+                return self._error(
+                    'IMAGE_TOO_LARGE',
+                    f'حجم الصورة ({size_kb:.0f} KB) يتجاوز الحد الأقصى ({max_size} KB)',
+                )
+        except (binascii.Error, TypeError, ValueError) as e:
             _logger.warning("Invalid base64 image data uploaded for batch %s: %s", batch_id, str(e))
-            return {'success': False, 'error': 'بيانات الصورة غير صالحة (Base64 Decode Error)', 'code': 'INVALID_BASE64'}
+            return self._error('INVALID_BASE64', 'بيانات الصورة غير صالحة (Base64 Decode Error)')
 
         media_asset = request.env['utility.media.service'].sudo().store_media(
             file_data=decoded,
@@ -236,14 +245,15 @@ class UtilityReaderAPI(http.Controller):
         params = request.jsonrequest
         batch_id = params.get('batch_id')
         if not batch_id:
-            return {'success': False, 'error': 'batch_id is required'}
+            return self._error('VALIDATION_ERROR', 'batch_id is required')
 
         batch = self._get_owned_batch(batch_id)
         if not batch.exists():
-            return {'success': False, 'error': 'الدفعة غير موجودة أو غير مملوكة للمستخدم الحالي'}
+            return self._error('BATCH_NOT_FOUND', 'الدفعة غير موجودة أو غير مملوكة للمستخدم الحالي')
 
         try:
-            batch.action_confirm()
+            with request.env.cr.savepoint():
+                batch.action_confirm()
             return {
                 'success': True,
                 'batch_id': batch.id,
@@ -252,9 +262,9 @@ class UtilityReaderAPI(http.Controller):
                 'total_readings': batch.total_readings,
                 'total_images': len(batch.image_ids),
             }
-        except Exception as e:
-            _logger.exception("Failed to confirm reading batch %s: %s", batch_id, str(e))
-            return {'success': False, 'error': 'حدث خطأ أثناء تأكيد الدفعة', 'code': 'PROCESSING_ERROR'}
+        except (AccessError, UserError, ValidationError) as e:
+            _logger.warning("Failed to confirm reading batch %s: %s", batch_id, str(e))
+            return self._error('BUSINESS_RULE_ERROR', str(e))
 
     # ================================================================
     # استعلام: حالة الدفعة (Polling)
@@ -270,11 +280,11 @@ class UtilityReaderAPI(http.Controller):
         params = request.jsonrequest
         batch_id = params.get('batch_id')
         if not batch_id:
-            return {'success': False, 'error': 'batch_id is required'}
+            return self._error('VALIDATION_ERROR', 'batch_id is required')
 
         batch = self._get_owned_batch(batch_id)
         if not batch.exists():
-            return {'success': False, 'error': 'الدفعة غير موجودة أو غير مملوكة للمستخدم الحالي'}
+            return self._error('BATCH_NOT_FOUND', 'الدفعة غير موجودة أو غير مملوكة للمستخدم الحالي')
 
         return {
             'success': True,
@@ -327,11 +337,14 @@ class UtilityReaderAPI(http.Controller):
         params = request.jsonrequest
         meter, error_code = self._resolve_meter_identifiers(params)
         if error_code == 'IDENTIFIER_REQUIRED':
-            return {'success': False, 'error': 'meter_id, operational_number or meter_number is required'}
+            return self._error(
+                'VALIDATION_ERROR',
+                'meter_id, operational_number or meter_number is required',
+            )
         if error_code == 'METER_IDENTIFIER_MISMATCH':
-            return {'success': False, 'error': 'المعرفات الممررة للعداد متعارضة', 'code': error_code}
+            return self._error(error_code, 'المعرفات الممررة للعداد متعارضة')
         if error_code:
-            return {'success': False, 'error': 'العداد غير موجود', 'code': error_code}
+            return self._error(error_code, 'العداد غير موجود')
 
         customer = meter.customer_id
         return {
@@ -362,7 +375,7 @@ class UtilityReaderAPI(http.Controller):
         try:
             limit = int(limit_raw)
         except (TypeError, ValueError):
-            return {'success': False, 'code': 'INVALID_LIMIT', 'error': 'limit must be an integer'}
+            return self._error('INVALID_LIMIT', 'limit must be an integer')
 
         limit = max(1, min(limit, 100))
 

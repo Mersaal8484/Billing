@@ -2,6 +2,21 @@ import json
 import hmac
 from odoo.tests.common import TransactionCase, HttpCase
 from odoo.exceptions import UserError, ValidationError
+from odoo.addons.utility_billing.controllers.utility_billing_api import UtilityBillingAPI
+from odoo.addons.utility_billing.controllers.utility_reader_api import UtilityReaderAPI
+
+
+class TestAPIErrorContract(TransactionCase):
+
+    def test_billing_and_reader_error_helpers_are_consistent(self):
+        """All JSON API error helpers expose the integrator-facing envelope."""
+        expected = {
+            'success': False,
+            'code': 'VALIDATION_ERROR',
+            'error': 'invalid request',
+        }
+        self.assertEqual(UtilityBillingAPI._error('VALIDATION_ERROR', 'invalid request'), expected)
+        self.assertEqual(UtilityReaderAPI._error('VALIDATION_ERROR', 'invalid request'), expected)
 
 
 class TestReaderAndWebhookAPIHardening(TransactionCase):
@@ -223,6 +238,27 @@ class TestReaderAndWebhookAPIHttp(HttpCase):
         self.assertEqual(res_json.get('error'), 'Invalid token')
         self.tx.invalidate_recordset(['state'])
         self.assertEqual(self.tx.state, 'pending')
+
+    def test_billing_api_error_contract_is_stable(self):
+        """Billing API validation errors expose success, code, and error."""
+        self.authenticate('reader_test_user', 'reader_test_user')
+        response = self.url_open(
+            '/api/v1/utility/billing/balance',
+            data=json.dumps({
+                'jsonrpc': '2.0',
+                'params': {},
+            }),
+            headers={'Content-Type': 'application/json'},
+        )
+        result = response.json().get('result', {})
+        self.assertEqual(
+            result,
+            {
+                'success': False,
+                'code': 'VALIDATION_ERROR',
+                'error': 'customer_number is required',
+            },
+        )
 
     def test_payment_webhook_http_valid_callback_and_repeated_idempotency(self):
         """اختبار تأكيد الدفع الإلكتروني عبر HTTP وإثبات تكرار الاستدعاء (Repeated Callback Idempotency)."""

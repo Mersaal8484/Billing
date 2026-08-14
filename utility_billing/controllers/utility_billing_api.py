@@ -10,6 +10,11 @@ _logger = logging.getLogger(__name__)
 
 class UtilityBillingAPI(http.Controller):
 
+    @staticmethod
+    def _error(code, message):
+        """Return the stable API error envelope for all billing endpoints."""
+        return {'success': False, 'code': code, 'error': message}
+
     def _get_authorized_accounts(self):
         """إرجاع recordset لحسابات الكهرباء المسموح للمستخدم الحالي الوصول إليها.
 
@@ -56,11 +61,14 @@ class UtilityBillingAPI(http.Controller):
         """Resolve an authorized customer by exact business identifier."""
         customer, error_code = self._resolve_authorized_customer(request.jsonrequest or {})
         if error_code == 'CUSTOMER_IDENTIFIER_MISMATCH':
-            return {'success': False, 'error': 'معرفات الحساب متعارضة', 'code': error_code}
+            return self._error(error_code, 'معرفات الحساب متعارضة')
         if error_code == 'CUSTOMER_IDENTIFIER_REQUIRED':
-            return {'success': False, 'error': 'customer_id, customer_number or external_qr_reference is required', 'code': error_code}
+            return self._error(
+                error_code,
+                'customer_id, customer_number or external_qr_reference is required',
+            )
         if not customer:
-            return {'success': False, 'error': 'الحساب غير موجود', 'code': error_code or 'CUSTOMER_NOT_FOUND'}
+            return self._error(error_code or 'CUSTOMER_NOT_FOUND', 'الحساب غير موجود')
         return {'success': True, 'customer': self._customer_payload(customer)}
 
     @http.route('/api/v1/utility/customer/qr_reference', type='json', auth='user', methods=['POST'])
@@ -69,18 +77,21 @@ class UtilityBillingAPI(http.Controller):
         params = request.jsonrequest or {}
         customer, error_code = self._resolve_authorized_customer(params)
         if error_code == 'CUSTOMER_IDENTIFIER_MISMATCH':
-            return {'success': False, 'error': 'معرفات الحساب متعارضة', 'code': error_code}
+            return self._error(error_code, 'معرفات الحساب متعارضة')
         if error_code == 'CUSTOMER_IDENTIFIER_REQUIRED':
-            return {'success': False, 'error': 'customer_id, customer_number or external_qr_reference is required', 'code': error_code}
+            return self._error(
+                error_code,
+                'customer_id, customer_number or external_qr_reference is required',
+            )
         if not customer:
-            return {'success': False, 'error': 'الحساب غير موجود', 'code': error_code or 'CUSTOMER_NOT_FOUND'}
+            return self._error(error_code or 'CUSTOMER_NOT_FOUND', 'الحساب غير موجود')
         target_key = (
             'new_external_qr_reference'
             if 'new_external_qr_reference' in params
             else 'external_qr_reference'
         )
         if target_key not in params:
-            return {'success': False, 'error': 'external_qr_reference is required', 'code': 'VALIDATION_ERROR'}
+            return self._error('VALIDATION_ERROR', 'external_qr_reference is required')
 
         reference = (params.get(target_key) or '').strip() or False
         owner = request.env['utility.customer']
@@ -89,22 +100,20 @@ class UtilityBillingAPI(http.Controller):
                 ('external_qr_reference', '=', reference),
                 ('company_id', '=', customer.company_id.id),
                 ('id', '!=', customer.id),
-            ], limit=1)
+        ], limit=1)
         if owner:
-            return {
-                'success': False,
-                'error': 'معرف QR الخارجي مستخدم بالفعل لدى حساب آخر',
-                'code': 'QR_REFERENCE_ALREADY_ASSIGNED',
-            }
+            return self._error(
+                'QR_REFERENCE_ALREADY_ASSIGNED',
+                'معرف QR الخارجي مستخدم بالفعل لدى حساب آخر',
+            )
         try:
             with request.env.cr.savepoint():
                 customer.write({'external_qr_reference': reference})
         except IntegrityError:
-            return {
-                'success': False,
-                'error': 'معرف QR الخارجي مستخدم بالفعل لدى حساب آخر',
-                'code': 'QR_REFERENCE_ALREADY_ASSIGNED',
-            }
+            return self._error(
+                'QR_REFERENCE_ALREADY_ASSIGNED',
+                'معرف QR الخارجي مستخدم بالفعل لدى حساب آخر',
+            )
         return {'success': True, 'customer': self._customer_payload(customer)}
 
     def _authorize_order(self, order_id):
@@ -127,10 +136,10 @@ class UtilityBillingAPI(http.Controller):
         params = request.jsonrequest
         customer_number = params.get('customer_number')
         if not customer_number:
-            return {'error': 'customer_number is required'}
+            return self._error('VALIDATION_ERROR', 'customer_number is required')
         account = self._authorize_account(customer_number)
         if not account:
-            return {'error': 'Account not found'}
+            return self._error('CUSTOMER_NOT_FOUND', 'Account not found')
         orders = request.env['sale.order'].sudo().search([
             ('customer_id', '=', account.id),
             ('bill_state', 'not in', ('paid', 'cancelled')),
@@ -149,14 +158,14 @@ class UtilityBillingAPI(http.Controller):
         customer_number = params.get('customer_number')
         limit = params.get('limit', 12)
         if not customer_number:
-            return {'error': 'customer_number is required'}
+            return self._error('VALIDATION_ERROR', 'customer_number is required')
         account = self._authorize_account(customer_number)
         if not account:
-            return {'error': 'Account not found'}
+            return self._error('CUSTOMER_NOT_FOUND', 'Account not found')
         try:
             limit = max(1, min(int(limit), 100))
         except (TypeError, ValueError):
-            return {'error': 'limit must be numeric'}
+            return self._error('INVALID_LIMIT', 'limit must be numeric')
         orders = request.env['sale.order'].sudo().search([
             ('customer_id', '=', account.id),
         ], order='date_order desc', limit=limit)
@@ -175,9 +184,10 @@ class UtilityBillingAPI(http.Controller):
     @http.route('/api/v1/utility/billing/pay', type='json', auth='user', methods=['POST'])
     def billing_pay(self, **kwargs):
         """تم تعطيل الدفع المباشر من البوابة. استخدم /api/v1/utility/billing/payment_intent بدلاً منه."""
-        return {
-            'error': 'Direct payment creation is disabled. Use /api/v1/utility/billing/payment_intent instead.',
-        }
+        return self._error(
+            'ENDPOINT_DISABLED',
+            'Direct payment creation is disabled. Use /api/v1/utility/billing/payment_intent instead.',
+        )
 
     @http.route('/api/v1/utility/billing/payment_intent', type='json', auth='user', methods=['POST'])
     def billing_payment_intent(self, **kwargs):
@@ -188,46 +198,58 @@ class UtilityBillingAPI(http.Controller):
         invoice_id = params.get('invoice_id')
         direction = params.get('payment_direction', 'inbound')
         if direction != 'inbound':
-            return {'error': 'Customer payment intents support inbound payments only'}
+            return self._error(
+                'INVALID_PAYMENT_DIRECTION',
+                'Customer payment intents support inbound payments only',
+            )
 
         if not order_id or not amount:
-            return {'error': 'order_id and amount are required'}
+            return self._error('VALIDATION_ERROR', 'order_id and amount are required')
         order = self._authorize_order(order_id)
         if not order:
-            return {'error': 'Order not found'}
+            return self._error('ORDER_NOT_FOUND', 'Order not found')
         posted_moves = order._get_posted_utility_moves()
         if invoice_id:
             try:
                 invoice_id = int(invoice_id)
             except (TypeError, ValueError):
-                return {'error': 'invoice_id must be numeric'}
+                return self._error('VALIDATION_ERROR', 'invoice_id must be numeric')
             invoice = request.env['account.move'].sudo().browse(invoice_id).exists()
             if (not invoice or len(invoice) != 1 or invoice not in posted_moves
                     or invoice.partner_id != order.partner_id):
-                return {'error': 'invoice_id must identify a posted accounting invoice of this bill'}
+                return self._error(
+                    'INVALID_INVOICE',
+                    'invoice_id must identify a posted accounting invoice of this bill',
+                )
         elif len(posted_moves) == 1:
             invoice = posted_moves
         else:
-            return {'error': 'invoice_id is required when the bill has multiple accounting invoices'}
+            return self._error(
+                'INVOICE_REQUIRED',
+                'invoice_id is required when the bill has multiple accounting invoices',
+            )
         try:
             amount = float(amount)
         except (TypeError, ValueError):
-            return {'error': 'amount must be a positive number'}
+            return self._error('VALIDATION_ERROR', 'amount must be a positive number')
         if amount <= 0:
-            return {'error': 'amount must be a positive number'}
+            return self._error('VALIDATION_ERROR', 'amount must be a positive number')
 
         if direction == 'inbound':
             if amount > invoice.amount_residual:
-                return {'error': 'amount cannot exceed the selected invoice residual'}
+                return self._error(
+                    'AMOUNT_EXCEEDS_RESIDUAL',
+                    'amount cannot exceed the selected invoice residual',
+                )
             if order.bill_state in ('paid', 'cancelled'):
-                return {'error': 'Bill is not payable'}
+                return self._error('BILL_NOT_PAYABLE', 'Bill is not payable')
 
         Provider = request.env['utility.integration.provider'].sudo()
         if provider_id:
             try:
                 provider_id = int(provider_id)
             except (TypeError, ValueError):
-                return {'error': 'provider_id must be numeric'}
+                return self._error('VALIDATION_ERROR', 'provider_id must be numeric')
             provider = Provider.browse(provider_id)
         else:
             provider = Provider.search([
@@ -238,11 +260,20 @@ class UtilityBillingAPI(http.Controller):
             ], limit=1)
 
         if not provider or not provider.active or not provider.is_payment_capable:
-            return {'error': 'No active payment provider configured for the requested operation'}
+            return self._error(
+                'PAYMENT_PROVIDER_UNAVAILABLE',
+                'No active payment provider configured for the requested operation',
+            )
         if not provider.supports_direction(direction):
-            return {'error': 'Provider %s does not support payment direction: %s' % (provider.name, direction)}
+            return self._error(
+                'PAYMENT_DIRECTION_UNSUPPORTED',
+                'Provider %s does not support payment direction: %s' % (provider.name, direction),
+            )
         if provider.company_id and provider.company_id != order.company_id:
-            return {'error': 'Payment provider is not available for the bill company'}
+            return self._error(
+                'PAYMENT_PROVIDER_COMPANY_MISMATCH',
+                'Payment provider is not available for the bill company',
+            )
 
         tx = request.env['utility.payment.gateway.transaction'].sudo().create({
             'provider_id': provider.id,
@@ -268,18 +299,18 @@ class UtilityBillingAPI(http.Controller):
             ('name', '=', reference),
         ], limit=1)
         if not tx:
-            return {'error': 'Transaction not found'}
+            return self._error('TRANSACTION_NOT_FOUND', 'Transaction not found')
 
         # 2. Verify callback token BEFORE acquiring DB row-level lock
         token = params.get('token') or params.get('callback_token') or params.get('signature')
         if not token or not tx.access_token:
             _logger.warning('Payment webhook missing token for reference %s', reference)
-            return {'error': 'Missing authentication token'}
+            return self._error('AUTHENTICATION_REQUIRED', 'Missing authentication token')
         expected = tx.access_token.encode('utf-8')
         received = token.encode('utf-8')
         if len(expected) != len(received) or not hmac.compare_digest(expected, received):
             _logger.warning('Payment webhook invalid token for reference %s', reference)
-            return {'error': 'Invalid token'}
+            return self._error('INVALID_TOKEN', 'Invalid token')
 
         # 3. Acquire FOR UPDATE row-level lock ONLY AFTER authentication succeeds
         request.env.cr.execute(
@@ -290,14 +321,20 @@ class UtilityBillingAPI(http.Controller):
 
         status = params.get('status')
         if not status:
-            return {'error': 'Payment status is required'}
+            return self._error('VALIDATION_ERROR', 'Payment status is required')
         provider_reference = params.get('provider_reference') or params.get('reference')
         if tx.state == 'done':
             return {'success': True, 'state': tx.state, 'payment_id': tx.payment_id.id if tx.payment_id else False}
         if tx.state != 'pending':
-            return {'error': 'Only pending payment transactions can receive callbacks'}
+            return self._error(
+                'INVALID_TRANSACTION_STATE',
+                'Only pending payment transactions can receive callbacks',
+            )
         if status in ('success', 'done', 'paid') and not provider_reference:
-            return {'error': 'Provider reference is required for successful payments'}
+            return self._error(
+                'VALIDATION_ERROR',
+                'Provider reference is required for successful payments',
+            )
         sanitized_params = str(sanitize_sensitive_payload(params))
         if status not in ('success', 'done', 'paid'):
             tx.write({
@@ -305,7 +342,12 @@ class UtilityBillingAPI(http.Controller):
                 'callback_payload': sanitized_params,
                 'error_message': params.get('error') or 'Payment gateway reported failure',
             })
-            return {'success': False, 'state': tx.state}
+            error_response = self._error(
+                'PAYMENT_FAILED',
+                params.get('error') or 'Payment gateway reported failure',
+            )
+            error_response['state'] = tx.state
+            return error_response
         tx.action_confirm_payment(provider_reference=provider_reference, callback_payload=sanitized_params)
         return {'success': True, 'state': tx.state, 'payment_id': tx.payment_id.id if tx.payment_id else False}
 
@@ -316,16 +358,19 @@ class UtilityBillingAPI(http.Controller):
         service_type = params.get('service_type')
         description = params.get('description')
         if not customer_id or not service_type or not description:
-            return {'error': 'customer_id, service_type, and description are required'}
+            return self._error(
+                'VALIDATION_ERROR',
+                'customer_id, service_type, and description are required',
+            )
         try:
             customer_id = int(customer_id)
         except (TypeError, ValueError):
-            return {'error': 'customer_id must be numeric'}
+            return self._error('VALIDATION_ERROR', 'customer_id must be numeric')
         account = request.env['utility.customer'].sudo().browse(customer_id)
         if not account.exists():
-            return {'error': 'Customer account not found'}
+            return self._error('CUSTOMER_NOT_FOUND', 'Customer account not found')
         if account not in self._get_authorized_accounts():
-            return {'error': 'Customer account not found'}
+            return self._error('CUSTOMER_NOT_FOUND', 'Customer account not found')
         try:
             order = request.env['utility.service.order'].sudo().create({
                 'customer_id': customer_id,
@@ -335,7 +380,7 @@ class UtilityBillingAPI(http.Controller):
             })
             return {'order_number': order.order_number}
         except KeyError:
-            return {'error': 'utility.service.order model not available'}
+            return self._error('MODEL_UNAVAILABLE', 'utility.service.order model not available')
 
     @http.route('/api/v1/utility/reports/daily', type='json', auth='user', methods=['POST'])
     def reports_daily(self, **kwargs):
@@ -346,7 +391,10 @@ class UtilityBillingAPI(http.Controller):
         area_id = params.get('area_id')
         user = request.env.user
         if not user.has_group('base.group_user'):
-            return {'error': 'Access denied. Reports are for internal users only.', 'code': 'ACCESS_DENIED'}
+            return self._error(
+                'ACCESS_DENIED',
+                'Access denied. Reports are for internal users only.',
+            )
         allowed_accounts = self._get_authorized_accounts()
         allowed_ids = allowed_accounts.ids
         if not allowed_ids:
@@ -363,12 +411,12 @@ class UtilityBillingAPI(http.Controller):
             try:
                 bills_domain.append(('customer_id.region_id', '=', int(region_id)))
             except (TypeError, ValueError):
-                return {'error': 'region_id must be numeric', 'code': 'VALIDATION_ERROR'}
+                return self._error('VALIDATION_ERROR', 'region_id must be numeric')
         if area_id:
             try:
                 bills_domain.append(('customer_id.area_id', '=', int(area_id)))
             except (TypeError, ValueError):
-                return {'error': 'area_id must be numeric', 'code': 'VALIDATION_ERROR'}
+                return self._error('VALIDATION_ERROR', 'area_id must be numeric')
         total_bills = request.env['sale.order'].search_count(bills_domain)
 
         payments_domain = [
