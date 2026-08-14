@@ -24,10 +24,10 @@ This is a concise ADR index. Detailed implementation belongs in the linked domai
 | ADR-014 Sensitive Wizard Least Privilege | Accepted | CURRENT V1 | Wizard access cannot exceed the most sensitive mutation it performs. | Core wizard ACLs and server guards. |
 | ADR-015 Action-Based Operational State Transition | Accepted | CURRENT V1 | Workflow actions, not raw state writes, execute operational transitions. | Service/work/install/inspection views. |
 | ADR-016 Unified Organizational Data Isolation | Accepted | CURRENT V1 | Role permissions & Region/Branch geography are independent; fail-closed unified scope. | res.users, utility_core, utility_operations, utility_billing. |
-| ADR-016 Runtime/CI Proof Deferred From Current Static Gate | Accepted | DEFERRED | Static implementation and test existence are documented separately from runtime proof. | Release gate and UAT/runbook. |
-| ADR-017 Prepaid Excluded From V1 | Accepted | OUT OF SCOPE | `utility_prepaid` is not part of the current V1 release chain. | Prepaid remains separately documented. |
-| ADR-018 Scale Architecture Remains Target V2 | Accepted | TARGET V2 | PgBouncer, horizontal nodes, scalable media, partitioning, micro-batches, and scoped Temporal require triggers and runtime evidence. | `TARGET_V2_ARCHITECTURE_ROADMAP.md`. |
-| ADR-019 Role-Based Authorization Is Independent From Organizational Scope | Accepted principle | CURRENT roles / TARGET hardening | Roles answer what a user can do; company/region/branch scope answers where. V1 prefers one unified user scope across multiple roles. | `SECURITY_MATRIX.md`, `ORGANIZATIONAL_SECURITY_AND_DATA_ISOLATION.md`. |
+| ADR-017 Runtime/CI Proof Deferred From Current Static Gate | Accepted | DEFERRED | Static implementation and test existence are documented separately from runtime proof. | Release gate and UAT/runbook. |
+| ADR-018 Prepaid Excluded From V1 | Accepted | OUT OF SCOPE | `utility_prepaid` is not part of the current V1 release chain. | Prepaid remains separately documented. |
+| ADR-019 Scale Architecture Remains Target V2 | Accepted | TARGET V2 | PgBouncer, horizontal nodes, scalable media, partitioning, micro-batches, and scoped Temporal require triggers and runtime evidence. | `TARGET_V2_ARCHITECTURE_ROADMAP.md`. |
+| ADR-020 Role-Based Authorization Is Independent From Organizational Scope | Accepted principle | CURRENT roles / TARGET hardening | Roles answer what a user can do; company/region/branch scope answers where. V1 prefers one unified user scope across multiple roles. | `SECURITY_MATRIX.md`, `ORGANIZATIONAL_SECURITY_AND_DATA_ISOLATION.md`. |
 
 ## ADR review rule
 

@@ -51,6 +51,13 @@ class ResUsers(models.Model):
     ], string='وضع النطاق التنظيمي', default='restricted', required=True,
        help='يحدد ما إذا كان المستخدم مقيداً بالتقسيمات الجغرافية المخصصة أو يملك وصولاً شاملاً.')
 
+    def write(self, vals):
+        scope_fields = {'scope_mode', 'assigned_region_ids', 'assigned_branch_ids'}
+        if scope_fields.intersection(vals.keys()):
+            if not (self.env.is_admin() or self.env.user.has_group('utility_core.group_utility_admin')):
+                raise AccessError(_("فقط مدير النظام (Utility Admin) يحق له تعديل النطاق التنظيمي وصلاحيات الوصول الجغرافي للمستخدمين."))
+        return super().write(vals)
+
     def _is_global_utility_scope(self):
         """Returns True if the user has explicit GLOBAL scope or belongs to Utility Admin."""
         self.ensure_one()

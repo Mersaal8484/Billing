@@ -86,3 +86,13 @@ class TestOrganizationalScopeBilling(TransactionCase):
         bills = self.env['sale.order'].with_user(self.user_billing_sanaa).search([('account_id', '!=', False)])
         self.assertIn(self.bill_sanaa, bills)
         self.assertNotIn(self.bill_aden, bills)
+
+    def test_02_non_utility_sale_order_unrestricted(self):
+        """Non-utility sale order (account_id is False) remains visible to restricted users."""
+        standard_sale = self.env['sale.order'].create({
+            'partner_id': self.partner_aden.id,
+            'account_id': False,
+            'company_id': self.company.id,
+        })
+        bills = self.env['sale.order'].with_user(self.user_billing_sanaa).search([('id', '=', standard_sale.id)])
+        self.assertIn(standard_sale, bills)
