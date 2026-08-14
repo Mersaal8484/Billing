@@ -1,7 +1,7 @@
 import base64
 from datetime import timedelta
 from odoo import api, fields, models, _
-from odoo.exceptions import ValidationError
+from odoo.exceptions import AccessError, UserError, ValidationError
 
 
 class UtilityReading(models.Model):
@@ -28,6 +28,9 @@ class UtilityReading(models.Model):
     raw_consumption = fields.Float('الاستهلاك الخام', compute='_compute_consumption', store=True)
     consumption = fields.Float('الاستهلاك', compute='_compute_consumption', store=True)
     meter_multiplier = fields.Float('معامل الضرب وقت القراءة', default=1.0, required=True)
+    is_rollover = fields.Boolean('تدوير العداد (Rollover)', default=False, tracking=True,
+                                 help='يُحدد إذا تجاوز العداد الحد الأقصى وبدأ الدورة من الصفر مجدداً')
+    max_reading_value = fields.Float('الحد الأقصى للعداد وقت التدوير', default=99999.0)
     reading_purpose = fields.Selection([
         ('opening', 'افتتاحية'),
         ('periodic', 'دورية'),
@@ -209,8 +212,8 @@ class UtilityReading(models.Model):
         self.env.cr.execute("""
             UPDATE utility_reading
                SET reading_purpose = 'opening'
-             WHERE is_initial_reading = TRUE
-               AND reading_purpose != 'opening'
+              WHERE is_initial_reading = TRUE
+                AND reading_purpose != 'opening'
         """)
 
     @api.onchange('meter_serial_scan')
@@ -242,7 +245,6 @@ class UtilityReading(models.Model):
                         'message': _('لم يتم العثور على عداد يحمل الرقم: %s') % self.meter_serial_scan,
                     }
                 }
-
 
     @api.onchange('meter_id')
     def _onchange_meter_account(self):
@@ -317,11 +319,13 @@ class UtilityReading(models.Model):
     STATE_EDITABLE = {
         'draft': {'meter_id', 'reading_date', 'reading_value', 'reading_category',
                   'reading_type', 'reading_purpose', 'reading_event', 'account_id', 'meter_multiplier',
-                  'is_estimated', 'is_initial_reading', 'replacement_id', 'meter_image', 'image_asset_id', 'meter_image_secondary',
+                  'is_estimated', 'is_initial_reading', 'is_rollover', 'max_reading_value',
+                  'replacement_id', 'meter_image', 'image_asset_id', 'meter_image_secondary',
                   'image_state', 'rejection_reason', 'remarks', 'date_range_id',
                   'reading_source', 'active', 'is_validated', 'validator_id',
                   'reviewer_id', 'review_date'},
         'under_review': {'meter_image', 'image_asset_id', 'meter_image_secondary', 'image_state',
+                          'is_rollover', 'max_reading_value',
                           'review_notes', 'rejection_reason', 'state',
                           'is_validated', 'validator_id', 'reviewer_id', 'review_date'},
         'approved': {'rejection_reason', 'state', 'active', 'attachment_id', 'date_range_id',
@@ -329,6 +333,7 @@ class UtilityReading(models.Model):
         'queued': {'state', 'attachment_id', 'billing_error'},
         'billed': {'active', 'remarks', 'billing_error'},
         'error': {'reading_date', 'reading_value', 'meter_image', 'image_asset_id', 'meter_image_secondary',
+                  'is_rollover', 'max_reading_value',
                   'image_state', 'remarks', 'date_range_id', 'state', 'billing_error'},
     }
 
@@ -350,6 +355,7 @@ class UtilityReading(models.Model):
             domain = self._get_open_period_domain(
                 work_type='readings', billing_period=billing_period)
             reading.available_open_reading_period_ids = self.env['date.range'].search(domain)
+
     @api.onchange('account_id', 'meter_id', 'reading_purpose')
     def _onchange_account_id_date_range(self):
         available_periods = self.available_open_reading_period_ids
@@ -359,14 +365,20 @@ class UtilityReading(models.Model):
             self.date_range_id = available_periods[0].id
         return {'domain': {'date_range_id': [('id', 'in', available_periods.ids)]}}
 
-    @api.depends('reading_value', 'previous_reading', 'is_initial_reading', 'reading_purpose', 'meter_multiplier')
+    @api.depends('reading_value', 'previous_reading', 'is_initial_reading', 'reading_purpose', 'meter_multiplier', 'is_rollover', 'max_reading_value')
     def _compute_consumption(self):
         for r in self:
             if r.is_initial_reading or r.reading_purpose == 'opening':
                 r.raw_consumption = 0.0
                 r.consumption = 0.0
             else:
-                raw = r.reading_value - (r.previous_reading or 0.0)
+                prev = r.previous_reading or 0.0
+                curr = r.reading_value or 0.0
+                if r.is_rollover and curr < prev:
+                    max_val = r.max_reading_value if r.max_reading_value > 0 else 99999.0
+                    raw = (max_val - prev + 1.0) + curr
+                else:
+                    raw = curr - prev
                 r.raw_consumption = raw
                 r.consumption = raw * (r.meter_multiplier or 1.0)
 
@@ -447,6 +459,14 @@ class UtilityReading(models.Model):
             })
 
     def action_approve(self):
+        if not (self.env.user.has_group('utility_core.group_utility_supervisor')
+                or self.env.user.has_group('utility_core.group_utility_billing_manager')
+                or self.env.user.has_group('utility_core.group_utility_revenue_manager')
+                or self.env.user.has_group('utility_core.group_utility_auditor')
+                or self.env.user.has_group('utility_core.group_utility_admin')
+                or self.env.su):
+            raise AccessError(_('ليس لديك صلاحية اعتماد قراءات العدادات. يتطلب صلاحية مشرف أو مدير فوترة أو مراجع.'))
+
         for r in self:
             if r.state != 'under_review':
                 raise ValidationError('يمكن الموافقة على القراءات قيد المراجعة فقط!')
@@ -456,7 +476,7 @@ class UtilityReading(models.Model):
                     'لا يمكن اعتماد القراءة قبل اعتماد الصورة كصورة واضحة (clear).'
                 )
 
-            # FIX-4: منع اعتماد قراءة بالاستهلاك سالب للقراءات القابلة للفوترة
+            # FIX-4: منع اعتماد قراءة باستهلاك سالب للقراءات القابلة للفوترة
             if r._requires_billing_review() and r.consumption < 0:
                 raise ValidationError(
                     'لا يمكن اعتماد قراءة باستهلاك سالب (%.2f). '
@@ -485,6 +505,14 @@ class UtilityReading(models.Model):
                 r.meter_id._update_last_reading()
 
     def action_reject(self):
+        if not (self.env.user.has_group('utility_core.group_utility_supervisor')
+                or self.env.user.has_group('utility_core.group_utility_billing_manager')
+                or self.env.user.has_group('utility_core.group_utility_revenue_manager')
+                or self.env.user.has_group('utility_core.group_utility_auditor')
+                or self.env.user.has_group('utility_core.group_utility_admin')
+                or self.env.su):
+            raise AccessError(_('ليس لديك صلاحية رفض قراءات العدادات. يتطلب صلاحية مشرف أو مدير فوترة أو مراجع.'))
+
         for r in self:
             # FIX-1: منع رفض قراءة مفوترة — يجب إلغاء الفاتورة أولاً أو استخدام تسوية
             if r.state == 'billed':
@@ -498,6 +526,10 @@ class UtilityReading(models.Model):
             r.write({
                 'state': 'draft',
                 'rejection_reason': r.rejection_reason or 'مرفوضة من قبل المراجع',
+                'is_validated': False,
+                'validator_id': False,
+                'reviewer_id': False,
+                'review_date': False,
             })
 
     def action_approve_batch(self):

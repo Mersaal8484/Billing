@@ -1,6 +1,6 @@
 import logging
 from odoo import api, fields, models, _
-from odoo.exceptions import ValidationError
+from odoo.exceptions import AccessError, ValidationError
 from odoo.addons.utility_core.models.utility_date_range import normalize_billing_cadence
 
 _logger = logging.getLogger(__name__)
@@ -264,6 +264,11 @@ class UtilityReading(models.Model):
 
     def _action_generate_periodic_bill(self):
         """Create one bill from a periodic reading and pending closing segments."""
+        if not (self.env.user.has_group('utility_core.group_utility_billing_manager')
+                or self.env.user.has_group('utility_core.group_utility_admin')
+                or self.env.su):
+            raise AccessError(_('ليس لديك صلاحية إصدار فواتير الكهرباء. يتطلب صلاحية مدير الفوترة أو مدير النظام.'))
+
         self.ensure_one()
         if self.reading_purpose != 'periodic':
             raise ValidationError(_('لا يمكن إنشاء فاتورة إلا من قراءة دورية.'))
@@ -350,6 +355,11 @@ class UtilityReading(models.Model):
         return self._action_generate_periodic_bill()
 
     def action_generate_bills_batch(self):
+        if not (self.env.user.has_group('utility_core.group_utility_billing_manager')
+                or self.env.user.has_group('utility_core.group_utility_admin')
+                or self.env.su):
+            raise AccessError(_('ليس لديك صلاحية إصدار فواتير الكهرباء. يتطلب صلاحية مدير الفوترة أو مدير النظام.'))
+
         readings = self.filtered(lambda r: r.reading_purpose == 'periodic' and r.date_range_id and r.state == 'approved' and r.is_billable and (
             r.reading_category == 'customer' or
             (r.reading_category == 'transformer' and r.is_private_transformer)

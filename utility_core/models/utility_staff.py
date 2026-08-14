@@ -452,25 +452,3 @@ class UtilityStaff(models.Model):
             record._auto_create_collector_journal()
         records._sync_user_groups()
         return records
-
-    def init(self):
-        super().init()
-        # Safe, idempotent migration: populate role_ids from legacy user_role_id if present
-        self.env.cr.execute("""
-            CREATE TABLE IF NOT EXISTS utility_staff_role_rel (
-                staff_id INTEGER NOT NULL REFERENCES utility_staff(id) ON DELETE CASCADE,
-                role_id INTEGER NOT NULL REFERENCES utility_user_role(id) ON DELETE CASCADE,
-                PRIMARY KEY (staff_id, role_id)
-            );
-            CREATE INDEX IF NOT EXISTS utility_staff_role_rel_staff_idx ON utility_staff_role_rel(staff_id);
-            CREATE INDEX IF NOT EXISTS utility_staff_role_rel_role_idx ON utility_staff_role_rel(role_id);
-
-            INSERT INTO utility_staff_role_rel (staff_id, role_id)
-            SELECT id, user_role_id
-            FROM utility_staff
-            WHERE user_role_id IS NOT NULL
-              AND NOT EXISTS (
-                  SELECT 1 FROM utility_staff_role_rel
-                  WHERE staff_id = utility_staff.id AND role_id = utility_staff.user_role_id
-              );
-        """)

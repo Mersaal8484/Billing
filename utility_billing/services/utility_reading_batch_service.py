@@ -178,7 +178,7 @@ class UtilityReadingBatchService(models.AbstractModel):
                 except Exception as e:
                     _logger.warning("Could not store media asset for %s: %s", image_filename, str(e))
 
-        reading_state = 'under_review' if media_asset else 'approved'
+        reading_state = 'under_review'
         reading_vals = {
             'meter_id': meter.id,
             'account_id': customer.id,
