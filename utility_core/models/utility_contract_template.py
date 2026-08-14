@@ -644,10 +644,19 @@ class UtilityContractTemplate(models.Model):
             {'sequence': 70, 'name': 'الشريحة السابعة (200,000-299,999)', 'from_kwh': 200000, 'to_kwh': 300000, 'price_per_kwh': 175, 'is_discount': False},
             {'sequence': 80, 'name': 'الشريحة الثامنة (300,000+)', 'from_kwh': 300000, 'to_kwh': 0, 'price_per_kwh': 170, 'is_discount': False},
         ]
+        ctx = dict(self.env.context, skip_tier_validation=True)
+        Block = self.env['utility.contract.template.block']
         for template in self:
-            template.with_context(skip_tier_validation=True).write({
-                'block_ids': [(5, 0, 0)] + [(0, 0, b) for b in blocks_data]
-            })
+            # حذف الشرائح الحالية بشكل صريح مع تجاوز التحقق المؤقت
+            existing = Block.with_context(ctx).search([
+                ('template_id', '=', template.id),
+                ('is_discount', '=', False),
+            ])
+            existing.with_context(ctx).unlink()
+            # إنشاء الشرائح الثمانية الجديدة
+            new_blocks = [{**b, 'template_id': template.id} for b in blocks_data]
+            Block.with_context(ctx).create(new_blocks)
+            # التحقق النهائي الصارم بعد اكتمال العملية
             template._validate_contract_template_tiers()
         
         if len(self) == 1:
