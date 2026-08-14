@@ -2,9 +2,9 @@
 
 **Repository:** `AbdulrhmanBashammmakh/utility_erp`  
 **Branch:** `development`  
-**Reviewed SHA:** `51e8dba5c47ed8ff9d1485b519e1b1586cb30522`  
-**Documentation Version:** 2.1  
-**Status:** CURRENT role security + TARGET V1 security hardening
+**Reviewed SHA:** `45d738693ec70bad542df76f568425b01d44359c`
+**Documentation Version:** 3.0
+**Status:** CURRENT V1 IMPLEMENTED (Functional Roles + Company Scope + Unified Region/Branch Scope)
 
 ## 1. Purpose
 

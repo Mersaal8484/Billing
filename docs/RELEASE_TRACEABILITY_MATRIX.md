@@ -1,8 +1,8 @@
 # Release Traceability Matrix
 
 **Repository:** `AbdulrhmanBashammmakh/utility_erp`
-**Reviewed SHA:** `51e8dba5c47ed8ff9d1485b519e1b1586cb30522`
-**Documentation Version:** 2.1
+**Reviewed SHA:** `45d738693ec70bad542df76f568425b01d44359c`
+**Documentation Version:** 3.0
 **Rule:** Test coverage below means test files/scenarios exist; it does not claim execution passed.
 
 | Business Capability | Module | Primary Model | Accounting/Inventory Artifact | Security Group | UI Entry Point | Test Coverage Exists | Documentation |

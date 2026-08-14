@@ -16,8 +16,10 @@
                             <field name="legacy_user_code" placeholder="معرف النظام السابق"/>
                         </group>
                     </group>
-                    <group string="المناطق الجغرافية وخطوط السير المعينة">
-                        <field name="assigned_region_ids" widget="many2many_tags" options="{'no_create': True}" placeholder="اختر المناطق..."/>
+                    <group string="النطاق التنظيمي الجغرافي (Organizational Scope)">
+                        <field name="scope_mode" widget="radio"/>
+                        <field name="assigned_region_ids" widget="many2many_tags" options="{'no_create': True}" placeholder="اختر المناطق (تتضمن فروعها تلقائياً)..." attrs="{'readonly': [('scope_mode', '=', 'global')]}"/>
+                        <field name="assigned_branch_ids" widget="many2many_tags" options="{'no_create': True}" placeholder="اختر الفروع الصريحة (دون ترفيع كامل المنطقة الأم)..." attrs="{'readonly': [('scope_mode', '=', 'global')]}"/>
                         <field name="assigned_route_ids" widget="many2many_tags" options="{'no_create': True}" placeholder="اختر خطوط السير..."/>
                     </group>
                 </page>

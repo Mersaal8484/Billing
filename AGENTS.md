@@ -10,6 +10,8 @@ This file contains repository-wide invariants and routing only. Treat `docs/DOCU
 4. The relevant domain document in `docs/`.
 5. `skills/<skill-name>/SKILL.md` for execution discipline, not business truth.
 
+`/skills` is authoritative. `.opencode/skills/` is a generated/tool-compatibility mirror and must never contain independent business rules.
+
 Do not present TARGET V2 proposals, a UI affordance, a test file, or an empty CI status as implemented evidence without verification.
 
 ## Skill routing

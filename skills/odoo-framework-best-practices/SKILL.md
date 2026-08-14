@@ -15,7 +15,9 @@ This skill defines technical engineering guardrails, ORM performance patterns, s
 ## 1. ORM Performance & Query Optimization
 
 - **Avoid N+1 Queries**:
-  - Never call `.search()`, `.browse()`, or execute raw SQL queries inside loops (`for record in self:`), `@api.depends`, or `@api.onchange`.
+  - Avoid ORM searches or SQL inside per-record loops when they produce N+1 behavior.
+  - Batch/prefetch whenever practical.
+  - Do not refactor a loop solely on static appearance; profile or verify query behavior when performance impact is uncertain.
   - Use `.mapped()`, `.filtered()`, or `.filtered_domain()` for recordset filtering in memory.
   - Use `search_count(domain)` instead of `len(search(domain))`.
 - **Field Indexing**:
@@ -31,7 +33,8 @@ This skill defines technical engineering guardrails, ORM performance patterns, s
   - Avoid unscoped `sudo()` calls across business logic.
   - When bypassing security for automated tasks (e.g., cron jobs or webhooks), explicitly scope down using `.with_user()` or limit the accessed field set to prevent privilege escalation.
 - **Multi-Company & Branch Isolation**:
-  - Ensure every new business model includes `company_id` and/or `branch_id` (`utility.region` with `type='area'`).
+  - Every scoped business model must have a deterministic company/organizational scope path.
+  - Do NOT add `branch_id` mechanically to every model. Prefer canonical related/derived scope from the owning business entity. Add a stored readonly/indexed scope field only when security or performance evidence justifies it.
   - Add explicit record rules in `security/ir_rule.xml` enforcing company and branch data isolation.
 
 ---

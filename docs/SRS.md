@@ -2,11 +2,11 @@
 
 **Platform:** Odoo 16 Community
 **Architecture Baseline:** `UTILITY_ERP_MASTER_ARCHITECTURE_V2.md`
-**Last Verified Implementation SHA:** `51e8dba5c47ed8ff9d1485b519e1b1586cb30522`
+**Last Verified Implementation SHA:** `45d738693ec70bad542df76f568425b01d44359c`
 **Target Scale:** Up to 1,000,000 subscribers (capacity-planning baseline)
-**Documentation Version:** 2.1
+**Documentation Version:** 3.0
 **Last Verified Date:** 2026-08-14
-**Status:** Current V1 + Target V2
+**Status:** Current V1 (Including Implemented Organizational Region/Branch Data Isolation)
 
 **Document Type:** Formal System Requirements Specification
 
@@ -14,9 +14,9 @@
 
 Repository: `AbdulrhmanBashammmakh/utility_erp`
 Branch: `development`
-Implementation SHA: `51e8dba5c47ed8ff9d1485b519e1b1586cb30522`
-Documentation Version: `2.1`
-Documentation Status: Current V1 + Target V2
+Implementation SHA: `45d738693ec70bad542df76f568425b01d44359c`
+Documentation Version: `3.0`
+Documentation Status: Current V1 (Including Implemented Organizational Region/Branch Data Isolation)
 
 Requirements below distinguish current implementation from accepted target architecture. Current V1 is the `date_range → utility_core → utility_inventory → utility_operations → utility_billing` chain; `utility_prepaid` is out of scope. Runtime/CI proof is deferred unless a requirement explicitly cites executed evidence.
 

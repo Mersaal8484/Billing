@@ -1,8 +1,8 @@
 # Architecture Decision Log
 
 **Repository:** `AbdulrhmanBashammmakh/utility_erp`
-**Reviewed SHA:** `51e8dba5c47ed8ff9d1485b519e1b1586cb30522`
-**Documentation Version:** 2.1
+**Reviewed SHA:** `45d738693ec70bad542df76f568425b01d44359c`
+**Documentation Version:** 3.0
 
 This is a concise ADR index. Detailed implementation belongs in the linked domain documents.
 
@@ -23,6 +23,7 @@ This is a concise ADR index. Detailed implementation belongs in the linked domai
 | ADR-013 Write-off Single Credit Note Invariant | Accepted | CURRENT V1 | One write-off creates at most one generated Credit Note. | `utility.writeoff`, linked `account.move`. |
 | ADR-014 Sensitive Wizard Least Privilege | Accepted | CURRENT V1 | Wizard access cannot exceed the most sensitive mutation it performs. | Core wizard ACLs and server guards. |
 | ADR-015 Action-Based Operational State Transition | Accepted | CURRENT V1 | Workflow actions, not raw state writes, execute operational transitions. | Service/work/install/inspection views. |
+| ADR-016 Unified Organizational Data Isolation | Accepted | CURRENT V1 | Role permissions & Region/Branch geography are independent; fail-closed unified scope. | res.users, utility_core, utility_operations, utility_billing. |
 | ADR-016 Runtime/CI Proof Deferred From Current Static Gate | Accepted | DEFERRED | Static implementation and test existence are documented separately from runtime proof. | Release gate and UAT/runbook. |
 | ADR-017 Prepaid Excluded From V1 | Accepted | OUT OF SCOPE | `utility_prepaid` is not part of the current V1 release chain. | Prepaid remains separately documented. |
 | ADR-018 Scale Architecture Remains Target V2 | Accepted | TARGET V2 | PgBouncer, horizontal nodes, scalable media, partitioning, micro-batches, and scoped Temporal require triggers and runtime evidence. | `TARGET_V2_ARCHITECTURE_ROADMAP.md`. |
