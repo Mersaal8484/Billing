@@ -338,3 +338,54 @@ class TestWorkflowCommandHardening(TransactionCase):
 
         with self.assertRaises(AccessError):
             cmd.with_user(self.regular_user).action_cancel(reason="Unauthorized attempt")
+
+    # =========================================================================
+    # 13. Strict Workflow Registry & Model Validation
+    # =========================================================================
+    def test_13_registry_validation_rejects_unregistered_types_and_mismatched_models(self):
+        """التحقق من أن dispatch يفرض التحقق الصارم من نوع المسار والنموذج المعتمد قبل إنشاء الأمر."""
+        # 1. Unregistered workflow type MUST raise ValidationError
+        with self.assertRaises(ValidationError):
+            self.wf_service.dispatch(
+                workflow_type='unregistered_arbitrary_workflow',
+                reference_model='date.range',
+                reference_id=self.period.id,
+            )
+
+        # 2. Mismatched model (e.g. res.partner instead of date.range) MUST raise ValidationError
+        partner = self.env['res.partner'].create({'name': 'Test Partner'})
+        with self.assertRaises(ValidationError):
+            self.wf_service.dispatch(
+                workflow_type='open_reading_window',
+                reference_model='res.partner',
+                reference_id=partner.id,
+            )
+
+    # =========================================================================
+    # 14. Payment Period Workflow Mapping
+    # =========================================================================
+    def test_14_payment_period_workflow_mapping(self):
+        """التحقق من أن trigger_payment_workflow يوجه لدالة فتح فترة السداد action_open_payment."""
+        payment_period = self.env['date.range'].create({
+            'name': 'فترة سداد اختبارية',
+            'code': 'PAY-2026-TEST',
+            'period_role': 'payment',
+            'type_id': self.env['date.range.type'].search([], limit=1).id,
+            'date_start': '2026-01-15',
+            'date_end': '2026-02-15',
+        })
+
+        cmd = self.wf_service.dispatch(
+            workflow_type='trigger_payment_workflow',
+            reference_model='date.range',
+            reference_id=payment_period.id,
+            idempotency_key=f"PAY_WF_TEST:{payment_period.code}",
+        )
+        self.assertEqual(cmd.workflow_type, 'trigger_payment_workflow')
+        self.assertEqual(cmd.reference_model, 'date.range')
+
+        # Execute command
+        res = self.adapter.execute_command(cmd)
+        self.assertEqual(res.get('status'), 'success')
+        payment_period.invalidate_recordset(['state'])
+        self.assertEqual(payment_period.state, 'open')

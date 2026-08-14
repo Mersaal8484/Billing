@@ -32,6 +32,24 @@ class UtilityWorkflowService(models.AbstractModel):
             'service_model': 'date.range',
             'service_method': 'action_close_reading',
         },
+        'open_payment_window': {
+            'model': 'date.range',
+            'desc': 'فتح نافذة السداد والتحصيل',
+            'service_model': 'date.range',
+            'service_method': 'action_open_payment',
+        },
+        'close_payment_window': {
+            'model': 'date.range',
+            'desc': 'إغلاق نافذة السداد والتحصيل',
+            'service_model': 'date.range',
+            'service_method': 'action_close_payment',
+        },
+        'reconcile_payment': {
+            'model': 'date.range',
+            'desc': 'مطابقة المقبوضات والتحصيل',
+            'service_model': 'date.range',
+            'service_method': 'action_reconcile_payment',
+        },
         'start_billing': {
             'model': 'date.range',
             'desc': 'بدء الفوترة الدورية للفترة',
@@ -54,7 +72,7 @@ class UtilityWorkflowService(models.AbstractModel):
             'model': 'date.range',
             'desc': 'بدء مسار عمل فترة السداد والتحصيل',
             'service_model': 'date.range',
-            'service_method': 'action_open_reading',
+            'service_method': 'action_open_payment',
         },
     }
 
@@ -77,10 +95,21 @@ class UtilityWorkflowService(models.AbstractModel):
     def dispatch(self, workflow_type, reference_model, reference_id, payload=None, idempotency_key=None, priority=10):
         """
         المدخل المركزي المعتمد لإطلاق أوامر مسارات العمل:
-        1. التحقق من سلامة نوع المسار والنموذج المرتبط.
+        1. التحقق الصارم من وجود نوع المسار ومطابقة النموذج المرجعي المعتمد في السجل (Registry Validation).
         2. التحقق من وجود السجل المستهدف في قاعدة البيانات.
         3. تمرير الأمر إلى المحول النشط مع ضمان عدم التكرار.
         """
+        reg = self.WORKFLOW_REGISTRY.get(workflow_type)
+        if not reg:
+            raise ValidationError(_("نوع مسار العمل غير مسجل في النظام: %s") % workflow_type)
+
+        allowed_model = reg.get('model')
+        if allowed_model and allowed_model != reference_model:
+            raise ValidationError(
+                _("النموذج المرجعي (%s) غير مطابق للنموذج المعتمد (%s) لمسار العمل (%s).")
+                % (reference_model, allowed_model, workflow_type)
+            )
+
         record = self.env[reference_model].browse(reference_id).exists()
         if not record:
             raise ValidationError(_("السجل المرجعي المستهدف (%s, ID: %s) غير موجود في النظام.") % (reference_model, reference_id))
@@ -105,29 +134,30 @@ class UtilityWorkflowService(models.AbstractModel):
         يتم استدعاء نفس الدالة سواء كان المشغل محلياً اليوم أو نشاط Temporal غداً.
         """
         reg = self.WORKFLOW_REGISTRY.get(workflow_type)
+        if not reg:
+            raise ValidationError(_("لا توجد خدمة أعمال مسجلة لمعالجة نوع مسار العمل: %s") % workflow_type)
+
         payload = json.loads(payload_json) if payload_json else {}
+        target_model = reg.get('service_model') or reference_model
+        method_name = reg.get('service_method')
+        target = self.env[target_model]
 
-        if reg:
-            target_model = reg.get('service_model') or reference_model
-            method_name = reg.get('service_method')
-            target = self.env[target_model]
-
-            if hasattr(target, method_name):
-                method = getattr(target, method_name)
-                if target_model == reference_model:
-                    rec = target.browse(reference_id)
-                    return method(rec) if method.__code__.co_argcount > 1 else method()
-                else:
-                    return method(reference_id)
+        if hasattr(target, method_name):
+            method = getattr(target, method_name)
+            if target_model == reference_model:
+                rec = target.browse(reference_id)
+                return method(rec) if method.__code__.co_argcount > 1 else method()
             else:
-                _logger.warning("Method [%s] not found on [%s] for workflow [%s].", method_name, target_model, workflow_type)
+                return method(reference_id)
+        else:
+            _logger.warning("Method [%s] not found on [%s] for workflow [%s].", method_name, target_model, workflow_type)
 
         # Fallback to direct model action if matching method exists
         rec = self.env[reference_model].browse(reference_id)
         if hasattr(rec, f"action_{workflow_type}"):
             return getattr(rec, f"action_{workflow_type}")()
 
-        raise ValidationError(_("لا توجد خدمة أعمال مسجلة لمعالجة نوع مسار العمل: %s") % workflow_type)
+        raise ValidationError(_("فشل العثور على الدالة التنفيذية (%s) في الموديل (%s).") % (method_name, target_model))
 
     # -------------------------------------------------------------------------
     # Backward Compatibility Forwarders
