@@ -88,3 +88,14 @@ class TestOrganizationalScopeAPI(TransactionCase):
 
         self.assertTrue(meter_sanaa_res)
         self.assertFalse(meter_aden_res)
+
+    def test_02_read_group_and_search_count_isolation(self):
+        """Dashboard aggregates (read_group and search_count) exclude out-of-scope data."""
+        Customer = self.env['utility.customer'].with_user(self.user_reader_sanaa)
+        count = Customer.search_count([])
+        self.assertEqual(count, 1)
+
+        groups = Customer.read_group([], fields=['region_id'], groupby=['region_id'], lazy=False)
+        region_ids = [g['region_id'][0] for g in groups if g.get('region_id')]
+        self.assertIn(self.region_sanaa.id, region_ids)
+        self.assertNotIn(self.region_aden.id, region_ids)
