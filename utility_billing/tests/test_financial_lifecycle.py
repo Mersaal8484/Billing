@@ -1,5 +1,5 @@
 from odoo.tests import TransactionCase, tagged
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 
 
 @tagged('post_install', '-at_install', 'utility_release', 'utility_financial')
@@ -245,3 +245,33 @@ class TestFinancialLifecycle(TransactionCase):
 
         self.customer._compute_accounting_balance()
         self.assertAlmostEqual(self.customer.accounting_balance, 400.0, places=2)
+
+        with self.assertRaises(UserError):
+            writeoff.action_apply()
+        with self.assertRaises(UserError):
+            writeoff.action_draft()
+        with self.assertRaises(ValidationError):
+            writeoff.action_approve()
+
+        self.assertEqual(
+            self.env['account.move'].search_count([
+                ('utility_sale_order_id', '=', order.id),
+                ('ref', 'ilike', writeoff.writeoff_number),
+                ('move_type', '=', 'out_refund'),
+            ]),
+            1,
+        )
+
+    def test_writeoff_can_reopen_only_before_financial_application(self):
+        """An approved write-off may be returned to draft only before apply."""
+        writeoff = self.env['utility.writeoff'].create({
+            'customer_id': self.customer.id,
+            'amount': 25.0,
+            'reason': 'اختبار إعادة فتح آمن',
+        })
+        writeoff.action_approve()
+        writeoff.action_draft()
+        self.assertEqual(writeoff.state, 'draft')
+
+        with self.assertRaises(ValidationError):
+            writeoff.action_draft()

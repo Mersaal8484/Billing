@@ -1,4 +1,5 @@
 from odoo import api, fields, models, _
+from odoo.exceptions import AccessError
 
 
 class UtilityRoute(models.Model):
@@ -108,6 +109,11 @@ class UtilityRouteAddCustomerWizard(models.TransientModel):
 
     def action_add(self):
         self.ensure_one()
+        if not (
+            self.env.user.has_group('utility_core.group_utility_supervisor')
+            or self.env.user.has_group('utility_core.group_utility_admin')
+        ):
+            raise AccessError(_('ليس لديك صلاحية إسناد المشتركين إلى المسارات.'))
         if self.customer_ids and self.route_id:
             self.customer_ids.write({'route_id': self.route_id.id})
         return {'type': 'ir.actions.act_window_close'}
@@ -138,6 +144,11 @@ class UtilityRouteRemoveCustomerWizard(models.TransientModel):
 
     def action_remove(self):
         self.ensure_one()
+        if not (
+            self.env.user.has_group('utility_core.group_utility_supervisor')
+            or self.env.user.has_group('utility_core.group_utility_admin')
+        ):
+            raise AccessError(_('ليس لديك صلاحية إزالة المشتركين من المسارات.'))
         if self.customer_ids:
             self.customer_ids.write({'route_id': False})
         return {'type': 'ir.actions.act_window_close'}

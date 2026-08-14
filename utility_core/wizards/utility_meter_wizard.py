@@ -1,4 +1,10 @@
 from odoo import api, fields, models, _
+from odoo.exceptions import AccessError
+
+
+def _require_groups(env, *group_xmlids):
+    if not any(env.user.has_group(group_xmlid) for group_xmlid in group_xmlids):
+        raise AccessError(_('ليس لديك صلاحية تنفيذ هذه العملية التشغيلية.'))
 
 
 class UtilityMeterSubscriberWizard(models.TransientModel):
@@ -19,6 +25,11 @@ class UtilityMeterSubscriberWizard(models.TransientModel):
 
     def action_create(self):
         self.ensure_one()
+        _require_groups(
+            self.env,
+            'utility_core.group_utility_supervisor',
+            'utility_core.group_utility_admin',
+        )
         meter = self.meter_id
         partner = self.env['res.partner'].create({
             'name': self.partner_name,
@@ -78,6 +89,7 @@ class UtilityMeterPrivateTransformerWizard(models.TransientModel):
 
     def action_create(self):
         self.ensure_one()
+        _require_groups(self.env, 'utility_core.group_utility_admin')
         meter = self.meter_id
         partner = self.env['res.partner'].create({
             'name': self.partner_name,
@@ -136,6 +148,7 @@ class UtilityMeterTransformerWizard(models.TransientModel):
 
     def action_create(self):
         self.ensure_one()
+        _require_groups(self.env, 'utility_core.group_utility_admin')
         meter = self.meter_id
         transformer = self.env['utility.transformer'].create({
             'name': self.name,
@@ -177,6 +190,7 @@ class UtilityMeterFeederWizard(models.TransientModel):
 
     def action_create(self):
         self.ensure_one()
+        _require_groups(self.env, 'utility_core.group_utility_admin')
         meter = self.meter_id
         feeder = self.env['utility.feeder'].create({
             'name': self.name,
