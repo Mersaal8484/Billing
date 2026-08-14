@@ -30,7 +30,7 @@
                         <button name="action_complete" type="object" string="إكمال العمل" class="btn-success" states="in_progress"/>
                         <button name="action_verify" type="object" string="تحقق من العمل" class="btn-success" states="completed"/>
                         <button name="action_cancel" type="object" string="إلغاء أمر العمل" class="btn-secondary" states="draft,assigned,in_progress,completed" confirm="هل أنت متاكد من إلغاء امر العمل؟"/>
-                        <field name="state" widget="statusbar" statusbar_visible="draft,assigned,in_progress,completed,verified"/>
+                        <field name="state" widget="statusbar" statusbar_visible="draft,assigned,in_progress,completed,verified,cancelled" options="{'clickable': False}"/>
                     </header>
                     <sheet>
                         <h1>
@@ -40,7 +40,7 @@
                             <group>
                                 <field name="work_type" required="1"/>
                                 <field name="priority"/>
-                                <field name="state"/>
+                                <field name="state" readonly="1"/>
                             </group>
                             <group>
                                 <field name="assigned_technician_id"/>

@@ -41,7 +41,8 @@
                             attrs="{'invisible': [('state', 'not in', ('error', 'partial'))]}"
                             groups="utility_core.group_utility_billing_manager"/>
                     <field name="state" widget="statusbar"
-                           statusbar_visible="uploaded,processing,done"/>
+                           statusbar_visible="uploaded,processing,done,partial,error"
+                           options="{'clickable': False}"/>
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">

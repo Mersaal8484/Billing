@@ -72,6 +72,20 @@ class UtilityWriteoff(models.Model):
             return val.id if hasattr(val, 'id') else val
         return int(self.env['ir.config_parameter'].sudo().get_param(config_key, 0))
 
+    def action_view_credit_note(self):
+        """Open the single credit note generated for this write-off."""
+        self.ensure_one()
+        if not self.move_id:
+            return False
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('إشعار الدائن'),
+            'res_model': 'account.move',
+            'view_mode': 'form',
+            'res_id': self.move_id.id,
+            'target': 'current',
+        }
+
     def action_apply(self):
         for rec in self:
             # Serialize concurrent applications so exactly one credit note can

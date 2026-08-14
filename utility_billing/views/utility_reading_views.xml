@@ -91,7 +91,8 @@
                             attrs="{'invisible': [('state', '!=', 'error')]}"
                             groups="utility_core.group_utility_billing_manager"/>
                     <field name="state" widget="statusbar"
-                           statusbar_visible="draft,under_review,approved,queued,billed"/>
+                           statusbar_visible="draft,under_review,approved,queued,billed,error"
+                           options="{'clickable': False}"/>
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
