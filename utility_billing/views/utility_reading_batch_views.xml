@@ -16,6 +16,8 @@
                 <field name="total_readings" string="الإجمالي"/>
                 <field name="processed_count" string="تمت"/>
                 <field name="error_count" string="أخطاء"/>
+                <field name="image_count" string="الصور" optional="show"/>
+                <field name="progress_percent" string="التقدم" widget="progressbar" optional="show"/>
                 <field name="state" widget="badge"
                        decoration-success="state == 'done'"
                        decoration-warning="state in ('processing', 'uploaded')"
@@ -67,6 +69,8 @@
                             <field name="total_readings"/>
                             <field name="processed_count"/>
                             <field name="error_count"/>
+                            <field name="image_count"/>
+                            <field name="progress_percent" widget="progressbar"/>
                         </group>
                     </group>
                     <group string="ملف البيانات">
@@ -126,6 +130,10 @@
                 <filter name="done" string="مكتمل" domain="[('state','=','done')]"/>
                 <filter name="partial" string="مكتمل جزئياً" domain="[('state','=','partial')]"/>
                 <filter name="error" string="خطأ" domain="[('state','=','error')]"/>
+                <filter name="needs_attention" string="يحتاج متابعة"
+                        domain="[('state','in',('partial','error'))]"/>
+                <filter name="active_batches" string="الدفعات النشطة"
+                        domain="[('state','in',('uploaded','processing','partial','error'))]"/>
                 <separator/>
                 <group expand="0" string="تجميع حسب">
                     <filter name="group_user" string="القارئ" context="{'group_by': 'user_id'}"/>
@@ -143,6 +151,7 @@
         <field name="res_model">utility.reading.batch</field>
         <field name="view_mode">tree,form</field>
         <field name="search_view_id" ref="view_utility_reading_batch_search"/>
+        <field name="context">{'search_default_active_batches': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
                 لا توجد دفعات مرفوعة حالياً. تُرفع الدفعات تلقائياً من تطبيق الموبايل.

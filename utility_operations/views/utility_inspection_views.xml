@@ -77,6 +77,32 @@
             <field name="name">المعاينات</field>
             <field name="res_model">utility.inspection</field>
             <field name="view_mode">tree,form</field>
+            <field name="context">{'search_default_scheduled_inspections': 1}</field>
+        </record>
+
+        <record id="view_utility_inspection_search" model="ir.ui.view">
+            <field name="name">utility.inspection.search</field>
+            <field name="model">utility.inspection</field>
+            <field name="arch" type="xml">
+                <search>
+                    <field name="name"/>
+                    <field name="customer_id"/>
+                    <field name="inspector_id"/>
+                    <field name="inspection_type"/>
+                    <field name="state"/>
+                    <filter name="scheduled_inspections" string="مجدولة"
+                            domain="[('state','=','scheduled')]"/>
+                    <filter name="failed_inspections" string="غير ناجحة"
+                            domain="[('is_passed','=',False)]"/>
+                    <filter name="inspections_today" string="اليوم" date="inspection_date"/>
+                    <separator/>
+                    <group expand="0" string="تجميع حسب">
+                        <filter name="group_state" string="الحالة" context="{'group_by': 'state'}"/>
+                        <filter name="group_inspector" string="المعاين" context="{'group_by': 'inspector_id'}"/>
+                        <filter name="group_type" string="نوع المعاينة" context="{'group_by': 'inspection_type'}"/>
+                    </group>
+                </search>
+            </field>
         </record>
 
     </data>

@@ -42,6 +42,11 @@
                         <strong>تم تطبيق الإعفاء ماليًا.</strong>
                         تم إنشاء إشعار الدائن المرتبط ولا يمكن إعادة فتح السجل.
                     </div>
+                    <div class="alert alert-info" role="alert"
+                         groups="utility_core.group_utility_billing_manager">
+                        الاعتماد والتطبيق المالي عمليتان محاسبيتان خاضعتان للصلاحيات؛
+                        يعيد مدير الفوترة السجل للمسودة قبل التطبيق عند الحاجة، بينما يُنفّذ التطبيق النهائي من الدور المخوّل.
+                    </div>
                     <div class="oe_title">
                         <label for="writeoff_number" string="رقم الإعفاء / الخصم"/>
                         <h1><field name="writeoff_number" readonly="1"/></h1>

@@ -99,6 +99,34 @@
             <field name="name">أوامر العمل</field>
             <field name="res_model">utility.work.order</field>
             <field name="view_mode">tree,form</field>
+            <field name="context">{'search_default_open_work': 1}</field>
+        </record>
+
+        <record id="view_utility_work_order_search" model="ir.ui.view">
+            <field name="name">utility.work.order.search</field>
+            <field name="model">utility.work.order</field>
+            <field name="arch" type="xml">
+                <search>
+                    <field name="work_order_number"/>
+                    <field name="customer_id"/>
+                    <field name="assigned_technician_id"/>
+                    <field name="work_type"/>
+                    <field name="state"/>
+                    <field name="priority"/>
+                    <filter name="open_work" string="قيد المتابعة"
+                            domain="[('state','not in',('verified','cancelled'))]"/>
+                    <filter name="my_work" string="أوامري"
+                            domain="[('assigned_technician_id','=',uid)]"/>
+                    <filter name="scheduled_today" string="المجدولة اليوم" date="date_scheduled"/>
+                    <separator/>
+                    <group expand="0" string="تجميع حسب">
+                        <filter name="group_state" string="الحالة" context="{'group_by': 'state'}"/>
+                        <filter name="group_technician" string="الفني" context="{'group_by': 'assigned_technician_id'}"/>
+                        <filter name="group_work_type" string="نوع العمل" context="{'group_by': 'work_type'}"/>
+                        <filter name="group_priority" string="الأولوية" context="{'group_by': 'priority'}"/>
+                    </group>
+                </search>
+            </field>
         </record>
 
     </data>

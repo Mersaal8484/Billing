@@ -37,6 +37,7 @@ class UtilityReadingBatch(models.Model):
     image_ids = fields.One2many('ir.attachment', 'res_id',
                                 domain=[('res_model', '=', 'utility.reading.batch')],
                                 string='صور العدادات')
+    image_count = fields.Integer('عدد الصور', compute='_compute_image_count')
 
     total_readings = fields.Integer('إجمالي القراءات', readonly=True)
     processed_count = fields.Integer('تمت معالجتها', readonly=True, default=0)
@@ -44,6 +45,11 @@ class UtilityReadingBatch(models.Model):
     retry_count = fields.Integer('عدد محاولات الإعادة', default=0, readonly=True)
     processed_offset = fields.Integer('مؤشر التقدم داخل الملف', readonly=True, default=0)
     progress_percent = fields.Float('نسبة التقدم %', compute='_compute_progress_percent', store=True)
+
+    @api.depends('image_ids')
+    def _compute_image_count(self):
+        for batch in self:
+            batch.image_count = len(batch.image_ids)
 
     error_log = fields.Text('سجل الأخطاء', readonly=True)
     reading_ids = fields.One2many('utility.reading', 'batch_id',

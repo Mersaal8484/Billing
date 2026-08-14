@@ -65,6 +65,32 @@
             <field name="name">التركيبات</field>
             <field name="res_model">utility.installation</field>
             <field name="view_mode">tree,form</field>
+            <field name="context">{'search_default_pending_installations': 1}</field>
+        </record>
+
+        <record id="view_utility_installation_search" model="ir.ui.view">
+            <field name="name">utility.installation.search</field>
+            <field name="model">utility.installation</field>
+            <field name="arch" type="xml">
+                <search>
+                    <field name="name"/>
+                    <field name="customer_id"/>
+                    <field name="meter_id"/>
+                    <field name="installer_id"/>
+                    <field name="state"/>
+                    <filter name="pending_installations" string="قيد التنفيذ"
+                            domain="[('state','in',('draft','installed'))]"/>
+                    <filter name="failed_installations" string="فاشلة"
+                            domain="[('state','=','failed')]"/>
+                    <filter name="installations_today" string="اليوم" date="installation_date"/>
+                    <separator/>
+                    <group expand="0" string="تجميع حسب">
+                        <filter name="group_state" string="الحالة" context="{'group_by': 'state'}"/>
+                        <filter name="group_installer" string="الفني" context="{'group_by': 'installer_id'}"/>
+                        <filter name="group_customer" string="العميل" context="{'group_by': 'customer_id'}"/>
+                    </group>
+                </search>
+            </field>
         </record>
 
     </data>

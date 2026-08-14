@@ -130,6 +130,8 @@
                     <field name="state"/>
                     <field name="priority"/>
                     <filter name="filter_date" string="تاريخ الطلب" date="date_requested"/>
+                    <filter name="open_orders" string="قيد المتابعة"
+                            domain="[('state','not in',('completed','cancelled'))]"/>
                     <group expand="0" string="تصنيف حسب">
                         <filter name="group_service_type" string="نوع الخدمة" context="{'group_by': 'service_type'}"/>
                         <filter name="group_state" string="الحالة" context="{'group_by': 'state'}"/>
@@ -145,6 +147,7 @@
             <field name="res_model">utility.service.order</field>
             <field name="view_mode">tree,form</field>
             <field name="search_view_id" ref="view_utility_service_order_search"/>
+            <field name="context">{'search_default_open_orders': 1}</field>
             <field name="help" type="html">
                 <p>إدارة أوامر الخدمة للعمليات الميدانية.</p>
             </field>

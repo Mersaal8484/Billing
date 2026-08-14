@@ -72,6 +72,13 @@ class UtilitySaleOrder(models.Model):
     penalty_ids = fields.One2many('utility.penalty', 'sale_order_id', string='سجل الغرامات')
     utility_move_ids = fields.One2many(
         'account.move', 'utility_sale_order_id', string='فواتير الكهرباء المحاسبية')
+    payment_ids = fields.One2many(
+        'account.payment', 'utility_sale_order_id', string='دفعات الفاتورة',
+        copy=False, readonly=True)
+    utility_invoice_count = fields.Integer(
+        string='عدد الفواتير المحاسبية', compute='_compute_utility_document_counts')
+    payment_count = fields.Integer(
+        string='عدد الدفعات', compute='_compute_utility_document_counts')
     billing_adjustment_ids = fields.One2many(
         'utility.billing.adjustment', 'sale_order_id', string='تعديلات الفوترة',
         copy=False, readonly=True)
@@ -123,6 +130,38 @@ class UtilitySaleOrder(models.Model):
     def _compute_billing_adjustment_count(self):
         for order in self:
             order.billing_adjustment_count = len(order.billing_adjustment_ids)
+
+    @api.depends('invoice_ids', 'utility_move_ids', 'payment_ids')
+    def _compute_utility_document_counts(self):
+        for order in self:
+            order.utility_invoice_count = len(order.invoice_ids | order.utility_move_ids)
+            order.payment_count = len(order.payment_ids)
+
+    def action_view_utility_invoices(self):
+        self.ensure_one()
+        invoices = self.invoice_ids | self.utility_move_ids
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('فواتير الحساب المحاسبية'),
+            'res_model': 'account.move',
+            'view_mode': 'tree,form',
+            'domain': [('id', 'in', invoices.ids)],
+            'context': {'create': False},
+        }
+
+    def action_view_utility_payments(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('دفعات الفاتورة'),
+            'res_model': 'account.payment',
+            'view_mode': 'tree,form',
+            'domain': [('utility_sale_order_id', '=', self.id)],
+            'context': {
+                'default_utility_sale_order_id': self.id,
+                'create': False,
+            },
+        }
 
     def action_view_billing_adjustments(self):
         self.ensure_one()

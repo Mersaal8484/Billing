@@ -37,6 +37,16 @@
                         attrs="{'invisible': ['|', ('customer_id', '=', False), ('balance_due', '&gt;', 0)]}"/>
             </xpath>
             <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_utility_invoices" type="object"
+                        class="oe_stat_button" icon="fa-file-text-o"
+                        attrs="{'invisible': [('utility_invoice_count', '=', 0)]}">
+                    <field name="utility_invoice_count" widget="statinfo" string="الفواتير المحاسبية"/>
+                </button>
+                <button name="action_view_utility_payments" type="object"
+                        class="oe_stat_button" icon="fa-money"
+                        attrs="{'invisible': [('payment_count', '=', 0)]}">
+                    <field name="payment_count" widget="statinfo" string="الدفعات"/>
+                </button>
                 <button name="action_view_billing_adjustments" type="object"
                         class="oe_stat_button" icon="fa-exchange"
                         attrs="{'invisible': [('billing_adjustment_count', '=', 0)]}">
