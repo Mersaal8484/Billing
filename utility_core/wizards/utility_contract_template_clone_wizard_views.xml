@@ -35,7 +35,6 @@
                         </group>
                         <group>
                             <field name="copy_local_fees"/>
-                            <field name="copy_subscriber_configuration"/>
                             <field name="copy_scope"/>
                             <field name="copy_workflow_settings"/>
                         </group>

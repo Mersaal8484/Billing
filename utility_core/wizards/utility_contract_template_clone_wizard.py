@@ -71,11 +71,6 @@ class UtilityContractTemplateCloneWizard(models.TransientModel):
         default=True,
         help='نسخ وتحديد النطاق الجغرافي والمناطق المسموح بها.',
     )
-    copy_subscriber_configuration = fields.Boolean(
-        string='نسخ فئات وأنواع المشتركين',
-        default=True,
-        help='نسخ فئات المشتركين الرئيسية وأنواع المشتركين المتوافقة.',
-    )
     copy_workflow_settings = fields.Boolean(
         string='نسخ إعدادات سير العمل والفوترة',
         default=True,
@@ -169,14 +164,9 @@ class UtilityContractTemplateCloneWizard(models.TransientModel):
             'journal_id': source.journal_id.id if source.journal_id else False,
         }
 
-        # فئات المشتركين
-        if self.copy_subscriber_configuration:
-            template_vals['subscriber_category_ids'] = [(6, 0, source.subscriber_category_ids.ids)]
-            template_vals['subscriber_ids'] = [(6, 0, source.subscriber_ids.ids)]
-        else:
-            # القالب الجديد يبدأ بدون مشتركين مخصصين — يُعيَّن لاحقاً بشكل منفصل
-            template_vals['subscriber_category_ids'] = [(5, 0, 0)]
-            template_vals['subscriber_ids'] = [(5, 0, 0)]
+        # فئات وأنواع المشتركين (إلزامية في القالب وتُنسخ دائماً من المصدر لضمان التوافق التجاري)
+        template_vals['subscriber_category_ids'] = [(6, 0, source.subscriber_category_ids.ids)]
+        template_vals['subscriber_ids'] = [(6, 0, source.subscriber_ids.ids)]
 
         # النطاق الجغرافي
         if self.copy_scope:

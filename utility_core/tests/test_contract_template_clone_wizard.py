@@ -172,7 +172,6 @@ class TestContractTemplateCloneWizard(TransactionCase):
             'copy_discount_configuration': True,
             'copy_local_fees': True,
             'copy_scope': True,
-            'copy_subscriber_configuration': True,
             'copy_workflow_settings': True,
             'target_scope': 'restricted',
             'target_region_ids': [(6, 0, [self.region_b.id])],
@@ -205,7 +204,11 @@ class TestContractTemplateCloneWizard(TransactionCase):
         self.assertEqual(len(new_template.block_ids), 2)
         self.assertEqual(len(new_template.discount_block_ids), 1)
 
-        # 4. Geographic Scope Override applied (copy_scope=True with target_region_ids=region_b)
+        # 4. Subscriber Configuration (Always copied from source)
+        self.assertEqual(new_template.subscriber_category_ids.ids, self.source_template.subscriber_category_ids.ids)
+        self.assertEqual(new_template.subscriber_ids.ids, self.source_template.subscriber_ids.ids)
+
+        # 5. Geographic Scope Override applied (copy_scope=True with target_region_ids=region_b)
         self.assertEqual(new_template.scope, 'restricted')
         self.assertIn(self.region_b.id, new_template.region_ids.ids)
         self.assertIn(self.area_b.id, new_template.area_ids.ids)
