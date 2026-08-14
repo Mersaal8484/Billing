@@ -83,7 +83,7 @@ class UtilitySaleOrderPayment(models.Model):
         staff = self.env['utility.staff'].search([
             ('user_id', '=', self.env.user.id),
             ('company_id', '=', self.company_id.id),
-            ('user_role_id.code', '=', 'collector'),
+            ('role_ids.code', '=', 'collector'),
         ], limit=1)
         if not staff or not staff.collection_journal_id:
             raise ValidationError(_(

@@ -129,7 +129,7 @@ class TestWave7FinancialUAT(TransactionCase):
             'name': 'محصل UAT Wave 7 %s' % suffix,
             'employee_code': 'W7-%s' % suffix,
             'company_id': self.company.id,
-            'user_role_id': role.id,
+            'role_ids': [(6, 0, [role.id])],
         })
 
     def _create_invoice(self, suffix='BASE', amount=1000.0):

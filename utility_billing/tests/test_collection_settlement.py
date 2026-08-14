@@ -105,12 +105,12 @@ class TestUtilityCollectionSettlement(TransactionCase):
         first = self.env['utility.staff'].create({
             'name': 'متحصل اختبار أول',
             'company_id': self.env.company.id,
-            'user_role_id': role.id,
+            'role_ids': [(6, 0, [role.id])],
         })
         second = self.env['utility.staff'].create({
             'name': 'متحصل اختبار ثان',
             'company_id': self.env.company.id,
-            'user_role_id': role.id,
+            'role_ids': [(6, 0, [role.id])],
         })
 
         self.assertNotEqual(first.collection_journal_id, second.collection_journal_id)

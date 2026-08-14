@@ -19,7 +19,21 @@ class UtilityStaff(models.Model):
     name = fields.Char('الاسم', required=True, tracking=True)
     partner_id = fields.Many2one('res.partner', 'الشريك المحاسبي للمحصل', check_company=True, tracking=True)
     team_id = fields.Many2one('utility.team', 'الفريق', tracking=True)
-    user_role_id = fields.Many2one('utility.user.role', string='الدور', tracking=True)
+    role_ids = fields.Many2many(
+        'utility.user.role',
+        'utility_staff_role_rel',
+        'staff_id',
+        'role_id',
+        string='الأدوار التشغيلية',
+        tracking=True,
+        help='الأدوار التشغيلية المعتمدة للموظف (مثل محصل، قارئ عدادات، فني).'
+    )
+    user_role_id = fields.Many2one(
+        'utility.user.role',
+        string='الدور (حقل قديم - للتوافق)',
+        tracking=True,
+        help='حقل قديم للتوافق - المصدر الحقيقي لصلاحيات وأدوار الموظف هو role_ids'
+    )
     region_id = fields.Many2one(
         'utility.region', string='المنطقة',
         domain="[('type', '=', 'region')]", tracking=True)
@@ -38,6 +52,15 @@ class UtilityStaff(models.Model):
         string='حساب صندوق المتحصل', store=True, readonly=True)
     route_count = fields.Integer(string='عدد المسارات', compute='_compute_route_count')
 
+    def has_utility_role(self, code):
+        self.ensure_one()
+        return code in self.role_ids.mapped('code')
+
+    def has_any_utility_role(self, *codes):
+        self.ensure_one()
+        assigned = set(self.role_ids.mapped('code'))
+        return bool(assigned.intersection(codes))
+
     @api.onchange('area_id')
     def _onchange_area_id_set_region(self):
         for rec in self:
@@ -52,12 +75,13 @@ class UtilityStaff(models.Model):
 
     def _compute_route_count(self):
         for record in self:
-            routes = self.env['utility.route'].search([
+            assigned_routes = record.user_id.assigned_route_ids if record.user_id else self.env['utility.route']
+            legacy_routes = self.env['utility.route'].search([
                 '|', ('inspector_ids', 'in', record.id),
                 '|', ('cashier_ids', 'in', record.id),
                 ('supervisor_id', '=', record.id)
             ])
-            record.route_count = len(routes)
+            record.route_count = len(assigned_routes | legacy_routes)
 
     def action_view_collection_journal(self):
         self.ensure_one()
@@ -75,11 +99,13 @@ class UtilityStaff(models.Model):
 
     def action_view_assigned_routes(self):
         self.ensure_one()
-        routes = self.env['utility.route'].search([
+        assigned_routes = self.user_id.assigned_route_ids if self.user_id else self.env['utility.route']
+        legacy_routes = self.env['utility.route'].search([
             '|', ('inspector_ids', 'in', self.id),
             '|', ('cashier_ids', 'in', self.id),
             ('supervisor_id', '=', self.id)
         ])
+        routes = assigned_routes | legacy_routes
         return {
             'name': _('المسارات الميدانية للموظف'),
             'type': 'ir.actions.act_window',
@@ -130,15 +156,35 @@ class UtilityStaff(models.Model):
                     'رقم الجوال يجب أن يتكون من 9 أرقام فقط، بدون مفتاح دولة (+967/00) أو شرطات.'
                 )
 
+    def _check_collector_role_removal(self, new_roles):
+        """Ensure collector role cannot be removed if unresolved custody or collections exist."""
+        for record in self:
+            was_collector = record.has_utility_role('collector')
+            will_be_collector = bool(new_roles and 'collector' in new_roles.mapped('code'))
+            if was_collector and not will_be_collector:
+                if 'utility.collection' in self.env:
+                    open_collections = self.env['utility.collection'].search([
+                        ('collector_id', '=', record.id),
+                        ('state', 'not in', ('settled', 'cancelled')),
+                    ], limit=1)
+                    if open_collections:
+                        raise ValidationError(_(
+                            'لا يمكن إزالة دور المحصل لوجود تحصيلات أو عهد نقدية غير مسددة للموظف %s.'
+                        ) % record.display_name)
+                if 'utility.collection.settlement' in self.env:
+                    open_settlements = self.env['utility.collection.settlement'].search([
+                        ('collector_id', '=', record.id),
+                        ('state', 'not in', ('deposited', 'reconciled', 'cancelled')),
+                    ], limit=1)
+                    if open_settlements:
+                        raise ValidationError(_(
+                            'لا يمكن إزالة دور المحصل لوجود تسويات عهدة نقدية مفتوحة للموظف %s.'
+                        ) % record.display_name)
+
     def _auto_create_collector_journal(self):
         """Create a collection journal only for postpaid field collectors."""
         for record in self:
-            is_collector = False
-            if record.user_role_id:
-                code = (record.user_role_id.code or '').lower()
-                name = record.user_role_id.name or ''
-                if code == 'collector' or any(kw in name for kw in ('متحصل', 'محصل')):
-                    is_collector = True
+            is_collector = record.has_utility_role('collector')
 
             if is_collector and not record.collection_journal_id:
                 code_suffix = str(record.id or record.employee_code or '001')[-4:]
@@ -295,6 +341,32 @@ class UtilityStaff(models.Model):
                 }
             }
 
+    def _sync_user_groups(self, old_users=None):
+        """Synchronize Utility role root groups to linked users cleanly respecting implied_ids."""
+        Role = self.env['utility.user.role']
+        all_role_groups = Role.search([]).mapped('group_ids')
+        if not all_role_groups:
+            return
+
+        affected_users = self.mapped('user_id')
+        if old_users:
+            affected_users |= old_users
+
+        for user in affected_users.filtered(lambda u: u.exists()):
+            staff_records = self.search([('user_id', '=', user.id), ('active', '=', True)])
+            target_groups = staff_records.mapped('role_ids.group_ids')
+            groups_to_revoke = all_role_groups - target_groups
+
+            vals = []
+            for g in groups_to_revoke:
+                if g in user.groups_id:
+                    vals.append((3, g.id))
+            for g in target_groups:
+                if g not in user.groups_id:
+                    vals.append((4, g.id))
+            if vals:
+                user.sudo().write({'groups_id': vals})
+
     def write(self, vals):
         if vals.get('collection_journal_id'):
             journal = self.env['account.journal'].browse(
@@ -307,29 +379,57 @@ class UtilityStaff(models.Model):
                 raise ValidationError(_(
                     'اليومية النقدية مستخدمة مسبقًا للمتحصل %s.'
                 ) % duplicate.display_name)
+
+        if 'role_ids' in vals:
+            role_cmd = vals['role_ids']
+            if role_cmd and isinstance(role_cmd, list):
+                new_role_ids = []
+                for cmd in role_cmd:
+                    if cmd[0] in (4,):
+                        new_role_ids.append(cmd[1])
+                    elif cmd[0] in (6,):
+                        new_role_ids = list(cmd[2])
+                new_roles = self.env['utility.user.role'].browse(new_role_ids) if new_role_ids else self.env['utility.user.role']
+                self._check_collector_role_removal(new_roles)
+
+        old_users = self.mapped('user_id') if 'user_id' in vals else self.env['res.users']
         res = super(UtilityStaff, self).write(vals)
-        if 'user_role_id' in vals or 'user_id' in vals or 'name' in vals or 'collection_journal_id' in vals:
+
+        if any(f in vals for f in ('role_ids', 'user_role_id', 'user_id', 'name', 'collection_journal_id', 'active')):
             for record in self:
                 record._auto_create_collector_journal()
-                utility_category = self.env.ref(
-                    'utility_core.module_category_utility_erp', raise_if_not_found=False
-                )
-                if utility_category:
-                    utility_groups = self.env['res.groups'].search(
-                        [('category_id', '=', utility_category.id)]
-                    )
-                    if record.user_id:
-                        # أعد تعيين: امسح أولاً ثم أضف الجديد
-                        record.user_id.write({'groups_id': [(3, g.id) for g in utility_groups]})
-                        if record.user_role_id and record.user_role_id.group_ids:
-                            record.user_id.write({'groups_id': [(4, g.id) for g in record.user_role_id.group_ids]})
+            self._sync_user_groups(old_users=old_users)
         return res
 
     @api.model_create_multi
     def create(self, vals_list):
+        for vals in vals_list:
+            if vals.get('user_role_id') and not vals.get('role_ids'):
+                vals['role_ids'] = [(4, vals['user_role_id'])]
         records = super(UtilityStaff, self).create(vals_list)
         for record in records:
             record._auto_create_collector_journal()
-            if record.user_id and record.user_role_id and record.user_role_id.group_ids:
-                record.user_id.write({'groups_id': [(4, group.id) for group in record.user_role_id.group_ids]})
+        records._sync_user_groups()
         return records
+
+    def init(self):
+        super().init()
+        # Safe, idempotent migration: populate role_ids from legacy user_role_id if present
+        self.env.cr.execute("""
+            CREATE TABLE IF NOT EXISTS utility_staff_role_rel (
+                staff_id INTEGER NOT NULL REFERENCES utility_staff(id) ON DELETE CASCADE,
+                role_id INTEGER NOT NULL REFERENCES utility_user_role(id) ON DELETE CASCADE,
+                PRIMARY KEY (staff_id, role_id)
+            );
+            CREATE INDEX IF NOT EXISTS utility_staff_role_rel_staff_idx ON utility_staff_role_rel(staff_id);
+            CREATE INDEX IF NOT EXISTS utility_staff_role_rel_role_idx ON utility_staff_role_rel(role_id);
+
+            INSERT INTO utility_staff_role_rel (staff_id, role_id)
+            SELECT id, user_role_id
+            FROM utility_staff
+            WHERE user_role_id IS NOT NULL
+              AND NOT EXISTS (
+                  SELECT 1 FROM utility_staff_role_rel
+                  WHERE staff_id = utility_staff.id AND role_id = utility_staff.user_role_id
+              );
+        """)

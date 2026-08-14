@@ -17,3 +17,4 @@ from . import test_core_billing_ownership
 from . import test_organizational_scope_billing
 from . import test_organizational_scope_billing_api
 from . import test_wave17_http_api
+from . import test_payment_allocation_reversal

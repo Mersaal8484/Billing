@@ -18,7 +18,7 @@
                 <field name="state" widget="badge"
                        decoration-success="state == 'reconciled'"
                        decoration-warning="state == 'allocated'"
-                       decoration-danger="state in ('error', 'cancelled')"/>
+                       decoration-danger="state in ('error', 'cancelled', 'reversed')"/>
             </tree>
         </field>
     </record>
@@ -29,9 +29,11 @@
         <field name="arch" type="xml">
             <form string="تخصيص دفعة كهرباء" create="false" delete="false">
                 <header>
-                    <button name="action_cancel" type="object" string="إلغاء التخصيص"
-                            class="btn-secondary" attrs="{'invisible': [('state', 'in', ('cancelled', 'reconciled'))]}"/>
-                    <field name="state" widget="statusbar" statusbar_visible="allocated,reconciled,cancelled"/>
+                    <button name="action_reverse_allocation" type="object" string="عكس التخصيص"
+                            class="btn-secondary" attrs="{'invisible': [('state', 'not in', ('allocated', 'reconciled'))]}"
+                            confirm="هل أنت متأكد من عكس هذا التخصيص؟ سيتم فك المطابقة المحاسبية وإعادة ترصيد الفاتورة دون إلغاء الدفعة."
+                            groups="utility_core.group_utility_billing_manager,utility_core.group_utility_admin"/>
+                    <field name="state" widget="statusbar" statusbar_visible="allocated,reconciled,reversed,cancelled"/>
                 </header>
                 <sheet>
                     <field name="company_id" invisible="1"/>
@@ -61,6 +63,9 @@
                                 <field name="reconciliation_reference"/>
                                 <field name="partial_reconcile_ids" widget="many2many_tags"/>
                                 <field name="created_by"/>
+                                <field name="reversed_at" attrs="{'invisible': [('reversed_at', '=', False)]}"/>
+                                <field name="reversed_by" attrs="{'invisible': [('reversed_by', '=', False)]}"/>
+                                <field name="reversal_reason" attrs="{'invisible': [('reversal_reason', '=', False)]}"/>
                                 <field name="notes"/>
                                 <field name="error_message" attrs="{'invisible': [('error_message', '=', False)]}"/>
                             </group>

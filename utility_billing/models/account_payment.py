@@ -68,7 +68,7 @@ class AccountPayment(models.Model):
             collector = self.collector_id or self.env['utility.staff'].search([
                 ('user_id', '=', self.env.user.id),
                 ('company_id', '=', self.company_id.id),
-                ('user_role_id.code', '=', 'collector'),
+                ('role_ids.code', '=', 'collector'),
             ], limit=1)
             if collector:
                 self.collector_id = collector
@@ -152,7 +152,7 @@ class AccountPayment(models.Model):
             collector = self.collector_id or self.env['utility.staff'].search([
                 ('user_id', '=', self.env.user.id),
                 ('company_id', '=', self.company_id.id),
-                ('user_role_id.code', '=', 'collector'),
+                ('role_ids.code', '=', 'collector'),
             ], limit=1)
             if not collector or not collector.collection_journal_id:
                 raise ValidationError(_(
@@ -204,7 +204,7 @@ class AccountPayment(models.Model):
             vals.get('collector_id')).exists() if vals.get('collector_id') else self.env['utility.staff'].search([
                 ('user_id', '=', self.env.user.id),
                 ('company_id', '=', order.company_id.id),
-                ('user_role_id.code', '=', 'collector'),
+                ('role_ids.code', '=', 'collector'),
             ], limit=1)
         if not collector or not collector.collection_journal_id:
             raise ValidationError(_(
@@ -267,17 +267,28 @@ class AccountPayment(models.Model):
                 )
             vals['date_range_id'] = payment_period.id
             self._prepare_field_collector_payment(vals, order)
-        elif self.filtered('utility_sale_order_id') and (
-                'collector_id' in vals or 'journal_id' in vals
-                or 'utility_payment_method' in vals):
-            for payment in self.filtered('utility_sale_order_id'):
-                candidate = dict(vals)
-                candidate.setdefault('utility_payment_method', payment.utility_payment_method)
-                candidate.setdefault('collector_id', payment.collector_id.id)
-                candidate.setdefault('journal_id', payment.journal_id.id)
-                self._prepare_field_collector_payment(
-                    candidate, payment.utility_sale_order_id)
-                vals.update(candidate)
+            return super().write(vals)
+
+        if 'collector_id' in vals or 'journal_id' in vals or 'utility_payment_method' in vals:
+            utility_payments = self.filtered('utility_sale_order_id')
+            if utility_payments:
+                res = True
+                for payment in utility_payments:
+                    candidate = dict(vals)
+                    candidate.setdefault('utility_payment_method', payment.utility_payment_method)
+                    candidate.setdefault('collector_id', payment.collector_id.id)
+                    candidate.setdefault('journal_id', payment.journal_id.id)
+                    payment._prepare_field_collector_payment(
+                        candidate, payment.utility_sale_order_id)
+                    res = super(AccountPayment, payment).write(candidate) and res
+                non_utility = self - utility_payments
+                if non_utility:
+                    res = super(AccountPayment, non_utility).write(vals) and res
+                if vals.get('service_charge_id'):
+                    for payment in self:
+                        payment.service_charge_id.payment_id = payment.id
+                return res
+
         res = super().write(vals)
         if vals.get('service_charge_id'):
             for payment in self:
@@ -306,7 +317,7 @@ class AccountPayment(models.Model):
             collector = self.env['utility.staff'].search([
                 ('user_id', '=', self.env.user.id),
                 ('company_id', '=', order.company_id.id),
-                ('user_role_id.code', '=', 'collector'),
+                ('role_ids.code', '=', 'collector'),
             ], limit=1) if order else self.env['utility.staff']
             if collector:
                 res['collector_id'] = collector.id
@@ -417,4 +428,3 @@ class AccountPayment(models.Model):
         """Backward-compatible entry point delegating to the single allocator."""
         self.ensure_one()
         return self.env['utility.payment.allocation'].allocate_payment(self)
-

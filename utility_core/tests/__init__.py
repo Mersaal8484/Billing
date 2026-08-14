@@ -15,3 +15,4 @@ from . import test_sensitive_wizard_permissions
 from . import test_organizational_scope_security
 from . import test_wave17_mutation_integrity
 from . import test_wave17_multi_role
+from . import test_multi_role_security_hardening

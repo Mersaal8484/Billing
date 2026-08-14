@@ -52,6 +52,7 @@ class UtilityPaymentAllocation(models.Model):
         ('draft', 'مسودة'),
         ('allocated', 'مخصص'),
         ('reconciled', 'تمت التسوية'),
+        ('reversed', 'معكوس'),
         ('cancelled', 'ملغى'),
         ('error', 'خطأ'),
     ], string='الحالة', required=True, default='draft', index=True)
@@ -63,6 +64,9 @@ class UtilityPaymentAllocation(models.Model):
     created_by = fields.Many2one(
         'res.users', string='أنشأه', default=lambda self: self.env.user,
         required=True, readonly=True)
+    reversed_at = fields.Datetime('تاريخ العكس', readonly=True, copy=False)
+    reversed_by = fields.Many2one('res.users', string='عُكس بواسطة', readonly=True, copy=False)
+    reversal_reason = fields.Text('سبب العكس', readonly=True, copy=False)
     notes = fields.Text('ملاحظات')
     error_message = fields.Text('رسالة الخطأ', readonly=True)
 
@@ -279,6 +283,62 @@ class UtilityPaymentAllocation(models.Model):
         })
         return allocation
 
+    def action_reverse(self, reason=None):
+        return self.action_reverse_allocation(reason=reason)
+
+    def action_reverse_allocation(self, reason=None):
+        """Idempotent, controlled reversal of payment allocation.
+
+        Removes only the exact partial reconciliations, restores invoice residual
+        and order balance, and handles collection custody dependencies without
+        blindly cancelling the underlying payment.
+        """
+        for allocation in self:
+            if allocation.state == 'reversed':
+                raise ValidationError(_('التخصيص %s معكوس بالفعل.') % allocation.name)
+            if allocation.state not in ('allocated', 'reconciled'):
+                raise ValidationError(_('لا يمكن عكس تخصيص في حالة %s.') % allocation.state)
+
+            # 1. Collection dependency state matrix
+            if 'utility.collection' in self.env:
+                collections = self.env['utility.collection'].search([
+                    '|', ('allocation_id', '=', allocation.id),
+                    ('payment_id', '=', allocation.payment_id.id)
+                ])
+                for col in collections:
+                    if col.state in ('settled', 'deposited', 'reconciled'):
+                        raise ValidationError(_(
+                            'لا يمكن عكس التخصيص لوجود تحصيل مرتبط في حالة تسوية أو إيداع (%s). يجب عكس التسوية أولاً.'
+                        ) % col.display_name)
+                    if hasattr(col, 'settlement_id') and col.settlement_id and col.settlement_id.state not in ('cancelled',):
+                        raise ValidationError(_(
+                            'التحصيل المرتبط بالتخصيص مدرج في تسوية عهدة (%s). يجب إزالته من التسوية أولاً.'
+                        ) % col.settlement_id.display_name)
+                    col.sudo().write({'state': 'cancelled'})
+
+            # 2. Lock records
+            self.env.flush_all()
+            self.env.cr.execute('SELECT id FROM account_move WHERE id = %s FOR UPDATE', [allocation.invoice_id.id])
+            self.env.cr.execute('SELECT id FROM account_payment WHERE id = %s FOR UPDATE', [allocation.payment_id.id])
+
+            # 3. Unlink only exact partial reconciliations
+            if allocation.partial_reconcile_ids:
+                allocation.partial_reconcile_ids.unlink()
+
+            # 4. Invalidate and refresh balances
+            allocation.invoice_id.invalidate_recordset(['amount_residual', 'payment_state'])
+            if allocation.sale_order_id:
+                allocation.sale_order_id.invalidate_recordset(['amount_paid', 'balance_due', 'bill_state'])
+
+            # 5. Mark allocation reversed
+            allocation.with_context(utility_allocation_internal=True).write({
+                'state': 'reversed',
+                'reversed_at': fields.Datetime.now(),
+                'reversed_by': self.env.user.id,
+                'reversal_reason': reason or _('عكس تخصيص مالي'),
+            })
+        return True
+
     def action_cancel(self):
         for allocation in self:
             raise ValidationError(_('لا يمكن حذف أو إلغاء سجل تخصيص مالي؛ استخدم إجراء عكس معتمد.'))
@@ -289,7 +349,8 @@ class UtilityPaymentAllocation(models.Model):
             'partner_id', 'currency_id', 'requested_amount', 'allocated_amount',
             'residual_before', 'residual_after', 'allocation_date', 'source',
             'external_reference', 'state', 'partial_reconcile_ids',
-            'reconciliation_reference', 'created_by', 'error_message',
+            'reconciliation_reference', 'created_by', 'reversed_at',
+            'reversed_by', 'reversal_reason', 'error_message',
         }
         if protected.intersection(vals) and not self.env.context.get(
                 'utility_allocation_internal'):
