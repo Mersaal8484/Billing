@@ -183,7 +183,6 @@
 
                 <group expand="0" string="تجميع حسب">
                     <filter string="التصنيف / Category" name="group_category" context="{'group_by': 'utility_category'}"/>
-                    <filter string="الحالة الصحية / Health Status" name="group_health" context="{'group_by': 'health_status'}"/>
                     <filter string="نوع التكرار / Interval Type" name="group_interval" context="{'group_by': 'interval_type'}"/>
                 </group>
             </search>

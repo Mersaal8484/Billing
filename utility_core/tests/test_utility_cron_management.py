@@ -227,11 +227,16 @@ class TestUtilityCronManagement(TransactionCase):
     def test_07_success_resets_failure_count(self):
         """التحقق من أن التشغيل الناجح بعد فشل سابق يصفر عداد الإخفاقات ويعيد الحالة إلى success."""
         cron = self.test_managed_cron
-        cron.sudo().with_context(_cron_internal_write=True).write({
-            'consecutive_failure_count': 5,
-            'last_execution_status': 'failed',
-            'last_error_message': 'Old failure message',
-        })
+        for _ in range(3):
+            self.env['utility.cron.execution'].sudo().with_context(_cron_internal_write=True).create({
+                'cron_id': cron.id,
+                'utility_code': cron.utility_code,
+                'started_at': fields.Datetime.now(),
+                'status': 'failed',
+                'error_message': 'Old failure message',
+            })
+
+        self.assertGreaterEqual(cron.consecutive_failure_count, 3)
 
         res = cron._execute_utility_managed_cron(trigger_type='manual')
         self.assertEqual(res.get('status'), 'success')
@@ -297,28 +302,40 @@ class TestUtilityCronManagement(TransactionCase):
 
         # Disabled
         cron.active = False
-        cron._compute_health_status()
         self.assertEqual(cron.health_status, 'disabled')
 
         # Healthy
         cron.active = True
-        cron.last_execution_status = 'success'
-        cron.consecutive_failure_count = 0
+        self.env['utility.cron.execution'].sudo().with_context(_cron_internal_write=True).create({
+            'cron_id': cron.id,
+            'utility_code': cron.utility_code,
+            'started_at': fields.Datetime.now(),
+            'finished_at': fields.Datetime.now(),
+            'status': 'success',
+        })
         cron.nextcall = fields.Datetime.now() + timedelta(hours=1)
-        cron._compute_health_status()
         self.assertEqual(cron.health_status, 'healthy')
 
         # Failed
-        cron.last_execution_status = 'failed'
-        cron.consecutive_failure_count = 2
-        cron._compute_health_status()
+        self.env['utility.cron.execution'].sudo().with_context(_cron_internal_write=True).create({
+            'cron_id': cron.id,
+            'utility_code': cron.utility_code,
+            'started_at': fields.Datetime.now(),
+            'finished_at': fields.Datetime.now(),
+            'status': 'failed',
+            'error_message': 'Recent failure',
+        })
         self.assertEqual(cron.health_status, 'failed')
 
         # Delayed
-        cron.last_execution_status = 'success'
-        cron.consecutive_failure_count = 0
+        self.env['utility.cron.execution'].sudo().with_context(_cron_internal_write=True).create({
+            'cron_id': cron.id,
+            'utility_code': cron.utility_code,
+            'started_at': fields.Datetime.now(),
+            'finished_at': fields.Datetime.now(),
+            'status': 'success',
+        })
         cron.nextcall = fields.Datetime.now() - timedelta(hours=5)
-        cron._compute_health_status()
         self.assertEqual(cron.health_status, 'delayed')
 
     def test_12_retention_cleanup(self):
