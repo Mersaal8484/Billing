@@ -229,17 +229,15 @@ class UtilityContractTemplate(models.Model):
 
     def _get_pricing_blocks(self):
         self.ensure_one()
-        return self.env['utility.contract.template.block'].search([
-            ('template_id', '=', self.id),
-            ('is_discount', '=', False),
-        ], order='from_kwh asc, sequence asc, id asc')
+        return self.block_ids.filtered(lambda b: not b.is_discount).sorted(
+            lambda b: (b.from_kwh or 0.0, b.sequence or 0, b.id or 0)
+        )
 
     def _get_discount_blocks(self):
         self.ensure_one()
-        return self.env['utility.contract.template.block'].search([
-            ('template_id', '=', self.id),
-            ('is_discount', '=', True),
-        ], order='from_kwh asc, sequence asc, id asc')
+        return self.discount_block_ids.filtered(lambda b: b.is_discount).sorted(
+            lambda b: (b.from_kwh or 0.0, b.sequence or 0, b.id or 0)
+        )
 
     def _validate_contract_template_tiers(self):
         """Validate complete pricing and discount tier configuration."""
