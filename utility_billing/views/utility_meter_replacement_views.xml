@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_meter_replacement_billing_form" model="ir.ui.view">
+        <field name="name">utility.meter.replacement.billing.form</field>
+        <field name="model">utility.meter.replacement</field>
+        <field name="inherit_id" ref="utility_core.view_utility_meter_replacement_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='opening_reading_id']" position="after">
+                <field name="sale_order_id" invisible="1"/>
+            </xpath>
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button class="oe_stat_button" type="object" name="action_view_sale_order"
+                        icon="fa-file-text-o"
+                        attrs="{'invisible': [('sale_order_id', '=', False)]}">
+                    <div class="o_stat_info">
+                        <span class="o_stat_text">فاتورة الاستهلاك</span>
+                    </div>
+                </button>
+            </xpath>
+        </field>
+    </record>
+</odoo>

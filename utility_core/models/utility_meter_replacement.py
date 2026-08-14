@@ -12,7 +12,6 @@ class UtilityMeterReplacement(models.Model):
     company_id = fields.Many2one('res.company', string='الشركة', required=True, index=True, default=lambda self: self.env.company)
     closing_reading_id = fields.Many2one('utility.reading', string='سجل القراءة الختامية', readonly=True, copy=False, ondelete='restrict')
     opening_reading_id = fields.Many2one('utility.reading', string='سجل القراءة الافتتاحية', readonly=True, copy=False, ondelete='restrict')
-    sale_order_id = fields.Many2one('sale.order', string='فاتورة الاستهلاك المركبة', related='closing_reading_id.included_sale_order_id', store=True, readonly=True)
 
     target_type = fields.Selection([
         ('subscriber', 'عداد مشترك (حساب كهرباء)'),
@@ -229,19 +228,6 @@ class UtilityMeterReplacement(models.Model):
             'type': 'ir.actions.act_window',
             'res_model': 'utility.reading',
             'res_id': self.opening_reading_id.id,
-            'view_mode': 'form',
-            'target': 'current',
-        }
-
-    def action_view_sale_order(self):
-        self.ensure_one()
-        if not self.sale_order_id:
-            raise UserError(_('لم يتم إدراج الاستهلاك غير المفوتر في فاتورة بعد.'))
-        return {
-            'name': _('فاتورة الاستهلاك المركبة'),
-            'type': 'ir.actions.act_window',
-            'res_model': 'sale.order',
-            'res_id': self.sale_order_id.id,
             'view_mode': 'form',
             'target': 'current',
         }

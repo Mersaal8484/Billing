@@ -341,7 +341,9 @@ class DateRange(models.Model):
             rec.approved_readings = len(readings.filtered(lambda r: r.state in ('approved', 'billed')))
             rec.rejected_readings = len(readings.filtered(lambda r: r.state == 'draft' and r.remarks))
             rec.images_ready = len(readings.filtered(lambda r: bool(r.meter_image)))
-            rec.exception_count = len(readings.filtered(lambda r: r.state == 'error' or bool(r.billing_error)))
+            # Billing-specific errors are computed by utility_billing. Core
+            # only reports operational reading failures here.
+            rec.exception_count = len(readings.filtered(lambda r: r.state == 'error'))
 
             # حسابات الفواتير والتحصيل
             orders = self.env['sale.order'].search([('date_range_id', '=', target_period.id), ('state', '!=', 'cancel')])

@@ -28,7 +28,6 @@
                 <field name="company_id" invisible="1"/>
                 <field name="closing_reading_id" invisible="1"/>
                 <field name="opening_reading_id" invisible="1"/>
-                <field name="sale_order_id" invisible="1"/>
                 <header>
                     <button name="action_complete_replacement" type="object"
                             string="إكمال الاستبدال" class="oe_highlight"
@@ -54,13 +53,6 @@
                                 attrs="{'invisible': [('opening_reading_id', '=', False)]}">
                             <div class="o_stat_info">
                                 <span class="o_stat_text">القراءة الافتتاحية</span>
-                            </div>
-                        </button>
-                        <button class="oe_stat_button" type="object" name="action_view_sale_order"
-                                icon="fa-file-text-o"
-                                attrs="{'invisible': [('sale_order_id', '=', False)]}">
-                            <div class="o_stat_info">
-                                <span class="o_stat_text">فاتورة الاستهلاك</span>
                             </div>
                         </button>
                     </div>

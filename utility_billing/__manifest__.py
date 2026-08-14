@@ -28,6 +28,8 @@ debt management, collections, and online payment gateway integration.
         'views/utility_billing_menu.xml',
         'views/utility_service_charge_views.xml',
         'views/utility_reading_views.xml',
+        'views/utility_meter_replacement_views.xml',
+        'views/utility_reading_settlement_views.xml',
         'views/utility_reading_batch_views.xml',
         'views/utility_bill_reading_component_views.xml',
         'views/utility_billing_adjustment_views.xml',

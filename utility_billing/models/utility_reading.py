@@ -1,6 +1,7 @@
 import logging
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
+from odoo.addons.utility_core.models.utility_date_range import normalize_billing_cadence
 
 _logger = logging.getLogger(__name__)
 
@@ -9,6 +10,123 @@ class UtilityReading(models.Model):
     _inherit = 'utility.reading'
 
     batch_id = fields.Many2one('utility.reading.batch', 'الدفعة', readonly=True, index=True)
+    is_billable = fields.Boolean(
+        string='قراءة قابلة للفوترة',
+        compute='_compute_is_billable',
+        store=True,
+        index=True,
+    )
+    billing_anchor_id = fields.Many2one(
+        'utility.reading', 'القراءة الدورية المرتبطة', index=True,
+        readonly=True, copy=False, ondelete='restrict',
+    )
+    billing_component_ids = fields.One2many(
+        'utility.reading', 'billing_anchor_id', 'قراءات الإغلاق المضمّنة',
+    )
+    included_sale_order_id = fields.Many2one(
+        'sale.order', 'الفاتورة المتضمنة', index=True, readonly=True,
+        copy=False, ondelete='restrict',
+    )
+    carried_consumption = fields.Float(
+        'استهلاك مرحل', compute='_compute_billing_consumption', store=True,
+    )
+    billing_consumption = fields.Float(
+        'استهلاك الفاتورة', compute='_compute_billing_consumption', store=True,
+    )
+    billing_error = fields.Text('خطأ الفوترة', readonly=True)
+
+    def init(self):
+        """Keep core indexes and add the commercial reading index."""
+        super().init()
+        self.env.cr.execute("""
+            CREATE INDEX IF NOT EXISTS utility_reading_review_state_billable_date_idx
+            ON utility_reading (state, is_billable, reading_date DESC, id DESC)
+        """)
+
+    def _is_commercial_subject(self):
+        """Return whether the reading belongs to a billable subject."""
+        self.ensure_one()
+        return (
+            self.reading_category == 'customer'
+            or (
+                self.reading_category == 'transformer'
+                and self.is_private_transformer
+            )
+        )
+
+    def _canonical_reading_purpose(self):
+        self.ensure_one()
+        return 'closing' if self.reading_purpose == 'replacement_closing' else self.reading_purpose
+
+    def _is_replacement_reading(self):
+        self.ensure_one()
+        return self.reading_event == 'replacement' or self.reading_purpose == 'replacement_closing'
+
+    def _is_billable_reading(self):
+        """Return whether this reading directly creates a postpaid bill."""
+        self.ensure_one()
+        return self._is_commercial_subject() and self.reading_purpose == 'periodic'
+
+    def _requires_billing_review(self):
+        self.ensure_one()
+        return self.is_billable
+
+    @api.depends('reading_category', 'reading_purpose', 'is_private_transformer')
+    def _compute_is_billable(self):
+        for reading in self:
+            reading.is_billable = reading._is_billable_reading()
+
+    @api.depends('consumption', 'reading_purpose', 'billing_component_ids.consumption')
+    def _compute_billing_consumption(self):
+        for reading in self:
+            if reading.reading_purpose == 'periodic':
+                reading.carried_consumption = sum(reading.billing_component_ids.mapped('consumption'))
+                reading.billing_consumption = reading.consumption + reading.carried_consumption
+            else:
+                reading.carried_consumption = 0.0
+                reading.billing_consumption = 0.0
+
+    @api.constrains('account_id', 'date_range_id', 'state', 'reading_category', 'reading_purpose')
+    def _check_unique_billable_reading_per_period(self):
+        """Prevent duplicate billable readings for one account and period."""
+        for reading in self.filtered(lambda rec: rec.is_billable and rec.date_range_id and rec.state != 'error'):
+            duplicate = self.search([
+                ('account_id', '=', reading.account_id.id),
+                ('date_range_id', '=', reading.date_range_id.id),
+                ('reading_purpose', '=', 'periodic'),
+                ('reading_category', '=', reading.reading_category),
+                ('state', '!=', 'error'),
+                ('id', '!=', reading.id),
+            ], limit=1)
+            if duplicate:
+                raise ValidationError(_(
+                    'يوجد قراءة دورية أخرى للحساب [%s] في فترة الفوترة [%s].'
+                ) % (reading.account_id.display_name, reading.date_range_id.name))
+
+    @api.constrains('reading_purpose', 'date_range_id', 'billing_anchor_id', 'account_id', 'reading_date')
+    def _check_billing_reading_rules(self):
+        """Validate billing-specific period and component invariants."""
+        for reading in self:
+            if reading.is_billable:
+                if not reading.account_id:
+                    raise ValidationError(_('القراءة القابلة للفوترة تتطلب حساب مشترك.'))
+                if not reading.date_range_id:
+                    raise ValidationError(_('القراءة الدورية تتطلب تحديد الفترة المفتوحة للقراءة بحسب العقد.'))
+                period = reading.date_range_id
+                expected = reading.account_id._get_effective_billing_period()
+                if period.period_role and period.period_role != 'reading':
+                    raise ValidationError(_('فترة القراءة الدورية يجب أن تكون من نوع قراءات.'))
+                cadence = period.billing_cadence or getattr(period, 'billing_period', False)
+                if expected and cadence and normalize_billing_cadence(cadence) != normalize_billing_cadence(expected):
+                    raise ValidationError(_(
+                        'دورية الفترة المختارة (%s) لا تطابق دورية المشترك (%s).'
+                    ) % (cadence, expected))
+            anchor = reading.billing_anchor_id
+            if anchor and (
+                    anchor.reading_purpose != 'periodic'
+                    or anchor.account_id != reading.account_id
+                    or anchor.reading_date < reading.reading_date):
+                raise ValidationError(_('يجب أن تكون قراءة الربط دورية ولاحقة ومن حساب المشترك نفسه.'))
 
     def _check_billing_period_mutation(self, vals=None):
         """Prevent ordinary reading changes after the billing period is closed."""
