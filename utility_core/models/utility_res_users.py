@@ -1,4 +1,5 @@
-from odoo import api, fields, models
+from odoo import api, fields, models, _
+from odoo.exceptions import AccessError
 
 
 class ResUsers(models.Model):
@@ -104,3 +105,22 @@ class ResUsers(models.Model):
             'unassigned_user_ids': restricted_users.ids,
             'unassigned_user_names': restricted_users.mapped('name'),
         }
+
+    def check_record_scope(self, record):
+        """Action-level authorization check validating whether a record falls inside the user's organizational scope."""
+        self.ensure_one()
+        if self._is_global_utility_scope():
+            return True
+        branch_ids = self._get_effective_branch_ids()
+        region_ids = self._get_effective_region_ids()
+
+        area = getattr(record, 'area_id', False) or getattr(getattr(record, 'customer_id', False), 'area_id', False) or getattr(getattr(record, 'account_id', False), 'area_id', False)
+        region = getattr(record, 'region_id', False) or getattr(getattr(record, 'customer_id', False), 'region_id', False) or getattr(getattr(record, 'account_id', False), 'region_id', False)
+
+        if area and area.id in branch_ids:
+            return True
+        if region and region.id in region_ids:
+            return True
+        if not area and not region:
+            return True
+        raise AccessError(_("ليس لديك صلاحيات للعمل على السجلات خارج نطاقك التنظيمي الجغرافي."))

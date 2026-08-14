@@ -1,3 +1,4 @@
+from odoo.exceptions import AccessError
 from odoo.tests.common import TransactionCase
 
 
@@ -62,12 +63,14 @@ class TestOrganizationalScopeOperations(TransactionCase):
 
         self.service_order_sanaa = self.env['utility.service.order'].create({
             'customer_id': self.customer_sanaa.id,
-            'order_type': 'new_connection',
+            'service_type': 'new_connection',
+            'description': 'توصيل صنعاء',
             'company_id': self.company.id,
         })
         self.service_order_aden = self.env['utility.service.order'].create({
             'customer_id': self.customer_aden.id,
-            'order_type': 'new_connection',
+            'service_type': 'new_connection',
+            'description': 'توصيل عدن',
             'company_id': self.company.id,
         })
 
@@ -85,3 +88,8 @@ class TestOrganizationalScopeOperations(TransactionCase):
         orders = self.env['utility.service.order'].with_user(self.user_sanaa).search([])
         self.assertIn(self.service_order_sanaa, orders)
         self.assertNotIn(self.service_order_aden, orders)
+
+    def test_02_service_order_action_scope_rejection(self):
+        """Executing action on out-of-scope service order raises AccessError."""
+        with self.assertRaises(AccessError):
+            self.service_order_aden.with_user(self.user_sanaa).action_approve()
