@@ -131,33 +131,28 @@ class UtilityWorkflowService(models.AbstractModel):
     def _execute_workflow_handler(self, workflow_type, reference_model, reference_id, payload_json=None):
         """
         استدعاء خدمة الأعمال القابلة لإعادة الاستخدام (Reusable Business Service):
-        يتم استدعاء نفس الدالة سواء كان المشغل محلياً اليوم أو نشاط Temporal غداً.
+        - إذا كان service_model هو نفسه reference_model: يتم جلب السجل المحدد واستدعاء الدالة على الـ Recordset مباشرة.
+        - إذا كان service_model مخدم أعمال مستقل: يتم استدعاء دالة المخدم وتمرير reference_id كمعامل أساسي.
         """
         reg = self.WORKFLOW_REGISTRY.get(workflow_type)
         if not reg:
             raise ValidationError(_("لا توجد خدمة أعمال مسجلة لمعالجة نوع مسار العمل: %s") % workflow_type)
 
-        payload = json.loads(payload_json) if payload_json else {}
         target_model = reg.get('service_model') or reference_model
         method_name = reg.get('service_method')
-        target = self.env[target_model]
 
-        if hasattr(target, method_name):
-            method = getattr(target, method_name)
-            if target_model == reference_model:
-                rec = target.browse(reference_id)
-                return method(rec) if method.__code__.co_argcount > 1 else method()
-            else:
-                return method(reference_id)
+        if target_model == reference_model:
+            rec = self.env[reference_model].browse(reference_id).exists()
+            if not rec:
+                raise ValidationError(_("السجل المرجعي المستهدف (%s, ID: %s) غير موجود.") % (reference_model, reference_id))
+            if not hasattr(rec, method_name):
+                raise ValidationError(_("الدالة التنفيذية (%s) غير موجودة في النموذج (%s).") % (method_name, reference_model))
+            return getattr(rec, method_name)()
         else:
-            _logger.warning("Method [%s] not found on [%s] for workflow [%s].", method_name, target_model, workflow_type)
-
-        # Fallback to direct model action if matching method exists
-        rec = self.env[reference_model].browse(reference_id)
-        if hasattr(rec, f"action_{workflow_type}"):
-            return getattr(rec, f"action_{workflow_type}")()
-
-        raise ValidationError(_("فشل العثور على الدالة التنفيذية (%s) في الموديل (%s).") % (method_name, target_model))
+            service = self.env[target_model]
+            if not hasattr(service, method_name):
+                raise ValidationError(_("الدالة التنفيذية (%s) غير موجودة في مخدم الأعمال (%s).") % (method_name, target_model))
+            return getattr(service, method_name)(reference_id)
 
     # -------------------------------------------------------------------------
     # Backward Compatibility Forwarders
