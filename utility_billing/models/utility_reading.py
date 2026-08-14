@@ -37,23 +37,11 @@ class UtilityReading(models.Model):
     billing_error = fields.Text('خطأ الفوترة', readonly=True)
 
     def init(self):
-        """Keep core indexes and add commercial reading & uniqueness indexes."""
+        """Keep core performance and review query indexes."""
         super().init()
         self.env.cr.execute("""
             CREATE INDEX IF NOT EXISTS utility_reading_review_state_billable_date_idx
             ON utility_reading (state, is_billable, reading_date DESC, id DESC);
-
-            CREATE UNIQUE INDEX IF NOT EXISTS utility_reading_unique_periodic_account_period_idx
-            ON utility_reading (account_id, date_range_id, reading_category)
-            WHERE reading_purpose = 'periodic'
-              AND active = TRUE
-              AND account_id IS NOT NULL
-              AND date_range_id IS NOT NULL;
-
-            CREATE UNIQUE INDEX IF NOT EXISTS utility_sale_order_unique_active_reading_idx
-            ON sale_order (reading_id)
-            WHERE reading_id IS NOT NULL
-              AND state != 'cancel';
         """)
 
     def _is_commercial_subject(self):

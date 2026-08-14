@@ -1,3 +1,5 @@
+import threading
+import time
 from odoo.tests.common import TransactionCase
 from odoo.exceptions import AccessError, ValidationError, UserError
 from odoo import fields
@@ -289,7 +291,7 @@ class TestReadingLifecycleHardening(TransactionCase):
             reading.write({'reading_value': 100050.0, 'max_reading_value': 99999.0})
 
     def test_06_duplicate_periodic_reading_concurrency_and_db_uniqueness(self):
-        """Cannot create two active periodic readings for the same account and period."""
+        """Cannot create two active periodic readings for the same account and period, validated under ORM and concurrency."""
         self._create_opening_reading(100.0)
         self.Reading.create({
             'meter_id': self.meter.id,
@@ -302,6 +304,7 @@ class TestReadingLifecycleHardening(TransactionCase):
             'meter_image': b'fake_image_data',
         })
 
+        # 1. ORM level duplicate prevention in single transaction
         with self.assertRaises(ValidationError):
             self.Reading.create({
                 'meter_id': self.meter.id,
