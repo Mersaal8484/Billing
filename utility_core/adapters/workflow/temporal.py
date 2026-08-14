@@ -8,8 +8,8 @@ _logger = logging.getLogger(__name__)
 
 class TemporalWorkflowAdapter(AbstractWorkflowAdapter):
     """
-    محول مسارات العمل لبيئة الإنتاج عبر خدمة Temporal (Temporal Workflow Adapter - V1 Placeholder Contract).
-    ملاحظة: هذا المحول حالياً يُجسّد هيكلية العقد المتبادل (Interface Contract) وفي انتظار ربط مكتبة Temporal SDK الرسمية.
+    محول مسارات العمل لبيئة الإنتاج عبر خدمة Temporal (Temporal Workflow Adapter - Production Target Contract).
+    ملاحظة: هذا المحول حالياً يُجسّد هيكلية العقد المتبادل (Interface Contract) وفي انتظار ربط مكتبة Temporal SDK الرسمية في مرحلة الإنتاج.
     """
     PRODUCTION_READY = False
 
@@ -22,30 +22,24 @@ class TemporalWorkflowAdapter(AbstractWorkflowAdapter):
         if not self.target_host:
             raise UserError(_("خطأ في إعدادات البنية التحتية: خادم Temporal غير محدد (utility.temporal_target_host)."))
 
-    def trigger_reading_period_workflow(self, period):
-        _logger.info("Executing Temporal Workflow trigger for period %s at %s", period.name, self.target_host)
+    def dispatch(self, workflow_type, reference_model, reference_id, payload=None, idempotency_key=None, priority=10):
+        if not self.PRODUCTION_READY:
+            raise UserError(_("محول Temporal Workflow قيد التجهيز لمرحلة الإنتاج (Temporal SDK not attached yet). يُرجى استخدام Local Odoo Outbox."))
+        _logger.info("Dispatching to Temporal Workflow: type=%s, ref=%s:%s, key=%s", workflow_type, reference_model, reference_id, idempotency_key)
         return True
 
-    def trigger_payment_period_workflow(self, payment_period):
-        _logger.info("Executing Temporal Workflow trigger for payment period %s at %s", payment_period.name, self.target_host)
+    def cancel(self, workflow_id, reason=None):
+        if not self.PRODUCTION_READY:
+            raise UserError(_("محول Temporal Workflow قيد التجهيز لمرحلة الإنتاج."))
+        _logger.info("Cancelling Temporal Workflow: id=%s", workflow_id)
         return True
 
-    def execute_open_reading_window(self, period):
-        _logger.info("Executing Temporal Workflow open reading window for period %s", period.name)
-        return period.action_open_reading()
+    def get_status(self, workflow_id):
+        if not self.PRODUCTION_READY:
+            raise UserError(_("محول Temporal Workflow قيد التجهيز لمرحلة الإنتاج."))
+        return {'status': 'pending', 'workflow_id': workflow_id}
 
-    def execute_close_reading_window(self, period):
-        _logger.info("Executing Temporal Workflow close reading window for period %s", period.name)
-        return period.action_close_reading()
-
-    def execute_start_billing(self, period):
-        _logger.info("Executing Temporal Workflow start billing for period %s", period.name)
-        return period.action_start_billing()
-
-    def execute_reconcile_and_close(self, period):
-        _logger.info("Executing Temporal Workflow reconcile and close for period %s", period.name)
-        return period.action_close_period()
-
-    def dispatch_batch_command(self, batch, payload_func, is_retry=False):
-        _logger.info("Executing Temporal Batch Workflow Command for batch %s", batch.name)
-        return payload_func()
+    def execute_command(self, command):
+        if not self.PRODUCTION_READY:
+            raise UserError(_("محول Temporal Workflow قيد التجهيز لمرحلة الإنتاج."))
+        return {'status': 'failed', 'error': 'Temporal adapter does not execute local commands.'}

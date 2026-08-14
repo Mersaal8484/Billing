@@ -153,7 +153,7 @@ class UtilityReadingBatch(models.Model):
             cmd_key = f"READING-BATCH:{batch.batch_uuid}"
             cmd_model = self.env['utility.workflow.command'].sudo()
             existing = cmd_model.search([('idempotency_key', '=', cmd_key)], limit=1)
-            if existing and existing.state == 'executed':
+            if existing and existing.state in ('completed', 'executed'):
                 _logger.info("Batch confirmation already executed for key %s", cmd_key)
                 return existing.result_summary
 
