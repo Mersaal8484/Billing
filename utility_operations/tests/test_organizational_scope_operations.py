@@ -93,3 +93,59 @@ class TestOrganizationalScopeOperations(TransactionCase):
         """Executing action on out-of-scope service order raises AccessError."""
         with self.assertRaises(AccessError):
             self.service_order_aden.with_user(self.user_sanaa).action_approve()
+
+    def test_03_work_order_action_scope_rejection(self):
+        """Executing action on out-of-scope work order raises AccessError."""
+        wo_aden = self.env['utility.work.order'].create({
+            'customer_id': self.customer_aden.id,
+            'work_type': 'installation',
+            'description': 'تركيب عدن',
+            'company_id': self.company.id,
+        })
+        with self.assertRaises(AccessError):
+            wo_aden.with_user(self.user_sanaa).action_assign()
+
+    def test_04_installation_action_scope_rejection(self):
+        """Executing action on out-of-scope installation raises AccessError."""
+        meter_aden = self.env['utility.meter'].create({
+            'meter_number': 'MTR_ADEN_INST_01',
+            'customer_id': self.customer_aden.id,
+            'company_id': self.company.id,
+        })
+        inst_aden = self.env['utility.installation'].create({
+            'customer_id': self.customer_aden.id,
+            'meter_id': meter_aden.id,
+            'company_id': self.company.id,
+        })
+        with self.assertRaises(AccessError):
+            inst_aden.with_user(self.user_sanaa).action_install()
+
+    def test_05_inspection_action_scope_rejection(self):
+        """Executing action on out-of-scope inspection raises AccessError."""
+        insp_aden = self.env['utility.inspection'].create({
+            'customer_id': self.customer_aden.id,
+            'inspection_type': 'routine',
+            'company_id': self.company.id,
+        })
+        with self.assertRaises(AccessError):
+            insp_aden.with_user(self.user_sanaa).action_complete()
+
+    def test_06_alarm_scope_isolation(self):
+        """Restricted user in Sanaa sees Sanaa alarm, not Aden alarm."""
+        alarm_sanaa = self.env['utility.alarm'].create({
+            'region_id': self.region_sanaa.id,
+            'area_id': self.branch_sanaa1.id,
+            'alarm_type': 'tamper',
+            'severity': 'high',
+            'company_id': self.company.id,
+        })
+        alarm_aden = self.env['utility.alarm'].create({
+            'region_id': self.region_aden.id,
+            'area_id': self.branch_aden1.id,
+            'alarm_type': 'tamper',
+            'severity': 'high',
+            'company_id': self.company.id,
+        })
+        alarms = self.env['utility.alarm'].with_user(self.user_sanaa).search([])
+        self.assertIn(alarm_sanaa, alarms)
+        self.assertNotIn(alarm_aden, alarms)

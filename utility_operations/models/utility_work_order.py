@@ -72,6 +72,7 @@ class UtilityWorkOrder(models.Model):
 
     def action_assign(self):
         for order in self:
+            self.env.user.check_record_scope(order)
             if order.state != 'draft':
                 raise UserError(_('لا يمكن تعيين أمر العمل إلا من حالة المسودة.'))
             if not order.assigned_technician_id and not order.team_id:
@@ -80,6 +81,7 @@ class UtilityWorkOrder(models.Model):
 
     def action_start(self):
         for order in self:
+            self.env.user.check_record_scope(order)
             if order.state != 'assigned':
                 raise UserError(_('لا يمكن بدء أمر العمل إلا بعد التعيين (مُعيّن).'))
             if not order.date_started:
@@ -88,6 +90,7 @@ class UtilityWorkOrder(models.Model):
 
     def action_complete(self):
         for order in self:
+            self.env.user.check_record_scope(order)
             if order.state != 'in_progress':
                 raise UserError(_('لا يمكن إكمال أمر العمل إلا عندما يكون قيد التنفيذ.'))
             if not order.date_completed:
@@ -98,12 +101,14 @@ class UtilityWorkOrder(models.Model):
 
     def action_verify(self):
         for order in self:
+            self.env.user.check_record_scope(order)
             if order.state != 'completed':
                 raise UserError(_('لا يمكن التحقق من أمر العمل إلا بعد إكتماله (مكتمل).'))
             order.state = 'verified'
 
     def action_cancel(self):
         for order in self:
+            self.env.user.check_record_scope(order)
             if order.state not in ('draft', 'assigned', 'in_progress', 'completed'):
                 raise UserError(_('لا يمكن إلغاء أمر العمل في حالته الحالية.'))
             order.state = 'cancelled'

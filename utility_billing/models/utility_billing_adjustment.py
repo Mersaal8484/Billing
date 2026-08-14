@@ -178,6 +178,7 @@ class UtilityBillingAdjustment(models.Model):
 
     def action_submit(self):
         for record in self:
+            self.env.user.check_record_scope(record)
             if record.state != 'draft':
                 raise ValidationError(_('يمكن إرسال التعديلات المسودة فقط.'))
             record._validate_original_links()
@@ -192,6 +193,7 @@ class UtilityBillingAdjustment(models.Model):
     def action_approve(self):
         self._check_manager()
         for record in self:
+            self.env.user.check_record_scope(record)
             if record.state != 'submitted':
                 raise ValidationError(_('يمكن اعتماد التعديلات المرسلة فقط.'))
             if (record.requested_by_id == self.env.user

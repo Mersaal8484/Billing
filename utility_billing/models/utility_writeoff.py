@@ -56,6 +56,7 @@ class UtilityWriteoff(models.Model):
 
     def action_approve(self):
         for rec in self:
+            self.env.user.check_record_scope(rec)
             if rec.move_id or rec.state != 'draft':
                 raise ValidationError(
                     _('لا يمكن اعتماد الإعفاء إلا من حالة المسودة ومن دون إشعار دائن.')

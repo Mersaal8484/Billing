@@ -33,6 +33,7 @@ class UtilityMeterReplaceWizard(models.TransientModel):
 
     def action_execute_replacement(self):
         self.ensure_one()
+        self.env.user.check_record_scope(self.account_id)
         if not (
             self.env.user.has_group('utility_core.group_utility_supervisor')
             or self.env.user.has_group('utility_core.group_utility_admin')

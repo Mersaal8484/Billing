@@ -1,3 +1,4 @@
+from odoo.exceptions import AccessError
 from odoo.tests.common import TransactionCase
 
 
@@ -96,3 +97,38 @@ class TestOrganizationalScopeBilling(TransactionCase):
         })
         bills = self.env['sale.order'].with_user(self.user_billing_sanaa).search([('id', '=', standard_sale.id)])
         self.assertIn(standard_sale, bills)
+
+    def test_03_writeoff_action_scope_rejection(self):
+        """Executing action_approve on out-of-scope write-off raises AccessError."""
+        writeoff_aden = self.env['utility.writeoff'].create({
+            'customer_id': self.customer_aden.id,
+            'sale_order_id': self.bill_aden.id,
+            'amount': 500.0,
+            'company_id': self.company.id,
+        })
+        with self.assertRaises(AccessError):
+            writeoff_aden.with_user(self.user_billing_sanaa).action_approve()
+
+    def test_04_billing_adjustment_action_scope_rejection(self):
+        """Executing action_submit on out-of-scope billing adjustment raises AccessError."""
+        date_range = self.env['date.range'].create({
+            'name': 'يناير 2026',
+            'date_start': '2026-01-01',
+            'date_end': '2026-01-31',
+            'company_id': self.company.id,
+        })
+        inv_aden = self.env['account.move'].create({
+            'partner_id': self.partner_aden.id,
+            'move_type': 'out_invoice',
+            'company_id': self.company.id,
+        })
+        adj_aden = self.env['utility.billing.adjustment'].create({
+            'customer_id': self.customer_aden.id,
+            'billing_period_id': date_range.id,
+            'sale_order_id': self.bill_aden.id,
+            'invoice_id': inv_aden.id,
+            'reason': 'تعديل استهلاك',
+            'company_id': self.company.id,
+        })
+        with self.assertRaises(AccessError):
+            adj_aden.with_user(self.user_billing_sanaa).action_submit()

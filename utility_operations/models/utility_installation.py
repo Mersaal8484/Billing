@@ -53,6 +53,7 @@ class UtilityInstallation(models.Model):
 
     def action_install(self):
         for rec in self:
+            self.env.user.check_record_scope(rec)
             if rec.state != 'draft':
                 raise UserError(_('لا يمكن تنفيذ التركيب إلا للتركيبات في حالة المسودة.'))
             if not rec.customer_id:
@@ -69,12 +70,14 @@ class UtilityInstallation(models.Model):
 
     def action_verify(self):
         for rec in self:
+            self.env.user.check_record_scope(rec)
             if rec.state != 'installed':
                 raise UserError(_('لا يمكن التحقق إلا من التركيبات المنفذة (مُرَكّب).'))
             rec.state = 'verified'
 
     def action_fail(self):
         for rec in self:
+            self.env.user.check_record_scope(rec)
             if rec.state not in ('draft', 'installed'):
                 raise UserError(_('لا يمكن تسجيل فشل التركيبة في حالتها الحالية.'))
             rec.state = 'failed'

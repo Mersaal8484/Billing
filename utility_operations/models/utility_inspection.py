@@ -53,6 +53,7 @@ class UtilityInspection(models.Model):
 
     def action_complete(self):
         for rec in self:
+            self.env.user.check_record_scope(rec)
             if rec.state != 'scheduled':
                 raise UserError(_('لا يمكن إكمال المعاينة إلا عندما تكون مجدولة.'))
             if not rec.inspection_type:
@@ -67,6 +68,7 @@ class UtilityInspection(models.Model):
 
     def action_cancel(self):
         for rec in self:
+            self.env.user.check_record_scope(rec)
             if rec.state != 'scheduled':
                 raise UserError(_('لا يمكن إلغاء المعاينة إلا عندما تكون مجدولة.'))
             rec.state = 'cancelled'

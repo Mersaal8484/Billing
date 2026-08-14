@@ -121,6 +121,4 @@ class ResUsers(models.Model):
             return True
         if region and region.id in region_ids:
             return True
-        if not area and not region:
-            return True
-        raise AccessError(_("ليس لديك صلاحيات للعمل على السجلات خارج نطاقك التنظيمي الجغرافي."))
+        raise AccessError(_("تعذر تحديد النطاق التنظيمي أو أن السجل يقع خارج نطاقك التنظيمي الجغرافي المخصص."))
