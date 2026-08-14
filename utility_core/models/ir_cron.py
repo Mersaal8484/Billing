@@ -222,26 +222,18 @@ class IrCron(models.Model):
     def _run_business_job(self):
         self.ensure_one()
         if self.code and self.model_id:
-            model = self.env[self.model_id.model]
-            eval_context = {
-                'env': self.env,
-                'model': model,
-                'time': time,
-                'datetime': datetime,
-                'dateutil': dateutil,
-                'timezone': pytz.timezone,
-                'b64encode': base64.b64encode,
-                'b64decode': base64.b64decode,
-                '_logger': _logger,
-            }
+            action = self.ir_actions_server_id if self.ir_actions_server_id else None
+            eval_context = self.env['ir.actions.server']._get_eval_context(action=action)
+            eval_context['model'] = self.env[self.model_id.model]
             clean_code = self.code.strip()
             try:
                 return safe_eval(clean_code, eval_context, mode="eval", nocopy=True)
             except SyntaxError:
                 safe_eval(clean_code, eval_context, mode="exec", nocopy=True)
                 return eval_context.get('result') or eval_context.get('action')
-        else:
+        elif self.ir_actions_server_id:
             return self.with_context(active_model=self.model_name, active_id=self.id).ir_actions_server_id.run()
+        return False
 
     def _execute_utility_managed_cron(self, trigger_type='scheduled'):
         self.ensure_one()
@@ -382,13 +374,10 @@ class IrCron(models.Model):
                 self.utility_code or self.name, self.consecutive_failure_count, self.last_error_message
             )
 
-    @classmethod
-    def _callback(cls, cron_name, server_action_id, job_id):
+    def _callback(self, cron_name, server_action_id, job_id):
         """Intercept Odoo scheduler execution for Utility-managed scheduled actions."""
-        # Find record in database
-        cron = cls.browse(job_id)
-        if cron.exists() and cron.utility_managed:
-            return cron._execute_utility_managed_cron(trigger_type='scheduled')
+        if self.utility_managed:
+            return self._execute_utility_managed_cron(trigger_type='scheduled')
         return super()._callback(cron_name, server_action_id, job_id)
 
     def method_direct_trigger(self):
