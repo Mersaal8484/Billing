@@ -328,6 +328,11 @@ class UtilityCollectionSettlement(models.Model):
             vals.setdefault(
                 'name', self.env['ir.sequence'].next_by_code(
                     'utility.collection.settlement') or _('جديد'))
+            if vals.get('reference'):
+                vals.setdefault(
+                    'settlement_key', 'COLLECTOR-DEPOSIT:%s:%s' % (
+                        vals.get('company_id') or self.env.company.id,
+                        vals['reference'].strip().upper()))
         return super().create(vals_list)
 
     @api.depends('line_ids.amount', 'line_ids.actual_settled_amount',
@@ -349,7 +354,7 @@ class UtilityCollectionSettlement(models.Model):
         'declared_amount',
     )
     def _compute_bank_allocation(self):
-        states = ('confirmed', 'waiting_bank_match', 'reconciled', 'settled')
+        states = ('confirmed', 'settled')
         grouped = self.env['utility.bank.settlement.line'].read_group(
             [
                 ('collection_settlement_id', 'in', self.ids),
@@ -424,7 +429,8 @@ class UtilityCollectionSettlement(models.Model):
             remaining_declared = record.declared_amount
             for line in record.line_ids.sorted('id'):
                 collection = line.collection_id
-                if collection not in collections or collection.state != 'posted':
+                if collection not in collections or collection.state not in (
+                        'posted', 'included_in_settlement'):
                     raise ValidationError(_('أحد تحصيلات التسوية غير مرحّل.'))
                 if collection.collector_id != record.collector_id:
                     raise ValidationError(_('كل التحصيلات يجب أن تخص المحصل نفسه.'))
@@ -437,10 +443,13 @@ class UtilityCollectionSettlement(models.Model):
                     line.amount, remaining_declared, available)
                 remaining_declared = max(remaining_declared - line.actual_settled_amount, 0.0)
             record.state = 'confirmed'
+            record.action_post()
         return True
 
     def action_post(self):
         for record in self:
+            if record.state in ('posted', 'settled'):
+                continue
             if record.state != 'confirmed':
                 raise ValidationError(_('يجب تأكيد التسوية قبل ترحيلها.'))
             record._lock_collections()

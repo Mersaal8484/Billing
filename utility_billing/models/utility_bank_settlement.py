@@ -39,6 +39,9 @@ class UtilityBankSettlement(models.Model):
         'account.journal', required=True,
         domain="[('type', '=', 'bank')]")
     bank_account_id = fields.Many2one('account.account', required=True)
+    collector_id = fields.Many2one(
+        'utility.staff', string='المحصل', index=True,
+        help='يستخدم لتخصيص مبلغ الإيداع تلقائيًا للتحصيلات المفتوحة.')
     currency_id = fields.Many2one(
         'res.currency', required=True,
         default=lambda self: self.env.company.currency_id)
@@ -48,8 +51,10 @@ class UtilityBankSettlement(models.Model):
     expected_amount = fields.Monetary(
         'المبلغ المخصص', compute='_compute_amounts', store=True,
         currency_field='currency_id')
+    deposit_amount = fields.Monetary(
+        'مبلغ الإيداع', currency_field='currency_id', copy=False)
     deposited_amount = fields.Monetary(
-        'المبلغ المطابق لكشف البنك', compute='_compute_amounts', store=True,
+        'مبلغ الإيداع المنفذ', compute='_compute_amounts', store=True,
         currency_field='currency_id')
     remaining_to_deposit = fields.Monetary(
         'غير مخصص من هذا الإيداع', compute='_compute_amounts', store=True,
@@ -59,14 +64,15 @@ class UtilityBankSettlement(models.Model):
     deposit_slip_number = fields.Char('رقم قسيمة الإيداع')
     state = fields.Selection([
         ('draft', 'مسودة'), ('confirmed', 'مؤكد'),
-        ('waiting_bank_match', 'بانتظار مطابقة البنك'),
-        ('reconciled', 'تمت المطابقة'), ('settled', 'تمت التسوية'),
+        ('settled', 'تمت التسوية'),
         ('cancelled', 'ملغى')
     ], default='draft', tracking=True)
-    statement_line_id = fields.Many2one(
-        'account.bank.statement.line', readonly=True, copy=False)
     account_move_id = fields.Many2one(
-        'account.move', string='حركة كشف البنك', readonly=True, copy=False)
+        'account.move', string='قيد الإيداع البنكي', readonly=True, copy=False)
+    settlement_key = fields.Char(
+        'مفتاح التسوية', readonly=True, copy=False, index=True)
+    created_automatically = fields.Boolean(
+        'أنشئت تخصيصاتها تلقائيًا', readonly=True, copy=False)
     difference_amount = fields.Monetary(
         'الفرق', compute='_compute_amounts', store=True,
         currency_field='currency_id')
@@ -77,12 +83,26 @@ class UtilityBankSettlement(models.Model):
          'مرجع البنك مستخدم مسبقًا.'),
     ]
 
+    def init(self):
+        self.env.cr.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS utility_bank_settlement_key_uniq
+                ON utility_bank_settlement (company_id, settlement_key)
+             WHERE settlement_key IS NOT NULL AND settlement_key <> ''
+            """
+        )
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
             vals.setdefault(
                 'name', self.env['ir.sequence'].next_by_code(
                     'utility.bank.settlement') or _('جديد'))
+            if vals.get('bank_reference'):
+                vals.setdefault(
+                    'settlement_key', 'BANK-DEPOSIT:%s:%s' % (
+                        vals.get('company_id') or self.env.company.id,
+                        vals['bank_reference'].strip().upper()))
         records = super().create(vals_list)
         for record in records:
             if record.company_id.currency_id != record.currency_id:
@@ -92,14 +112,15 @@ class UtilityBankSettlement(models.Model):
                 raise ValidationError(_('يجب أن تنتمي اليومية البنكية إلى نفس الشركة.'))
         return records
 
-    @api.depends('line_ids.allocated_amount')
+    @api.depends('line_ids.allocated_amount', 'deposit_amount')
     def _compute_amounts(self):
         for record in self:
-            amount = sum(record.line_ids.mapped('allocated_amount'))
-            record.expected_amount = amount
+            allocated = sum(record.line_ids.mapped('allocated_amount'))
+            amount = record.deposit_amount or allocated
+            record.expected_amount = allocated
             record.deposited_amount = amount
-            record.remaining_to_deposit = 0.0
-            record.difference_amount = 0.0
+            record.remaining_to_deposit = max(amount - allocated, 0.0)
+            record.difference_amount = amount - allocated
 
     def _lock_sources(self):
         sources = self.mapped('line_ids.collection_settlement_id')
@@ -112,21 +133,52 @@ class UtilityBankSettlement(models.Model):
         sources.invalidate_cache()
         return sources
 
-    def _lock_statement_line(self):
+    def _auto_allocate_sources(self):
         self.ensure_one()
-        if not self.statement_line_id:
+        if self.line_ids:
             return
-        self.env.flush_all()
-        self.env.cr.execute(
-            'SELECT id FROM account_bank_statement_line WHERE id = %s FOR UPDATE',
-            [self.statement_line_id.id],
-        )
-        self.statement_line_id.invalidate_cache()
+        if not self.collector_id:
+            raise ValidationError(_('حدد المحصل لتخصيص الإيداع تلقائيًا.'))
+        if self.deposit_amount <= 0:
+            raise ValidationError(_('أدخل مبلغ إيداع موجبًا.'))
+        sources = self.env['utility.collection.settlement'].search([
+            ('collector_id', '=', self.collector_id.id),
+            ('company_id', '=', self.company_id.id),
+            ('currency_id', '=', self.currency_id.id),
+            ('state', 'in', ('posted', 'deposited')),
+            ('remaining_to_deposit', '>', 0),
+        ], order='settlement_date asc, id asc')
+        sources._lock_for_settlement()
+        exact_sources = sources.filtered(
+            lambda source: self.bank_reference in (
+                source.reference or '', source.name or ''))
+        sources = exact_sources + (sources - exact_sources)
+        remaining = self.deposit_amount
+        line_vals = []
+        for source in sources:
+            source.invalidate_recordset(['remaining_to_deposit', 'state'])
+            available = source.remaining_to_deposit
+            if self.currency_id.is_zero(available) or self.currency_id.is_zero(remaining):
+                continue
+            amount = min(available, remaining)
+            line_vals.append((0, 0, {
+                'collection_settlement_id': source.id,
+                'allocated_amount': amount,
+            }))
+            remaining -= amount
+        if not line_vals or not self.currency_id.is_zero(remaining):
+            raise ValidationError(_(
+                'لا توجد تسويات محصل كافية لتغطية مبلغ الإيداع.'))
+        self.write({'line_ids': line_vals, 'created_automatically': True})
 
     def _validate_lines(self):
         self.ensure_one()
         if not self.line_ids:
             raise ValidationError(_('أضف تسويات محصل قبل تأكيد الإيداع.'))
+        if self.deposit_amount > 0 and float_compare(
+                self.deposit_amount, sum(self.line_ids.mapped('allocated_amount')),
+                precision_rounding=self.currency_id.rounding) != 0:
+            raise ValidationError(_('يجب أن يساوي مبلغ الإيداع مجموع التخصيصات.'))
         if self.currency_id != self.company_id.currency_id:
             raise ValidationError(
                 _('الإيداع متعدد العملات غير مفعّل؛ استخدم عملة الشركة.'))
@@ -153,13 +205,18 @@ class UtilityBankSettlement(models.Model):
         for record in self:
             if record.state != 'draft':
                 continue
+            if not record.line_ids:
+                record._auto_allocate_sources()
             record._lock_sources()
             record._validate_lines()
             record.state = 'confirmed'
+            record.action_post()
         return True
 
     def action_post(self):
         for record in self:
+            if record.state == 'settled':
+                continue
             if record.state != 'confirmed':
                 raise ValidationError(
                     _('يجب تأكيد الإيداع قبل تنفيذ التسوية المالية.'))
@@ -224,36 +281,6 @@ class UtilityBankSettlement(models.Model):
                 })
         return True
 
-    def _get_statement_counterpart(self, statement_line, clearing):
-        """Return the bank statement counterpart and reclassify suspense exactly."""
-        move = statement_line.move_id
-        liquidity = move.line_ids.filtered(
-            lambda line: line.account_id == statement_line.journal_id.default_account_id
-            or line.account_id.account_type in ('asset_cash', 'liability_credit_card'))
-        if len(liquidity) != 1:
-            raise ValidationError(_('حركة كشف البنك يجب أن تحتوي على سطر سيولة وحيد.'))
-        if liquidity.account_id != self.bank_account_id:
-            raise ValidationError(_('حساب السيولة في كشف البنك لا يطابق حساب البنك المحدد.'))
-        candidates = move.line_ids.filtered(
-            lambda line: line != liquidity and not line.reconciled)
-        counterpart = candidates.filtered(
-            lambda line: line.account_id == clearing)
-        if not counterpart:
-            suspense = candidates.filtered(
-                lambda line: line.account_id == statement_line.journal_id.suspense_account_id)
-            if len(suspense) != 1:
-                raise ValidationError(_(
-                    'تعذر تحديد سطر المقاصة في حركة كشف البنك. '
-                    'يجب أن يكون السطر في حساب التعليق أو مقاصة الإيداع.'
-                ))
-            suspense.with_context(check_move_validity=False).write({
-                'account_id': clearing.id,
-            })
-            counterpart = suspense
-        if len(counterpart) != 1:
-            raise ValidationError(_('يجب أن يكون لحركة كشف البنك سطر مقابل وحيد.'))
-        return liquidity, counterpart
-
     def _create_exact_partial_reconcile(self, debit_line, credit_line, amount):
         """Reconcile exactly ``amount`` between one source and the bank line.
 
@@ -308,67 +335,6 @@ class UtilityBankSettlement(models.Model):
                 'reconciled_line_ids': [Command.set(involved_lines.ids)],
             })
         return partial
-
-    def action_reconcile(self):
-        for record in self:
-            if record.state != 'waiting_bank_match' or not record.statement_line_id:
-                raise ValidationError(_('حدد سطر كشف بنكي فعلي قبل المطابقة.'))
-            record._lock_sources()
-            record._lock_statement_line()
-            record._validate_lines()
-            line = record.statement_line_id
-            if line.company_id != record.company_id or line.journal_id != record.bank_journal_id:
-                raise ValidationError(_('سطر البنك لا يطابق الشركة أو اليومية.'))
-            if line.currency_id != record.currency_id:
-                raise ValidationError(_('عملة سطر البنك لا تطابق عملة الإيداع.'))
-            if float_compare(
-                    line.amount, record.deposited_amount,
-                    precision_rounding=record.currency_id.rounding) != 0:
-                raise ValidationError(_('مبلغ سطر البنك لا يطابق مبلغ الإيداع المحدد.'))
-            if record.bank_reference not in (line.payment_ref or ''):
-                raise ValidationError(
-                    _('مرجع البنك غير موجود في وصف سطر كشف البنك.'))
-            if line.amount <= 0 or line.move_id.state != 'posted':
-                raise ValidationError(_('يجب أن يكون سطر كشف البنك حركة واردة ومرحّلة.'))
-
-            clearing = record.company_id.deposit_clearing_account_id
-            if not clearing or not clearing.reconcile:
-                raise ValidationError(
-                    _('يجب إعداد حساب مقاصة الإيداع كحساب قابل للتسوية.'))
-            _liquidity, bank_counterpart = record._get_statement_counterpart(
-                line, clearing)
-
-            if not record.line_ids:
-                raise ValidationError(_('لا توجد تخصيصات مصدر للإيداع.'))
-            for allocation in record.line_ids.sorted('id'):
-                source = allocation.collection_settlement_id
-                source_line = source.account_move_id.line_ids.filtered(
-                    lambda aml: aml.account_id == clearing and not aml.reconciled)
-                if len(source_line) != 1:
-                    raise ValidationError(_(
-                        'يجب أن يحتوي مصدر %s على سطر مقاصة إيداع غير مسدد واحد.'
-                    ) % source.name)
-                record._create_exact_partial_reconcile(
-                    source_line, bank_counterpart, allocation.allocated_amount)
-            line.invalidate_cache(['is_reconciled', 'amount_residual'])
-            if not line.is_reconciled:
-                raise ValidationError(_('لم تكتمل تسوية سطر كشف البنك.'))
-            record.write({
-                'statement_line_id': line.id,
-                'account_move_id': line.move_id.id,
-                'state': 'reconciled',
-            })
-            for source in record.line_ids.mapped('collection_settlement_id'):
-                source.invalidate_cache()
-                source_state = (
-                    'reconciled'
-                    if not source.remaining_to_deposit
-                    and not source.account_move_id.line_ids.filtered(
-                        lambda aml: aml.account_id == clearing and not aml.reconciled)
-                    else 'deposited'
-                )
-                source.write({'state': source_state})
-        return True
 
     def unlink(self):
         if any(record.state not in ('draft', 'cancelled') for record in self):

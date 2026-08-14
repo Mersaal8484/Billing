@@ -264,14 +264,15 @@ class TestWave7FinancialUAT(TransactionCase):
             'bank_account_id': self.bank_journal.default_account_id.id,
             'currency_id': self.company.currency_id.id,
             'bank_reference': reference,
-            'line_ids': [(0, 0, {
-                'collection_settlement_id': source.id,
-                'allocated_amount': 100.0,
-            })],
+            'collector_id': source.collector_id.id,
+            'deposit_amount': 100.0,
         })
         bank_settlement.action_confirm()
         bank_settlement.action_post()
         self.assertEqual(bank_settlement.state, 'settled')
+        self.assertTrue(bank_settlement.created_automatically)
+        self.assertEqual(bank_settlement.settlement_key, 'BANK-DEPOSIT:%s:%s' % (
+            self.company.id, reference))
         self.assertTrue(bank_settlement.account_move_id)
         self.assertEqual(source.state, 'reconciled')
         self.assertTrue(self.env['account.partial.reconcile'].search([

@@ -124,7 +124,16 @@ callback idempotency.
 eligibility/apply/waive/reversal policy.
 
 ### UAT-015 Deposit
-receive/release/forfeit.
+collector settlement and bank deposit:
+
+- confirm a collector settlement and verify its posted accounting move;
+- create a bank deposit with collector, amount, bank journal, and reference,
+  without manual allocation lines;
+- verify automatic reference-priority/FIFO allocation and exact deposit-clearing
+  partial reconciliation;
+- repeat the internal post call and verify no second accounting move is made;
+- attempt a duplicate company-scoped settlement key and verify rejection;
+- verify no bank statement line or later bank-matching action is required.
 
 ### UAT-016 Writeoff/Settlement
 approval and accounting.

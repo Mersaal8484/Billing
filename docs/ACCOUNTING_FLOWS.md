@@ -152,6 +152,32 @@ Requires:
 - accounting account.
 - posted move.
 
+### Collector custody and bank deposit settlement
+
+The V1 collector deposit flow is separate from customer invoice payment
+allocation and uses Odoo accounting entries as its financial truth:
+
+```text
+posted collection custody
+  → collector settlement (FIFO or explicit source allocation)
+  → deposit settlement (bank journal Dr / deposit clearing Cr)
+  → exact partial reconciliation on deposit clearing
+```
+
+- `utility.collection.settlement` owns the collector custody settlement.
+- `utility.bank.settlement` owns the bank deposit event and its allocation lines.
+- Confirming either settlement is the business execution action; there is no
+  second operational post/reconcile step.
+- A bank settlement without explicit lines can allocate its declared deposit
+  amount automatically by collector, currency, bank reference, then oldest
+  settlement date and ID.
+- `settlement_key` is generated for automatic entry points and is unique per
+  company to prevent duplicate settlement events.
+- Bank statement lines are not part of the V1 deposit lifecycle. The bank
+  deposit creates and posts its own `account.move` directly.
+- `utility.financial.settlement` remains an explicit manual approved
+  adjustment/refund path; it is not an automatic collector deposit source.
+
 ---
 
 ## 9. Reading Correction
@@ -211,6 +237,8 @@ No silent runtime chart-of-accounts creation.
 - same partner/account/currency constraints as accounting requires.
 - no broad exception swallowing.
 - failed reconciliation blocks financial completion and logs reason.
+- collector deposit reconciliation is restricted to the deposit clearing
+  account and the explicitly or automatically allocated source settlements.
 
 ---
 

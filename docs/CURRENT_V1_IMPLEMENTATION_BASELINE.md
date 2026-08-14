@@ -5,7 +5,7 @@
 **Reviewed SHA:** `45d738693ec70bad542df76f568425b01d44359c`
 **Commit:** `dev ++ ----------- enhance lifecycle impv 15 +2`
 **Reviewed Date:** 2026-08-14
-**Documentation Version:** 3.0
+**Documentation Version:** 3.1
 **Status:** CURRENT V1 implementation truth (Including Organizational Region/Branch Isolation)
 
 This document answers: **what is actually implemented now?** It does not describe speculative V2 scale infrastructure.
@@ -84,6 +84,29 @@ draft → approved → applied → linked Credit Note
 ```
 
 Approval requires `draft`; application requires `approved`; `FOR UPDATE`, existing `move_id`, `copy=False`, readonly evidence, and restricted deletion prevent duplicate financial artifacts. After application, reopening, re-approval, and re-application are forbidden. One write-off creates at most one generated Credit Note.
+
+### Collector settlement and bank deposit
+
+The implemented V1 custody/deposit lifecycle is:
+
+```text
+collection posted
+  → collector settlement confirmed and posted
+  → bank settlement confirmed, automatically allocated, posted, and settled
+```
+
+`utility.collection.settlement` supports explicit allocation and deterministic
+oldest-first allocation when no lines are supplied. `utility.bank.settlement`
+accepts the collector and deposit amount, allocates open collector settlements
+using bank reference priority followed by FIFO, creates the bank-journal entry,
+and performs exact partial reconciliation through the deposit clearing account.
+
+The legacy bank-statement matching path is not part of the current model or UI:
+there is no `waiting_bank_match` state, `statement_line_id`, or
+`action_reconcile`. `action_post` remains an internal idempotent recovery entry
+point, while the user-facing confirmation action executes the business event.
+Automatic entries carry a company-scoped unique `settlement_key`; duplicate
+creation is rejected by the database constraint.
 
 ### Operations and inventory
 

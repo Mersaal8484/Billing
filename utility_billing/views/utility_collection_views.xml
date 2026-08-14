@@ -29,8 +29,6 @@
                 <header>
                     <button name="action_confirm" type="object" string="تأكيد"
                             class="btn-primary" attrs="{'invisible': [('state', '!=', 'draft')]}"/>
-                    <button name="action_post" type="object" string="ترحيل الحيازة"
-                            class="btn-primary" attrs="{'invisible': [('state', '!=', 'confirmed')]}"/>
                     <button name="action_cancel" type="object" string="إلغاء"
                             attrs="{'invisible': [('state', 'not in', ('draft', 'confirmed'))]}"/>
                     <field name="state" widget="statusbar"
@@ -143,8 +141,6 @@
                 <header>
                     <button name="action_confirm" type="object" string="تأكيد"
                             class="btn-primary" attrs="{'invisible': [('state', '!=', 'draft')]}"/>
-                    <button name="action_post" type="object" string="ترحيل التسوية"
-                            class="btn-primary" attrs="{'invisible': [('state', '!=', 'confirmed')]}"/>
                     <field name="state" widget="statusbar"
                            statusbar_visible="draft,confirmed,posted,deposited,reconciled"/>
                 </header>
