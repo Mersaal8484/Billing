@@ -155,6 +155,8 @@
                             <field name="settlement_date"/>
                             <field name="collector_id"/>
                             <field name="settlement_method"/>
+                            <field name="allocation_policy"/>
+                            <field name="created_automatically"/>
                             <field name="currency_id"/>
                         </group>
                         <group string="المبالغ">

@@ -8,9 +8,16 @@ class AccountPayment(models.Model):
     _inherit = 'account.payment'
 
     utility_sale_order_id = fields.Many2one('sale.order', string='فاتورة الكهرباء', index=True)
+    opening_customer_id = fields.Many2one(
+        'utility.customer', string='حساب افتتاحي للتسوية', index=True,
+        copy=False, check_company=True)
     utility_customer_id = fields.Many2one(
-        'utility.customer', related='utility_sale_order_id.customer_id',
-        string='حساب الكهرباء', store=True, index=True, readonly=True)
+        'utility.customer', string='حساب الكهرباء', compute='_compute_utility_customer',
+        store=True, index=True, readonly=True)
+    utility_opening_move_id = fields.Many2one(
+        'account.move', string='قيد الرصيد الافتتاحي', index=True,
+        copy=False, check_company=True,
+        domain="[('state', '=', 'posted'), ('move_type', '=', 'entry')]",)
     utility_invoice_id = fields.Many2one(
         'account.move', string='الفاتورة المحاسبية المحددة', index=True,
         copy=False, domain="[('utility_sale_order_id', '=', utility_sale_order_id), ('state', '=', 'posted')]",
@@ -50,6 +57,18 @@ class AccountPayment(models.Model):
     def _compute_allocation_count(self):
         for payment in self:
             payment.allocation_count = len(payment.allocation_ids)
+
+    @api.depends(
+        'utility_sale_order_id', 'utility_sale_order_id.customer_id',
+        'opening_customer_id', 'utility_opening_move_id',
+        'utility_opening_move_id.utility_customer_id')
+    def _compute_utility_customer(self):
+        for payment in self:
+            payment.utility_customer_id = (
+                payment.utility_sale_order_id.customer_id
+                or payment.opening_customer_id
+                or payment.utility_opening_move_id.utility_customer_id
+            )
 
     def action_view_utility_allocations(self):
         self.ensure_one()
@@ -376,21 +395,24 @@ class AccountPayment(models.Model):
 
     def action_post(self):
         # FIX-15: منع ترحيل دفعة على فاتورة ملغاة أو مدفوعة بالكامل
-        for payment in self.filtered('utility_sale_order_id'):
+        for payment in self.filtered(lambda p: p.utility_sale_order_id or p.utility_opening_move_id):
             order = payment.utility_sale_order_id
-            if not payment.date_range_id:
+            if payment.utility_opening_move_id and not payment.utility_invoice_id:
+                payment.utility_invoice_id = payment.utility_opening_move_id.id
+            if order and not payment.date_range_id:
                 payment_period = payment._get_payment_period_for_order(order)
                 if payment_period:
                     payment.date_range_id = payment_period.id
                 else:
                     raise ValidationError(_('لا توجد فترة دفع مرتبطة بفترة قراءة هذه الفاتورة.'))
-            payment._validate_utility_payment_period()
+            if order:
+                payment._validate_utility_payment_period()
             payment._validate_utility_payment_amount()
-            if order.state == 'cancel':
+            if order and order.state == 'cancel':
                 raise ValidationError(
                     'لا يمكن تسجيل دفعة على فاتورة ملغاة [%s]. يُرجى التحقق من رقم الفاتورة.' % order.name
                 )
-            if order.bill_state == 'paid' and order.balance_due <= 0:
+            if order and order.bill_state == 'paid' and order.balance_due <= 0:
                 raise ValidationError(
                     'الفاتورة [%s] مدفوعة بالكامل بالفعل. لا حاجة لتسجيل دفعة إضافية.' % order.name
                 )
@@ -404,7 +426,7 @@ class AccountPayment(models.Model):
                     payment.timing_classification = 'late' if pay_datetime > period.payment_window_end else 'outside_window'
             elif period and period.state in ('open', 'payment_open'):
                 payment.timing_classification = 'on_time'
-            else:
+            elif order:
                 payment.timing_classification = 'late'
         res = super().action_post()
         utility_payments = self.filtered('utility_customer_id')
@@ -412,7 +434,7 @@ class AccountPayment(models.Model):
             if payment.move_id and 'utility_customer_id' in payment.move_id._fields:
                 payment.move_id.write({'utility_customer_id': payment.utility_customer_id.id})
         self.filtered('service_charge_id').mapped('service_charge_id').action_mark_paid_from_payment()
-        for payment in self.filtered('utility_sale_order_id'):
+        for payment in self.filtered(lambda p: p.utility_sale_order_id or p.utility_opening_move_id):
             allocation = self.env['utility.payment.allocation'].with_context(
                 utility_payment_source=(
                     'gateway' if payment.utility_payment_method == 'electronic'
@@ -420,7 +442,8 @@ class AccountPayment(models.Model):
                     else 'cashier'
                 )
             ).allocate_payment(payment)
-            payment._create_field_collection_from_allocation(allocation)
+            if payment.utility_sale_order_id:
+                payment._create_field_collection_from_allocation(allocation)
         self.filtered('utility_sale_order_id')._create_payment_notification()
         return res
 

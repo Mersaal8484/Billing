@@ -150,6 +150,11 @@ class ResConfigSettings(models.TransientModel):
         related='company_id.opening_journal_id',
         readonly=False,
         string='يومية الأرصدة الافتتاحية')
+    opening_clearing_account_id = fields.Many2one(
+        'account.account',
+        related='company_id.opening_clearing_account_id',
+        readonly=False,
+        string='حساب مقابلة الأرصدة الافتتاحية')
     penalty_product_id = fields.Many2one(
         'product.product',
         related='company_id.penalty_product_id',
@@ -444,4 +449,3 @@ class ResConfigSettings(models.TransientModel):
                 'next': {'type': 'ir.actions.client', 'tag': 'reload'}
             }
         }
-

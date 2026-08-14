@@ -11,7 +11,7 @@
                 <field name="bank_journal_id"/>
                 <field name="deposited_amount" widget="monetary"/>
                 <field name="state" widget="badge"
-                       decoration-success="state == 'reconciled'"
+                       decoration-success="state in ('reconciled', 'settled')"
                        decoration-warning="state in ('confirmed', 'waiting_bank_match')"
                        decoration-muted="state in ('draft', 'cancelled')"/>
             </tree>
@@ -26,12 +26,12 @@
                 <header>
                     <button name="action_confirm" type="object" string="تأكيد"
                             class="btn-primary" attrs="{'invisible': [('state', '!=', 'draft')]}"/>
-                    <button name="action_post" type="object" string="إرسال للمطابقة"
+                    <button name="action_post" type="object" string="تنفيذ التسوية المالية"
                             class="btn-primary" attrs="{'invisible': [('state', '!=', 'confirmed')]}"/>
                     <button name="action_reconcile" type="object" string="مطابقة البنك"
                             class="btn-primary" attrs="{'invisible': [('state', '!=', 'waiting_bank_match')]}"/>
                     <field name="state" widget="statusbar"
-                           statusbar_visible="draft,confirmed,waiting_bank_match,reconciled"/>
+                           statusbar_visible="draft,confirmed,settled"/>
                 </header>
                 <sheet>
                     <group>
@@ -45,8 +45,6 @@
                         <group string="الحساب البنكي">
                             <field name="bank_journal_id"/>
                             <field name="bank_account_id"/>
-                            <field name="statement_line_id"
-                                   attrs="{'readonly': [('state', '!=', 'waiting_bank_match')]}"/>
                             <field name="account_move_id"/>
                         </group>
                     </group>

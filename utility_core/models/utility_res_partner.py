@@ -112,13 +112,11 @@ class ResPartner(models.Model):
             ])
             if customers:
                 ledger_balance = sum(customers.mapped('accounting_balance'))
-                has_posted_opening = any(c.opening_move_id for c in customers)
-                if has_posted_opening:
-                    partner.utility_postpaid_balance = ledger_balance
-                else:
-                    partner.utility_postpaid_balance = ledger_balance + partner.open_balance
+                # Opening balances are posted receivable lines.  Never add the
+                # legacy partner field to accounting truth or double-count it.
+                partner.utility_postpaid_balance = ledger_balance
             else:
-                partner.utility_postpaid_balance = partner.open_balance
+                partner.utility_postpaid_balance = 0.0
 
     nickname = fields.Char(string="الاسم المختصر")
     is_subscriber = fields.Boolean(string="مشترك كهرباء", default=False, tracking=True)

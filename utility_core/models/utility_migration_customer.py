@@ -1,5 +1,6 @@
 from odoo import api, fields, models, _
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import AccessError, UserError, ValidationError
+from odoo.tools.float_utils import float_is_zero
 
 
 class UtilityMigrationCustomer(models.Model):
@@ -19,6 +20,12 @@ class UtilityMigrationCustomer(models.Model):
     customer_number = fields.Char('رقم المشترك', required=True)
     national_id = fields.Char('الرقم الوطني')
     current_balance = fields.Float('الرصيد الحالي (الافتتاحي)')
+    opening_currency_id = fields.Many2one(
+        'res.currency', string='عملة الرصيد الافتتاحي',
+        default=lambda self: self.env.company.currency_id, required=True,
+        check_company=False)
+    opening_reference = fields.Char(
+        'مرجع الرصيد الافتتاحي', readonly=True, copy=False, index=True)
     previous_balance = fields.Char('الرصيد السابق (الخط الساخن)')
 
     meter_number = fields.Char('رقم العداد')
@@ -72,6 +79,15 @@ class UtilityMigrationCustomer(models.Model):
     created_reading_id = fields.Many2one('utility.reading', 'القراءة الافتتاحية المنشأة', readonly=True, copy=False)
     opening_move_id = fields.Many2one('account.move', 'قيد الرصيد الافتتاحي', readonly=True, copy=False)
 
+    def init(self):
+        self.env.cr.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS utility_migration_customer_opening_ref_uniq
+                ON utility_migration_customer (company_id, opening_reference)
+             WHERE opening_reference IS NOT NULL AND opening_reference <> ''
+            """
+        )
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
@@ -79,6 +95,10 @@ class UtilityMigrationCustomer(models.Model):
                 vals['has_last_reading'] = True
             if 'opening_reading' in vals and vals['opening_reading'] is not False and vals['opening_reading'] is not None:
                 vals['has_opening_reading'] = True
+            if not vals.get('opening_reference') and vals.get('customer_number'):
+                vals['opening_reference'] = 'OPENING:%s:%s' % (
+                    vals.get('company_id') or self.env.company.id,
+                    str(vals['customer_number']).strip())
         return super().create(vals_list)
 
     def write(self, vals):
@@ -317,70 +337,57 @@ class UtilityMigrationCustomer(models.Model):
     def _create_opening_balance_entry(self, partner, customer=None):
         """إنشاء قيد محاسبي محصور بمالكية الشركة للرصيد الافتتاحي."""
         self.ensure_one()
-        if self.opening_move_id or not self.current_balance:
+        self.env.flush_all()
+        self.env.cr.execute(
+            'SELECT id FROM utility_migration_customer WHERE id = %s FOR UPDATE',
+            [self.id],
+        )
+        self.invalidate_recordset(['opening_move_id'])
+        if self.opening_move_id or (
+                self.opening_currency_id
+                and self.opening_currency_id.is_zero(self.current_balance)):
             return
 
         company_id = self.company_id.id or self.env.company.id
+        opening_reference = self.opening_reference or 'OPENING:%s:%s' % (
+            company_id, self.customer_number)
+        existing_move = self.env['account.move'].search([
+            ('company_id', '=', company_id),
+            ('ref', '=', opening_reference),
+            ('state', '=', 'posted'),
+        ], limit=1)
+        if existing_move:
+            self.opening_move_id = existing_move.id
+            if customer:
+                customer.opening_move_id = existing_move.id
+            return
 
         company = self.env['res.company'].browse(company_id)
-        journal = (
-            company.opening_journal_id
-            or self.env['account.journal'].search([('code', 'in', ('OPEN', 'UOPEN', 'MISC', 'GEN')), ('company_id', '=', company_id)], limit=1)
-            or self.env['account.journal'].search([('type', '=', 'general'), ('company_id', '=', company_id)], limit=1)
-            or self.env['account.journal'].search([('code', 'in', ('OPEN', 'UOPEN', 'MISC', 'GEN')), ('company_id', 'in', (company_id, False))], limit=1)
-            or self.env['account.journal'].search([('type', '=', 'general'), ('company_id', 'in', (company_id, False))], limit=1)
-            or self.env.ref('utility_core.journal_opening_balance', raise_if_not_found=False)
-        )
-        if not journal:
-            journal = self.env['account.journal'].sudo().create({
-                'name': 'يومية العمليات العامة والأرصدة الافتتاحية',
-                'code': 'UOPEN',
-                'type': 'general',
-                'company_id': company_id,
-            })
-            if not company.opening_journal_id:
-                company.sudo().write({'opening_journal_id': journal.id})
+        journal = company.opening_journal_id
+        if not journal or journal.company_id != company or journal.type != 'general':
+            raise ValidationError(_(
+                'يجب إعداد يومية أرصدة افتتاحية عامة للشركة قبل استيراد العميل %s.'
+            ) % self.customer_number)
+        account_suspense = company.opening_clearing_account_id
+        if not account_suspense or account_suspense.company_id != company:
+            raise ValidationError(_(
+                'يجب إعداد حساب مقابلة الأرصدة الافتتاحية للشركة قبل الاستيراد.'
+            ))
 
         account_receivable = partner.with_company(company_id).property_account_receivable_id
-        if not account_receivable or account_receivable.company_id.id not in (company_id, False):
-            account_receivable = (
-                self.env['account.account'].search([
-                    ('account_type', '=', 'asset_receivable'),
-                    ('company_id', '=', company_id)
-                ], limit=1)
-                or self.env['account.account'].search([
-                    ('code', '=like', '12%'),
-                    ('company_id', '=', company_id)
-                ], limit=1)
-            )
-            if not account_receivable:
-                account_receivable = self.env['account.account'].create({
-                    'name': 'حساب العملاء والذمم المدينة',
-                    'code': '120000',
-                    'account_type': 'asset_receivable',
-                    'company_id': company_id,
-                    'reconcile': True,
-                })
-            partner.sudo().with_company(company_id).write({'property_account_receivable_id': account_receivable.id})
+        if (not account_receivable
+                or account_receivable.company_id != company
+                or account_receivable.account_type != 'asset_receivable'
+                or not account_receivable.reconcile):
+            raise ValidationError(_(
+                'يجب إعداد حساب ذمم مدينة قابل للتسوية للشريك %s.'
+            ) % partner.display_name)
 
-        account_suspense = (
-            self.env['res.company'].browse(company_id).account_journal_suspense_account_id
-            or self.env['account.account'].search([
-                ('account_type', 'in', ('equity', 'equity_unaffected')),
-                ('company_id', '=', company_id)
-            ], limit=1)
-            or self.env['account.account'].search([
-                ('code', '=like', '3%'),
-                ('company_id', '=', company_id)
-            ], limit=1)
-        )
-        if not account_suspense:
-            account_suspense = self.env['account.account'].create({
-                'name': 'حساب الأرصدة الافتتاحية (حقوق ملكية)',
-                'code': '300000',
-                'account_type': 'equity',
-                'company_id': company_id,
-            })
+        currency = self.opening_currency_id or company.currency_id
+        opening_date = fields.Date.today()
+        company_amount = currency._convert(
+            abs(self.current_balance), company.currency_id, company, opening_date)
+        amount_currency = abs(self.current_balance)
 
         line_ids = []
         if self.current_balance > 0:
@@ -388,21 +395,24 @@ class UtilityMigrationCustomer(models.Model):
                 'name': 'رصيد افتتاح مديونية - %s' % self.name,
                 'partner_id': partner.id,
                 'account_id': account_receivable.id,
-                'debit': self.current_balance,
+                'debit': company_amount,
                 'credit': 0.0,
+                'currency_id': currency.id,
+                'amount_currency': amount_currency,
             }))
             line_ids.append((0, 0, {
                 'name': 'رصيد افتتاح مديونية - %s' % self.name,
+                'partner_id': partner.id,
                 'account_id': account_suspense.id,
                 'debit': 0.0,
-                'credit': self.current_balance,
+                'credit': company_amount,
             }))
         elif self.current_balance < 0:
-            credit_amount = abs(self.current_balance)
             line_ids.append((0, 0, {
                 'name': 'رصيد افتتاح دائن - %s' % self.name,
+                'partner_id': partner.id,
                 'account_id': account_suspense.id,
-                'debit': credit_amount,
+                'debit': company_amount,
                 'credit': 0.0,
             }))
             line_ids.append((0, 0, {
@@ -410,7 +420,9 @@ class UtilityMigrationCustomer(models.Model):
                 'partner_id': partner.id,
                 'account_id': account_receivable.id,
                 'debit': 0.0,
-                'credit': credit_amount,
+                'credit': company_amount,
+                'currency_id': currency.id,
+                'amount_currency': -amount_currency,
             }))
 
         if line_ids:
@@ -419,8 +431,8 @@ class UtilityMigrationCustomer(models.Model):
                 'journal_id': journal.id,
                 'company_id': company_id,
                 'partner_id': partner.id if customer else False,
-                'date': fields.Date.today(),
-                'ref': 'رصيد افتتاحي - %s' % self.customer_number,
+                'date': opening_date,
+                'ref': opening_reference,
                 'line_ids': line_ids,
             }
             if customer and 'utility_customer_id' in self.env['account.move']._fields:
@@ -585,7 +597,7 @@ class UtilityMigrationCustomer(models.Model):
                     rec.state = 'imported'
                     rec.error_message = False
 
-            except Exception as e:
+            except (AccessError, UserError, ValidationError) as e:
                 rec.state = 'error'
                 rec.error_message = str(e)
 

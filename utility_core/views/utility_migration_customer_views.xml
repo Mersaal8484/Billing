@@ -143,6 +143,8 @@
                     <group string="الأرصدة">
                         <group>
                             <field name="current_balance"/>
+                            <field name="opening_currency_id"/>
+                            <field name="opening_reference" readonly="1"/>
                             <field name="previous_balance"/>
                         </group>
                     </group>
@@ -157,7 +159,7 @@
                                 <field name="created_partner_id"/>
                                 <field name="created_customer_id"/>
                                 <field name="created_meter_id"/>
-                                <field name="opening_move_id"/>
+                                <field name="opening_move_id" readonly="1"/>
                                 <field name="source_row_number"/>
                             </group>
                         </page>
@@ -249,4 +251,3 @@
               sequence="40"/>
 
 </odoo>
-

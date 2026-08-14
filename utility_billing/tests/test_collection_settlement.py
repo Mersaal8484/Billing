@@ -69,6 +69,25 @@ class TestUtilityCollectionSettlement(TransactionCase):
         )
         self.assertAlmostEqual(settlement.surplus_amount, 0.0, places=2)
 
+    def test_empty_deposit_is_allocated_automatically(self):
+        """A deposit without explicit lines uses deterministic FIFO allocation."""
+        collection = self._posted_collection()
+        declared = collection.amount / 2.0
+        settlement = self.env['utility.collection.settlement'].create({
+            'company_id': collection.company_id.id,
+            'collector_id': collection.collector_id.id,
+            'currency_id': collection.company_id.currency_id.id,
+            'declared_amount': declared,
+        })
+
+        settlement.action_confirm()
+
+        self.assertTrue(settlement.created_automatically)
+        self.assertEqual(settlement.allocation_policy, 'oldest_first')
+        self.assertEqual(len(settlement.line_ids), 1)
+        self.assertAlmostEqual(
+            settlement.line_ids.amount, declared, places=2)
+
     def test_collection_can_be_added_to_two_settlements(self):
         collection = self._posted_collection()
         first = self._settlement(collection, collection.amount)

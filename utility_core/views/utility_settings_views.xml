@@ -325,6 +325,15 @@
                         </div>
                         <div class="col-12 col-lg-6 o_setting_box">
                             <div class="o_setting_right_pane">
+                                <label for="opening_clearing_account_id"/>
+                                <div class="text-muted">الحساب المقابل للأرصدة الافتتاحية</div>
+                                <div class="content-group">
+                                    <div class="mt16"><field name="opening_clearing_account_id" class="o_light_label"/></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 col-lg-6 o_setting_box">
+                            <div class="o_setting_right_pane">
                                 <label for="legacy_single_phase_meter_model_id"/>
                                 <div class="text-muted">الموديل الافتراضي للعدادات القديمة أحادية الطور</div>
                                 <div class="content-group">

@@ -26,13 +26,13 @@ class TestCustomerStatementWizard(TransactionCase):
         })
         self.wizard_model = self.env['utility.customer.statement.wizard']
 
-    def test_opening_balance_without_date(self):
-        """التحقق من أن الرصيد الافتتاحي يسترجع القيمة الأساسية للعميل عند عدم تحديد تاريخ بداية"""
+    def test_legacy_partner_balance_is_not_used_as_accounting_opening(self):
+        """Opening balances must come from posted receivable entries."""
         wizard = self.wizard_model.create({
             'customer_id': self.customer.id,
         })
         opening = wizard._get_opening_balance()
-        self.assertEqual(opening, 500.0, "الرصيد الافتتاحي يجب أن يساوي 500.0")
+        self.assertEqual(opening, 0.0)
 
     def test_statement_totals_and_running_balance(self):
         """التحقق من احتساب الرصيد التراكمي وإجمالي كشف الحساب"""
@@ -44,7 +44,7 @@ class TestCustomerStatementWizard(TransactionCase):
         totals = wizard._get_statement_totals()
         self.assertIn('opening', totals)
         self.assertIn('closing', totals)
-        self.assertEqual(totals['opening'], 500.0)
+        self.assertEqual(totals['opening'], 0.0)
 
     def test_financial_settlement_in_statement(self):
         """التحقق من ظهور التسويات المالية (مدين ودائن) في كشف الحساب والارصدة التراكمية"""

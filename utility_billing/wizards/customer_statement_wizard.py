@@ -103,7 +103,9 @@ class UtilityCustomerStatementWizard(models.TransientModel):
 
     def _get_opening_balance(self):
         self.ensure_one()
-        base_opening = self.customer_id.opening_balance or (self.customer_id.partner_id.open_balance if hasattr(self.customer_id.partner_id, 'open_balance') else 0.0) or 0.0
+        # Opening balances are real posted receivable entries.  The legacy
+        # partner.open_balance field is intentionally excluded from statements.
+        base_opening = 0.0
         if not self.date_from:
             return base_opening
         orders = self.env['sale.order'].search(self._order_domain(before=True))

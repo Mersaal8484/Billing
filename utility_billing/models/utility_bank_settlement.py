@@ -60,7 +60,8 @@ class UtilityBankSettlement(models.Model):
     state = fields.Selection([
         ('draft', 'مسودة'), ('confirmed', 'مؤكد'),
         ('waiting_bank_match', 'بانتظار مطابقة البنك'),
-        ('reconciled', 'تمت المطابقة'), ('cancelled', 'ملغى')
+        ('reconciled', 'تمت المطابقة'), ('settled', 'تمت التسوية'),
+        ('cancelled', 'ملغى')
     ], default='draft', tracking=True)
     statement_line_id = fields.Many2one(
         'account.bank.statement.line', readonly=True, copy=False)
@@ -161,13 +162,66 @@ class UtilityBankSettlement(models.Model):
         for record in self:
             if record.state != 'confirmed':
                 raise ValidationError(
-                    _('يجب تأكيد الإيداع قبل إرساله للمطابقة البنكية.'))
+                    _('يجب تأكيد الإيداع قبل تنفيذ التسوية المالية.'))
             record._lock_sources()
             record._validate_lines()
-            record.state = 'waiting_bank_match'
+            bank_account = record.bank_journal_id.default_account_id
+            clearing = record.company_id.deposit_clearing_account_id
+            if not bank_account or record.bank_journal_id.type != 'bank':
+                raise ValidationError(_('يجب إعداد حساب السيولة في اليومية البنكية.'))
+            if not clearing or not clearing.reconcile:
+                raise ValidationError(_('يجب إعداد حساب مقاصة الإيداع كحساب قابل للتسوية.'))
+            if float_compare(
+                    record.deposited_amount, 0.0,
+                    precision_rounding=record.currency_id.rounding) <= 0:
+                raise ValidationError(_('يجب أن يحتوي الإيداع على مبلغ موجب.'))
+
+            # The deposit is the source event: Dr Bank / Cr Deposit Clearing.
+            # No bank statement or later matching step is involved.
+            move = self.env['account.move'].create({
+                'move_type': 'entry',
+                'journal_id': record.bank_journal_id.id,
+                'date': record.deposit_date,
+                'ref': record.bank_reference,
+                'line_ids': [
+                    (0, 0, {
+                        'name': record.bank_reference,
+                        'account_id': bank_account.id,
+                        'debit': record.deposited_amount,
+                    }),
+                    (0, 0, {
+                        'name': record.bank_reference,
+                        'account_id': clearing.id,
+                        'credit': record.deposited_amount,
+                    }),
+                ],
+            })
+            move.action_post()
+            bank_clearing_line = move.line_ids.filtered(
+                lambda line: line.account_id == clearing and not line.reconciled)
+            if len(bank_clearing_line) != 1:
+                raise ValidationError(_('تعذر تحديد سطر مقاصة الإيداع في القيد البنكي.'))
+            for allocation in record.line_ids.sorted('id'):
+                source = allocation.collection_settlement_id
+                source_line = source.account_move_id.line_ids.filtered(
+                    lambda line: line.account_id == clearing and not line.reconciled)
+                if len(source_line) != 1:
+                    raise ValidationError(_(
+                        'يجب أن يحتوي مصدر %s على سطر مقاصة إيداع غير مسدد واحد.'
+                    ) % source.name)
+                record._create_exact_partial_reconcile(
+                    source_line, bank_clearing_line, allocation.allocated_amount)
+            record.write({
+                'account_move_id': move.id,
+                'state': 'settled',
+            })
             for source in record.line_ids.mapped('collection_settlement_id'):
-                if not source.remaining_to_deposit:
-                    source.write({'state': 'deposited'})
+                source.invalidate_recordset(['remaining_to_deposit'])
+                source.write({
+                    'state': 'reconciled'
+                    if source.currency_id.is_zero(source.remaining_to_deposit)
+                    else 'deposited'
+                })
         return True
 
     def _get_statement_counterpart(self, statement_line, clearing):

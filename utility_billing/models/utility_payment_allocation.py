@@ -125,6 +125,15 @@ class UtilityPaymentAllocation(models.Model):
         invoice.invalidate_recordset([
             'state', 'partner_id', 'move_type', 'amount_residual', 'payment_state'])
 
+    @staticmethod
+    def _target_residual(invoice, opening=False):
+        if opening:
+            return sum(invoice.line_ids.filtered(
+                lambda line: line.account_id.account_type == 'asset_receivable'
+                and line.debit > 0 and not line.reconciled
+            ).mapped('amount_residual'))
+        return invoice.amount_residual
+
     @api.model
     def prevalidate_payment(self, payment, require_posted=False):
         """Lock and validate the exact invoice before or after payment posting."""
@@ -132,7 +141,8 @@ class UtilityPaymentAllocation(models.Model):
         order = payment.utility_sale_order_id
         customer = payment.utility_customer_id
         invoice = payment.utility_invoice_id
-        if not order or not customer or not invoice:
+        opening_move = payment.utility_opening_move_id
+        if not customer or not invoice or (not order and not opening_move):
             raise ValidationError(_('بيانات الدفعة الكهربائية غير مكتملة للتخصيص.'))
         if payment.payment_type != 'inbound':
             raise ValidationError(_('تخصيص الدفعات الصادرة خارج نطاق تحصيل الكهرباء.'))
@@ -143,16 +153,23 @@ class UtilityPaymentAllocation(models.Model):
                 or payment.partner_id != customer.partner_id
                 or invoice.partner_id != customer.partner_id):
             raise ValidationError(_('الدفعة والفاتورة لا تخصان نفس حساب الكهرباء.'))
-        if payment.currency_id != invoice.currency_id:
+        receivable_lines = invoice.line_ids.filtered(
+            lambda line: line.account_id.account_type == 'asset_receivable')
+        target_currency = (receivable_lines[:1].currency_id
+                           or invoice.currency_id)
+        if payment.currency_id != target_currency:
             raise ValidationError(_('عملة الدفعة يجب أن تطابق عملة الفاتورة المحاسبية.'))
         self._lock_invoice(invoice)
-        if invoice.state != 'posted' or invoice.move_type != 'out_invoice':
-            raise ValidationError(_('الفاتورة المحددة ليست فاتورة تحصيل مدينة ومرحلة.'))
+        valid_opening = bool(opening_move and invoice == opening_move)
+        if invoice.state != 'posted' or (
+                invoice.move_type != 'out_invoice' and not valid_opening):
+            raise ValidationError(_('المستند المحدد ليس مستند ذمم مدينة ومرحلاً.'))
         if payment.amount <= 0:
             raise ValidationError(_('يجب أن يكون مبلغ الدفعة أكبر من صفر.'))
-        if invoice.amount_residual <= 0:
+        residual = self._target_residual(invoice, opening=valid_opening)
+        if residual <= 0:
             raise ValidationError(_('الفاتورة المحددة مسددة بالكامل.'))
-        if payment.amount > invoice.amount_residual:
+        if payment.amount > residual:
             raise ValidationError(_('مبلغ الدفعة يتجاوز المتبقي الحالي للفواتير المحددة.'))
         return invoice
 
@@ -170,7 +187,7 @@ class UtilityPaymentAllocation(models.Model):
     def allocate_payment(self, payment):
         """Create one auditable allocation and reconcile only its exact invoice."""
         payment.ensure_one()
-        if not payment.utility_sale_order_id:
+        if not payment.utility_sale_order_id and not payment.utility_opening_move_id:
             return self.env['utility.payment.allocation']
 
         self.env.flush_all()
@@ -207,14 +224,16 @@ class UtilityPaymentAllocation(models.Model):
                     'تم تسجيل المرجع الخارجي %s مسبقًا لهذه الدفعة.'
                 ) % external_reference)
 
-        if payment.state != 'posted' or not customer or not order or not invoice:
+        if (payment.state != 'posted' or not customer or not invoice
+                or (not order and not payment.utility_opening_move_id)):
             raise ValidationError(_('بيانات الدفعة الكهربائية غير مكتملة للتخصيص.'))
         if payment.payment_type != 'inbound':
             raise ValidationError(_('تخصيص الدفعات الصادرة خارج نطاق تحصيل الكهرباء.'))
 
         invoice = self.prevalidate_payment(payment, require_posted=True)
 
-        residual_before = invoice.amount_residual
+        residual_before = self._target_residual(
+            invoice, opening=bool(payment.utility_opening_move_id))
         acting_user = self.env.user
         allocation = self.with_context(
             utility_allocation_internal=True,
@@ -262,7 +281,8 @@ class UtilityPaymentAllocation(models.Model):
             (payment_groups[key] | invoice_groups[key]).reconcile()
 
         invoice.invalidate_recordset(['amount_residual', 'payment_state'])
-        residual_after = invoice.amount_residual
+        residual_after = self._target_residual(
+            invoice, opening=bool(payment.utility_opening_move_id))
         allocated_amount = residual_before - residual_after
         currency = invoice.currency_id
         if (float_is_zero(allocated_amount, precision_rounding=currency.rounding)

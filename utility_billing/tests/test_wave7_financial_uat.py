@@ -258,20 +258,6 @@ class TestWave7FinancialUAT(TransactionCase):
     def test_bank_settlement_reconciles_collector_deposit(self):
         source = self._create_posted_collector_settlement('BANK-UAT')
         reference = 'W7-BANK-UAT-REF'
-        statement = self.env['account.bank.statement'].create({
-            'name': 'كشف بنك UAT Wave 7',
-            'journal_id': self.bank_journal.id,
-            'date': date(2099, 2, 12),
-            'balance_start': 0.0,
-            'balance_end_real': 100.0,
-        })
-        statement_line = self.env['account.bank.statement.line'].create({
-            'statement_id': statement.id,
-            'journal_id': self.bank_journal.id,
-            'date': date(2099, 2, 12),
-            'payment_ref': reference,
-            'amount': 100.0,
-        })
         bank_settlement = self.env['utility.bank.settlement'].create({
             'company_id': self.company.id,
             'bank_journal_id': self.bank_journal.id,
@@ -285,15 +271,13 @@ class TestWave7FinancialUAT(TransactionCase):
         })
         bank_settlement.action_confirm()
         bank_settlement.action_post()
-        bank_settlement.statement_line_id = statement_line
-        bank_settlement.action_reconcile()
-        self.assertEqual(bank_settlement.state, 'reconciled')
-        self.assertTrue(statement_line.is_reconciled)
+        self.assertEqual(bank_settlement.state, 'settled')
+        self.assertTrue(bank_settlement.account_move_id)
         self.assertEqual(source.state, 'reconciled')
         self.assertTrue(self.env['account.partial.reconcile'].search([
             '|',
             ('debit_move_id', 'in', source.account_move_id.line_ids.ids),
-            ('credit_move_id', 'in', statement_line.move_id.line_ids.ids),
+            ('credit_move_id', 'in', bank_settlement.account_move_id.line_ids.ids),
         ], limit=1))
 
     def test_billing_adjustment_after_partial_payment_preserves_payment_audit(self):
