@@ -140,37 +140,81 @@ ONE Accounting Invoice
 ### Flat
 `total = consumption × flat price`
 
-### Tier
+### Tier (Single Flat Tier)
 حدد الشريحة على أساس إجمالي الاستهلاك ثم طبق سعرها على كامل الاستهلاك.
 
 ### Progressive Block
-وزع الاستهلاك على الشرائح بصورة تصاعدية.
+وزع الاستهلاك على الشرائح بصورة تصاعدية مع حساب الكمية والسعر لكل شريحة.
 
-### Additional
-- fixed/service charges.
-- local fees.
-- discounts.
-- sponsor discounts.
-- min/max charge.
-- controlled formula quantities.
+### Unsupported Modes in V1 (Explicitly Blocked)
+- `seasonal` (الموسمي): غير مدعوم في V1 لعدم اكتمال دورة التسعير الشهرية/الموسمية في قراءات العدادات. يرفع `ValidationError`.
+- `tou` (حسب وقت الاستخدام): غير مدعوم في V1 ويتطلب توفر قراءات فترية لحظية AMI/Interval Data. يرفع `ValidationError`.
+
+### Additional Fees & Adjustments
+- fixed/service charges (`service_charge`).
+- local fees (`local_fee_per_kwh`, `local_fee_mu_allim`, `local_fee_cleaning`).
+- discounts & sponsor discounts (`sponsor_id`, `discount_formula_id`, `discount_block_ids`).
+- min/max charge adjustments.
+- private transformer fee (`private_transformer_fee`).
+- controlled formula quantities (`utility.formula`).
 
 No taxes.
 
 ---
 
-## 7. Tariff Snapshot
+## 7. Tariff & Pricing Snapshots (Authoritative Models)
 
-عند Bill Creation احفظ:
-- template ID/code.
-- template version/effective dates.
-- pricing mode.
-- block definitions used.
-- fees.
-- discount policy.
-- formula ID/version/hash.
-- rounding policy.
+التنفيذ الفعلي يعتمد على الفصل التام بين الأدلة الفيزيائية للاستهلاك والأدلة التجارية للتسعير:
 
-لا تعتمد إعادة بناء فاتورة قديمة على Template الحالية.
+1. **النسخ التجارية للقوالب (`utility.contract.template.version`)**:
+   - نموذج مخصص داخل `utility_core` يوثق التكوين التجاري لقالب العقد كلقطة ثابتة (`version_code`, `pricing_mode`, `price_per_kwh`, `service_charge`, `min_charge`, `max_charge`, `local_fee_*`, `pricing_snapshot_json`).
+   - عند إنشاء قالب جديد يتم إنشاء Version 1 تلقائياً.
+   - طالما لم يُستخدم الإصدار في أي فاتورة (`is_used_in_billing = False`)، يتم تحديث الإصدار في مكانه.
+   - بمجرد استخدام الإصدار في إصدار فاتورة، فإن أي تعديل لاحق على القالب يُنشئ تلقائياً إصداراً جديداً برقم تصاعدي (V2, V3...).
+   - تُمنع أي عمليات تعديل (`write`) أو حذف (`unlink`) مباشرة على الإصدارات المستخدمة برفع `UserError`.
+
+2. **لقطة التسعير المطبقة في الفاتورة (`utility.bill.pricing.snapshot`)**:
+   - نموذج مالي غير قابل للتعديل داخل `utility_billing` يُسجل عند احتساب الفاتورة `sale.order`.
+   - يربط `sale_order_id`, `reading_id`, `customer_id`, `meter_id`, `contract_template_id`, `contract_template_version_id`, `version_code`, `billing_consumption`.
+   - يحفظ تفاصيل المبالغ الناتجة: `amount_energy`, `amount_service`, `amount_local_fee`, `amount_discount`, `amount_private_transformer_fee`, `pre_adjustment_total`, `min_max_adjustment_amount`, `calculated_total`.
+   - يوثق مخرجات معادلات الدعم والخصم والجهة الداعمة.
+
+3. **أدلة الشرائح المطبقة (`utility.bill.pricing.block`)**:
+   - أسطر تفصيلية مرتبطة بلقطة التسعير توثق بالضبط كل شريحة تم تطبيقها (`block_name`, `from_kwh`, `to_kwh`, `quantity`, `price_per_kwh`, `amount`, `is_discount`).
+
+4. **سلسلة التدقيق التاريخي الكاملة (Authoritative Audit Chain)**:
+   ```text
+   Customer → Contract Template → Contract Version → Reading → Reading Snapshot (Component) → Pricing Snapshot (with Applied Blocks) → Sale Order → Accounting Invoice → Payment & Reconciliation
+   ```
+
+### 7.1 معالج استنساخ قوالب العقود (`utility.contract.template.clone.wizard`)
+
+يُتيح المعالج للمستخدمين المخولين (مدراء الفوترة والنظام) إنشاء قالب عقد جديد ومستقل بالكامل اعتماداً على تهيئة قالب موجود:
+
+- **تدفق العمل (Business Flow)**:
+  ```text
+  Existing Contract Template
+          ↓
+  Clone Wizard (`utility.contract.template.clone.wizard`)
+          ↓
+  New Independent Contract Template
+          ↓
+  New Contract Version 1 (V1)
+          ↓
+  Optional Future Customer Assignment
+  ```
+- **ما يتم نسخه (Copied Configuration)**:
+  - الأسعار الأساسية والحدود (`pricing_mode`, `price_per_kwh`, `service_charge`, `min_charge`, `max_charge`).
+  - بنود العقد (`utility.contract.template.line`) كنسخ جديدة مستقلة ترتبط بالمنتجات والمعادلات المشتركة دون تكرار سجلات الماستر داتا.
+  - شرائح التسعير (`utility.contract.template.block`) وشرائح الخصم كنسخ جديدة تتبع القالب الجديد حصراً.
+  - الرسوم المحلية والدعم وإعدادات سير العمل والتكرار.
+  - النطاق الجغرافي والمناطق المسموح بها مع إمكانية التجاوز والتعديل أثناء الاستنساخ.
+- **ما يُمنع نسخه نهائياً (Strictly Isolated)**:
+  - **سجل التاريخ (`history_ids`)**: لا يُنقل ويبدأ القالب الجديد بسجله الخاص.
+  - **الإصدارات التاريخية (`version_ids`)**: يبدأ القالب الجديد حصراً بإصداره الأول (V1) ولا يرث إصدارات القالب المصدر السابقة.
+  - **الفواتير، القراءات، لقطات التسعير، وتعيينات المشتركين**: استنساخ القالب لا يُعيّن المشتركين تلقائياً ولا يستنسخ أي حركات مالية سابقة.
+- **تتبع الاستنساخ (Clone Provenance)**:
+  - توثيق المصدر عبر حقول إرشادية غير ملزمة (`cloned_from_template_id`, `cloned_at`, `cloned_by`).
 
 ---
 

@@ -75,6 +75,9 @@ access_utility_contract_template_block_readonly,utility.contract.template.block.
 access_utility_contract_template_block_billing,utility.contract.template.block.billing,model_utility_contract_template_block,group_utility_billing_manager,1,1,1,0
 access_utility_contract_template_history_admin,utility.contract.template.history.admin,model_utility_contract_template_history,group_utility_admin,1,1,1,1
 access_utility_contract_template_history_readonly,utility.contract.template.history.readonly,model_utility_contract_template_history,group_utility_readonly,1,0,0,0
+access_utility_contract_template_version_admin,utility.contract.template.version.admin,model_utility_contract_template_version,group_utility_admin,1,1,1,1
+access_utility_contract_template_version_readonly,utility.contract.template.version.readonly,model_utility_contract_template_version,group_utility_readonly,1,0,0,0
+access_utility_contract_template_version_billing,utility.contract.template.version.billing,model_utility_contract_template_version,group_utility_billing_manager,1,1,1,0
 access_utility_transformer_balance_wizard_all,utility.transformer.balance.wizard.all,model_utility_transformer_balance_wizard,base.group_user,1,1,1,1
 access_utility_formula_test_wizard_all,utility.formula.test.wizard.all,model_utility_formula_test_wizard,base.group_user,1,1,1,1
 access_utility_reading_admin,utility.reading.admin,model_utility_reading,group_utility_admin,1,1,1,1
@@ -146,4 +149,7 @@ access_ir_cron_utility_supervisor,ir.cron.utility.supervisor,base.model_ir_cron,
 access_ir_cron_utility_billing,ir.cron.utility.billing,base.model_ir_cron,group_utility_billing_manager,1,0,0,0
 access_ir_cron_utility_revenue,ir.cron.utility.revenue,base.model_ir_cron,group_utility_revenue_manager,1,0,0,0
 access_ir_cron_utility_admin,ir.cron.utility.admin,base.model_ir_cron,group_utility_admin,1,1,0,0
+access_utility_contract_template_clone_wizard_admin,utility.contract.template.clone.wizard.admin,model_utility_contract_template_clone_wizard,group_utility_admin,1,1,1,1
+access_utility_contract_template_clone_wizard_billing,utility.contract.template.clone.wizard.billing,model_utility_contract_template_clone_wizard,group_utility_billing_manager,1,1,1,1
+
 

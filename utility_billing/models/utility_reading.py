@@ -320,6 +320,7 @@ class UtilityReading(models.Model):
             self._get_unbilled_closing_components())
         total_consumption = self.consumption + sum(closings.mapped('consumption'))
         template = self.account_id.contract_template_id
+        version = template._get_or_create_active_version() if template else False
         try:
             with self.env.cr.savepoint():
                 order = self.env['sale.order'].create({
@@ -337,6 +338,7 @@ class UtilityReading(models.Model):
                     'current_reading': self.reading_value,
                     'consumption': total_consumption,
                     'contract_template_id': template.id if template else False,
+                    'contract_template_version_id': version.id if version else False,
                 })
         except IntegrityError as e:
             err_str = f"{str(e)} {getattr(e, 'pgerror', '')}"

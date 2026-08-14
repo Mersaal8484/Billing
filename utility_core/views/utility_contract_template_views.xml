@@ -22,15 +22,24 @@
         <field name="arch" type="xml">
             <form string="قالب العقد">
                 <header>
+                    <button name="action_open_clone_wizard" type="object" string="استنساخ كقالب جديد" class="btn-secondary" icon="fa-clone"/>
                     <button name="action_sync_lines_with_template" type="object" string="إضافة / مزامنة بنود القالب" class="oe_highlight" icon="fa-plus"/>
                     <button name="action_create_biweekly_blocks" type="object" string="توليد شرائح نموذجية (نصف شهري)" class="btn-secondary" icon="fa-list-ol" attrs="{'invisible': [('pricing_mode', 'not in', ['tier', 'block'])]}"/>
                 </header>
                 <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button type="object" name="action_view_versions" class="oe_stat_button" icon="fa-history" attrs="{'invisible': [('version_count', '=', 0)]}">
+                            <field name="version_count" widget="statinfo" string="الإصدارات"/>
+                        </button>
+                    </div>
                     <div class="oe_title">
                         <label for="name" string="اسم القالب"/>
                         <h1>
                             <field name="name" placeholder="مثال: عقد سكني دوري..."/>
                         </h1>
+                        <h4>
+                            <field name="current_version_id" readonly="1" options="{'no_open': False}"/>
+                        </h4>
                     </div>
                     <group>
                         <group string="التهيئة الأساسية">
@@ -159,6 +168,15 @@
                             </field>
                         </page>
                     </notebook>
+                    <group string="تتبع الاستنساخ" attrs="{'invisible': [('cloned_from_template_id', '=', False)]}">
+                        <group>
+                            <field name="cloned_from_template_id" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="cloned_at" readonly="1"/>
+                            <field name="cloned_by" readonly="1"/>
+                        </group>
+                    </group>
                 </sheet>
             </form>
         </field>

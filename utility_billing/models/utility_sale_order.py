@@ -47,6 +47,23 @@ class UtilitySaleOrder(models.Model):
     current_reading = fields.Float('القراءة الحالية')
     consumption = fields.Float('الاستهلاك')
     contract_template_id = fields.Many2one('utility.contract.template', 'قالب العقد', related='customer_id.contract_template_id', store=True)
+    contract_template_version_id = fields.Many2one(
+        'utility.contract.template.version',
+        string='إصدار قالب العقد المطبق',
+        readonly=True,
+        index=True,
+        copy=False,
+    )
+    pricing_snapshot_id = fields.Many2one(
+        'utility.bill.pricing.snapshot',
+        string='لقطة التسعير المطبقة',
+        compute='_compute_pricing_snapshot_id',
+        store=True,
+    )
+    pricing_snapshot_count = fields.Integer(
+        string='عدد لقطات التسعير',
+        compute='_compute_pricing_snapshot_count',
+    )
 
     @api.constrains('customer_id', 'date_range_id')
     def _check_utility_order_required_fields(self):
@@ -172,6 +189,30 @@ class UtilitySaleOrder(models.Model):
             'view_mode': 'tree,form',
             'domain': [('sale_order_id', '=', self.id)],
             'context': {'default_sale_order_id': self.id},
+        }
+
+    def _compute_pricing_snapshot_id(self):
+        for order in self:
+            snapshot = self.env['utility.bill.pricing.snapshot'].search([('sale_order_id', '=', order.id)], limit=1)
+            order.pricing_snapshot_id = snapshot.id if snapshot else False
+
+    def _compute_pricing_snapshot_count(self):
+        for order in self:
+            count = self.env['utility.bill.pricing.snapshot'].search_count([('sale_order_id', '=', order.id)])
+            order.pricing_snapshot_count = count
+
+    def action_view_pricing_snapshot(self):
+        self.ensure_one()
+        snapshot = self.pricing_snapshot_id or self.env['utility.bill.pricing.snapshot'].search([('sale_order_id', '=', self.id)], limit=1)
+        if not snapshot:
+            raise ValidationError(_("لا توجد لقطة تسعير تاريخية مسجلة لهذه الفاتورة بعد."))
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('لقطة التسعير المطبقة'),
+            'res_model': 'utility.bill.pricing.snapshot',
+            'res_id': snapshot.id,
+            'view_mode': 'form',
+            'context': {'create': False, 'delete': False, 'edit': False},
         }
 
     def action_view_reading_components(self):

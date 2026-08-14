@@ -64,6 +64,14 @@ The current operational UI exposes `total_readings`, `processed_count`, `error_c
 
 The commercial Bill is represented by `sale.order`; an Accounting Invoice is `account.move`. The current Bill form provides direct navigation to related accounting invoices, payments, and billing adjustments. Payment allocation is explicit to the selected utility invoice; partner-wide arbitrary reconciliation is rejected.
 
+### Contract template versioning, clone wizard, and immutable pricing snapshot
+
+- **`utility.contract.template.version`**: Authoritative immutable version record owned by `utility_core`. Any modification to a contract template already referenced by a bill automatically generates a new version (V1 → V2), while unbilled templates update in place. Direct edits and deletions on used versions are strictly blocked with `UserError`.
+- **`utility.contract.template.clone.wizard`**: Professional transient wizard allowing authorized users (Billing Managers/Admins) to create a new, completely independent Contract Template by copying pricing, lines, blocks, discount configurations, local fees, and workflow settings from an existing template. The new template receives a unique name/code, its own fresh Version 1 (V1), clean history isolation, and optional geographic overrides without mutating the source or historical billing records.
+- **`utility.bill.pricing.snapshot` & `utility.bill.pricing.block`**: Immutable pricing and formula calculation evidence recorded on each `sale.order` bill by `utility_billing`. Captures energy, service, local fee, discount, and private transformer amounts, along with exact applied pricing block breakdown. Once the bill is confirmed, pricing snapshots and their block lines are locked against direct mutation.
+- **Audit Chain**: `Customer -> Contract Template -> Contract Version -> Reading -> Reading Snapshot (Component) -> Pricing Snapshot -> Sale Order -> Invoice -> Accounting`.
+- **Pricing Modes**: `flat`, `tier` (single tier), and `block` (progressive tier) are fully supported. `seasonal` and `tou` modes are explicitly unsupported in V1 and blocked with `ValidationError`.
+
 ### Payment gateway
 
 The callback path verifies the transaction and token before taking the row lock, uses constant-time comparison where applicable, allows only pending transitions, sanitizes callback payloads, requires a provider reference for successful settlement where applicable, and is idempotent for repeated successful callbacks. The intended artifact invariant is one successful callback → one `account.payment`.

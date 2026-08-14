@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Version Tree View -->
+    <record id="view_utility_contract_template_version_tree" model="ir.ui.view">
+        <field name="name">utility.contract.template.version.tree</field>
+        <field name="model">utility.contract.template.version</field>
+        <field name="arch" type="xml">
+            <tree create="false" delete="false" edit="false" decoration-muted="is_used_in_billing == True">
+                <field name="version_code"/>
+                <field name="template_id"/>
+                <field name="version_number"/>
+                <field name="pricing_mode"/>
+                <field name="price_per_kwh"/>
+                <field name="service_charge"/>
+                <field name="min_charge"/>
+                <field name="max_charge"/>
+                <field name="is_used_in_billing" widget="boolean_toggle"/>
+                <field name="create_date" string="تاريخ الإصدار"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Version Form View -->
+    <record id="view_utility_contract_template_version_form" model="ir.ui.view">
+        <field name="name">utility.contract.template.version.form</field>
+        <field name="model">utility.contract.template.version</field>
+        <field name="arch" type="xml">
+            <form string="إصدار قالب العقد الثابت (Contract Template Version)" create="false" edit="false" delete="false">
+                <sheet>
+                    <div class="oe_title">
+                        <label for="version_code" string="رمز الإصدار"/>
+                        <h1>
+                            <field name="version_code" readonly="1"/>
+                        </h1>
+                        <h3>
+                            <field name="template_id" readonly="1"/> - الإصدار رقم <field name="version_number" readonly="1"/>
+                        </h3>
+                    </div>
+                    <group>
+                        <group string="التسعير الأساسي">
+                            <field name="pricing_mode" readonly="1"/>
+                            <field name="price_per_kwh" readonly="1"/>
+                            <field name="service_charge" readonly="1"/>
+                            <field name="min_charge" readonly="1"/>
+                            <field name="max_charge" readonly="1"/>
+                        </group>
+                        <group string="الرسوم المحلية والدعم">
+                            <field name="local_fee_per_kwh" readonly="1"/>
+                            <field name="local_fee_mu_allim" readonly="1"/>
+                            <field name="local_fee_cleaning" readonly="1"/>
+                            <field name="sponsor_id" readonly="1"/>
+                            <field name="discount_formula_id" readonly="1"/>
+                            <field name="is_used_in_billing" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="لقطة التكوين التجاري (Snapshot JSON)">
+                            <field name="pricing_snapshot_json" readonly="1" widget="ace" options="{'mode': 'json'}"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Version Action -->
+    <record id="action_utility_contract_template_version" model="ir.actions.act_window">
+        <field name="name">إصدارات قوالب العقود</field>
+        <field name="res_model">utility.contract.template.version</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                لا توجد إصدارات لقوالب العقود بعد.
+            </p>
+        </field>
+    </record>
+
+    <menuitem id="menu_utility_contract_template_version"
+              name="إصدارات قوالب العقود"
+              parent="utility_core.menu_utility_customer_management"
+              action="action_utility_contract_template_version"
+              sequence="55"/>
+</odoo>

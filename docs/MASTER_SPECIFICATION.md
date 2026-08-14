@@ -36,12 +36,15 @@ This document separates implementation evidence at the reviewed SHA from accepte
 ### Current V1 business path
 
 ```text
-Reading → Bill (`sale.order`) → Accounting Invoice (`account.move`)
-                             → Payment (`account.payment`)
-                             → Allocation/Reconciliation → Settlement
+Customer → Contract Template → Contract Version (`utility.contract.template.version`)
+         → Reading → Reading Snapshot (`utility.bill.reading.component`)
+         → Pricing Snapshot (`utility.bill.pricing.snapshot` + `utility.bill.pricing.block`)
+         → Bill (`sale.order`) → Accounting Invoice (`account.move`)
+                               → Payment (`account.payment`)
+                               → Allocation/Reconciliation → Settlement
 ```
 
-The Bill form provides direct smart-button navigation to related Accounting Invoices, Payments, and Billing Adjustments. This is navigation between distinct records, not a claim that a Bill itself is an Accounting Invoice.
+The Bill form provides direct smart-button navigation to related Pricing Snapshots, Reading Components, Accounting Invoices, Payments, and Billing Adjustments. Commercial pricing versions (`utility.contract.template.version`) and calculation snapshots (`utility.bill.pricing.snapshot`) guarantee full immutability and historical audit integrity.
 
 ### Organizational security classification
 

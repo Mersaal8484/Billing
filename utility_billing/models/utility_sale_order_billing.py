@@ -25,12 +25,20 @@ class UtilitySaleOrderBilling(models.Model):
         consumption = self.consumption or 0.0
         lines = []
         template = account.contract_template_id if account else False
+        version = self.contract_template_version_id or (template._get_or_create_active_version() if template else False)
+        if template and not self.contract_template_version_id and version:
+            self.contract_template_version_id = version.id
 
         self.amount_energy = 0.0
         self.amount_service = 0.0
         self.amount_discount = 0.0
         self.amount_local_fee = 0.0
         self.amount_private_transformer_fee = 0.0
+
+        applied_pricing_blocks = []
+        discount_data = {}
+        pre_total = 0.0
+        min_max_adj = 0.0
 
         Product = self.env['product.product']
         kwh_product = self.env.ref(
@@ -51,7 +59,9 @@ class UtilitySaleOrderBilling(models.Model):
                 if line.meter_line_type == 'discount' and template.discount_block_ids:
                     discount_units = 0.0
                     name = line.name or line.product_id.name or ''
+                    formula_used = False
                     if line.qty_formula_id:
+                        formula_used = line.qty_formula_id
                         discount_units, name = line.qty_formula_id.execute(
                             consumption=consumption,
                             previous_reading=self.previous_reading,
@@ -62,6 +72,7 @@ class UtilitySaleOrderBilling(models.Model):
                             line=line,
                         )
                     elif template and template.discount_formula_id:
+                        formula_used = template.discount_formula_id
                         discount_units, name = template.discount_formula_id.execute(
                             consumption=consumption,
                             previous_reading=self.previous_reading,
@@ -72,11 +83,19 @@ class UtilitySaleOrderBilling(models.Model):
                             line=line,
                         )
                     discount_units = max(discount_units or 0.0, 0.0)
+                    sponsor_id = template.sponsor_id.id if template.sponsor_id else False
+                    discount_data = {
+                        'units': discount_units,
+                        'formula_id': formula_used.id if formula_used else False,
+                        'formula_code': formula_used.code if formula_used else '',
+                        'formula_result': discount_units,
+                        'sponsor_id': sponsor_id,
+                    }
                     if discount_units > 0:
-                        sponsor_id = template.sponsor_id.id if template.sponsor_id else False
                         product_id = line.product_id.id if line.product_id else False
-                        d_lines, d_amount = self._prepare_block_discount_lines(template, discount_units, name, product_id, sponsor_id)
+                        d_lines, d_amount, d_blocks = self._prepare_block_discount_lines(template, discount_units, name, product_id, sponsor_id)
                         lines.extend(d_lines)
+                        applied_pricing_blocks.extend(d_blocks)
                         self._accumulate_amount('discount', d_amount)
                     continue
 
@@ -97,16 +116,29 @@ class UtilitySaleOrderBilling(models.Model):
                 }))
                 self._accumulate_amount(line.meter_line_type, amount)
 
+            if template.pricing_mode == 'flat' and consumption > 0:
+                applied_pricing_blocks.append({
+                    'source_block_id': False,
+                    'block_name': _('سعر موحد'),
+                    'from_kwh': 0.0,
+                    'to_kwh': 0.0,
+                    'quantity': consumption,
+                    'price_per_kwh': template.price_per_kwh or 0.0,
+                    'amount': consumption * (template.price_per_kwh or 0.0),
+                    'is_discount': False,
+                })
+
             if template.pricing_mode in ('block', 'tier') and consumption > 0:
                 if template.pricing_mode == 'block':
-                    block_lines, block_amount = self._prepare_block_consumption_lines(
+                    block_lines, block_amount, b_blocks = self._prepare_block_consumption_lines(
                         template, consumption, kwh_product
                     )
                 else:
-                    block_lines, block_amount = self._prepare_tier_consumption_lines(
+                    block_lines, block_amount, b_blocks = self._prepare_tier_consumption_lines(
                         template, consumption, kwh_product
                     )
                 lines.extend(block_lines)
+                applied_pricing_blocks.extend(b_blocks)
                 self.amount_energy += block_amount
 
             existing_local_fee_types = [l.meter_line_type for l in template.line_ids if l.meter_line_type in ('mu_allim', 'cleaning', 'municipality')]
@@ -157,31 +189,32 @@ class UtilitySaleOrderBilling(models.Model):
         if template:
             pre_total = (self.amount_energy + self.amount_service + self.amount_local_fee)
             if template.min_charge and pre_total < template.min_charge:
+                adj = template.min_charge - pre_total
                 lines.append((0, 0, {
                     'product_id': fixed_product.id if fixed_product else False,
                     'name': f'تسوية إلى الحد الأدنى ({template.min_charge})',
                     'product_uom_qty': 1,
-                    'price_unit': template.min_charge - pre_total,
+                    'price_unit': adj,
                     'meter_line_type': 'fixed_fee',
                     'tax_id': [(5, 0, 0)],
                 }))
-                self.amount_service += template.min_charge - pre_total
+                self.amount_service += adj
+                min_max_adj = adj
             elif template.max_charge and pre_total > template.max_charge:
+                adj = template.max_charge - pre_total
                 lines.append((0, 0, {
                     'product_id': fixed_product.id if fixed_product else False,
                     'name': f'تسوية إلى الحد الأقصى ({template.max_charge})',
                     'product_uom_qty': 1,
-                    'price_unit': template.max_charge - pre_total,
+                    'price_unit': adj,
                     'meter_line_type': 'discount',
                     'tax_id': [(5, 0, 0)],
                 }))
                 self.amount_discount += pre_total - template.max_charge
+                min_max_adj = adj
 
         self._append_private_transformer_fee_line(lines)
 
-        # Give every generated component a deterministic identity.  The key is
-        # based on the generated source/type and its stable occurrence order;
-        # it is not derived from mutable posted accounting values.
         occurrence = {}
         for command in lines:
             line_vals = command[2]
@@ -195,14 +228,80 @@ class UtilitySaleOrderBilling(models.Model):
 
         self.order_line = [(5, 0, 0)] + lines
 
-    def _append_private_transformer_fee_line(self, lines):
-        """أضف رسوم المحول الخاص كبند مستقل بعد احتساب الاستهلاك والتعرفة.
+        # ── حفظ لقطة التسعير التاريخية الثابتة ────────────────────────────────
+        if template:
+            self._record_pricing_snapshot(
+                template=template,
+                version=version,
+                consumption=consumption,
+                applied_blocks=applied_pricing_blocks,
+                discount_data=discount_data,
+                pre_adjustment_total=pre_total,
+                min_max_adj=min_max_adj,
+            )
 
-        الرسوم تُضاف مرة واحدة فقط لكل دورة فوترة، وتنطبق فقط عندما:
-          - يكون الحساب مرتبطاً بمحول خاص (transformer_id.is_private = True)
-          - وتكون قيمة الرسوم أكبر من صفر
-        بند واحد فقط لكل (حساب + فترة)؛ إعادة الحساب تستبدل البنود ولا تكررها.
-        """
+    def _record_pricing_snapshot(self, template, version, consumption, applied_blocks, discount_data, pre_adjustment_total, min_max_adj):
+        """تسجيل أو تحديث لقطة التسعير المطبقة (Pricing Snapshot) للفاتورة لضمان الاستقرار والتدقيق التاريخي."""
+        self.ensure_one()
+        if not template:
+            return
+
+        Snapshot = self.env['utility.bill.pricing.snapshot']
+        existing = Snapshot.search([('sale_order_id', '=', self.id)], limit=1)
+
+        snapshot_vals = {
+            'sale_order_id': self.id,
+            'reading_id': self.reading_id.id if self.reading_id else False,
+            'customer_id': self.customer_id.id,
+            'meter_id': self.meter_id.id if self.meter_id else False,
+            'date_range_id': self.date_range_id.id if self.date_range_id else False,
+            'contract_template_id': template.id,
+            'contract_template_version_id': version.id if version else template._get_or_create_active_version().id,
+            'pricing_mode': template.pricing_mode,
+            'billing_consumption': consumption,
+            'price_per_kwh': template.price_per_kwh,
+            'service_charge': template.service_charge,
+            'min_charge': template.min_charge,
+            'max_charge': template.max_charge,
+            'amount_energy': self.amount_energy,
+            'amount_service': self.amount_service,
+            'amount_local_fee': self.amount_local_fee,
+            'amount_discount': self.amount_discount,
+            'amount_private_transformer_fee': self.amount_private_transformer_fee,
+            'pre_adjustment_total': pre_adjustment_total,
+            'min_max_adjustment_amount': min_max_adj,
+            'calculated_total': self.amount_total,
+            'discount_units': discount_data.get('units', 0.0),
+            'discount_formula_id': discount_data.get('formula_id', False),
+            'discount_formula_code': discount_data.get('formula_code', ''),
+            'discount_formula_result': discount_data.get('formula_result', 0.0),
+            'discount_sponsor_id': discount_data.get('sponsor_id', False),
+            'snapshot_origin': 'authoritative',
+        }
+
+        # بناء سطور الشرائح المطبقة
+        block_commands = [(5, 0, 0)]
+        for seq, blk in enumerate(applied_blocks, start=1):
+            block_commands.append((0, 0, {
+                'sequence': seq * 10,
+                'source_block_id': blk.get('source_block_id', False),
+                'block_name': blk.get('block_name', ''),
+                'from_kwh': blk.get('from_kwh', 0.0),
+                'to_kwh': blk.get('to_kwh', 0.0),
+                'quantity': blk.get('quantity', 0.0),
+                'price_per_kwh': blk.get('price_per_kwh', 0.0),
+                'amount': blk.get('amount', 0.0),
+                'is_discount': blk.get('is_discount', False),
+            }))
+        snapshot_vals['block_ids'] = block_commands
+
+        ctx = dict(self.env.context, _allow_pricing_snapshot_modification=True)
+        if existing:
+            existing.with_context(ctx).write(snapshot_vals)
+        else:
+            Snapshot.with_context(ctx).create(snapshot_vals)
+
+    def _append_private_transformer_fee_line(self, lines):
         account = self.customer_id
         if not account:
             return
@@ -237,6 +336,7 @@ class UtilitySaleOrderBilling(models.Model):
             )
 
         lines = []
+        applied_blocks = []
         priced_qty = 0.0
         amount_energy = 0.0
         for block in template.block_ids.sorted(lambda b: (b.from_kwh, b.sequence, b.id)):
@@ -257,6 +357,16 @@ class UtilitySaleOrderBilling(models.Model):
                 'meter_line_type': 'consumption',
                 'tax_id': [(5, 0, 0)],
             }))
+            applied_blocks.append({
+                'source_block_id': block.id,
+                'block_name': block_name,
+                'from_kwh': block.from_kwh or 0.0,
+                'to_kwh': block.to_kwh or 0.0,
+                'quantity': qty_in_block,
+                'price_per_kwh': block.price_per_kwh,
+                'amount': amount,
+                'is_discount': False,
+            })
             priced_qty += qty_in_block
             amount_energy += amount
 
@@ -265,10 +375,11 @@ class UtilitySaleOrderBilling(models.Model):
                 _('قالب العقد "%s" لا يغطي كامل الاستهلاك بالشرائح. الاستهلاك: %.2f kWh، المسعر: %.2f kWh.')
                 % (template.name, consumption, priced_qty)
             )
-        return lines, amount_energy
+        return lines, amount_energy, applied_blocks
 
     def _prepare_block_discount_lines(self, template, discount_units, base_name, product_id, sponsor_id):
         lines = []
+        applied_blocks = []
         amount_discount = 0.0
         priced_units = 0.0
         for block in template.discount_block_ids.sorted(lambda b: (b.from_kwh, b.sequence, b.id)):
@@ -290,6 +401,16 @@ class UtilitySaleOrderBilling(models.Model):
                 'meter_line_type': 'discount',
                 'tax_id': [(5, 0, 0)],
             }))
+            applied_blocks.append({
+                'source_block_id': block.id,
+                'block_name': block_name,
+                'from_kwh': block.from_kwh or 0.0,
+                'to_kwh': block.to_kwh or 0.0,
+                'quantity': qty_in_block,
+                'price_per_kwh': price,
+                'amount': amount,
+                'is_discount': True,
+            })
             amount_discount += amount
             priced_units += qty_in_block
 
@@ -298,10 +419,11 @@ class UtilitySaleOrderBilling(models.Model):
                 _('قالب العقد "%s" لا يغطي كامل وحدات الخصم بالشرائح. وحدات الخصم: %.2f، المسعر: %.2f.')
                 % (template.name, discount_units, priced_units)
             )
-        return lines, amount_discount
+        return lines, amount_discount, applied_blocks
 
     def _prepare_tier_consumption_lines(self, template, consumption, kwh_product):
         lines = []
+        applied_blocks = []
         amount_energy = 0.0
         applicable_block = None
 
@@ -326,9 +448,19 @@ class UtilitySaleOrderBilling(models.Model):
                 'meter_line_type': 'consumption',
                 'tax_id': [(5, 0, 0)],
             }))
+            applied_blocks.append({
+                'source_block_id': applicable_block.id if applicable_block else False,
+                'block_name': name,
+                'from_kwh': applicable_block.from_kwh if applicable_block else 0.0,
+                'to_kwh': applicable_block.to_kwh if applicable_block else 0.0,
+                'quantity': consumption,
+                'price_per_kwh': price,
+                'amount': amount,
+                'is_discount': False,
+            })
             amount_energy += amount
 
-        return lines, amount_energy
+        return lines, amount_energy, applied_blocks
 
     def _compute_line_amounts(self, line, consumption, account, category, template):
         qty = 0.0

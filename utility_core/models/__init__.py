@@ -23,6 +23,7 @@ from . import utility_formula
 from . import utility_contract_template
 from . import utility_contract_template_block
 from . import utility_contract_template_history
+from . import utility_contract_template_version
 from . import utility_settings
 from . import utility_res_users
 from . import utility_res_partner

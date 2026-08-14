@@ -28,6 +28,7 @@ This is a concise ADR index. Detailed implementation belongs in the linked domai
 | ADR-018 Prepaid Excluded From V1 | Accepted | OUT OF SCOPE | `utility_prepaid` is not part of the current V1 release chain. | Prepaid remains separately documented. |
 | ADR-019 Scale Architecture Remains Target V2 | Accepted | TARGET V2 | PgBouncer, horizontal nodes, scalable media, partitioning, micro-batches, and scoped Temporal require triggers and runtime evidence. | `TARGET_V2_ARCHITECTURE_ROADMAP.md`. |
 | ADR-020 Role-Based Authorization Is Independent From Organizational Scope | Accepted principle | CURRENT roles / TARGET hardening | Roles answer what a user can do; company/region/branch scope answers where. V1 prefers one unified user scope across multiple roles. | `SECURITY_MATRIX.md`, `ORGANIZATIONAL_SECURITY_AND_DATA_ISOLATION.md`. |
+| ADR-021 Contract Template Versioning & Immutable Pricing Snapshot | Accepted | CURRENT V1 | Commercial configuration uses `utility.contract.template.version` (in-place unbilled, auto-V+1 on billed changes). Financial calculation evidence uses immutable `utility.bill.pricing.snapshot` and `utility.bill.pricing.block` on each bill. | `utility_core`, `utility_billing`, `sale.order`. |
 
 ## ADR review rule
 

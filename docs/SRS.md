@@ -132,18 +132,21 @@ An empty restricted scope SHALL be default-deny. UI domains SHALL NOT be treated
 **SRS-BIL-004** — SHALL produce one bill for multiple replacement segments in the same cycle.
 **SRS-BIL-005** — SHALL create/post the accounting invoice according to configured billing policy.
 **SRS-BIL-006** — SHALL use no taxes in the current Utility Billing flow.
-**SRS-BIL-007** — SHALL snapshot applied tariff semantics/version at billing time.
+**SRS-BIL-007** — SHALL persist immutable pricing calculation evidence (`utility.bill.pricing.snapshot`) and applied block breakdown (`utility.bill.pricing.block`) at billing time.
 **SRS-BIL-008** — SHALL be idempotent under retry/concurrent billing requests.
 
-### Tariff
+### Tariff & Contract Template Versioning
 
-**SRS-TAR-001** — SHALL support flat pricing.
-**SRS-TAR-002** — SHALL support single-tier pricing applied to full consumption.
-**SRS-TAR-003** — SHALL support progressive block pricing.
-**SRS-TAR-004** — SHALL support fixed/service/local fees.
-**SRS-TAR-005** — SHALL support discounts and sponsor policy.
-**SRS-TAR-006** — SHALL validate full block coverage for block-based pricing.
-**SRS-TAR-007** — SHALL version or snapshot any formula used in a financial bill.
+**SRS-TAR-001** — SHALL support flat pricing (`flat`).
+**SRS-TAR-002** — SHALL support single-tier pricing applied to full consumption (`tier`).
+**SRS-TAR-003** — SHALL support progressive block pricing (`block`).
+**SRS-TAR-004** — SHALL block unsupported pricing modes (`seasonal`, `tou`) with explicit `ValidationError` in V1.
+**SRS-TAR-005** — SHALL support fixed/service/local fees and private transformer fees.
+**SRS-TAR-006** — SHALL support discounts, dynamic formulas, and sponsor policies.
+**SRS-TAR-007** — SHALL validate full block coverage for tier- and block-based pricing templates.
+**SRS-TAR-008** — SHALL maintain immutable contract template versioning (`utility.contract.template.version`), automatically creating new versions when billed templates are updated.
+**SRS-TAR-009** — SHALL prevent direct modification or deletion of contract template versions and pricing snapshots linked to active or confirmed bills.
+**SRS-TAR-010** — SHALL provide a clone wizard (`utility.contract.template.clone.wizard`) to create independent contract templates with new identity, fresh Version 1, and isolated historical data.
 
 ### Payment
 

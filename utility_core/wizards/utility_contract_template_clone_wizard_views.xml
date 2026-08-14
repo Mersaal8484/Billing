@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_contract_template_clone_wizard_form" model="ir.ui.view">
+        <field name="name">utility.contract.template.clone.wizard.form</field>
+        <field name="model">utility.contract.template.clone.wizard</field>
+        <field name="arch" type="xml">
+            <form string="استنساخ قالب عقد جديد (Create From Existing Template)">
+                <sheet>
+                    <group string="القالب المصدر">
+                        <group>
+                            <field name="source_template_id" options="{'no_create': True}"/>
+                        </group>
+                        <group>
+                            <field name="source_pricing_mode"/>
+                            <field name="source_version_code"/>
+                        </group>
+                    </group>
+
+                    <group string="هوية القالب الجديد (New Identity)">
+                        <group>
+                            <field name="new_name" placeholder="مثال: عقد سكني مخفض - تعرفة 2026..."/>
+                        </group>
+                        <group>
+                            <field name="new_code" placeholder="مثال: RES-2026-B..."/>
+                        </group>
+                    </group>
+
+                    <group string="خيارات نسخ التكوين التجاري (Commercial Configuration Copy Options)">
+                        <group>
+                            <field name="copy_pricing"/>
+                            <field name="copy_contract_lines"/>
+                            <field name="copy_pricing_blocks"/>
+                            <field name="copy_discount_blocks"/>
+                            <field name="copy_discount_configuration"/>
+                        </group>
+                        <group>
+                            <field name="copy_local_fees"/>
+                            <field name="copy_subscriber_configuration"/>
+                            <field name="copy_scope"/>
+                            <field name="copy_workflow_settings"/>
+                        </group>
+                    </group>
+
+                    <group string="التجاوز والنطاق الجغرافي للقالب الجديد" attrs="{'invisible': [('copy_scope', '=', False)]}">
+                        <group>
+                            <field name="target_scope" widget="radio" options="{'horizontal': true}"/>
+                        </group>
+                        <group>
+                            <field name="target_region_ids" widget="many2many_tags" placeholder="اختر المناطق الرئيسية..." attrs="{'invisible': [('target_scope', '!=', 'restricted')], 'required': [('target_scope', '=', 'restricted')]}"/>
+                            <field name="target_area_ids" widget="many2many_tags" placeholder="اختر المناطق الفرعية/الفروع..." attrs="{'invisible': [('target_scope', '!=', 'restricted')], 'required': [('target_scope', '=', 'restricted')]}"/>
+                        </group>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_clone_template" string="إنشاء واستنساخ القالب" type="object" class="btn-primary" icon="fa-clone"/>
+                    <button string="إلغاء" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_utility_contract_template_clone_wizard" model="ir.actions.act_window">
+        <field name="name">استنساخ قالب عقد</field>
+        <field name="res_model">utility.contract.template.clone.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

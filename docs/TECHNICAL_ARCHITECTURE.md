@@ -55,8 +55,10 @@ Application Services
         ↓
 Domain Models
 ├── Customer/Meter/Network
+├── Contract Template & Version (utility.contract.template.version)
 ├── Period/Reading
-├── Bill/Component
+├── Bill & Reading Component (utility.bill.reading.component)
+├── Pricing Snapshot & Applied Blocks (utility.bill.pricing.snapshot, utility.bill.pricing.block)
 ├── Replacement
 ├── Service Order
 └── Financial Adjustment
