@@ -130,9 +130,11 @@ class UtilityContractTemplateVersion(models.Model):
 
     is_used_in_billing = fields.Boolean(
         string='مستخدم في فواتير',
-        compute='_compute_is_used_in_billing',
-        store=True,
-        help='يشير إلى ما إذا كان هذا الإصدار قد استُخدم في إنشاء فواتير سابقة ومقفل ضد التعديل',
+        default=False,
+        readonly=True,
+        copy=False,
+        index=True,
+        help='يُعيَّن True بشكل دائم عند أول ربط موثق بفاتورة كهرباء (sale.order). لا يعود أبداً إلى False.',
     )
 
     _sql_constraints = [
@@ -146,23 +148,36 @@ class UtilityContractTemplateVersion(models.Model):
             t_name = rec.template_id.name or _('قالب غير محدد')
             rec.display_name = f"{t_name} (v{rec.version_number})"
 
-    def _compute_is_used_in_billing(self):
-        # البحث في sale.order إذا كان هذا الإصدار مستخدماً في فواتير نشطة
-        if 'sale.order' in self.env:
-            for rec in self:
-                count = self.env['sale.order'].sudo().search_count([
-                    ('contract_template_version_id', '=', rec.id),
-                ])
-                rec.is_used_in_billing = bool(count > 0)
-        else:
-            for rec in self:
-                rec.is_used_in_billing = False
+    def _is_actually_used_in_billing(self):
+        """تحقق حقيقي ومباشر من قاعدة البيانات بدون الاعتماد على stored field.
+        يُستخدم بواسطة _get_or_create_active_version() ويكون دقيقاً دائماً.
+        """
+        self.ensure_one()
+        if self.is_used_in_billing:
+            return True  # مُعيَّن بشكل دائم، موثوق
+        # Fallback: تحقق مباشر إذا لم يُعيَّن بعد (حالة عرضية للنسخ القديمة)
+        if 'sale.order' not in self.env:
+            return False
+        return bool(
+            self.env['sale.order'].sudo().search_count(
+                [('contract_template_version_id', '=', self.id)],
+                limit=1,
+            )
+        )
+
+    def mark_as_used_in_billing(self):
+        """يُعيَّن is_used_in_billing=True بشكل ذري ونهائي. لا يُرجع إلى False أبداً."""
+        self.ensure_one()
+        if not self.is_used_in_billing:
+            self.sudo().with_context(_force_version_update=True).write(
+                {'is_used_in_billing': True}
+            )
 
     def write(self, vals):
         """حماية الإصدارات المستخدمة من التعديل الصامت."""
         if not self.env.context.get('_force_version_update'):
             for rec in self:
-                if rec.is_used_in_billing:
+                if rec._is_actually_used_in_billing():
                     raise UserError(_(
                         "لا يمكن تعديل إصدار قالب العقد (%s) لأنه مستخدم في فواتير كهرباء سابقة. "
                         "التعديلات على القالب يجب أن تنشئ إصداراً جديداً للحفاظ على سلامة التدقيق المالي."
@@ -173,7 +188,7 @@ class UtilityContractTemplateVersion(models.Model):
         """حماية الإصدارات المستخدمة من الحذف."""
         if not self.env.context.get('_force_version_unlink'):
             for rec in self:
-                if rec.is_used_in_billing:
+                if rec._is_actually_used_in_billing():
                     raise UserError(_(
                         "لا يمكن حذف إصدار قالب العقد (%s) لأنه مستخدم كمرجع مالي لفواتير سابقة."
                     ) % rec.display_name)

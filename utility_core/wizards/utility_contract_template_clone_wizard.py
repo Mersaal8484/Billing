@@ -174,8 +174,9 @@ class UtilityContractTemplateCloneWizard(models.TransientModel):
             template_vals['subscriber_category_ids'] = [(6, 0, source.subscriber_category_ids.ids)]
             template_vals['subscriber_ids'] = [(6, 0, source.subscriber_ids.ids)]
         else:
-            template_vals['subscriber_category_ids'] = [(6, 0, source.subscriber_category_ids.ids)]
-            template_vals['subscriber_ids'] = [(6, 0, source.subscriber_ids.ids)]
+            # القالب الجديد يبدأ بدون مشتركين مخصصين — يُعيَّن لاحقاً بشكل منفصل
+            template_vals['subscriber_category_ids'] = [(5, 0, 0)]
+            template_vals['subscriber_ids'] = [(5, 0, 0)]
 
         # النطاق الجغرافي
         if self.copy_scope:
@@ -187,13 +188,10 @@ class UtilityContractTemplateCloneWizard(models.TransientModel):
                 template_vals['region_ids'] = [(5, 0, 0)]
                 template_vals['area_ids'] = [(5, 0, 0)]
         else:
-            template_vals['scope'] = source.scope
-            if source.scope == 'restricted':
-                template_vals['region_ids'] = [(6, 0, source.region_ids.ids)]
-                template_vals['area_ids'] = [(6, 0, source.area_ids.ids)]
-            else:
-                template_vals['region_ids'] = [(5, 0, 0)]
-                template_vals['area_ids'] = [(5, 0, 0)]
+            # القالب الجديد يبدأ بنطاق عام دون قيود جغرافية
+            template_vals['scope'] = 'global'
+            template_vals['region_ids'] = [(5, 0, 0)]
+            template_vals['area_ids'] = [(5, 0, 0)]
 
         # التسعير
         if self.copy_pricing:

@@ -398,7 +398,7 @@ class UtilityContractTemplate(models.Model):
             return latest
 
         # إذا كان الإصدار الأخير مستخدماً في فواتير كهرباء سابقة -> ننشئ إصداراً جديداً برقم تصاعدي
-        if latest.is_used_in_billing:
+        if latest._is_actually_used_in_billing():
             next_num = latest.version_number + 1
             version_code = f"{self.code or 'CT'}-V{next_num}"
             return self.env['utility.contract.template.version'].create({

@@ -24,10 +24,23 @@ class UtilitySaleOrderBilling(models.Model):
         category = account.subscriber_id if account else False
         consumption = self.consumption or 0.0
         lines = []
-        template = account.contract_template_id if account else False
-        version = self.contract_template_version_id or (template._get_or_create_active_version() if template else False)
-        if template and not self.contract_template_version_id and version:
-            self.contract_template_version_id = version.id
+
+        # ── P1 Fix: Template ↔ Version consistency ─────────────────────────────
+        # الأولوية: إذا كانت الفاتورة مرتبطة بإصدار محدد، نشتق القالب من الإصدار.
+        # هذا يضمن أن template و version دائماً متسقان ولا يمكن لتغيير القالب على
+        # العميل بين حسابات Draft أن يُنتج أدلة تدقيق متناقضة.
+        version = self.contract_template_version_id
+        if version and version.template_id:
+            template = version.template_id
+        else:
+            template = account.contract_template_id if account else False
+            version = template._get_or_create_active_version() if template else False
+            if template and version:
+                self.contract_template_version_id = version.id
+
+        # تسجيل الإصدار كمستخدم ماليًا بشكل ذري ونهائي عند أول ربط
+        if version:
+            version.mark_as_used_in_billing()
 
         self.amount_energy = 0.0
         self.amount_service = 0.0

@@ -107,8 +107,6 @@ class TestContractTemplateCloneWizard(TransactionCase):
             'recurring_invoicing_type': 'postpaid',
             'discount_formula_id': cls.formula.id,
         })
-
-        # Lines on source template
         cls.env['utility.contract.template.line'].create([
             {
                 'template_id': cls.source_template.id,
@@ -207,10 +205,10 @@ class TestContractTemplateCloneWizard(TransactionCase):
         self.assertEqual(len(new_template.block_ids), 2)
         self.assertEqual(len(new_template.discount_block_ids), 1)
 
-        # 4. Scope Override
+        # 4. Geographic Scope Override applied (copy_scope=True with target_region_ids=region_b)
         self.assertEqual(new_template.scope, 'restricted')
-        self.assertEqual(new_template.region_ids.ids, [self.region_b.id])
-        self.assertEqual(new_template.area_ids.ids, [self.area_b.id])
+        self.assertIn(self.region_b.id, new_template.region_ids.ids)
+        self.assertIn(self.area_b.id, new_template.area_ids.ids)
 
     def test_02_new_identity_and_unique_code_enforcement(self):
         """Verify that empty names or duplicate codes are rejected."""

@@ -224,6 +224,25 @@ class UtilityBillPricingSnapshot(models.Model):
             v_code = rec.version_code or (rec.contract_template_version_id.version_code if rec.contract_template_version_id else '')
             rec.display_name = f"Pricing Snapshot: {o_name} ({v_code})"
 
+    @api.constrains('contract_template_id', 'contract_template_version_id')
+    def _check_template_version_consistency(self):
+        """يُطبق القاعدة: إصدار القالب يجب أن ينتمي للقالب التجاري نفسه المُسجَّل على لقطة التسعير."""
+        for rec in self:
+            if (
+                rec.contract_template_version_id
+                and rec.contract_template_id
+                and rec.contract_template_version_id.template_id.id != rec.contract_template_id.id
+            ):
+                raise ValidationError(_(
+                    "تعارض في التدقيق المالي: إصدار قالب العقد المطبق '%s' ينتمي للقالب '%s'، "
+                    "بينما لقطة التسعير مرتبطة بقالب مختلف '%s'. "
+                    "يجب أن يكون إصدار القالب وقالب التسعير متطابقَين لضمان سلامة سجل التدقيق."
+                ) % (
+                    rec.contract_template_version_id.version_code,
+                    rec.contract_template_version_id.template_id.name,
+                    rec.contract_template_id.name,
+                ))
+
     def write(self, vals):
         """حماية لقطة التسعير من التعديل بعد تأكيد الفاتورة أو ترحيلها."""
         if not self.env.context.get('_allow_pricing_snapshot_modification'):

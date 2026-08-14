@@ -41,15 +41,14 @@ class TestContractTemplateVersioningAndPricingSnapshot(TransactionCase):
             'name': 'Citizen Account 001',
             'customer_number': 'CUST-TEST-001',
             'partner_id': cls.partner.id,
-            'subscriber_category_id': cls.category.id,
+            'category_id': cls.category.id,
             'subscriber_id': cls.subscriber.id,
             'contract_template_id': cls.template_flat.id,
         })
 
         # Meter
         cls.meter = cls.env['utility.meter'].create({
-            'name': 'MTR-TEST-001',
-            'serial_number': 'SN-MTR-001',
+            'meter_number': 'MTR-TEST-001',
             'customer_id': cls.customer.id,
         })
 
@@ -105,6 +104,8 @@ class TestContractTemplateVersioningAndPricingSnapshot(TransactionCase):
         })
         order._calculate_amounts()
 
+        # After _calculate_amounts, version must be marked as used in billing
+        self.assertTrue(v1._is_actually_used_in_billing())
         self.assertTrue(v1.is_used_in_billing)
 
         # Now update the template price
