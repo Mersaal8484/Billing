@@ -36,11 +36,24 @@ class UtilityReading(models.Model):
     billing_error = fields.Text('خطأ الفوترة', readonly=True)
 
     def init(self):
-        """Keep core indexes and add the commercial reading index."""
+        """Keep core indexes and add commercial reading & uniqueness indexes."""
         super().init()
         self.env.cr.execute("""
             CREATE INDEX IF NOT EXISTS utility_reading_review_state_billable_date_idx
-            ON utility_reading (state, is_billable, reading_date DESC, id DESC)
+            ON utility_reading (state, is_billable, reading_date DESC, id DESC);
+
+            CREATE UNIQUE INDEX IF NOT EXISTS utility_reading_unique_periodic_account_period_idx
+            ON utility_reading (account_id, date_range_id, reading_category)
+            WHERE reading_purpose = 'periodic'
+              AND state != 'error'
+              AND active = TRUE
+              AND account_id IS NOT NULL
+              AND date_range_id IS NOT NULL;
+
+            CREATE UNIQUE INDEX IF NOT EXISTS utility_sale_order_unique_active_reading_idx
+            ON sale_order (reading_id)
+            WHERE reading_id IS NOT NULL
+              AND state != 'cancel';
         """)
 
     def _is_commercial_subject(self):
@@ -148,7 +161,12 @@ class UtilityReading(models.Model):
             if closed:
                 raise ValidationError(_(
                     'لا يمكن إنشاء قراءة في الفترة المغلقة أو المقفلة [%s].') % closed.name)
-        return super().create(vals_list)
+        try:
+            return super().create(vals_list)
+        except Exception as e:
+            if 'utility_reading_unique_periodic_account_period_idx' in str(e):
+                raise ValidationError(_('يوجد قراءة دورية أخرى مسجلة مسبقاً لنفس الحساب والفترة.'))
+            raise
 
     def write(self, vals):
         self._check_billing_period_mutation(vals)
@@ -270,6 +288,16 @@ class UtilityReading(models.Model):
             raise AccessError(_('ليس لديك صلاحية إصدار فواتير الكهرباء. يتطلب صلاحية مدير الفوترة أو مدير النظام.'))
 
         self.ensure_one()
+        if self.state == 'billed' or self.included_sale_order_id:
+            if self.included_sale_order_id and self.included_sale_order_id.state != 'cancel':
+                return {
+                    'type': 'ir.actions.act_window',
+                    'res_model': 'sale.order',
+                    'res_id': self.included_sale_order_id.id,
+                    'views': [(False, 'form')],
+                }
+            raise ValidationError(_('هذه القراءة مفوترة بالفعل مسبقاً.'))
+
         if self.reading_purpose != 'periodic':
             raise ValidationError(_('لا يمكن إنشاء فاتورة إلا من قراءة دورية.'))
         if self.state not in ('approved', 'queued'):
@@ -300,22 +328,27 @@ class UtilityReading(models.Model):
             self._get_unbilled_closing_components())
         total_consumption = self.consumption + sum(closings.mapped('consumption'))
         template = self.account_id.contract_template_id
-        order = self.env['sale.order'].create({
-            'partner_id': self.account_id.partner_id.id or self.env.company.partner_id.id,
-            'customer_id': self.account_id.id,
-            'meter_id': self.meter_id.id,
-            'reading_id': self.id,
-            'date_range_id': self.date_range_id.id,
-            'date_order': fields.Datetime.now(),
-            'period_start': self.date_range_id.date_start or (
-                self.previous_reading_date.date() if self.previous_reading_date else fields.Date.today()),
-            'period_end': self.date_range_id.date_end or (
-                self.reading_date.date() if self.reading_date else fields.Date.today()),
-            'previous_reading': self.previous_reading,
-            'current_reading': self.reading_value,
-            'consumption': total_consumption,
-            'contract_template_id': template.id if template else False,
-        })
+        try:
+            order = self.env['sale.order'].create({
+                'partner_id': self.account_id.partner_id.id or self.env.company.partner_id.id,
+                'customer_id': self.account_id.id,
+                'meter_id': self.meter_id.id,
+                'reading_id': self.id,
+                'date_range_id': self.date_range_id.id,
+                'date_order': fields.Datetime.now(),
+                'period_start': self.date_range_id.date_start or (
+                    self.previous_reading_date.date() if self.previous_reading_date else fields.Date.today()),
+                'period_end': self.date_range_id.date_end or (
+                    self.reading_date.date() if self.reading_date else fields.Date.today()),
+                'previous_reading': self.previous_reading,
+                'current_reading': self.reading_value,
+                'consumption': total_consumption,
+                'contract_template_id': template.id if template else False,
+            })
+        except Exception as e:
+            if 'utility_sale_order_unique_active_reading_idx' in str(e):
+                raise ValidationError(_('تم إنشاء فاتورة نشطة لهذه القراءة مسبقاً.'))
+            raise
         all_components = closings | self
         self.env['utility.bill.reading.component'].create(
             self._prepare_component_vals(order, all_components))

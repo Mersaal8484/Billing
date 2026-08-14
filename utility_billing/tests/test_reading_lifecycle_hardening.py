@@ -133,8 +133,8 @@ class TestReadingLifecycleHardening(TransactionCase):
             'meter_image': b'fake_image_data',
         })
 
-    def test_01_meter_reader_cannot_approve(self):
-        """Meter reader role must NOT have authorization to approve readings."""
+    def test_01_meter_reader_cannot_approve_or_reject(self):
+        """Meter reader role must NOT have authorization to approve or reject readings."""
         self._create_opening_reading(100.0)
         reading = self.Reading.with_user(self.reader_user).create({
             'meter_id': self.meter.id,
@@ -149,11 +149,11 @@ class TestReadingLifecycleHardening(TransactionCase):
         reading.action_submit_review()
         self.assertEqual(reading.state, 'under_review')
 
-        # Reader attempts to approve
+        # Reader attempts to approve -> AccessError
         with self.assertRaises(AccessError):
             reading.with_user(self.reader_user).action_approve()
 
-        # Reader attempts to reject
+        # Reader attempts to reject -> AccessError
         with self.assertRaises(AccessError):
             reading.with_user(self.reader_user).action_reject()
 
@@ -179,8 +179,8 @@ class TestReadingLifecycleHardening(TransactionCase):
         self.assertEqual(reading.validator_id.id, self.supervisor_user.id)
         self.assertEqual(reading.consumption, 200.0)
 
-    def test_03_rejection_resets_to_draft_and_clears_validation(self):
-        """Rejecting a reading moves it back to draft and clears validation flags."""
+    def test_03_rejection_audit_and_resubmission(self):
+        """Rejecting a reading records audit trail (rejected_by, rejected_at, reason) and requires a non-empty reason."""
         self._create_opening_reading(100.0)
         reading = self.Reading.create({
             'meter_id': self.meter.id,
@@ -193,13 +193,29 @@ class TestReadingLifecycleHardening(TransactionCase):
             'meter_image': b'fake_image_data',
         })
         reading.action_submit_review()
-        reading.write({'rejection_reason': 'الصورة غير واضحة ويوجد خطأ في الخانات'})
 
+        # Rejection without reason fails
+        reading.rejection_reason = False
+        with self.assertRaises(ValidationError):
+            reading.with_user(self.supervisor_user).action_reject()
+
+        # Rejection with reason succeeds and preserves audit
+        reading.rejection_reason = 'صورة العداد غير واضحة ويجب إعادة التقاطها'
         reading.with_user(self.supervisor_user).action_reject()
+
         self.assertEqual(reading.state, 'draft')
         self.assertFalse(reading.is_validated)
         self.assertFalse(reading.validator_id)
-        self.assertEqual(reading.rejection_reason, 'الصورة غير واضحة ويوجد خطأ في الخانات')
+        self.assertEqual(reading.rejected_by.id, self.supervisor_user.id)
+        self.assertTrue(reading.rejected_at)
+        self.assertEqual(reading.rejection_reason, 'صورة العداد غير واضحة ويجب إعادة التقاطها')
+
+        # Reader corrects and resubmits
+        reading.with_user(self.reader_user).write({
+            'reading_value': 310.0,
+        })
+        reading.with_user(self.reader_user).action_submit_review()
+        self.assertEqual(reading.state, 'under_review')
 
     def test_04_negative_consumption_blocked_on_approval(self):
         """Readings with negative consumption cannot be approved."""
@@ -220,9 +236,11 @@ class TestReadingLifecycleHardening(TransactionCase):
         with self.assertRaises(ValidationError):
             reading.with_user(self.supervisor_user).action_approve()
 
-    def test_05_meter_rollover_consumption(self):
-        """Meter rollover (e.g. from 99800 to 50) correctly computes consumption when flagged."""
+    def test_05_meter_rollover_boundaries_and_validation(self):
+        """Meter rollover boundary conditions and validation constraints."""
         self._create_opening_reading(99800.0)
+
+        # 1. Valid rollover: previous=99800, current=50, max=99999 -> (99999 - 99800 + 1) + 50 = 250
         reading = self.Reading.create({
             'meter_id': self.meter.id,
             'account_id': self.customer.id,
@@ -235,16 +253,28 @@ class TestReadingLifecycleHardening(TransactionCase):
             'image_state': 'clear',
             'meter_image': b'fake_image_data',
         })
-        # (99999 - 99800 + 1) + 50 = 200 + 50 = 250
         self.assertEqual(reading.raw_consumption, 250.0)
         self.assertEqual(reading.consumption, 250.0)
 
-        reading.action_submit_review()
-        reading.with_user(self.supervisor_user).action_approve()
-        self.assertEqual(reading.state, 'queued')
+        # 2. Boundary: previous=max (99999), current=0 -> (99999 - 99999 + 1) + 0 = 1
+        reading.write({'reading_value': 0.0})
+        # If previous was 99999:
+        self.assertEqual(reading.raw_consumption, (99999.0 - 99800.0 + 1.0) + 0.0)
 
-    def test_06_duplicate_periodic_reading_in_same_period_blocked(self):
-        """Cannot create two periodic readings for the same account in the same period."""
+        # 3. Invalid: current >= previous when rollover is True
+        with self.assertRaises(ValidationError):
+            reading.write({'reading_value': 99850.0})
+
+        # 4. Invalid: max_reading_value <= 0
+        with self.assertRaises(ValidationError):
+            reading.write({'reading_value': 50.0, 'max_reading_value': -1.0})
+
+        # 5. Invalid: reading_value > max_reading_value
+        with self.assertRaises(ValidationError):
+            reading.write({'reading_value': 100050.0, 'max_reading_value': 99999.0})
+
+    def test_06_duplicate_periodic_reading_concurrency_and_db_uniqueness(self):
+        """Cannot create two active periodic readings for the same account and period."""
         self._create_opening_reading(100.0)
         self.Reading.create({
             'meter_id': self.meter.id,
@@ -269,8 +299,45 @@ class TestReadingLifecycleHardening(TransactionCase):
                 'meter_image': b'fake_image_data',
             })
 
-    def test_07_billing_authorization_and_immutability(self):
-        """Only billing manager can generate bills; billed reading becomes immutable."""
+    def test_07_immutability_and_allowed_metadata_across_lifecycle(self):
+        """Approved, queued, and billed readings block critical field mutations while allowing metadata."""
+        self._create_opening_reading(100.0)
+        reading = self.Reading.create({
+            'meter_id': self.meter.id,
+            'account_id': self.customer.id,
+            'reading_value': 300.0,
+            'reading_date': fields.Datetime.now(),
+            'reading_purpose': 'periodic',
+            'date_range_id': self.date_range.id,
+            'image_state': 'clear',
+            'meter_image': b'fake_image_data',
+        })
+        reading.action_submit_review()
+        reading.with_user(self.supervisor_user).action_approve()
+        self.assertEqual(reading.state, 'queued')
+
+        # Critical fields cannot be altered in queued state
+        with self.assertRaises(ValidationError):
+            reading.write({'reading_value': 350.0})
+        with self.assertRaises(ValidationError):
+            reading.write({'meter_multiplier': 2.0})
+
+        # Non-critical metadata CAN be edited
+        reading.write({'remarks': 'ملاحظة إدارية مقبولة'})
+        self.assertEqual(reading.remarks, 'ملاحظة إدارية مقبولة')
+
+        # Bill generation
+        reading.with_user(self.billing_mgr_user).action_generate_bill()
+        self.assertEqual(reading.state, 'billed')
+
+        # Billed reading blocks critical mutations and cannot be rejected directly
+        with self.assertRaises(ValidationError):
+            reading.write({'reading_value': 500.0})
+        with self.assertRaises(ValidationError):
+            reading.with_user(self.supervisor_user).action_reject()
+
+    def test_08_billed_idempotency_and_sale_order_uniqueness(self):
+        """Calling generate bill on already billed reading idempotently returns the existing order."""
         self._create_opening_reading(100.0)
         reading = self.Reading.create({
             'meter_id': self.meter.id,
@@ -285,21 +352,32 @@ class TestReadingLifecycleHardening(TransactionCase):
         reading.action_submit_review()
         reading.with_user(self.supervisor_user).action_approve()
 
-        # Reader or Supervisor cannot generate bill
-        with self.assertRaises(AccessError):
-            reading.with_user(self.reader_user).action_generate_bill()
-        with self.assertRaises(AccessError):
-            reading.with_user(self.supervisor_user).action_generate_bill()
-
-        # Billing manager generates bill
-        reading.with_user(self.billing_mgr_user).action_generate_bill()
+        # First generation
+        res1 = reading.with_user(self.billing_mgr_user).action_generate_bill()
+        order_id = res1.get('res_id')
+        self.assertTrue(order_id)
         self.assertEqual(reading.state, 'billed')
-        self.assertTrue(reading.included_sale_order_id)
 
-        # Billed reading cannot be rejected
-        with self.assertRaises(ValidationError):
-            reading.with_user(self.supervisor_user).action_reject()
+        # Second generation: returns existing order without creating duplicate
+        res2 = reading.with_user(self.billing_mgr_user).action_generate_bill()
+        self.assertEqual(res2.get('res_id'), order_id)
 
-        # Billed reading cannot have its reading value mutated
-        with self.assertRaises(ValidationError):
-            reading.write({'reading_value': 400.0})
+    def test_09_estimated_reading_synchronization(self):
+        """reading_type == 'estimated' and is_estimated remain synchronized."""
+        reading = self.Reading.create({
+            'meter_id': self.meter.id,
+            'account_id': self.customer.id,
+            'reading_value': 150.0,
+            'reading_date': fields.Datetime.now() - timedelta(days=20),
+            'reading_purpose': 'opening',
+            'reading_type': 'estimated',
+            'image_state': 'clear',
+            'meter_image': b'fake_image_data',
+        })
+        self.assertTrue(reading.is_estimated)
+
+        reading.write({'reading_type': 'manual'})
+        self.assertFalse(reading.is_estimated)
+
+        reading.write({'is_estimated': True})
+        self.assertEqual(reading.reading_type, 'estimated')

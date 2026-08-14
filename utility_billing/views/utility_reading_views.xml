@@ -163,7 +163,9 @@
                         <field name="reviewer_id" readonly="1"/>
                         <field name="review_date" readonly="1"/>
                         <field name="review_notes" attrs="{'readonly': [('state', '!=', 'under_review')]}"/>
-                        <field name="rejection_reason" attrs="{'readonly': [('state', 'in', ('queued', 'billed'))]}"/>
+                        <field name="rejection_reason" attrs="{'readonly': [('state', 'in', ('queued', 'billed'))], 'invisible': [('rejection_reason', '=', False)]}"/>
+                        <field name="rejected_by" readonly="1" attrs="{'invisible': [('rejected_by', '=', False)]}"/>
+                        <field name="rejected_at" readonly="1" attrs="{'invisible': [('rejected_at', '=', False)]}"/>
                     </group>
                     <field name="remarks" nolabel="1" placeholder="ملاحظات إضافية..."
                            attrs="{'readonly': [('state', 'not in', ('draft', 'error'))]}"/>

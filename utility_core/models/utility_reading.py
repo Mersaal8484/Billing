@@ -81,6 +81,50 @@ class UtilityReading(models.Model):
     reviewer_id = fields.Many2one('res.users', 'المراجع',
         readonly=True, tracking=True)
     review_date = fields.Datetime('تاريخ المراجعة', readonly=True)
+    review_notes = fields.Text('ملاحظات المراجعة')
+    rejection_reason = fields.Text('سبب الرفض', tracking=True, copy=False)
+    rejected_by = fields.Many2one('res.users', 'المستخدم الرافض', readonly=True, copy=False)
+    rejected_at = fields.Datetime('تاريخ الرفض', readonly=True, copy=False)
+    is_validated = fields.Boolean('تم التحقق', default=False)
+    validator_id = fields.Many2one('res.users', 'المُتحقّق')
+    previous_reading = fields.Float('القراءة السابقة', compute='_compute_previous_reading', store=True)
+    previous_reading_date = fields.Datetime('تاريخ القراءة السابقة', compute='_compute_previous_reading', store=True)
+    consumption_difference = fields.Float('فرق الاستهلاك',
+        compute='_compute_consumption_analysis', store=True)
+    consumption_diff_percentage = fields.Float('نسبة الفرق %',
+        compute='_compute_consumption_analysis', store=True)
+    consumption_alert = fields.Selection([
+        ('normal', 'طبيعي'),
+        ('high', 'مرتفع'),
+        ('negative', 'سلبي'),
+        ('zero', 'صفر'),
+    ], compute='_compute_consumption_analysis', store=True, string='حالة الاستهلاك')
+    state = fields.Selection([
+        ('draft', 'مسودة'),
+        ('under_review', 'قيد المراجعة'),
+        ('approved', 'معتمدة'),
+        ('queued', 'في طابور الفوترة'),
+        ('billed', 'مفوترة'),
+        ('error', 'خطأ'),
+    ], string='الحالة', default='draft', tracking=True, index=True)
+    available_open_reading_period_ids = fields.Many2many('date.range', compute='_compute_available_open_reading_period_ids')
+    date_range_id = fields.Many2one('date.range', string="الفترة", index=True)
+    remarks = fields.Text('ملاحظات')
+    reading_source = fields.Char('مصدر القراءة')
+
+    @api.onchange('reading_type')
+    def _onchange_reading_type(self):
+        if self.reading_type == 'estimated':
+            self.is_estimated = True
+        elif self.reading_type in ('manual', 'ami'):
+            self.is_estimated = False
+
+    @api.onchange('is_estimated')
+    def _onchange_is_estimated(self):
+        if self.is_estimated and self.reading_type != 'estimated':
+            self.reading_type = 'estimated'
+        elif not self.is_estimated and self.reading_type == 'estimated':
+            self.reading_type = 'manual'
 
     @api.depends('image_asset_id', 'image_asset_id.state', 'attachment_id')
     def _compute_meter_image(self):
@@ -140,34 +184,6 @@ class UtilityReading(models.Model):
                 'image_asset_id': new_asset.id,
                 'image_state': 'pending' if r.image_state == 'none' else r.image_state,
             })
-    review_notes = fields.Text('ملاحظات المراجعة')
-    rejection_reason = fields.Text('سبب الرفض')
-    is_validated = fields.Boolean('تم التحقق', default=False)
-    validator_id = fields.Many2one('res.users', 'المُتحقّق')
-    previous_reading = fields.Float('القراءة السابقة', compute='_compute_previous_reading', store=True)
-    previous_reading_date = fields.Datetime('تاريخ القراءة السابقة', compute='_compute_previous_reading', store=True)
-    consumption_difference = fields.Float('فرق الاستهلاك',
-        compute='_compute_consumption_analysis', store=True)
-    consumption_diff_percentage = fields.Float('نسبة الفرق %',
-        compute='_compute_consumption_analysis', store=True)
-    consumption_alert = fields.Selection([
-        ('normal', 'طبيعي'),
-        ('high', 'مرتفع'),
-        ('negative', 'سلبي'),
-        ('zero', 'صفر'),
-    ], compute='_compute_consumption_analysis', store=True, string='حالة الاستهلاك')
-    state = fields.Selection([
-        ('draft', 'مسودة'),
-        ('under_review', 'قيد المراجعة'),
-        ('approved', 'معتمدة'),
-        ('queued', 'في طابور الفوترة'),
-        ('billed', 'مفوترة'),
-        ('error', 'خطأ'),
-    ], string='الحالة', default='draft', tracking=True, index=True)
-    available_open_reading_period_ids = fields.Many2many('date.range', compute='_compute_available_open_reading_period_ids')
-    date_range_id = fields.Many2one('date.range', string="الفترة", index=True)
-    remarks = fields.Text('ملاحظات')
-    reading_source = fields.Char('مصدر القراءة')
 
     def _requires_billing_review(self):
         """Return whether commercial validation rules apply to the reading.
@@ -323,21 +339,20 @@ class UtilityReading(models.Model):
                   'replacement_id', 'meter_image', 'image_asset_id', 'meter_image_secondary',
                   'image_state', 'rejection_reason', 'remarks', 'date_range_id',
                   'reading_source', 'active', 'is_validated', 'validator_id',
-                  'reviewer_id', 'review_date'},
+                  'reviewer_id', 'review_date', 'rejected_by', 'rejected_at'},
         'under_review': {'meter_image', 'image_asset_id', 'meter_image_secondary', 'image_state',
                           'is_rollover', 'max_reading_value',
-                          'review_notes', 'rejection_reason', 'state',
-                          'is_validated', 'validator_id', 'reviewer_id', 'review_date'},
-        'approved': {'rejection_reason', 'state', 'active', 'attachment_id', 'date_range_id',
-                     'billing_error', 'billing_anchor_id', 'included_sale_order_id'},
-        'queued': {'state', 'attachment_id', 'billing_error'},
+                          'review_notes', 'rejection_reason', 'rejected_by', 'rejected_at', 'state',
+                          'is_validated', 'validator_id', 'reviewer_id', 'review_date', 'remarks', 'active'},
+        'approved': {'rejection_reason', 'rejected_by', 'rejected_at', 'state', 'active', 'attachment_id', 'date_range_id',
+                     'billing_error', 'billing_anchor_id', 'included_sale_order_id', 'remarks'},
+        'queued': {'state', 'attachment_id', 'billing_error', 'remarks', 'active'},
         'billed': {'active', 'remarks', 'billing_error'},
         'error': {'reading_date', 'reading_value', 'meter_image', 'image_asset_id', 'meter_image_secondary',
                   'is_rollover', 'max_reading_value',
-                  'image_state', 'remarks', 'date_range_id', 'state', 'billing_error'},
+                  'image_state', 'remarks', 'date_range_id', 'state', 'billing_error', 'active'},
     }
 
-    # ── FIX-2: منع أكثر من قراءة قابلة للفوترة لنفس العداد والفترة ──────────
     @api.constrains('reading_purpose', 'date_range_id', 'replacement_id', 'account_id', 'reading_date')
     def _check_reading_purpose_rules(self):
         """Enforce period, replacement, and billing-anchor invariants."""
@@ -346,6 +361,27 @@ class UtilityReading(models.Model):
                 raise ValidationError(_('الفترة مسموحة للقراءة الدورية فقط.'))
             if reading.reading_purpose == 'replacement_closing' and not reading.replacement_id:
                 raise ValidationError(_('القراءة الختامية تتطلب عملية استبدال مرتبطة.'))
+
+    @api.constrains('is_rollover', 'max_reading_value', 'reading_value', 'previous_reading')
+    def _check_rollover_integrity(self):
+        for r in self:
+            if r.is_rollover:
+                if r.max_reading_value <= 0:
+                    raise ValidationError(_('الحد الأقصى للعداد وقت التدوير يجب أن يكون قيمة موجبة أكبر من الصفر.'))
+                if r.reading_value > r.max_reading_value:
+                    raise ValidationError(_(
+                        'قيمة القراءة الحالية (%.2f) لا يمكن أن تتجاوز الحد الأقصى للعداد (%.2f).'
+                    ) % (r.reading_value, r.max_reading_value))
+                if (r.previous_reading or 0.0) > r.max_reading_value:
+                    raise ValidationError(_(
+                        'قيمة القراءة السابقة (%.2f) تتجاوز الحد الأقصى للعداد (%.2f).'
+                    ) % (r.previous_reading or 0.0, r.max_reading_value))
+                if r.reading_value >= (r.previous_reading or 0.0):
+                    raise ValidationError(_(
+                        'لا يمكن تفعيل خيار تدوير العداد إذا كانت القراءة الحالية (%.2f) أكبر من أو تساوي القراءة السابقة (%.2f).'
+                    ) % (r.reading_value, r.previous_reading or 0.0))
+                if r.consumption <= 0:
+                    raise ValidationError(_('الاستهلاك المحسوب من تدوير العداد يجب أن يكون أكبر من الصفر.'))
 
     @api.depends('account_id.contract_template_id.recurring_rule_type', 'account_id.area_id.recurring_rule_type', 'account_id.region_id.recurring_rule_type')
     def _compute_available_open_reading_period_ids(self):
@@ -516,29 +552,50 @@ class UtilityReading(models.Model):
         for r in self:
             # FIX-1: منع رفض قراءة مفوترة — يجب إلغاء الفاتورة أولاً أو استخدام تسوية
             if r.state == 'billed':
-                raise ValidationError(
+                raise ValidationError(_(
                     'لا يمكن رفض قراءة مفوترة مباشرةً.\n'
                     'قم بإلغاء الفاتورة المرتبطة أولاً، '
                     'أو استخدم نموذج تسوية القراءات لتعديل القيمة.'
-                )
+                ))
             if r.state not in ('under_review', 'approved'):
-                raise ValidationError('يمكن رفض القراءات قيد المراجعة أو المعتمدة فقط!')
+                raise ValidationError(_('يمكن رفض القراءات قيد المراجعة أو المعتمدة فقط!'))
+
+            reason = r.rejection_reason or self.env.context.get('default_rejection_reason')
+            if not reason or not reason.strip():
+                raise ValidationError(_('يجب تحديد سبب رفض القراءة لتوجيه القارئ الميداني للتصحيح.'))
+
             r.write({
                 'state': 'draft',
-                'rejection_reason': r.rejection_reason or 'مرفوضة من قبل المراجع',
+                'rejection_reason': reason.strip(),
+                'rejected_by': self.env.user.id,
+                'rejected_at': fields.Datetime.now(),
                 'is_validated': False,
                 'validator_id': False,
                 'reviewer_id': False,
                 'review_date': False,
             })
+            r.message_post(
+                body=_('تم رفض القراءة ونقلها إلى مسودة بواسطة %s. سبب الرفض: %s') % (
+                    self.env.user.name,
+                    reason.strip()
+                )
+            )
 
     def action_approve_batch(self):
         readings = self.filtered(lambda r: r.state == 'under_review')
         readings.action_approve()
 
     def write(self, vals):
-        if not self.env.context.get('_bypass_reading_protection'):
-            bypass_fields = {'state', 'active', 'remarks', 'rejection_reason'}
+        # Sync reading_type and is_estimated
+        if vals.get('reading_type') == 'estimated':
+            vals['is_estimated'] = True
+        elif vals.get('is_estimated'):
+            vals['reading_type'] = 'estimated'
+        elif vals.get('reading_type') in ('manual', 'ami') and 'is_estimated' not in vals:
+            vals['is_estimated'] = False
+
+        if not (self.env.context.get('_bypass_reading_protection') or self.env.context.get('allow_billing_adjustment')):
+            bypass_fields = {'state', 'active', 'remarks', 'rejection_reason', 'rejected_by', 'rejected_at'}
             for reading in self:
                 editable = self.STATE_EDITABLE.get(reading.state, set())
                 changed = set(vals) - bypass_fields
@@ -565,6 +622,11 @@ class UtilityReading(models.Model):
             'replacement_closing': 'utility.reading.replacement_closing',
         }
         for vals in vals_list:
+            if vals.get('reading_type') == 'estimated':
+                vals['is_estimated'] = True
+            elif vals.get('is_estimated'):
+                vals['reading_type'] = 'estimated'
+
             purpose = vals.get('reading_purpose')
             if vals.get('is_initial_reading'):
                 purpose = 'opening'
