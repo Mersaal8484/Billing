@@ -322,11 +322,25 @@ class UtilityMigrationCustomer(models.Model):
 
         company_id = self.company_id.id or self.env.company.id
 
+        company = self.env['res.company'].browse(company_id)
         journal = (
-            self.env['res.company'].browse(company_id).opening_journal_id
-            or self.env['account.journal'].search([('code', '=', 'OPEN'), ('company_id', '=', company_id)], limit=1)
+            company.opening_journal_id
+            or self.env['account.journal'].search([('code', 'in', ('OPEN', 'UOPEN', 'MISC', 'GEN')), ('company_id', '=', company_id)], limit=1)
             or self.env['account.journal'].search([('type', '=', 'general'), ('company_id', '=', company_id)], limit=1)
+            or self.env['account.journal'].search([('code', 'in', ('OPEN', 'UOPEN', 'MISC', 'GEN')), ('company_id', 'in', (company_id, False))], limit=1)
+            or self.env['account.journal'].search([('type', '=', 'general'), ('company_id', 'in', (company_id, False))], limit=1)
+            or self.env.ref('utility_core.journal_opening_balance', raise_if_not_found=False)
         )
+        if not journal:
+            journal = self.env['account.journal'].sudo().create({
+                'name': 'يومية العمليات العامة والأرصدة الافتتاحية',
+                'code': 'UOPEN',
+                'type': 'general',
+                'company_id': company_id,
+            })
+            if not company.opening_journal_id:
+                company.sudo().write({'opening_journal_id': journal.id})
+
         account_receivable = partner.with_company(company_id).property_account_receivable_id
         if not account_receivable or account_receivable.company_id.id not in (company_id, False):
             account_receivable = (
@@ -367,8 +381,6 @@ class UtilityMigrationCustomer(models.Model):
                 'account_type': 'equity',
                 'company_id': company_id,
             })
-        if not journal:
-            raise UserError(_('لا توجد يومية عمليات (General Journal) معرّفة في النظام للشركة المحددة.'))
 
         line_ids = []
         if self.current_balance > 0:
