@@ -1,0 +1,4 @@
+interface:
+  display_name: "Utility Security Scope"
+  short_description: "Review role and geographic access scope"
+  default_prompt: "Use $utility-security-scope to review Utility ERP access and data scope."

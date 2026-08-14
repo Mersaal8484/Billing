@@ -1,0 +1,4 @@
+interface:
+  display_name: "Utility Release Gate"
+  short_description: "Run static, runtime, and UAT gate review"
+  default_prompt: "Use $utility-release-gate to review Utility ERP release readiness."

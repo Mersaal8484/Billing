@@ -10,6 +10,24 @@
 
 هذه الحزمة لا تستبدل المعمارية من الصفر؛ هي مزامنة V2.0 مع تنفيذ V1 الحالي، مع فصل واضح بين implementation evidence وTarget V2 scale decisions.
 
+## Start here
+
+هذا الملف هو نقطة الدخول الوحيدة للتوثيق داخل المستودع. ابدأ منه، ثم اقرأ فقط المسار المرتبط بالمهمة:
+
+| Task | Read before editing |
+|---|---|
+| Architecture / ownership | `CURRENT_V1_IMPLEMENTATION_BASELINE.md`, `ARCHITECTURE_DECISION_LOG.md`, `TECHNICAL_ARCHITECTURE.md` |
+| Security / roles / geographic scope | `CURRENT_V1_IMPLEMENTATION_BASELINE.md`, `ARCHITECTURE_DECISION_LOG.md`, `ORGANIZATIONAL_SECURITY_AND_DATA_ISOLATION.md`, `SECURITY_MATRIX.md`, `SRS.md`, `UAT_PLAN.md` |
+| Accounting / payment / write-off | `CURRENT_V1_IMPLEMENTATION_BASELINE.md`, `ARCHITECTURE_DECISION_LOG.md`, `ACCOUNTING_FLOWS.md`, `PAYMENT_ALLOCATION.md`, `ORGANIZATIONAL_SECURITY_AND_DATA_ISOLATION.md` |
+| Inventory / meter replacement | `CURRENT_V1_IMPLEMENTATION_BASELINE.md`, `INVENTORY_CUSTODY.md`, `METER_REPLACEMENT.md` |
+| Operations / UI/UX | `CURRENT_V1_IMPLEMENTATION_BASELINE.md`, `OPERATIONAL_UI_UX_ARCHITECTURE.md`, `SRS.md`, `UAT_PLAN.md` |
+| Billing / readings / batches | `CURRENT_V1_IMPLEMENTATION_BASELINE.md`, `ARCHITECTURE_DECISION_LOG.md`, `BILLING_ENGINE.md`, `READING_BATCH_ARCHITECTURE.md`, `ACCOUNTING_FLOWS.md` |
+| API / integrations | `CURRENT_V1_IMPLEMENTATION_BASELINE.md`, `API_SPECIFICATION.md`, `INTEGRATION_ARCHITECTURE.md`, `SECURITY_MATRIX.md`, `READING_BATCH_ARCHITECTURE.md`, `UAT_PLAN.md` |
+| Migration | `CURRENT_V1_IMPLEMENTATION_BASELINE.md`, `DATA_MIGRATION.md`, `TECHNICAL_ARCHITECTURE.md` |
+| Release / UAT | `CURRENT_V1_IMPLEMENTATION_BASELINE.md`, `ARCHITECTURE_DECISION_LOG.md`, `UAT_PLAN.md`, `GO_LIVE_RUNBOOK.md`, `RELEASE_TRACEABILITY_MATRIX.md` |
+
+Repo-local execution skills live under `../skills/` from the repository root. They enforce workflow and review discipline; this index and the source hierarchy above remain the business source of truth.
+
 ## Precedence
 
 عند التعارض، اتبع الترتيب التالي:

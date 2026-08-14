@@ -1,0 +1,4 @@
+interface:
+  display_name: "Utility API"
+  short_description: "Review API contracts and failure handling"
+  default_prompt: "Use $utility-api to review a Utility ERP API change."
