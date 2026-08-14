@@ -227,6 +227,19 @@ class UtilityContractTemplate(models.Model):
             if r.service_charge < 0:
                 raise ValidationError('رسم الخدمة الثابت لا يمكن أن يكون سالباً.')
 
+    @api.onchange('pricing_mode')
+    def _onchange_pricing_mode(self):
+        """تهيئة شريحة أولية تلقائياً عند اختيار نمط شرائح لتسهيل الإدخال ومنع رسائل الخطأ المفاجئة."""
+        if self.pricing_mode in ('tier', 'block') and not self.block_ids:
+            self.block_ids = [(0, 0, {
+                'sequence': 10,
+                'name': _('الشريحة الأولى (0-1,000)'),
+                'from_kwh': 0,
+                'to_kwh': 1000,
+                'price_per_kwh': self.price_per_kwh or 150.0,
+                'is_discount': False,
+            })]
+
     def _get_pricing_blocks(self):
         self.ensure_one()
         return self.block_ids.filtered(lambda b: not b.is_discount).sorted(
@@ -617,21 +630,20 @@ class UtilityContractTemplate(models.Model):
 
     def action_create_biweekly_blocks(self):
         """إنشاء الشرائح الثمانية النموذجية لقالب العقد الحالي"""
+        blocks_data = [
+            {'sequence': 10, 'name': 'الشريحة الأولى (0-2,999)', 'from_kwh': 0, 'to_kwh': 3000, 'price_per_kwh': 230, 'is_discount': False},
+            {'sequence': 20, 'name': 'الشريحة الثانية (3,000-9,999)', 'from_kwh': 3000, 'to_kwh': 10000, 'price_per_kwh': 220, 'is_discount': False},
+            {'sequence': 30, 'name': 'الشريحة الثالثة (10,000-19,999)', 'from_kwh': 10000, 'to_kwh': 20000, 'price_per_kwh': 200, 'is_discount': False},
+            {'sequence': 40, 'name': 'الشريحة الرابعة (20,000-29,999)', 'from_kwh': 20000, 'to_kwh': 30000, 'price_per_kwh': 190, 'is_discount': False},
+            {'sequence': 50, 'name': 'الشريحة الخامسة (30,000-99,999)', 'from_kwh': 30000, 'to_kwh': 100000, 'price_per_kwh': 185, 'is_discount': False},
+            {'sequence': 60, 'name': 'الشريحة السادسة (100,000-199,999)', 'from_kwh': 100000, 'to_kwh': 200000, 'price_per_kwh': 180, 'is_discount': False},
+            {'sequence': 70, 'name': 'الشريحة السابعة (200,000-299,999)', 'from_kwh': 200000, 'to_kwh': 300000, 'price_per_kwh': 175, 'is_discount': False},
+            {'sequence': 80, 'name': 'الشريحة الثامنة (300,000+)', 'from_kwh': 300000, 'to_kwh': 0, 'price_per_kwh': 170, 'is_discount': False},
+        ]
         for template in self:
-            template.block_ids.unlink()
-            blocks_data = [
-                {'sequence': 10, 'name': 'الشريحة الأولى (0-2,999)', 'from_kwh': 0, 'to_kwh': 3000, 'price_per_kwh': 230},
-                {'sequence': 20, 'name': 'الشريحة الثانية (3,000-9,999)', 'from_kwh': 3000, 'to_kwh': 10000, 'price_per_kwh': 220},
-                {'sequence': 30, 'name': 'الشريحة الثالثة (10,000-19,999)', 'from_kwh': 10000, 'to_kwh': 20000, 'price_per_kwh': 200},
-                {'sequence': 40, 'name': 'الشريحة الرابعة (20,000-29,999)', 'from_kwh': 20000, 'to_kwh': 30000, 'price_per_kwh': 190},
-                {'sequence': 50, 'name': 'الشريحة الخامسة (30,000-99,999)', 'from_kwh': 30000, 'to_kwh': 100000, 'price_per_kwh': 185},
-                {'sequence': 60, 'name': 'الشريحة السادسة (100,000-199,999)', 'from_kwh': 100000, 'to_kwh': 200000, 'price_per_kwh': 180},
-                {'sequence': 70, 'name': 'الشريحة السابعة (200,000-299,999)', 'from_kwh': 200000, 'to_kwh': 300000, 'price_per_kwh': 175},
-                {'sequence': 80, 'name': 'الشريحة الثامنة (300,000+)', 'from_kwh': 300000, 'to_kwh': 0, 'price_per_kwh': 170},
-            ]
-            for b in blocks_data:
-                b['template_id'] = template.id
-            self.env['utility.contract.template.block'].create(blocks_data)
+            template.write({
+                'block_ids': [(5, 0, 0)] + [(0, 0, b) for b in blocks_data]
+            })
         
         if len(self) == 1:
             return {
