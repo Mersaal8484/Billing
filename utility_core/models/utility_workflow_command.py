@@ -393,21 +393,30 @@ class UtilityWorkflowCommand(models.Model):
     def cron_dispatch_pending_commands(self, batch_size=20):
         """
         موزع أوامر البنية التحتية (Infrastructure Command Dispatcher):
-        يجلب الأوامر المؤهلة للتنفيذ ويمررها للمحول النشط LocalWorkflowAdapter دون احتواء أي منطق أعمال داخله.
+        يجلب الأوامر المؤهلة للتنفيذ عبر قفل تزامني جماعي (FOR UPDATE SKIP LOCKED)
+        ويمررها للمحول النشط عبر الـ Central Resolver دون احتواء أي منطق أعمال داخله.
         """
         now = fields.Datetime.now()
-        eligible_cmds = self.search([
-            ('backend', '=', 'local'),
-            '|',
-            ('state', '=', 'pending'),
-            ('&', ('state', '=', 'failed'), ('scheduled_at', '<=', now)),
-        ], order='priority desc, scheduled_at asc', limit=batch_size)
+        # Concurrency-hardened batch selection with FOR UPDATE SKIP LOCKED
+        query = """
+            SELECT id FROM utility_workflow_command
+            WHERE backend = 'local'
+              AND (
+                  state = 'pending'
+                  OR (state = 'failed' AND scheduled_at <= %s AND attempt_count < max_attempts)
+              )
+            ORDER BY priority DESC, scheduled_at ASC
+            LIMIT %s
+            FOR UPDATE SKIP LOCKED
+        """
+        self.env.cr.execute(query, (now, batch_size))
+        cmd_ids = [row[0] for row in self.env.cr.fetchall()]
 
-        if not eligible_cmds:
+        if not cmd_ids:
             return {'processed': 0, 'success': 0, 'failed': 0, 'skipped': 0}
 
-        from ..adapters.workflow.local import LocalWorkflowAdapter
-        adapter = LocalWorkflowAdapter(self.env)
+        eligible_cmds = self.browse(cmd_ids)
+        adapter = self.env['utility.workflow.service']._get_workflow_adapter()
 
         processed = 0
         success = 0
