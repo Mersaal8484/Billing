@@ -71,28 +71,28 @@ class IrCron(models.Model):
     )
 
     # -------------------------------------------------------------------------
-    # Health & Observability Metrics
+    # Health & Observability Metrics (Dynamically Computed from Execution History)
     # -------------------------------------------------------------------------
     last_started_at = fields.Datetime(
         string='وقت آخر بدء / Last Started At',
-        readonly=True,
+        compute='_compute_execution_metrics',
     )
     last_finished_at = fields.Datetime(
         string='وقت آخر انتهاء / Last Finished At',
-        readonly=True,
+        compute='_compute_execution_metrics',
     )
     last_success_at = fields.Datetime(
         string='وقت آخر نجاح / Last Success At',
-        readonly=True,
+        compute='_compute_execution_metrics',
     )
     last_failure_at = fields.Datetime(
         string='وقت آخر فشل / Last Failure At',
-        readonly=True,
+        compute='_compute_execution_metrics',
     )
     last_duration_seconds = fields.Float(
         string='مدة آخر تشغيل (ث) / Last Duration (s)',
         digits=(12, 3),
-        readonly=True,
+        compute='_compute_execution_metrics',
     )
     last_execution_status = fields.Selection([
         ('never', 'لم ينفذ قط / Never Run'),
@@ -101,16 +101,16 @@ class IrCron(models.Model):
         ('partial', 'ناجح جزئياً / Partial'),
         ('failed', 'فاشل / Failed'),
         ('skipped', 'تم التخطي / Skipped'),
-    ], string='حالة آخر تشغيل / Last Execution Status', default='never', readonly=True)
+    ], string='حالة آخر تشغيل / Last Execution Status', compute='_compute_execution_metrics', search='_search_last_execution_status')
 
     consecutive_failure_count = fields.Integer(
         string='الإخفاقات المتتالية / Consecutive Failures',
-        default=0,
-        readonly=True,
+        compute='_compute_execution_metrics',
+        search='_search_consecutive_failure_count',
     )
     last_error_message = fields.Text(
         string='آخر رسالة خطأ / Last Error Message',
-        readonly=True,
+        compute='_compute_execution_metrics',
     )
 
     health_status = fields.Selection([
@@ -121,15 +121,15 @@ class IrCron(models.Model):
         ('warning', 'تحذير (نجاح جزئي) / Warning'),
         ('delayed', 'متأخر عن الموعد / Delayed'),
         ('failed', 'فاشل / Failed'),
-    ], string='الحالة التشغيلية / Health Status', compute='_compute_health_status', store=True, index=True)
+    ], string='الحالة التشغيلية / Health Status', compute='_compute_health_status', search='_search_health_status')
 
     execution_count = fields.Integer(
         string='إجمالي مرات التنفيذ / Total Executions',
-        compute='_compute_execution_counts',
+        compute='_compute_execution_metrics',
     )
     failure_count = fields.Integer(
         string='مرات الفشل / Total Failures',
-        compute='_compute_execution_counts',
+        compute='_compute_execution_metrics',
     )
     target_model_name = fields.Char(
         string='النموذج المستهدف / Target Model',
@@ -152,7 +152,96 @@ class IrCron(models.Model):
                 if duplicates:
                     raise ValidationError(_('رمز المهمة المجدولة (%s) مستخدم بالفعل في مهمة أخرى!') % rec.utility_code)
 
-    @api.depends('active', 'last_execution_status', 'consecutive_failure_count', 'nextcall', 'interval_number', 'interval_type', 'last_started_at')
+    def _compute_execution_metrics(self):
+        Execution = self.env['utility.cron.execution']
+        for rec in self:
+            rec.last_started_at = False
+            rec.last_finished_at = False
+            rec.last_duration_seconds = 0.0
+            rec.last_execution_status = 'never'
+            rec.last_success_at = False
+            rec.last_failure_at = False
+            rec.last_error_message = False
+            rec.consecutive_failure_count = 0
+            rec.execution_count = 0
+            rec.failure_count = 0
+
+            logs = Execution.search([('cron_id', '=', rec.id)], order='started_at desc, id desc', limit=50)
+            if not logs:
+                continue
+
+            rec.execution_count = Execution.search_count([('cron_id', '=', rec.id)])
+            rec.failure_count = Execution.search_count([('cron_id', '=', rec.id), ('status', '=', 'failed')])
+
+            latest = logs[0]
+            rec.last_started_at = latest.started_at
+            rec.last_finished_at = latest.finished_at
+            rec.last_duration_seconds = latest.duration_seconds
+            rec.last_execution_status = latest.status
+
+            for log in logs:
+                if not rec.last_success_at and log.status in ('success', 'partial'):
+                    rec.last_success_at = log.finished_at or log.started_at
+                if not rec.last_failure_at and log.status == 'failed':
+                    rec.last_failure_at = log.finished_at or log.started_at
+                    rec.last_error_message = log.error_message
+                if rec.last_success_at and rec.last_failure_at:
+                    break
+
+            failures = 0
+            for log in logs:
+                if log.status == 'failed':
+                    failures += 1
+                elif log.status in ('success', 'partial'):
+                    break
+            rec.consecutive_failure_count = failures
+
+    def _search_last_execution_status(self, operator, value):
+        if operator not in ('=', '!=', 'in', 'not in'):
+            return []
+        target_values = [value] if isinstance(value, str) else list(value)
+        crons = self.search([('utility_managed', '=', True)])
+        matching_ids = []
+        for cron in crons:
+            status = cron.last_execution_status
+            if (operator in ('=', 'in') and status in target_values) or \
+               (operator in ('!=', 'not in') and status not in target_values):
+                matching_ids.append(cron.id)
+        return [('id', 'in', matching_ids)]
+
+    def _search_consecutive_failure_count(self, operator, value):
+        crons = self.search([('utility_managed', '=', True)])
+        matching_ids = []
+        for cron in crons:
+            count = cron.consecutive_failure_count
+            if operator == '=' and count == value:
+                matching_ids.append(cron.id)
+            elif operator == '!=' and count != value:
+                matching_ids.append(cron.id)
+            elif operator == '>' and count > value:
+                matching_ids.append(cron.id)
+            elif operator == '>=' and count >= value:
+                matching_ids.append(cron.id)
+            elif operator == '<' and count < value:
+                matching_ids.append(cron.id)
+            elif operator == '<=' and count <= value:
+                matching_ids.append(cron.id)
+        return [('id', 'in', matching_ids)]
+
+    def _search_health_status(self, operator, value):
+        if operator not in ('=', '!=', 'in', 'not in'):
+            return []
+        target_values = [value] if isinstance(value, str) else list(value)
+        crons = self.search([('utility_managed', '=', True)])
+        matching_ids = []
+        for cron in crons:
+            status = cron.health_status
+            if (operator in ('=', 'in') and status in target_values) or \
+               (operator in ('!=', 'not in') and status not in target_values):
+                matching_ids.append(cron.id)
+        return [('id', 'in', matching_ids)]
+
+    @api.depends('active', 'nextcall', 'interval_number', 'interval_type')
     def _compute_health_status(self):
         now = fields.Datetime.now()
         interval_map = {
@@ -190,12 +279,6 @@ class IrCron(models.Model):
 
             rec.health_status = 'healthy'
 
-    def _compute_execution_counts(self):
-        Execution = self.env['utility.cron.execution']
-        for rec in self:
-            rec.execution_count = Execution.search_count([('cron_id', '=', rec.id)])
-            rec.failure_count = Execution.search_count([('cron_id', '=', rec.id), ('status', '=', 'failed')])
-
     # -------------------------------------------------------------------------
     # PostgreSQL Advisory Lock Mechanisms
     # -------------------------------------------------------------------------
@@ -211,13 +294,9 @@ class IrCron(models.Model):
     def _acquire_advisory_lock(self):
         self.ensure_one()
         lock_key = self._get_advisory_lock_key()
-        try:
-            self.env.cr.execute("SELECT pg_try_advisory_lock(%s);", (lock_key,))
-            res = self.env.cr.fetchone()
-            return bool(res and res[0])
-        except Exception as exc:
-            _logger.warning("Error acquiring advisory lock %s for cron %s: %s", lock_key, self.utility_code, exc)
-            return False
+        self.env.cr.execute("SELECT pg_try_advisory_lock(%s);", (lock_key,))
+        res = self.env.cr.fetchone()
+        return bool(res and res[0])
 
     def _release_advisory_lock(self):
         self.ensure_one()
@@ -281,11 +360,6 @@ class IrCron(models.Model):
             'company_id': self.env.company.id,
         })
 
-        self.sudo().with_context(_cron_internal_write=True).write({
-            'last_started_at': started_at,
-            'last_execution_status': 'running',
-        })
-
         status = 'success'
         err_msg = False
         err_details = False
@@ -334,32 +408,30 @@ class IrCron(models.Model):
             duration = (finished_at - started_at).total_seconds()
 
             if caught_exception:
-                # Persist failure audit log and error counters in isolated DB cursor to survive outer rollback
+                # Persist failure audit log directly in isolated DB cursor to survive outer rollback
                 try:
                     with self.env.registry.cursor() as audit_cr:
                         audit_env = api.Environment(audit_cr, self.env.uid, self.env.context)
-                        audit_exec = audit_env['utility.cron.execution'].browse(exec_log.id)
-                        audit_cron = audit_env['ir.cron'].browse(self.id)
-                        if audit_exec.exists():
-                            audit_exec.with_context(_cron_internal_write=True).write({
-                                'finished_at': finished_at,
-                                'duration_seconds': duration,
-                                'status': 'failed',
-                                'error_message': err_msg,
-                                'error_details': err_details,
-                            })
-                        if audit_cron.exists():
-                            audit_cron.with_context(_cron_internal_write=True).write({
-                                'last_finished_at': finished_at,
-                                'last_duration_seconds': duration,
-                                'last_execution_status': 'failed',
-                                'last_failure_at': finished_at,
-                                'last_error_message': err_msg,
-                                'consecutive_failure_count': audit_cron.consecutive_failure_count + 1,
-                            })
+                        audit_env['utility.cron.execution'].with_context(_cron_internal_write=True).create({
+                            'cron_id': self.id,
+                            'utility_code': self.utility_code,
+                            'started_at': started_at,
+                            'finished_at': finished_at,
+                            'duration_seconds': duration,
+                            'trigger_type': trigger_type,
+                            'triggered_by': self.env.user.id,
+                            'status': 'failed',
+                            'processed_count': processed,
+                            'success_count': success_cnt,
+                            'failure_count': failed_cnt or 1,
+                            'skipped_count': skipped_cnt,
+                            'error_message': err_msg,
+                            'error_details': err_details,
+                            'company_id': self.env.company.id,
+                        })
                         audit_cr.commit()
                 except Exception as audit_err:
-                    _logger.error("Failed to write isolated audit log for cron [%s]: %s", self.utility_code or self.name, audit_err)
+                    _logger.error("Failed to write isolated failure audit log for cron [%s]: %s", self.utility_code or self.name, audit_err)
             else:
                 exec_log.with_context(_cron_internal_write=True).write({
                     'finished_at': finished_at,
@@ -372,18 +444,6 @@ class IrCron(models.Model):
                     'error_message': err_msg,
                     'error_details': err_details,
                 })
-
-                cron_vals = {
-                    'last_finished_at': finished_at,
-                    'last_duration_seconds': duration,
-                    'last_execution_status': status,
-                }
-                if status in ('success', 'partial'):
-                    cron_vals['last_success_at'] = finished_at
-                    cron_vals['consecutive_failure_count'] = 0
-                    cron_vals['last_error_message'] = False
-
-                self.sudo().with_context(_cron_internal_write=True).write(cron_vals)
 
             if has_lock:
                 self._release_advisory_lock()
@@ -514,10 +574,17 @@ class IrCron(models.Model):
         """تصفير عداد الإخفاقات المتتالية."""
         for rec in self:
             rec._verify_admin_security()
-            rec.sudo().with_context(_cron_internal_write=True).write({
-                'consecutive_failure_count': 0,
-                'last_execution_status': 'never' if rec.last_execution_status == 'failed' else rec.last_execution_status,
-                'last_error_message': False,
+            self.env['utility.cron.execution'].sudo().with_context(_cron_internal_write=True).create({
+                'cron_id': rec.id,
+                'utility_code': rec.utility_code,
+                'started_at': fields.Datetime.now(),
+                'finished_at': fields.Datetime.now(),
+                'duration_seconds': 0.0,
+                'trigger_type': 'manual',
+                'triggered_by': self.env.user.id,
+                'status': 'success',
+                'error_message': _('تم تصفير عداد الأخطاء يدوياً بواسطة مسؤول النظام'),
+                'company_id': self.env.company.id,
             })
 
     def action_view_executions(self):
