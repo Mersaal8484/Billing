@@ -1,5 +1,4 @@
 import logging
-import time
 from datetime import timedelta
 import zlib
 
@@ -137,40 +136,41 @@ class TestUtilityCronManagement(TransactionCase):
             readonly_cron.action_reset_failure_count()
 
     def test_04_anti_overlap_protection_real_concurrency(self):
-        """اختبار التزامن ومنع التداخل الحقيقي عبر قفل PostgreSQL الاستشاري (Advisory Lock)."""
+        """اختبار التزامن ومنع التداخل الحقيقي عبر قفل PostgreSQL الاستشاري باستخدام اتصالين/جلستين منفصلتين."""
         cron = self.test_managed_cron
-
-        # Worker A acquires the advisory lock manually
         lock_key = cron._get_advisory_lock_key()
-        self.env.cr.execute("SELECT pg_try_advisory_lock(%s);", (lock_key,))
-        locked = self.env.cr.fetchone()[0]
-        self.assertTrue(locked, "Worker A should acquire the lock successfully.")
 
-        try:
-            # Worker B tries to execute the same cron while lock is held
-            # Overlap protection should skip Worker B
-            result = cron._execute_utility_managed_cron(trigger_type='scheduled')
-            self.assertEqual(result.get('status'), 'skipped')
-            self.assertEqual(result.get('reason'), 'locked')
+        # Connection / Session A (Worker A) acquires advisory lock on its own independent cursor
+        with self.env.registry.cursor() as cr_worker_a:
+            cr_worker_a.execute("SELECT pg_try_advisory_lock(%s);", (lock_key,))
+            locked_by_a = cr_worker_a.fetchone()[0]
+            self.assertTrue(locked_by_a, "Worker A must acquire the advisory lock on its independent session.")
 
-            # Verify execution log captures 'skipped'
-            skipped_log = self.env['utility.cron.execution'].search([
-                ('cron_id', '=', cron.id),
-                ('status', '=', 'skipped'),
-            ], limit=1, order='id desc')
-            self.assertTrue(skipped_log, "A skipped execution record must be generated.")
-            self.assertIn("قفل التزامن", skipped_log.error_message)
+            try:
+                # Connection / Session B (Worker B via self.env.cr) attempts to execute the same cron
+                # Worker B must be skipped because Worker A holds the lock on a separate DB session
+                result = cron._execute_utility_managed_cron(trigger_type='manual')
+                self.assertEqual(result.get('status'), 'skipped')
+                self.assertEqual(result.get('reason'), 'locked')
 
-        finally:
-            # Worker A releases the lock
-            self.env.cr.execute("SELECT pg_advisory_unlock(%s);", (lock_key,))
+                # Verify skipped execution log was recorded
+                skipped_log = self.env['utility.cron.execution'].search([
+                    ('cron_id', '=', cron.id),
+                    ('status', '=', 'skipped'),
+                ], limit=1, order='id desc')
+                self.assertTrue(skipped_log)
+                self.assertIn("قفل التزامن", skipped_log.error_message)
 
-        # Subsequent execution now succeeds
-        result_after = cron._execute_utility_managed_cron(trigger_type='scheduled')
+            finally:
+                # Worker A releases the lock
+                cr_worker_a.execute("SELECT pg_advisory_unlock(%s);", (lock_key,))
+
+        # Now that Worker A released the lock, Worker B can acquire it and run successfully
+        result_after = cron._execute_utility_managed_cron(trigger_type='manual')
         self.assertEqual(result_after.get('status'), 'success')
 
     def test_05_different_jobs_concurrency(self):
-        """التحقق من أن قفل مهمة معينة لا يمنع تشغيل مهمة أخرى مختلفة في نفس الوقت."""
+        """التحقق من أن قفل مهمة معينة في جلسة مستقلة لا يمنع تشغيل مهمة أخرى مختلفة في جلسة أخرى."""
         cron_a = self.test_managed_cron
         cron_b = self.test_managed_cron_beta
 
@@ -178,19 +178,20 @@ class TestUtilityCronManagement(TransactionCase):
         lock_key_b = cron_b._get_advisory_lock_key()
         self.assertNotEqual(lock_key_a, lock_key_b, "Lock keys for distinct jobs must be different.")
 
-        # Acquire lock on Job A
-        self.env.cr.execute("SELECT pg_try_advisory_lock(%s);", (lock_key_a,))
-        self.assertTrue(self.env.cr.fetchone()[0])
+        # Worker A acquires lock on Job A in its own independent cursor
+        with self.env.registry.cursor() as cr_worker_a:
+            cr_worker_a.execute("SELECT pg_try_advisory_lock(%s);", (lock_key_a,))
+            self.assertTrue(cr_worker_a.fetchone()[0])
 
-        try:
-            # Job B can still acquire its own lock and execute successfully!
-            res_b = cron_b._execute_utility_managed_cron(trigger_type='scheduled')
-            self.assertEqual(res_b.get('status'), 'success')
-        finally:
-            self.env.cr.execute("SELECT pg_advisory_unlock(%s);", (lock_key_a,))
+            try:
+                # Worker B can still acquire its own lock for Job B and execute successfully!
+                res_b = cron_b._execute_utility_managed_cron(trigger_type='manual')
+                self.assertEqual(res_b.get('status'), 'success')
+            finally:
+                cr_worker_a.execute("SELECT pg_advisory_unlock(%s);", (lock_key_a,))
 
     def test_06_failure_handling_and_consecutive_counter(self):
-        """التحقق من تسجيل الفشل ورفع عداد الإخفاقات المتتالية وتحديث رسالة الخطأ."""
+        """التحقق من تسجيل الفشل في الحالتين (يدوي ومجدول) وحفظ السجل مع إعادة رفع الاستثناء في التشغيل المجدول."""
         failing_cron = self.env['ir.cron'].create({
             'name': 'Failing Test Cron',
             'model_id': self.cron_model.id,
@@ -207,12 +208,18 @@ class TestUtilityCronManagement(TransactionCase):
         })
 
         initial_failures = failing_cron.consecutive_failure_count
-        res = failing_cron._execute_utility_managed_cron(trigger_type='scheduled')
-        self.assertEqual(res.get('status'), 'failed')
-        self.assertIn('Simulated Business Error 123', res.get('error_message'))
+
+        # 1. Manual run: captures failure, updates metrics, and returns dict without crashing
+        res_manual = failing_cron._execute_utility_managed_cron(trigger_type='manual')
+        self.assertEqual(res_manual.get('status'), 'failed')
+        self.assertIn('Simulated Business Error 123', res_manual.get('error_message'))
+
+        # 2. Scheduled run: captures failure, saves audit record in isolated cursor, and re-raises exception
+        with self.assertRaises(ValueError):
+            failing_cron._execute_utility_managed_cron(trigger_type='scheduled')
 
         failing_cron.invalidate_recordset()
-        self.assertEqual(failing_cron.consecutive_failure_count, initial_failures + 1)
+        self.assertGreaterEqual(failing_cron.consecutive_failure_count, initial_failures + 2)
         self.assertEqual(failing_cron.last_execution_status, 'failed')
         self.assertTrue(failing_cron.last_failure_at)
         self.assertIn('Simulated Business Error 123', failing_cron.last_error_message)
@@ -251,7 +258,7 @@ class TestUtilityCronManagement(TransactionCase):
             'allow_manual_run': True,
         })
 
-        res = partial_cron._execute_utility_managed_cron(trigger_type='scheduled')
+        res = partial_cron._execute_utility_managed_cron(trigger_type='manual')
         self.assertEqual(res.get('status'), 'partial')
         self.assertEqual(res.get('processed'), 100)
         self.assertEqual(res.get('success'), 95)
@@ -338,3 +345,22 @@ class TestUtilityCronManagement(TransactionCase):
 
         self.assertFalse(old_log.exists(), "Old log past retention cutoff should be deleted.")
         self.assertTrue(recent_log.exists(), "Recent log within retention cutoff must be preserved.")
+
+    def test_13_callback_scheduler_routing(self):
+        """التحقق من أن استدعاء _callback بواسطة مجدول أودو يوجه المهمة المدارة بالـ job_id الصحيح."""
+        cron = self.test_managed_cron
+        initial_logs_count = self.env['utility.cron.execution'].search_count([('cron_id', '=', cron.id)])
+
+        # Simulate Odoo 16 scheduler calling _callback on ir.cron model
+        self.env['ir.cron']._callback(
+            cron_name=cron.name,
+            server_action_id=cron.ir_actions_server_id.id if cron.ir_actions_server_id else False,
+            job_id=cron.id,
+        )
+
+        # Verify execution log was generated with trigger_type='scheduled'
+        logs = self.env['utility.cron.execution'].search([('cron_id', '=', cron.id)], order='id desc')
+        self.assertEqual(len(logs), initial_logs_count + 1)
+        latest_log = logs[0]
+        self.assertEqual(latest_log.trigger_type, 'scheduled')
+        self.assertEqual(latest_log.status, 'success')

@@ -70,8 +70,11 @@ class IrCron(models.Model):
         help='الحد الأقصى لعدد السجلات المعالجة في الدورة الواحدة',
     )
 
+    # -------------------------------------------------------------------------
+    # Health & Observability Metrics
+    # -------------------------------------------------------------------------
     last_started_at = fields.Datetime(
-        string='وقت آخر تشغيل / Last Started At',
+        string='وقت آخر بدء / Last Started At',
         readonly=True,
     )
     last_finished_at = fields.Datetime(
@@ -198,15 +201,23 @@ class IrCron(models.Model):
     # -------------------------------------------------------------------------
     def _get_advisory_lock_key(self):
         self.ensure_one()
-        ident = f"utility_cron_{self.utility_code or self.id}"
-        return zlib.crc32(ident.encode('utf-8'))
+        key_str = f"utility_cron_{self.utility_code or self.id}"
+        # 32-bit signed integer for PostgreSQL advisory lock
+        crc = zlib.crc32(key_str.encode('utf-8'))
+        if crc > 0x7FFFFFFF:
+            crc -= 0x100000000
+        return crc
 
     def _acquire_advisory_lock(self):
         self.ensure_one()
         lock_key = self._get_advisory_lock_key()
-        self.env.cr.execute("SELECT pg_try_advisory_lock(%s);", (lock_key,))
-        row = self.env.cr.fetchone()
-        return bool(row and row[0])
+        try:
+            self.env.cr.execute("SELECT pg_try_advisory_lock(%s);", (lock_key,))
+            res = self.env.cr.fetchone()
+            return bool(res and res[0])
+        except Exception as exc:
+            _logger.warning("Error acquiring advisory lock %s for cron %s: %s", lock_key, self.utility_code, exc)
+            return False
 
     def _release_advisory_lock(self):
         self.ensure_one()
@@ -283,6 +294,7 @@ class IrCron(models.Model):
         failed_cnt = 0
         skipped_cnt = 0
         duration = 0.0
+        caught_exception = None
 
         try:
             _logger.info("Utility Cron [%s] started (trigger=%s)", self.utility_code or self.name, trigger_type)
@@ -311,6 +323,7 @@ class IrCron(models.Model):
             )
 
         except Exception as exc:
+            caught_exception = exc
             status = 'failed'
             err_msg = str(exc)
             err_details = traceback.format_exc()
@@ -320,39 +333,69 @@ class IrCron(models.Model):
             finished_at = fields.Datetime.now()
             duration = (finished_at - started_at).total_seconds()
 
-            exec_log.with_context(_cron_internal_write=True).write({
-                'finished_at': finished_at,
-                'duration_seconds': duration,
-                'status': status,
-                'processed_count': processed,
-                'success_count': success_cnt,
-                'failure_count': failed_cnt,
-                'skipped_count': skipped_cnt,
-                'error_message': err_msg,
-                'error_details': err_details,
-            })
+            if caught_exception:
+                # Persist failure audit log and error counters in isolated DB cursor to survive outer rollback
+                try:
+                    with self.env.registry.cursor() as audit_cr:
+                        audit_env = api.Environment(audit_cr, self.env.uid, self.env.context)
+                        audit_exec = audit_env['utility.cron.execution'].browse(exec_log.id)
+                        audit_cron = audit_env['ir.cron'].browse(self.id)
+                        if audit_exec.exists():
+                            audit_exec.with_context(_cron_internal_write=True).write({
+                                'finished_at': finished_at,
+                                'duration_seconds': duration,
+                                'status': 'failed',
+                                'error_message': err_msg,
+                                'error_details': err_details,
+                            })
+                        if audit_cron.exists():
+                            audit_cron.with_context(_cron_internal_write=True).write({
+                                'last_finished_at': finished_at,
+                                'last_duration_seconds': duration,
+                                'last_execution_status': 'failed',
+                                'last_failure_at': finished_at,
+                                'last_error_message': err_msg,
+                                'consecutive_failure_count': audit_cron.consecutive_failure_count + 1,
+                            })
+                        audit_cr.commit()
+                except Exception as audit_err:
+                    _logger.error("Failed to write isolated audit log for cron [%s]: %s", self.utility_code or self.name, audit_err)
+            else:
+                exec_log.with_context(_cron_internal_write=True).write({
+                    'finished_at': finished_at,
+                    'duration_seconds': duration,
+                    'status': status,
+                    'processed_count': processed,
+                    'success_count': success_cnt,
+                    'failure_count': failed_cnt,
+                    'skipped_count': skipped_cnt,
+                    'error_message': err_msg,
+                    'error_details': err_details,
+                })
 
-            cron_vals = {
-                'last_finished_at': finished_at,
-                'last_duration_seconds': duration,
-                'last_execution_status': status,
-            }
-            if status in ('success', 'partial'):
-                cron_vals['last_success_at'] = finished_at
-                cron_vals['consecutive_failure_count'] = 0
-                cron_vals['last_error_message'] = False
-            elif status == 'failed':
-                cron_vals['last_failure_at'] = finished_at
-                cron_vals['consecutive_failure_count'] = self.consecutive_failure_count + 1
-                cron_vals['last_error_message'] = err_msg
+                cron_vals = {
+                    'last_finished_at': finished_at,
+                    'last_duration_seconds': duration,
+                    'last_execution_status': status,
+                }
+                if status in ('success', 'partial'):
+                    cron_vals['last_success_at'] = finished_at
+                    cron_vals['consecutive_failure_count'] = 0
+                    cron_vals['last_error_message'] = False
 
-            self.sudo().with_context(_cron_internal_write=True).write(cron_vals)
+                self.sudo().with_context(_cron_internal_write=True).write(cron_vals)
 
             if has_lock:
                 self._release_advisory_lock()
 
             if status == 'failed':
                 self._check_failure_alert()
+
+        # Preserve Odoo native scheduler failure semantics:
+        # Re-raise for scheduled runs so Odoo's scheduler handles rollback & callback exception handler.
+        # For manual runs (Run Now), return the result dictionary for UI toast notifications.
+        if caught_exception and trigger_type == 'scheduled':
+            raise caught_exception
 
         return {
             'status': status,
@@ -374,10 +417,12 @@ class IrCron(models.Model):
                 self.utility_code or self.name, self.consecutive_failure_count, self.last_error_message
             )
 
+    @api.model
     def _callback(self, cron_name, server_action_id, job_id):
         """Intercept Odoo scheduler execution for Utility-managed scheduled actions."""
-        if self.utility_managed:
-            return self._execute_utility_managed_cron(trigger_type='scheduled')
+        cron = self.browse(job_id)
+        if cron.exists() and cron.utility_managed:
+            return cron._execute_utility_managed_cron(trigger_type='scheduled')
         return super()._callback(cron_name, server_action_id, job_id)
 
     def method_direct_trigger(self):
