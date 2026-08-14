@@ -11,6 +11,13 @@
             <field name="numbercall">-1</field>
             <field name="doall" eval="False"/>
             <field name="active" eval="True"/>
+            <field name="utility_managed" eval="True"/>
+            <field name="utility_code">zero_consumption_detector</field>
+            <field name="utility_category">operations</field>
+            <field name="utility_description">الكشف الدوري عن العدادات ذات الاستهلاك الصفري المتكرر لآخر 3 دورات وإنشاء أوامر فحص ميدانية</field>
+            <field name="prevent_overlap" eval="True"/>
+            <field name="allow_manual_run" eval="True"/>
+            <field name="batch_size">500</field>
         </record>
     </data>
 </odoo>

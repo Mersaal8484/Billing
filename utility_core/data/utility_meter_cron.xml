@@ -5,62 +5,19 @@
             <field name="name">العدادات: فحص العدادات الخاملة والمعطلة</field>
             <field name="model_id" ref="model_utility_meter"/>
             <field name="state">code</field>
-            <field name="code">
-# تحديث عدد الأشهر الخاملة لكل عداد ثم إنشاء أوامر الفحص للعدادات الخاملة 3 أشهر+
-env.cr.execute("""
-    UPDATE utility_meter
-    SET idle_months = sub.cnt
-    FROM (
-        SELECT meter_id, COUNT(id) AS cnt
-        FROM utility_reading
-        WHERE reading_date >= current_date - interval '3 months'
-          AND consumption = 0
-          AND state IN ('approved', 'billed')
-        GROUP BY meter_id
-    ) sub
-    WHERE utility_meter.id = sub.meter_id
-      AND utility_meter.active = true;
-""")
-# تصفير العدادات التي لم يُسجَّل لها قراءات صفرية
-env.cr.execute("""
-    UPDATE utility_meter
-    SET idle_months = 0
-    WHERE active = true
-      AND id NOT IN (
-          SELECT meter_id
-          FROM utility_reading
-          WHERE reading_date >= current_date - interval '3 months'
-            AND consumption = 0
-            AND state IN ('approved', 'billed')
-      );
-""")
-# إنشاء أوامر فحص ميدانية آلي للعدادات الخاملة 3 أشهر أو أكثر
-meters = env['utility.meter'].search([
-    ('active', '=', True),
-    ('idle_months', '>=', 3),
-    ('customer_id', '!=', False),
-    ('customer_id.state', '=', 'active'),
-])
-for meter in meters:
-    existing = env['utility.service.order'].search([
-        ('meter_id', '=', meter.id),
-        ('service_type', 'in', ('inspection', 'meter_test')),
-        ('state', 'in', ('draft', 'approved', 'scheduled', 'in_progress')),
-    ], limit=1)
-    if not existing:
-        env['utility.service.order'].create({
-            'service_type': 'inspection',
-            'priority': 'high',
-            'customer_id': meter.customer_id.id,
-            'meter_id': meter.id,
-            'description': 'تفتيش آلي: العداد خامل منذ %d أشهر. يرجى الفحص الميداني.' % meter.idle_months,
-            'state': 'draft',
-        })
-            </field>
+            <field name="code">model.cron_check_idle_meters()</field>
             <field name="interval_number">1</field>
             <field name="interval_type">months</field>
             <field name="numbercall">-1</field>
             <field name="doall" eval="False"/>
+            <field name="active" eval="True"/>
+            <field name="utility_managed" eval="True"/>
+            <field name="utility_code">idle_meter_detector</field>
+            <field name="utility_category">operations</field>
+            <field name="utility_description">تحديث عدد الأشهر الخاملة لكل عداد كهرباء وإنشاء أوامر فحص وتفتيش ميداني آلي للعدادات الخاملة 3 أشهر أو أكثر</field>
+            <field name="prevent_overlap" eval="True"/>
+            <field name="allow_manual_run" eval="True"/>
+            <field name="batch_size">500</field>
         </record>
     </data>
 </odoo>

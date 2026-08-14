@@ -17,6 +17,7 @@ Adds lot/serial tracking and product association for physical meters.
         'security/ir.model.access.csv',
         'data/utility_inventory_data.xml',
         'data/utility_inventory_product_data.xml',
+        'data/utility_cron.xml',
         'views/utility_meter_inventory_views.xml',
         'views/utility_customer_wizard_inventory_views.xml',
     ],

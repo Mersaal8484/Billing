@@ -137,3 +137,13 @@ access_utility_period_adjust_wizard_billing,utility.period.adjust.wizard.billing
 access_utility_customer_lifecycle_wizard_all,utility.customer.lifecycle.wizard.all,model_utility_customer_lifecycle_wizard,base.group_user,1,1,1,1
 access_utility_upgrade_validation_wizard_admin,utility.upgrade.validation.wizard.admin,model_utility_upgrade_validation_wizard,group_utility_admin,1,1,1,1
 access_utility_upgrade_validation_line_admin,utility.upgrade.validation.line.admin,model_utility_upgrade_validation_line,group_utility_admin,1,1,1,1
+access_utility_cron_execution_admin,utility.cron.execution.admin,model_utility_cron_execution,group_utility_admin,1,1,1,1
+access_utility_cron_execution_supervisor,utility.cron.execution.supervisor,model_utility_cron_execution,group_utility_supervisor,1,0,0,0
+access_utility_cron_execution_billing,utility.cron.execution.billing,model_utility_cron_execution,group_utility_billing_manager,1,0,0,0
+access_utility_cron_execution_revenue,utility.cron.execution.revenue,model_utility_cron_execution,group_utility_revenue_manager,1,0,0,0
+access_utility_cron_execution_readonly,utility.cron.execution.readonly,model_utility_cron_execution,group_utility_readonly,1,0,0,0
+access_ir_cron_utility_supervisor,ir.cron.utility.supervisor,base.model_ir_cron,group_utility_supervisor,1,0,0,0
+access_ir_cron_utility_billing,ir.cron.utility.billing,base.model_ir_cron,group_utility_billing_manager,1,0,0,0
+access_ir_cron_utility_revenue,ir.cron.utility.revenue,base.model_ir_cron,group_utility_revenue_manager,1,0,0,0
+access_ir_cron_utility_admin,ir.cron.utility.admin,base.model_ir_cron,group_utility_admin,1,1,0,0
+

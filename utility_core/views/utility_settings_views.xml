@@ -104,46 +104,6 @@
                         </div>
                     </div>
 
-
-                    <h2>المدفوعات التلقائية ورصيد الطوارئ</h2>
-                    <div class="row mt16 o_settings_container" id="utility_autopay_emergency">
-                        <div class="col-12 col-lg-6 o_setting_box">
-                            <div class="o_setting_right_pane">
-                                <label for="max_auto_pay_retries"/>
-                                <div class="text-muted">
-                                    الحد الأقصى لعدد محاولات إعادة الدفع التلقائي
-                                </div>
-                                <div class="content-group">
-                                    <div class="mt16">
-                                        <field name="max_auto_pay_retries" class="o_light_label"/>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12 col-lg-6 o_setting_box">
-                            <div class="o_setting_right_pane">
-                                <div class="text-muted">
-                                    قيمة رصيد الطوارئ الافتراضية
-                                </div>
-                                <div class="content-group">
-                                    <div class="mt16">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12 col-lg-6 o_setting_box">
-                            <div class="o_setting_right_pane">
-                                <div class="text-muted">
-                                    فترة السماح قبل استرداد رصيد الطوارئ
-                                </div>
-                                <div class="content-group">
-                                    <div class="mt16">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
                     <h2>إشعارات SMS</h2>
                     <div class="row mt16 o_settings_container" id="utility_sms">
                         <div class="col-12 col-lg-6 o_setting_box">

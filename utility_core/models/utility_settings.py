@@ -87,12 +87,6 @@ class ResConfigSettings(models.TransientModel):
         config_parameter='utility.consumption_variation_alert_percentage',
         default=50.0)
 
-    # --- Auto Pay ---
-    max_auto_pay_retries = fields.Integer(
-        string='الحد الأقصى لإعادة محاولة الدفع',
-        config_parameter='utility.max_auto_pay_retries',
-        default=3)
-
     # --- SMS / Notifications ---
     stock_move_sms_validation = fields.Boolean(
         string='تأكيد رسائل SMS لحركات المخزون',

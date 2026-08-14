@@ -10,18 +10,13 @@
         <field name="interval_type">hours</field>
         <field name="numbercall">-1</field>
         <field name="active">True</field>
-    </record>
-
-    <record id="ir_cron_check_low_credit" model="ir.cron">
-        <field name="name">ERP الكهرباء: مراقبة وتنبيه الأرصدة المنخفضة</field>
-        <field name="model_id" ref="utility_core.model_utility_customer"/>
-        <field name="state">code</field>
-        <field name="code">model.cron_check_low_credit()</field>
-        <field name="user_id" ref="base.user_root"/>
-        <field name="interval_number">30</field>
-        <field name="interval_type">minutes</field>
-        <field name="numbercall">-1</field>
-        <field name="active">False</field>
+        <field name="utility_managed" eval="True"/>
+        <field name="utility_code">contract_recurring_invoice_generator</field>
+        <field name="utility_category">billing</field>
+        <field name="utility_description">توليد الفواتير المتكررة للعقود والقوالب التعاقدية للمشتركين</field>
+        <field name="prevent_overlap" eval="True"/>
+        <field name="allow_manual_run" eval="True"/>
+        <field name="batch_size">200</field>
     </record>
 
     <record id="ir_cron_update_overdue_orders" model="ir.cron">
@@ -34,18 +29,13 @@
         <field name="interval_type">days</field>
         <field name="numbercall">-1</field>
         <field name="active">True</field>
-    </record>
-
-    <record id="ir_cron_retry_auto_pay" model="ir.cron">
-        <field name="name">ERP الكهرباء: إعادة محاولة الدفع التلقائي للمشتركين</field>
-        <field name="model_id" ref="utility_core.model_utility_customer"/>
-        <field name="state">code</field>
-        <field name="code">model.cron_retry_auto_pay()</field>
-        <field name="user_id" ref="base.user_root"/>
-        <field name="interval_number">30</field>
-        <field name="interval_type">minutes</field>
-        <field name="numbercall">-1</field>
-        <field name="active">False</field>
+        <field name="utility_managed" eval="True"/>
+        <field name="utility_code">overdue_bill_updater</field>
+        <field name="utility_category">billing</field>
+        <field name="utility_description">تحديث حالة فواتير الكهرباء المتأخرة عن موعد الاستحقاق إلى overdue</field>
+        <field name="prevent_overlap" eval="True"/>
+        <field name="allow_manual_run" eval="True"/>
+        <field name="batch_size">1000</field>
     </record>
 
     <record id="ir_cron_batch_reading_invoicing" model="ir.cron">
@@ -58,18 +48,13 @@
         <field name="interval_type">minutes</field>
         <field name="numbercall">-1</field>
         <field name="active">True</field>
-    </record>
-
-    <record id="ir_cron_calculate_late_penalties" model="ir.cron">
-        <field name="name">ERP الكهرباء: احتساب غرامات التأخير للفواتير المستحقة</field>
-        <field name="model_id" ref="utility_billing.model_utility_penalty"/>
-        <field name="state">code</field>
-        <field name="code">model.cron_calculate_late_penalties()</field>
-        <field name="user_id" ref="base.user_root"/>
-        <field name="interval_number">1</field>
-        <field name="interval_type">days</field>
-        <field name="numbercall">-1</field>
-        <field name="active">True</field>
+        <field name="utility_managed" eval="True"/>
+        <field name="utility_code">approved_reading_queuer</field>
+        <field name="utility_category">reading</field>
+        <field name="utility_description">ترحيل القراءات المعتمدة إلى طابور الفوترة الجماعية</field>
+        <field name="prevent_overlap" eval="True"/>
+        <field name="allow_manual_run" eval="True"/>
+        <field name="batch_size">1000</field>
     </record>
 
     <record id="ir_cron_send_due_bill_reminders" model="ir.cron">
@@ -82,6 +67,13 @@
         <field name="interval_type">days</field>
         <field name="numbercall">-1</field>
         <field name="active">True</field>
+        <field name="utility_managed" eval="True"/>
+        <field name="utility_code">due_bill_reminder_sender</field>
+        <field name="utility_category">notification</field>
+        <field name="utility_description">إرسال تنبيهات وتذكيرات السداد للمشتركين قبل حلول موعد الفصل</field>
+        <field name="prevent_overlap" eval="True"/>
+        <field name="allow_manual_run" eval="True"/>
+        <field name="batch_size">500</field>
     </record>
 
     <record id="ir_cron_create_disconnection_orders" model="ir.cron">
@@ -94,6 +86,13 @@
         <field name="interval_type">days</field>
         <field name="numbercall">-1</field>
         <field name="active">True</field>
+        <field name="utility_managed" eval="True"/>
+        <field name="utility_code">disconnection_order_creator</field>
+        <field name="utility_category">operations</field>
+        <field name="utility_description">إنشاء أوامر فصل الخدمة آلياً للفواتير المتأخرة التي تجاوزت فترة السماح</field>
+        <field name="prevent_overlap" eval="True"/>
+        <field name="allow_manual_run" eval="True"/>
+        <field name="batch_size">200</field>
     </record>
 
     <record id="ir_cron_dispatch_sms_notifications" model="ir.cron">
@@ -106,5 +105,12 @@
         <field name="interval_type">minutes</field>
         <field name="numbercall">-1</field>
         <field name="active">True</field>
+        <field name="utility_managed" eval="True"/>
+        <field name="utility_code">sms_notification_dispatcher</field>
+        <field name="utility_category">notification</field>
+        <field name="utility_description">إرسال رسائل الـ SMS المجدولة في طابور الإشعارات</field>
+        <field name="prevent_overlap" eval="True"/>
+        <field name="allow_manual_run" eval="True"/>
+        <field name="batch_size">200</field>
     </record>
 </odoo>

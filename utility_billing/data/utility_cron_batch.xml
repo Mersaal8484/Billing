@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <!-- ============= Cron: Batch Generate Bills ============= -->
     <record id="ir_cron_generate_batch_bills" model="ir.cron">
@@ -11,6 +11,13 @@
         <field name="numbercall">-1</field>
         <field name="active" eval="True"/>
         <field name="doall" eval="False"/>
+        <field name="utility_managed" eval="True"/>
+        <field name="utility_code">batch_reading_bill_generator</field>
+        <field name="utility_category">billing</field>
+        <field name="utility_description">توليد الفواتير للقراءات المجدولة في طابور الفوترة (queued readings) بنظام الدفعات الآمنة</field>
+        <field name="prevent_overlap" eval="True"/>
+        <field name="allow_manual_run" eval="True"/>
+        <field name="batch_size">500</field>
     </record>
 
     <!-- ============= Cron: Process Uploaded Readings ============= -->
@@ -24,6 +31,13 @@
         <field name="numbercall">-1</field>
         <field name="active" eval="True"/>
         <field name="doall" eval="False"/>
+        <field name="utility_managed" eval="True"/>
+        <field name="utility_code">reading_staging_processor</field>
+        <field name="utility_category">reading</field>
+        <field name="utility_description">معالجة وتدقيق دفعات القراءات المرفوعة من الأجهزة الميدانية أو ملفات الإكسل</field>
+        <field name="prevent_overlap" eval="True"/>
+        <field name="allow_manual_run" eval="True"/>
+        <field name="batch_size">5</field>
     </record>
 
     <!-- ============= Cron: Cleanup Old Batch Files ============= -->
@@ -37,6 +51,13 @@
         <field name="numbercall">-1</field>
         <field name="active" eval="True"/>
         <field name="doall" eval="False"/>
+        <field name="utility_managed" eval="True"/>
+        <field name="utility_code">batch_file_cleanup</field>
+        <field name="utility_category">maintenance</field>
+        <field name="utility_description">حذف ملفات ومرفقات دفعات القراءات المكتملة بعد انتهاء فترة الاحتفاظ المقررة</field>
+        <field name="prevent_overlap" eval="True"/>
+        <field name="allow_manual_run" eval="True"/>
+        <field name="batch_size">100</field>
     </record>
 
     <!-- ============= Sequence: Reading Batch ============= -->

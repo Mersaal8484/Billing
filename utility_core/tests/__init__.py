@@ -16,3 +16,5 @@ from . import test_organizational_scope_security
 from . import test_wave17_mutation_integrity
 from . import test_wave17_multi_role
 from . import test_multi_role_security_hardening
+from . import test_utility_cron_management
+

@@ -566,6 +566,61 @@ class UtilityMeter(models.Model):
                         )
         return super().write(vals)
 
+    @api.model
+    def cron_check_idle_meters(self, batch_limit=500):
+        """تحديث عدد الأشهر الخاملة لكل عداد ثم إنشاء أوامر الفحص للعدادات الخاملة 3 أشهر فما فوق."""
+        self.env.cr.execute("""
+            UPDATE utility_meter
+            SET idle_months = sub.cnt
+            FROM (
+                SELECT meter_id, COUNT(id) AS cnt
+                FROM utility_reading
+                WHERE reading_date >= current_date - interval '3 months'
+                  AND consumption = 0
+                  AND state IN ('approved', 'billed')
+                GROUP BY meter_id
+            ) sub
+            WHERE utility_meter.id = sub.meter_id
+              AND utility_meter.active = true;
+        """)
+        self.env.cr.execute("""
+            UPDATE utility_meter
+            SET idle_months = 0
+            WHERE active = true
+              AND id NOT IN (
+                  SELECT meter_id
+                  FROM utility_reading
+                  WHERE reading_date >= current_date - interval '3 months'
+                    AND consumption = 0
+                    AND state IN ('approved', 'billed')
+              );
+        """)
+        created_orders = 0
+        if 'utility.service.order' in self.env:
+            meters = self.search([
+                ('active', '=', True),
+                ('idle_months', '>=', 3),
+                ('customer_id', '!=', False),
+                ('customer_id.state', '=', 'active'),
+            ], limit=batch_limit)
+            for meter in meters:
+                existing = self.env['utility.service.order'].search([
+                    ('meter_id', '=', meter.id),
+                    ('service_type', 'in', ('inspection', 'meter_test')),
+                    ('state', 'in', ('draft', 'approved', 'scheduled', 'in_progress')),
+                ], limit=1)
+                if not existing:
+                    self.env['utility.service.order'].create({
+                        'service_type': 'inspection',
+                        'priority': 'high',
+                        'customer_id': meter.customer_id.id,
+                        'meter_id': meter.id,
+                        'description': _('تفتيش آلي: العداد خامل منذ %d أشهر. يرجى الفحص الميداني.') % meter.idle_months,
+                        'state': 'draft',
+                    })
+                    created_orders += 1
+        return {'processed': batch_limit, 'success': created_orders, 'failed': 0, 'skipped': 0}
+
 
 class UtilityMeterType(models.Model):
     _name = 'utility.meter.type'
