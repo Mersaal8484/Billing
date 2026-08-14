@@ -77,11 +77,11 @@
                     <button name="action_approve" type="object"
                             string="اعتماد القراءة" class="oe_highlight"
                             attrs="{'invisible': [('state', '!=', 'under_review')]}"
-                            groups="utility_core.group_utility_supervisor,utility_core.group_utility_billing_manager,utility_core.group_utility_revenue_manager,utility_core.group_utility_auditor,utility_core.group_utility_admin"/>
+                            groups="utility_core.group_utility_supervisor,utility_core.group_utility_billing_manager,utility_core.group_utility_revenue_manager,utility_core.group_utility_admin"/>
                     <button name="action_reject" type="object"
                             string="رفض" class="btn-danger"
                             attrs="{'invisible': [('state', 'not in', ('under_review', 'approved'))]}"
-                            groups="utility_core.group_utility_supervisor,utility_core.group_utility_billing_manager,utility_core.group_utility_revenue_manager,utility_core.group_utility_auditor,utility_core.group_utility_admin"/>
+                            groups="utility_core.group_utility_supervisor,utility_core.group_utility_billing_manager,utility_core.group_utility_revenue_manager,utility_core.group_utility_admin"/>
                     <button name="action_generate_bill" type="object"
                             string="إنشاء فاتورة" class="oe_highlight"
                             attrs="{'invisible': ['|', ('state', '!=', 'approved'), ('reading_purpose', '!=', 'periodic')]}"

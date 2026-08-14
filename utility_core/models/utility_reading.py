@@ -341,16 +341,15 @@ class UtilityReading(models.Model):
                   'reading_source', 'active', 'is_validated', 'validator_id',
                   'reviewer_id', 'review_date', 'rejected_by', 'rejected_at'},
         'under_review': {'meter_image', 'image_asset_id', 'meter_image_secondary', 'image_state',
-                          'is_rollover', 'max_reading_value',
-                          'review_notes', 'rejection_reason', 'rejected_by', 'rejected_at', 'state',
+                          'review_notes', 'rejection_reason', 'rejected_by', 'rejected_at',
                           'is_validated', 'validator_id', 'reviewer_id', 'review_date', 'remarks', 'active'},
-        'approved': {'rejection_reason', 'rejected_by', 'rejected_at', 'state', 'active', 'attachment_id', 'date_range_id',
-                     'billing_error', 'billing_anchor_id', 'included_sale_order_id', 'remarks'},
-        'queued': {'state', 'attachment_id', 'billing_error', 'remarks', 'active'},
+        'approved': {'rejection_reason', 'rejected_by', 'rejected_at', 'active', 'attachment_id',
+                     'billing_error', 'remarks'},
+        'queued': {'attachment_id', 'billing_error', 'remarks', 'active'},
         'billed': {'active', 'remarks', 'billing_error'},
         'error': {'reading_date', 'reading_value', 'meter_image', 'image_asset_id', 'meter_image_secondary',
                   'is_rollover', 'max_reading_value',
-                  'image_state', 'remarks', 'date_range_id', 'state', 'billing_error', 'active'},
+                  'image_state', 'remarks', 'date_range_id', 'billing_error', 'active'},
     }
 
     @api.constrains('reading_purpose', 'date_range_id', 'replacement_id', 'account_id', 'reading_date')
@@ -489,7 +488,7 @@ class UtilityReading(models.Model):
             if not r.meter_image and r._requires_billing_review():
                 raise ValidationError('يجب رفع صورة العداد قبل إرسال القراءة للمراجعة!')
 
-            r.write({
+            r.with_context(_reading_state_transition=True).write({
                 'reading_source': r.reading_source or f'manual_{fields.Datetime.now()}',
                 'state': 'under_review',
             })
@@ -498,10 +497,9 @@ class UtilityReading(models.Model):
         if not (self.env.user.has_group('utility_core.group_utility_supervisor')
                 or self.env.user.has_group('utility_core.group_utility_billing_manager')
                 or self.env.user.has_group('utility_core.group_utility_revenue_manager')
-                or self.env.user.has_group('utility_core.group_utility_auditor')
                 or self.env.user.has_group('utility_core.group_utility_admin')
                 or self.env.su):
-            raise AccessError(_('ليس لديك صلاحية اعتماد قراءات العدادات. يتطلب صلاحية مشرف أو مدير فوترة أو مراجع.'))
+            raise AccessError(_('ليس لديك صلاحية اعتماد قراءات العدادات. يتطلب صلاحية مشرف أو مدير فوترة أو مدير إيرادات.'))
 
         for r in self:
             if r.state != 'under_review':
@@ -520,7 +518,7 @@ class UtilityReading(models.Model):
                     % r.consumption
                 )
 
-            r.write({
+            r.with_context(_reading_state_transition=True).write({
                 'state': 'approved',
                 'is_validated': True,
                 'validator_id': self.env.user.id,
@@ -544,10 +542,9 @@ class UtilityReading(models.Model):
         if not (self.env.user.has_group('utility_core.group_utility_supervisor')
                 or self.env.user.has_group('utility_core.group_utility_billing_manager')
                 or self.env.user.has_group('utility_core.group_utility_revenue_manager')
-                or self.env.user.has_group('utility_core.group_utility_auditor')
                 or self.env.user.has_group('utility_core.group_utility_admin')
                 or self.env.su):
-            raise AccessError(_('ليس لديك صلاحية رفض قراءات العدادات. يتطلب صلاحية مشرف أو مدير فوترة أو مراجع.'))
+            raise AccessError(_('ليس لديك صلاحية رفض قراءات العدادات. يتطلب صلاحية مشرف أو مدير فوترة أو مدير إيرادات.'))
 
         for r in self:
             # FIX-1: منع رفض قراءة مفوترة — يجب إلغاء الفاتورة أولاً أو استخدام تسوية
@@ -564,7 +561,7 @@ class UtilityReading(models.Model):
             if not reason or not reason.strip():
                 raise ValidationError(_('يجب تحديد سبب رفض القراءة لتوجيه القارئ الميداني للتصحيح.'))
 
-            r.write({
+            r.with_context(_reading_state_transition=True).write({
                 'state': 'draft',
                 'rejection_reason': reason.strip(),
                 'rejected_by': self.env.user.id,
@@ -594,8 +591,15 @@ class UtilityReading(models.Model):
         elif vals.get('reading_type') in ('manual', 'ami') and 'is_estimated' not in vals:
             vals['is_estimated'] = False
 
+        # P0 Guard: state cannot be directly mutated outside controlled transitions
+        if 'state' in vals and not (
+                self.env.context.get('_reading_state_transition')
+                or self.env.context.get('_bypass_reading_protection')
+                or self.env.context.get('allow_billing_adjustment')):
+            raise ValidationError(_('لا يمكن تغيير حالة القراءة مباشرةً. يجب استخدام أزرار وسير العمل المعتمد.'))
+
         if not (self.env.context.get('_bypass_reading_protection') or self.env.context.get('allow_billing_adjustment')):
-            bypass_fields = {'state', 'active', 'remarks', 'rejection_reason', 'rejected_by', 'rejected_at'}
+            bypass_fields = {'active', 'remarks', 'rejection_reason', 'rejected_by', 'rejected_at'}
             for reading in self:
                 editable = self.STATE_EDITABLE.get(reading.state, set())
                 changed = set(vals) - bypass_fields

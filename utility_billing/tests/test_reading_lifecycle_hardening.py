@@ -71,10 +71,11 @@ class TestReadingLifecycleHardening(TransactionCase):
             'multiplier': 1.0,
         })
 
-        # Setup users: Reader, Supervisor, Billing Manager
+        # Setup users: Reader, Supervisor, Billing Manager, Auditor
         self.role_reader = self.env.ref('utility_core.role_meter_reader')
         self.role_supervisor = self.env.ref('utility_core.role_supervisor')
         self.role_billing_mgr = self.env.ref('utility_core.role_billing_manager')
+        self.role_auditor = self.env.ref('utility_core.role_auditor')
 
         self.reader_user = self.User.create({
             'name': 'مستخدم قارئ العداد',
@@ -117,6 +118,21 @@ class TestReadingLifecycleHardening(TransactionCase):
             'employee_code': 'BM-001',
             'user_id': self.billing_mgr_user.id,
             'role_ids': [(4, self.role_billing_mgr.id)],
+            'region_id': self.region.id,
+            'area_id': self.area.id,
+        })
+
+        self.auditor_user = self.User.create({
+            'name': 'المراجع الرقابي',
+            'login': 'auditor_lifecycle_test',
+            'email': 'auditor_lifecycle@test.com',
+            'groups_id': [(6, 0, [self.env.ref('base.group_user').id, self.env.ref('utility_core.group_utility_auditor').id])],
+        })
+        self.Staff.create({
+            'name': 'مراجع رقابي',
+            'employee_code': 'AUD-001',
+            'user_id': self.auditor_user.id,
+            'role_ids': [(4, self.role_auditor.id)],
             'region_id': self.region.id,
             'area_id': self.area.id,
         })
@@ -258,7 +274,6 @@ class TestReadingLifecycleHardening(TransactionCase):
 
         # 2. Boundary: previous=max (99999), current=0 -> (99999 - 99999 + 1) + 0 = 1
         reading.write({'reading_value': 0.0})
-        # If previous was 99999:
         self.assertEqual(reading.raw_consumption, (99999.0 - 99800.0 + 1.0) + 0.0)
 
         # 3. Invalid: current >= previous when rollover is True
@@ -381,3 +396,54 @@ class TestReadingLifecycleHardening(TransactionCase):
 
         reading.write({'is_estimated': True})
         self.assertEqual(reading.reading_type, 'estimated')
+
+    def test_10_direct_state_write_blocked(self):
+        """P0: Direct write to state from UI/API is strictly blocked."""
+        self._create_opening_reading(100.0)
+        reading = self.Reading.create({
+            'meter_id': self.meter.id,
+            'account_id': self.customer.id,
+            'reading_value': 250.0,
+            'reading_date': fields.Datetime.now(),
+            'reading_purpose': 'periodic',
+            'date_range_id': self.date_range.id,
+            'image_state': 'clear',
+            'meter_image': b'fake_image_data',
+        })
+        self.assertEqual(reading.state, 'draft')
+
+        # Attempt direct write to approved -> blocked
+        with self.assertRaises(ValidationError):
+            reading.write({'state': 'approved'})
+
+        # Attempt direct write to queued -> blocked
+        with self.assertRaises(ValidationError):
+            reading.write({'state': 'queued'})
+
+        # Attempt direct write to billed -> blocked
+        with self.assertRaises(ValidationError):
+            reading.write({'state': 'billed'})
+
+    def test_11_auditor_cannot_approve_or_reject(self):
+        """P0: Auditor is purely supervisory/read-only and cannot approve or reject readings."""
+        self._create_opening_reading(100.0)
+        reading = self.Reading.create({
+            'meter_id': self.meter.id,
+            'account_id': self.customer.id,
+            'reading_value': 250.0,
+            'reading_date': fields.Datetime.now(),
+            'reading_purpose': 'periodic',
+            'date_range_id': self.date_range.id,
+            'image_state': 'clear',
+            'meter_image': b'fake_image_data',
+        })
+        reading.action_submit_review()
+        self.assertEqual(reading.state, 'under_review')
+
+        # Auditor attempts to approve -> AccessError
+        with self.assertRaises(AccessError):
+            reading.with_user(self.auditor_user).action_approve()
+
+        # Auditor attempts to reject -> AccessError
+        with self.assertRaises(AccessError):
+            reading.with_user(self.auditor_user).action_reject()
