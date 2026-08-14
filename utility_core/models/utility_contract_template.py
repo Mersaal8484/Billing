@@ -276,7 +276,11 @@ class UtilityContractTemplate(models.Model):
 
     @api.constrains('pricing_mode', 'discount_formula_id', 'block_ids', 'discount_block_ids', 'line_ids')
     def _check_contract_template_tiers(self):
-        if self.env.context.get('install_mode') or self.env.context.get('install_module'):
+        if (
+            self.env.context.get('install_mode')
+            or self.env.context.get('install_module')
+            or self.env.context.get('skip_tier_validation')
+        ):
             return
         self._validate_contract_template_tiers()
 
@@ -641,9 +645,10 @@ class UtilityContractTemplate(models.Model):
             {'sequence': 80, 'name': 'الشريحة الثامنة (300,000+)', 'from_kwh': 300000, 'to_kwh': 0, 'price_per_kwh': 170, 'is_discount': False},
         ]
         for template in self:
-            template.write({
+            template.with_context(skip_tier_validation=True).write({
                 'block_ids': [(5, 0, 0)] + [(0, 0, b) for b in blocks_data]
             })
+            template._validate_contract_template_tiers()
         
         if len(self) == 1:
             return {
