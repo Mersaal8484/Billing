@@ -192,7 +192,7 @@ class IrCron(models.Model):
             for log in logs:
                 if log.status == 'failed':
                     failures += 1
-                elif log.status in ('success', 'partial'):
+                elif log.status in ('success', 'partial', 'reset'):
                     break
             rec.consecutive_failure_count = failures
 
@@ -408,30 +408,44 @@ class IrCron(models.Model):
             duration = (finished_at - started_at).total_seconds()
 
             if caught_exception:
-                # Persist failure audit log directly in isolated DB cursor to survive outer rollback
-                try:
-                    with self.env.registry.cursor() as audit_cr:
-                        audit_env = api.Environment(audit_cr, self.env.uid, self.env.context)
-                        audit_env['utility.cron.execution'].with_context(_cron_internal_write=True).create({
-                            'cron_id': self.id,
-                            'utility_code': self.utility_code,
-                            'started_at': started_at,
-                            'finished_at': finished_at,
-                            'duration_seconds': duration,
-                            'trigger_type': trigger_type,
-                            'triggered_by': self.env.user.id,
-                            'status': 'failed',
-                            'processed_count': processed,
-                            'success_count': success_cnt,
-                            'failure_count': failed_cnt or 1,
-                            'skipped_count': skipped_cnt,
-                            'error_message': err_msg,
-                            'error_details': err_details,
-                            'company_id': self.env.company.id,
-                        })
-                        audit_cr.commit()
-                except Exception as audit_err:
-                    _logger.error("Failed to write isolated failure audit log for cron [%s]: %s", self.utility_code or self.name, audit_err)
+                if trigger_type == 'scheduled':
+                    # Scheduled trigger: outer transaction will rollback on re-raise, so persist failure in isolated DB cursor
+                    try:
+                        with self.env.registry.cursor() as audit_cr:
+                            audit_env = api.Environment(audit_cr, self.env.uid, self.env.context)
+                            audit_env['utility.cron.execution'].with_context(_cron_internal_write=True).create({
+                                'cron_id': self.id,
+                                'utility_code': self.utility_code,
+                                'started_at': started_at,
+                                'finished_at': finished_at,
+                                'duration_seconds': duration,
+                                'trigger_type': 'scheduled',
+                                'triggered_by': self.env.user.id,
+                                'status': 'failed',
+                                'processed_count': processed,
+                                'success_count': success_cnt,
+                                'failure_count': failed_cnt or 1,
+                                'skipped_count': skipped_cnt,
+                                'error_message': err_msg,
+                                'error_details': err_details,
+                                'company_id': self.env.company.id,
+                            })
+                            audit_cr.commit()
+                    except Exception as audit_err:
+                        _logger.error("Failed to write isolated failure audit log for cron [%s]: %s", self.utility_code or self.name, audit_err)
+                else:
+                    # Manual trigger: outer transaction will commit normally, so update the single existing exec_log directly
+                    exec_log.with_context(_cron_internal_write=True).write({
+                        'finished_at': finished_at,
+                        'duration_seconds': duration,
+                        'status': 'failed',
+                        'processed_count': processed,
+                        'success_count': success_cnt,
+                        'failure_count': failed_cnt or 1,
+                        'skipped_count': skipped_cnt,
+                        'error_message': err_msg,
+                        'error_details': err_details,
+                    })
             else:
                 exec_log.with_context(_cron_internal_write=True).write({
                     'finished_at': finished_at,
@@ -582,7 +596,7 @@ class IrCron(models.Model):
                 'duration_seconds': 0.0,
                 'trigger_type': 'manual',
                 'triggered_by': self.env.user.id,
-                'status': 'success',
+                'status': 'reset',
                 'error_message': _('تم تصفير عداد الأخطاء يدوياً بواسطة مسؤول النظام'),
                 'company_id': self.env.company.id,
             })

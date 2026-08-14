@@ -191,7 +191,7 @@ class TestUtilityCronManagement(TransactionCase):
                 cr_worker_a.execute("SELECT pg_advisory_unlock(%s);", (lock_key_a,))
 
     def test_06_failure_handling_and_consecutive_counter(self):
-        """التحقق من تسجيل الفشل في الحالتين (يدوي ومجدول) وحفظ السجل مع إعادة رفع الاستثناء في التشغيل المجدول."""
+        """التحقق من تسجيل الفشل في الحالتين (يدوي ومجدول) وحفظ سجل واحد دقيق للمحاولة اليدوية مع إعادة رفع الاستثناء في التشغيل المجدول."""
         failing_cron = self.env['ir.cron'].create({
             'name': 'Failing Test Cron',
             'model_id': self.cron_model.id,
@@ -209,14 +209,29 @@ class TestUtilityCronManagement(TransactionCase):
 
         initial_failures = failing_cron.consecutive_failure_count
 
-        # 1. Manual run: captures failure, updates metrics, and returns dict without crashing
+        # 1. Manual run: captures failure, updates single existing exec_log, and returns dict without crashing
         res_manual = failing_cron._execute_utility_managed_cron(trigger_type='manual')
         self.assertEqual(res_manual.get('status'), 'failed')
         self.assertIn('Simulated Business Error 123', res_manual.get('error_message'))
 
+        # Verify exactly ONE execution record exists for this manual run, and NO 'running' record remains
+        manual_logs = self.env['utility.cron.execution'].search([('cron_id', '=', failing_cron.id)])
+        self.assertEqual(len(manual_logs), 1, "Manual failure must produce exactly ONE execution record.")
+        self.assertEqual(manual_logs[0].status, 'failed')
+        self.assertEqual(manual_logs[0].trigger_type, 'manual')
+        self.assertIn('Simulated Business Error 123', manual_logs[0].error_message)
+        running_logs = self.env['utility.cron.execution'].search([('cron_id', '=', failing_cron.id), ('status', '=', 'running')])
+        self.assertEqual(len(running_logs), 0, "No orphan 'running' execution log should remain.")
+
         # 2. Scheduled run: captures failure, saves audit record in isolated cursor, and re-raises exception
         with self.assertRaises(ValueError):
             failing_cron._execute_utility_managed_cron(trigger_type='scheduled')
+
+        # Verify total logs count is now exactly 2 (one manual failed, one scheduled failed)
+        all_logs = self.env['utility.cron.execution'].search([('cron_id', '=', failing_cron.id)], order='id desc')
+        self.assertEqual(len(all_logs), 2)
+        self.assertEqual(all_logs[0].status, 'failed')
+        self.assertEqual(all_logs[0].trigger_type, 'scheduled')
 
         failing_cron.invalidate_recordset()
         self.assertGreaterEqual(failing_cron.consecutive_failure_count, initial_failures + 2)

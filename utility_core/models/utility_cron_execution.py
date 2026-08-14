@@ -62,6 +62,7 @@ class UtilityCronExecution(models.Model):
         ('partial', 'ناجح جزئياً / Partial'),
         ('failed', 'فاشل / Failed'),
         ('skipped', 'تم التخطي (قفل التزامن) / Skipped (Lock)'),
+        ('reset', 'تصفير عداد الأخطاء / Counter Reset'),
     ], string='الحالة / Status', required=True, default='running', index=True)
 
     processed_count = fields.Integer(
