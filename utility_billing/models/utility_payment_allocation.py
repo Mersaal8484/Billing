@@ -1,7 +1,7 @@
 from collections import defaultdict
 
 from odoo import api, fields, models, _
-from odoo.exceptions import ValidationError
+from odoo.exceptions import AccessError, ValidationError
 from odoo.tools.float_utils import float_compare, float_is_zero
 
 
@@ -292,7 +292,13 @@ class UtilityPaymentAllocation(models.Model):
         Removes only the exact partial reconciliations, restores invoice residual
         and order balance, and handles collection custody dependencies without
         blindly cancelling the underlying payment.
+        Requires Billing Manager or Utility Admin privileges.
         """
+        if not (self.env.user.has_group('utility_core.group_utility_billing_manager')
+                or self.env.user.has_group('utility_core.group_utility_admin')
+                or self.env.su):
+            raise AccessError(_('ليس لديك صلاحية عكس تخصيص الدفعات المالية. يتطلب صلاحية مدير الفوترة أو مدير النظام.'))
+
         for allocation in self:
             if allocation.state == 'reversed':
                 raise ValidationError(_('التخصيص %s معكوس بالفعل.') % allocation.name)

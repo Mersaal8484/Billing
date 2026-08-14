@@ -192,3 +192,50 @@ class TestMultiRoleSecurityHardening(TransactionCase):
 
         visible = self.env['utility.customer'].with_user(self.user_multi).search([])
         self.assertNotIn(cust_c2, visible)
+
+    def test_08_collector_role_removal_via_various_m2m_commands(self):
+        """Verify collector role removal is blocked under all M2M command formats (3, 5, 2, 6)."""
+        staff = self.env['utility.staff'].create({
+            'name': 'Staff M2M Custody Test',
+            'user_id': self.user_multi.id,
+            'company_id': self.company_1.id,
+            'role_ids': [(6, 0, [self.role_collector.id, self.role_meter_reader.id])],
+        })
+
+        if 'utility.collection' in self.env:
+            self.env['utility.collection'].create({
+                'collector_id': staff.id,
+                'state': 'confirmed',
+                'amount': 250.0,
+            })
+
+            # Test (3, id) command - remove single record
+            with self.assertRaises(ValidationError):
+                staff.write({'role_ids': [(3, self.role_collector.id)]})
+
+            # Test (5,) command - clear all records
+            with self.assertRaises(ValidationError):
+                staff.write({'role_ids': [(5,)]})
+
+    def test_09_implied_group_hierarchy_preserved_during_sync(self):
+        """Verify assigning a parent role (supervisor) preserves implied operational groups without stripping."""
+        user_sup = self.env['res.users'].create({
+            'name': 'MR User Supervisor',
+            'login': 'mr_user_sup@test.local',
+            'company_id': self.company_1.id,
+            'company_ids': [(6, 0, [self.company_1.id])],
+        })
+
+        staff = self.env['utility.staff'].create({
+            'name': 'Staff Supervisor',
+            'user_id': user_sup.id,
+            'company_id': self.company_1.id,
+            'role_ids': [(6, 0, [self.role_supervisor.id])],
+        })
+
+        group_supervisor = self.env.ref('utility_core.group_utility_supervisor')
+        group_collector = self.env.ref('utility_core.group_utility_collector')
+
+        self.assertIn(group_supervisor, user_sup.groups_id)
+        # Because supervisor implies collector, collector must remain on the user
+        self.assertIn(group_collector, user_sup.groups_id)

@@ -2,7 +2,7 @@
 Tests for Payment Allocation Reversal Decoupling, Exact Partial Reconciles Integrity, and Multi-Record ORM Safety
 """
 from odoo.tests import TransactionCase, tagged
-from odoo.exceptions import ValidationError
+from odoo.exceptions import AccessError, ValidationError
 
 
 @tagged('post_install', '-at_install', 'utility_release', 'utility_financial')
@@ -265,3 +265,32 @@ class TestPaymentAllocationReversal(TransactionCase):
         self.assertEqual(pay_b.collector_id, staff_b)
         self.assertEqual(pay_b.journal_id, staff_b.collection_journal_id)
         self.assertEqual(pay_b.utility_sale_order_id, order_b)
+
+    def test_04_permission_check_on_action_reverse_allocation(self):
+        """Standard user or collector must NOT be allowed to reverse payment allocation without billing manager role."""
+        order, invoice = self._create_order_and_invoice(self.customer, 500.0)
+        payment = self.env['account.payment'].create({
+            'payment_type': 'inbound',
+            'partner_type': 'customer',
+            'partner_id': self.partner.id,
+            'amount': 500.0,
+            'journal_id': self.journal_bank.id,
+            'utility_payment_method': 'bank',
+            'utility_sale_order_id': order.id,
+            'utility_invoice_id': invoice.id,
+            'date_range_id': self.payment_period.id,
+        })
+        payment.action_post()
+        allocation = self.env['utility.payment.allocation'].search([('payment_id', '=', payment.id)], limit=1)
+
+        user_collector = self.env['res.users'].create({
+            'name': 'Collector Non-Manager',
+            'login': 'col_non_mgr@test.local',
+            'company_id': self.company.id,
+            'company_ids': [(6, 0, [self.company.id])],
+            'groups_id': [(4, self.env.ref('utility_core.group_utility_collector').id)],
+        })
+
+        # Calling action_reverse_allocation as collector must raise AccessError
+        with self.assertRaises(AccessError):
+            allocation.with_user(user_collector).action_reverse_allocation(reason='Unauthorized reversal')

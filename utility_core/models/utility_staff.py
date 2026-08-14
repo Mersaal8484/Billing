@@ -156,16 +156,42 @@ class UtilityStaff(models.Model):
                     'رقم الجوال يجب أن يتكون من 9 أرقام فقط، بدون مفتاح دولة (+967/00) أو شرطات.'
                 )
 
-    def _check_collector_role_removal(self, new_roles):
+    @staticmethod
+    def _simulate_m2m_ids(current_ids, commands):
+        """Accurately compute resulting IDs from any Odoo Many2many command list."""
+        if not commands:
+            return set(current_ids)
+        res = set(current_ids)
+        for cmd in commands:
+            if not isinstance(cmd, (list, tuple)) or not cmd:
+                continue
+            c_type = cmd[0]
+            if c_type == 0:  # (0, 0, vals)
+                pass
+            elif c_type == 1:  # (1, id, vals)
+                res.add(cmd[1])
+            elif c_type in (2, 3):  # (2, id) delete, (3, id) unlink
+                res.discard(cmd[1])
+            elif c_type == 4:  # (4, id) link
+                res.add(cmd[1])
+            elif c_type == 5:  # (5,) unlink all
+                res.clear()
+            elif c_type == 6:  # (6, 0, ids) replace
+                res = set(cmd[2])
+        return res
+
+    def _check_collector_role_removal(self, new_role_ids):
         """Ensure collector role cannot be removed if unresolved custody or collections exist."""
+        Role = self.env['utility.user.role']
         for record in self:
             was_collector = record.has_utility_role('collector')
+            new_roles = Role.browse(list(new_role_ids)) if new_role_ids else Role
             will_be_collector = bool(new_roles and 'collector' in new_roles.mapped('code'))
             if was_collector and not will_be_collector:
                 if 'utility.collection' in self.env:
                     open_collections = self.env['utility.collection'].search([
                         ('collector_id', '=', record.id),
-                        ('state', 'not in', ('settled', 'cancelled')),
+                        ('state', 'not in', ('settled', 'deposited', 'reconciled', 'cancelled')),
                     ], limit=1)
                     if open_collections:
                         raise ValidationError(_(
@@ -354,14 +380,25 @@ class UtilityStaff(models.Model):
 
         for user in affected_users.filtered(lambda u: u.exists()):
             staff_records = self.search([('user_id', '=', user.id), ('active', '=', True)])
-            target_groups = staff_records.mapped('role_ids.group_ids')
-            groups_to_revoke = all_role_groups - target_groups
+            target_root_groups = staff_records.mapped('role_ids.group_ids')
+
+            # Calculate closure of all implied groups across target root groups
+            implied_closure = self.env['res.groups']
+            for g in target_root_groups:
+                implied_closure |= g
+                if hasattr(g, 'transitive_implied_ids') and g.transitive_implied_ids:
+                    implied_closure |= g.transitive_implied_ids
+                elif hasattr(g, 'implied_ids') and g.implied_ids:
+                    implied_closure |= g.implied_ids
+
+            # Revoke role root groups only if not in target root groups AND not implied by any target role
+            groups_to_revoke = (all_role_groups - target_root_groups) - implied_closure
 
             vals = []
             for g in groups_to_revoke:
                 if g in user.groups_id:
                     vals.append((3, g.id))
-            for g in target_groups:
+            for g in target_root_groups:
                 if g not in user.groups_id:
                     vals.append((4, g.id))
             if vals:
@@ -383,14 +420,9 @@ class UtilityStaff(models.Model):
         if 'role_ids' in vals:
             role_cmd = vals['role_ids']
             if role_cmd and isinstance(role_cmd, list):
-                new_role_ids = []
-                for cmd in role_cmd:
-                    if cmd[0] in (4,):
-                        new_role_ids.append(cmd[1])
-                    elif cmd[0] in (6,):
-                        new_role_ids = list(cmd[2])
-                new_roles = self.env['utility.user.role'].browse(new_role_ids) if new_role_ids else self.env['utility.user.role']
-                self._check_collector_role_removal(new_roles)
+                for record in self:
+                    new_role_ids = self._simulate_m2m_ids(record.role_ids.ids, role_cmd)
+                    record._check_collector_role_removal(new_role_ids)
 
         old_users = self.mapped('user_id') if 'user_id' in vals else self.env['res.users']
         res = super(UtilityStaff, self).write(vals)
