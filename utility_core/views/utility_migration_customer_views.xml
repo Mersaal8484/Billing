@@ -25,6 +25,11 @@
                             string="🚀 مطابقة واستيراد السجلات المحددة"
                             type="object"
                             class="btn-success"/>
+                    <button name="action_repair_balance_allocation"
+                            string="⚖️ تصحيح توزيع الأرصدة المحددة"
+                            type="object"
+                            class="btn-warning"
+                            confirm="سيتم إنشاء قيود تسوية محاسبية للسجلات المحددة دون حذف القيود الأصلية. هل تريد المتابعة؟"/>
                 </header>
                 <field name="customer_number"/>
                 <field name="subscriber_no"/>
@@ -75,6 +80,12 @@
                                 ('is_active', '=', True),
                                 ('created_customer_id', '!=', False)
                             ]}"/>
+                    <button name="action_repair_balance_allocation"
+                            string="⚖️ تصحيح توزيع الأرصدة"
+                            type="object"
+                            class="btn-warning"
+                            confirm="سيتم إنشاء قيد تسوية محاسبي دون حذف القيد الأصلي. هل تريد المتابعة؟"
+                            attrs="{'invisible': ['|', ('state', '!=', 'imported'), ('balance_allocation_repaired', '=', True)]}"/>
                     <field name="state" widget="statusbar" statusbar_visible="draft,queued,processing,imported,error"/>
                 </header>
                 <sheet>
@@ -158,6 +169,8 @@
                                 <field name="created_customer_id"/>
                                 <field name="created_meter_id"/>
                                 <field name="opening_move_id"/>
+                                <field name="balance_repair_move_id"/>
+                                <field name="balance_allocation_repaired"/>
                                 <field name="source_row_number"/>
                             </group>
                         </page>

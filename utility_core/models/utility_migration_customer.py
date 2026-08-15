@@ -71,6 +71,10 @@ class UtilityMigrationCustomer(models.Model):
     created_meter_id = fields.Many2one('utility.meter', 'العداد المنشأ', readonly=True, copy=False)
     created_reading_id = fields.Many2one('utility.reading', 'القراءة الافتتاحية المنشأة', readonly=True, copy=False)
     opening_move_id = fields.Many2one('account.move', 'قيد الرصيد الافتتاحي', readonly=True, copy=False)
+    balance_repair_move_id = fields.Many2one(
+        'account.move', 'قيد تصحيح توزيع الأرصدة', readonly=True, copy=False)
+    balance_allocation_repaired = fields.Boolean(
+        'تم تصحيح توزيع الأرصدة', readonly=True, copy=False)
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -237,13 +241,18 @@ class UtilityMigrationCustomer(models.Model):
             raise ValidationError(_('LEGACY_DEFAULT_METER_MODEL_PHASE_MISMATCH: موديل العداد الافتراضي لا يطابق الطور %s.') % self.phase)
         return model
 
-    def _get_pec_credit(self):
-        """Parse previous_balance safely."""
+    def _get_previous_balance(self):
+        """Return the legacy previous balance as the postpaid receivable amount."""
         self.ensure_one()
         try:
-            return float(self.previous_balance) if self.previous_balance else 0.0
+            value = str(self.previous_balance or '').strip()
+            return float(value.replace('٬', '').replace(',', '').replace('٫', '.')) if value else 0.0
         except (ValueError, TypeError):
             return 0.0
+
+    def _get_pec_credit(self):
+        """Compatibility alias retained for integrations using the former helper name."""
+        return self._get_previous_balance()
 
     def _build_customer_partner_vals(self):
         """Build the single dedicated partner for this electricity account."""
@@ -262,6 +271,8 @@ class UtilityMigrationCustomer(models.Model):
             'meter_reading': self.meter_reading if self.meter_reading is not False else (self.last_reading or 0),
             'opening_reading': self.opening_reading if self.has_opening_reading else (self.last_reading or 0),
             'meter_number': self.meter_number,
+            # This is an informational opening balance, not an accounts receivable entry.
+            'open_balance': self.current_balance,
         }
         if self.subscriber_type_id:
             vals['subscriber_id'] = self.subscriber_type_id.id
@@ -314,16 +325,13 @@ class UtilityMigrationCustomer(models.Model):
             partner = self.env['res.partner'].create(vals)
         return partner
 
-    def _create_opening_balance_entry(self, partner, customer=None):
-        """إنشاء قيد محاسبي محصور بمالكية الشركة للرصيد الافتتاحي."""
+    def _get_balance_accounting_setup(self, partner):
+        """Resolve the journal and accounts used for migrated postpaid debt."""
         self.ensure_one()
-        if self.opening_move_id or not self.current_balance:
-            return
-
         company_id = self.company_id.id or self.env.company.id
-
+        company = self.env['res.company'].browse(company_id)
         journal = (
-            self.env['res.company'].browse(company_id).opening_journal_id
+            company.opening_journal_id
             or self.env['account.journal'].search([('code', '=', 'OPEN'), ('company_id', '=', company_id)], limit=1)
             or self.env['account.journal'].search([('type', '=', 'general'), ('company_id', '=', company_id)], limit=1)
         )
@@ -350,7 +358,7 @@ class UtilityMigrationCustomer(models.Model):
             partner.sudo().with_company(company_id).write({'property_account_receivable_id': account_receivable.id})
 
         account_suspense = (
-            self.env['res.company'].browse(company_id).account_journal_suspense_account_id
+            company.account_journal_suspense_account_id
             or self.env['account.account'].search([
                 ('account_type', 'in', ('equity', 'equity_unaffected')),
                 ('company_id', '=', company_id)
@@ -370,31 +378,43 @@ class UtilityMigrationCustomer(models.Model):
         if not journal:
             raise UserError(_('لا توجد يومية عمليات (General Journal) معرّفة في النظام للشركة المحددة.'))
 
+        return company, journal, account_receivable, account_suspense
+
+    def _create_opening_balance_entry(self, partner, customer=None):
+        """Create a receivable entry only for the legacy previous/postpaid balance."""
+        self.ensure_one()
+        deferred_balance = self._get_previous_balance()
+        if self.opening_move_id or not deferred_balance:
+            return
+
+        company, journal, account_receivable, account_suspense = self._get_balance_accounting_setup(partner)
+        company_id = company.id
+
         line_ids = []
-        if self.current_balance > 0:
+        if deferred_balance > 0:
             line_ids.append((0, 0, {
-                'name': 'رصيد افتتاح مديونية - %s' % self.name,
+                'name': 'مديونية آجل مرحّلة - %s' % self.name,
                 'partner_id': partner.id,
                 'account_id': account_receivable.id,
-                'debit': self.current_balance,
+                'debit': deferred_balance,
                 'credit': 0.0,
             }))
             line_ids.append((0, 0, {
-                'name': 'رصيد افتتاح مديونية - %s' % self.name,
+                'name': 'مديونية آجل مرحّلة - %s' % self.name,
                 'account_id': account_suspense.id,
                 'debit': 0.0,
-                'credit': self.current_balance,
+                'credit': deferred_balance,
             }))
-        elif self.current_balance < 0:
-            credit_amount = abs(self.current_balance)
+        elif deferred_balance < 0:
+            credit_amount = abs(deferred_balance)
             line_ids.append((0, 0, {
-                'name': 'رصيد افتتاح دائن - %s' % self.name,
+                'name': 'مديونية آجل دائنة مرحّلة - %s' % self.name,
                 'account_id': account_suspense.id,
                 'debit': credit_amount,
                 'credit': 0.0,
             }))
             line_ids.append((0, 0, {
-                'name': 'رصيد افتتاح دائن - %s' % self.name,
+                'name': 'مديونية آجل دائنة مرحّلة - %s' % self.name,
                 'partner_id': partner.id,
                 'account_id': account_receivable.id,
                 'debit': 0.0,
@@ -408,7 +428,7 @@ class UtilityMigrationCustomer(models.Model):
                 'company_id': company_id,
                 'partner_id': partner.id if customer else False,
                 'date': fields.Date.today(),
-                'ref': 'رصيد افتتاحي - %s' % self.customer_number,
+                'ref': 'مديونية آجل مرحّلة - %s' % self.customer_number,
                 'line_ids': line_ids,
             }
             if customer and 'utility_customer_id' in self.env['account.move']._fields:
@@ -422,6 +442,88 @@ class UtilityMigrationCustomer(models.Model):
                 'is_credit_raised': True,
                 'credit_raise_date': fields.Date.today(),
             })
+
+    def _get_opening_receivable_balance(self):
+        """Return the receivable balance actually posted by the original migration entry."""
+        self.ensure_one()
+        if not self.opening_move_id:
+            return 0.0
+        receivable_lines = self.opening_move_id.line_ids.filtered(
+            lambda line: line.account_id.account_type == 'asset_receivable'
+        )
+        return sum(receivable_lines.mapped('balance'))
+
+    def _create_balance_repair_entry(self, partner, customer, difference):
+        """Post one auditable adjustment from the old migration allocation to the correct debt."""
+        self.ensure_one()
+        company, journal, account_receivable, account_suspense = self._get_balance_accounting_setup(partner)
+        if company.currency_id.is_zero(difference):
+            return False
+
+        label = 'تصحيح توزيع أرصدة الميجريشن - %s' % self.customer_number
+        if difference > 0:
+            receivable_vals = {'debit': difference, 'credit': 0.0}
+            suspense_vals = {'debit': 0.0, 'credit': difference}
+        else:
+            amount = abs(difference)
+            receivable_vals = {'debit': 0.0, 'credit': amount}
+            suspense_vals = {'debit': amount, 'credit': 0.0}
+
+        move_vals = {
+            'move_type': 'entry',
+            'journal_id': journal.id,
+            'company_id': company.id,
+            'partner_id': partner.id,
+            'date': fields.Date.today(),
+            'ref': label,
+            'line_ids': [
+                (0, 0, dict({
+                    'name': label,
+                    'partner_id': partner.id,
+                    'account_id': account_receivable.id,
+                }, **receivable_vals)),
+                (0, 0, dict({
+                    'name': label,
+                    'account_id': account_suspense.id,
+                }, **suspense_vals)),
+            ],
+        }
+        if 'utility_customer_id' in self.env['account.move']._fields:
+            move_vals['utility_customer_id'] = customer.id
+        move = self.env['account.move'].create(move_vals)
+        move.action_post()
+        return move
+
+    def action_repair_balance_allocation(self):
+        """Correct imported records without deleting their posted migration journal entries."""
+        invalid_records = self.filtered(
+            lambda rec: rec.state != 'imported' or not rec.created_partner_id or not rec.created_customer_id
+        )
+        if invalid_records:
+            raise UserError(_(
+                'يمكن تصحيح السجلات التي تم رفعها فقط ولها حساب مشترك مرتبط. مثال: %s'
+            ) % invalid_records[0].name)
+
+        for rec in self:
+            if rec.balance_allocation_repaired:
+                continue
+
+            partner = rec.created_partner_id
+            customer = rec.created_customer_id
+            # The workbook's current/opening balance belongs in the dedicated opening field.
+            partner.write({'open_balance': rec.current_balance})
+
+            if rec.opening_move_id:
+                actual_deferred_balance = rec._get_opening_receivable_balance()
+                difference = rec._get_previous_balance() - actual_deferred_balance
+                repair_move = rec._create_balance_repair_entry(partner, customer, difference)
+                if repair_move:
+                    rec.balance_repair_move_id = repair_move.id
+            else:
+                rec._create_opening_balance_entry(partner, customer)
+
+            rec.balance_allocation_repaired = True
+        return True
 
     def _create_customer_account(self, partner):
         """إنشاء حساب المشترك والعداد والقراءة الافتتاحية بإلزامية حصر الشركة والتحقق من الموديل."""

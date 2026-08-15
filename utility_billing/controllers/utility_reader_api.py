@@ -358,3 +358,57 @@ class UtilityReaderAPI(http.Controller):
                 'state': b.state,
             } for b in batches],
         }
+class UtilityReaderApiPatch(http.Controller):
+
+    @http.route(
+        '/api/v1/utility/reading/check_period_reading',
+        type='json',
+        auth='user',
+        methods=['POST'],
+        csrf=False,
+    )
+    def check_period_reading(self, meter_code=None, period_id=None, **kwargs):
+        """
+        التحقق من وجود قراءة للعداد في الفترة المحددة.
+        يُستخدم من التطبيق لمنع القراءة المكررة قبل إدخال بيانات جديدة.
+
+        Returns:
+            {
+                "has_reading": true/false,
+                "reading_value": 1234.0,      # إذا has_reading == true
+                "reading_date": "2026-08-01", # إذا has_reading == true
+            }
+        """
+        if not meter_code or not period_id:
+            return {'has_reading': False, 'error': 'meter_code and period_id are required'}
+
+        # البحث عن العداد
+        meter = request.env['utility.meter'].sudo().search(
+            [('meter_number', '=', meter_code)], limit=1
+        )
+        if not meter:
+            return {'has_reading': False, 'error': f'Meter {meter_code} not found'}
+
+        # البحث عن الفترة
+        period = request.env['date.range'].sudo().browse(period_id)
+        if not period.exists():
+            return {'has_reading': False, 'error': f'Period {period_id} not found'}
+
+        # البحث عن قراءة دورية للعداد في هذه الفترة
+        existing = request.env['utility.reading'].sudo().search([
+            ('meter_id', '=', meter.id),
+            ('date_range_id', '=', period_id),
+            ('reading_purpose', '=', 'periodic'),
+            ('active', '=', True),
+        ], limit=1, order='reading_date desc')
+
+        if existing:
+            return {
+                'has_reading': True,
+                'reading_value': existing.reading_value,
+                'reading_date': str(existing.reading_date) if existing.reading_date else None,
+                'reading_id': existing.reading_id,
+                'state': existing.state if hasattr(existing, 'state') else 'unknown',
+            }
+
+        return {'has_reading': False}

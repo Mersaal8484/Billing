@@ -273,7 +273,11 @@ class UtilityMigrationBatch(models.Model):
                     "SELECT id FROM utility_migration_batch WHERE id = %s FOR UPDATE NOWAIT",
                     (batch.id,)
                 )
-                batch.action_process_batch()
+                # Keep cron transactions short. Customer migration creates a
+                # partner, account, meter, reading and accounting entry per row.
+                # Processing 1,000 rows in one cron transaction can prevent the
+                # scheduler from reaching its next cycle on Windows/PostgreSQL.
+                batch.action_process_batch(max_records_per_run=100)
             except OperationalError as e:
                 if getattr(e, 'pgcode', None) == '55P03':
                     _logger.debug("Batch %s (%s) is currently locked by another worker process (55P03).", batch.id, batch.name)

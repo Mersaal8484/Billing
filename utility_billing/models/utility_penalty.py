@@ -164,7 +164,7 @@ class UtilityPenalty(models.Model):
             ('sale_order_id', 'in', order_ids),
             ('penalty_type_id', '=', penalty_type.id),
             ('state', 'in', ['calculated', 'applied']),
-        ], ['sale_order_id'], ['amount:sum'])
+        ], ['sale_order_id', 'amount:sum'], ['sale_order_id'])
         accumulated_map = {
             item['sale_order_id'][0]: item['amount_sum']
             for item in existing_penalty_data
