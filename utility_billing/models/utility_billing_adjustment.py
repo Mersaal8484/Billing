@@ -83,6 +83,10 @@ class UtilityBillingAdjustment(models.Model):
     credit_note_id = fields.Many2one(
         'account.move', string='إشعار الدائن', readonly=True, copy=False,
         index=True, ondelete='restrict')
+    debit_invoice_id = fields.Many2one(
+        'account.move', string='فاتورة التعديل الإضافية (مدين)', readonly=True, copy=False,
+        index=True, ondelete='restrict',
+        help='فاتورة إضافية تنشأ عند تصحيح يُنتج فرقًا ماليًا موجبًا (استهلاك أعلى من الأصلي).')
     replacement_sale_order_id = fields.Many2one(
         'sale.order', string='الفاتورة البديلة', readonly=True, copy=False,
         index=True, ondelete='restrict')
@@ -130,16 +134,23 @@ class UtilityBillingAdjustment(models.Model):
                 raise ValidationError(_('شركة التعديل لا تطابق شركة الفاتورة الأصلية.'))
 
     @api.constrains(
-        'state', 'credit_note_id', 'replacement_sale_order_id',
+        'state', 'credit_note_id', 'debit_invoice_id', 'replacement_sale_order_id',
         'replacement_invoice_id', 'rebill')
     def _check_applied_integrity(self):
         for record in self:
             if record.state != 'applied':
                 continue
-            if not record.credit_note_id or record.credit_note_id.state != 'posted':
-                raise ValidationError(_(
-                    'لا يمكن أن يكون التعديل مطبقًا دون إشعار دائن مرحّل.'
-                ))
+            # A zero-difference adjustment requires no accounting document
+            rounding = record.currency_id.rounding if record.currency_id else 0.01
+            has_financial_diff = abs(record.difference_amount) > rounding
+            if has_financial_diff:
+                has_credit = record.credit_note_id and record.credit_note_id.state == 'posted'
+                has_debit = record.debit_invoice_id and record.debit_invoice_id.state == 'posted'
+                if not (has_credit or has_debit):
+                    raise ValidationError(_(
+                        'لا يمكن أن يكون التعديل مطبقًا دون مستند محاسبي مرحّل '
+                        '(إشعار دائن أو فاتورة تعديل إضافية).'
+                    ))
             if record.rebill and (
                     not record.replacement_sale_order_id
                     or not record.replacement_invoice_id
@@ -325,6 +336,52 @@ class UtilityBillingAdjustment(models.Model):
         credit_note.action_post()
         return credit_note
 
+    def _create_debit_invoice(self):
+        """Create an additional out_invoice for a positive financial correction difference.
+
+        Used when corrected_amount > original invoice amount (upward correction).
+        Example: meter under-read → additional consumption → additional invoice.
+        The resulting invoice posts to the same revenue account as the original.
+        """
+        self.ensure_one()
+        amount = abs(self.difference_amount)
+        if not amount:
+            raise ValidationError(_('لا يوجد فرق مالي موجب لإنشاء فاتورة تعديل إضافية.'))
+        invoice = self.invoice_id
+        invoice_lines = invoice.invoice_line_ids.filtered(
+            lambda l: l.account_id
+            and l.display_type not in ('line_section', 'line_note'))
+        if self.adjustment_type == 'billing_component_correction' and self.component_line_type:
+            invoice_lines = invoice_lines.filtered(
+                lambda line: self.component_line_type in line.sale_line_ids.mapped('meter_line_type'))
+        source_line = invoice_lines[:1]
+        if not source_line:
+            raise ValidationError(_(
+                'لا يوجد حساب إيراد صالح في الفاتورة الأصلية لإنشاء فاتورة التعديل الإضافية.'
+            ))
+        debit_invoice = self.env['account.move'].create({
+            'move_type': 'out_invoice',
+            'journal_id': invoice.journal_id.id,
+            'company_id': invoice.company_id.id,
+            'partner_id': invoice.partner_id.id,
+            'currency_id': invoice.currency_id.id,
+            'invoice_date': fields.Date.context_today(self),
+            'ref': _('%s - فاتورة تعديل إضافية (مدين)') % self.name,
+            'invoice_origin': invoice.name,
+            'utility_customer_id': self.customer_id.id,
+            'utility_sale_order_id': self.sale_order_id.id,
+            'utility_adjustment_id': self.id,
+            'invoice_line_ids': [(0, 0, {
+                'name': _('تعديل إضافي: %s') % self.reason,
+                'account_id': source_line.account_id.id,
+                'quantity': 1.0,
+                'price_unit': amount,
+                'tax_ids': [(6, 0, [])],
+            })],
+        })
+        debit_invoice.action_post()
+        return debit_invoice
+
     def _create_replacement_bill(self):
         self.ensure_one()
         order = self.sale_order_id
@@ -336,12 +393,19 @@ class UtilityBillingAdjustment(models.Model):
         current_reading = order.current_reading
         if self.adjustment_type == 'reading_correction':
             current_reading = self.corrected_current_reading
+
+        forced_version_id = order.contract_template_version_id.id if order.contract_template_version_id else False
+        replacement_ctx = dict(self.env.context, allow_billing_adjustment=True)
+        if forced_version_id:
+            replacement_ctx['_force_contract_version_id'] = forced_version_id
+
         replacement = self.env['sale.order'].with_context(
-            allow_billing_adjustment=True,
+            replacement_ctx
         ).create({
             'partner_id': order.partner_id.id,
             'customer_id': order.customer_id.id,
             'meter_id': order.meter_id.id,
+            'contract_template_version_id': forced_version_id,
             'date_range_id': order.date_range_id.id,
             'date_order': fields.Datetime.now(),
             'period_start': order.period_start,
@@ -353,8 +417,8 @@ class UtilityBillingAdjustment(models.Model):
             'billing_adjustment_id': self.id,
             'billing_correction_status': 'replaced',
         })
-        replacement.with_context(allow_billing_adjustment=True)._calculate_amounts()
-        replacement.with_context(allow_billing_adjustment=True).action_confirm()
+        replacement.with_context(replacement_ctx)._calculate_amounts()
+        replacement.with_context(replacement_ctx).action_confirm()
         invoices = replacement._create_invoices()
         invoices.write({
             'utility_adjustment_id': self.id,
@@ -364,6 +428,13 @@ class UtilityBillingAdjustment(models.Model):
         return replacement, invoices[:1]
 
     def action_apply_correction(self):
+        """Apply an approved billing adjustment.
+
+        Routing:
+          difference < 0  → Credit Note (downward correction)
+          difference > 0  → Additional Debit Invoice (upward correction)
+          difference == 0 → No accounting document (administrative/metadata only)
+        """
         self._check_manager()
         for record in self:
             record._lock_for_application()
@@ -372,8 +443,6 @@ class UtilityBillingAdjustment(models.Model):
             if record.state != 'approved':
                 raise ValidationError(_('يجب اعتماد التعديل قبل تطبيق التصحيح.'))
             record._validate_original_links()
-            if record.difference_amount >= 0:
-                raise ValidationError(_('هذا المسار يدعم تخفيض الفاتورة عبر إشعار دائن فقط.'))
             conflicting = self.search([
                 ('id', '!=', record.id),
                 ('invoice_id', '=', record.invoice_id.id),
@@ -383,26 +452,54 @@ class UtilityBillingAdjustment(models.Model):
                 raise ValidationError(_(
                     'لا يمكن تطبيق تعديل آخر على الفاتورة %s بعد تطبيق التعديل %s.'
                 ) % (record.invoice_id.display_name, conflicting.name))
+
+            rounding = record.currency_id.rounding if record.currency_id else 0.01
+
             with self.env.cr.savepoint():
-                credit_note = (
-                    record._create_full_credit_note()
-                    if record.rebill
-                    else record._create_partial_credit_note()
-                )
-                vals = {
-                    'credit_note_id': credit_note.id,
-                    'state': 'applied',
-                }
-                if record.rebill:
-                    replacement, replacement_invoice = record._create_replacement_bill()
-                    vals.update({
-                        'replacement_sale_order_id': replacement.id,
-                        'replacement_invoice_id': replacement_invoice.id,
-                    })
-                    record.sale_order_id.write({'billing_correction_status': 'replaced'})
-                else:
+                vals = {'state': 'applied'}
+
+                if abs(record.difference_amount) <= rounding:
+                    # ── Zero difference: no accounting document required ──────────
                     record.sale_order_id.write({'billing_correction_status': 'partially_corrected'})
-                record.with_context(_allow_adjustment_transition=True).write(vals)
-                record.message_post(body=_('تم تطبيق التصحيح وإنشاء المستندات المحاسبية المرتبطة.'))
-                record.invoice_id.message_post(body=_('تم ربط تعديل الفوترة %s بهذه الفاتورة.') % record.name)
+                    record.with_context(_allow_adjustment_transition=True).write(vals)
+                    record.message_post(body=_(
+                        'تم تطبيق التعديل. الفرق المالي = صفر؛ لم يُنشأ أي مستند محاسبي.'
+                    ))
+
+                elif record.difference_amount < 0:
+                    # ── Downward correction: Credit Note ─────────────────────────
+                    credit_note = (
+                        record._create_full_credit_note()
+                        if record.rebill
+                        else record._create_partial_credit_note()
+                    )
+                    vals['credit_note_id'] = credit_note.id
+                    if record.rebill:
+                        replacement, replacement_invoice = record._create_replacement_bill()
+                        vals.update({
+                            'replacement_sale_order_id': replacement.id,
+                            'replacement_invoice_id': replacement_invoice.id,
+                        })
+                        record.sale_order_id.write({'billing_correction_status': 'replaced'})
+                    else:
+                        record.sale_order_id.write({'billing_correction_status': 'partially_corrected'})
+                    record.with_context(_allow_adjustment_transition=True).write(vals)
+                    record.message_post(body=_(
+                        'تم تطبيق التصحيح (تخفيض): إشعار دائن %s بمبلغ %s.'
+                    ) % (credit_note.name, abs(record.difference_amount)))
+                    record.invoice_id.message_post(
+                        body=_('تم ربط تعديل الفوترة %s بهذه الفاتورة.') % record.name)
+
+                else:
+                    # ── Upward correction: Additional Debit Invoice ───────────────
+                    debit_invoice = record._create_debit_invoice()
+                    vals['debit_invoice_id'] = debit_invoice.id
+                    record.sale_order_id.write({'billing_correction_status': 'partially_corrected'})
+                    record.with_context(_allow_adjustment_transition=True).write(vals)
+                    record.message_post(body=_(
+                        'تم تطبيق التصحيح (زيادة): فاتورة تعديل إضافية %s بمبلغ %s.'
+                    ) % (debit_invoice.name, record.difference_amount))
+                    record.invoice_id.message_post(
+                        body=_('تم ربط تعديل الفوترة %s بهذه الفاتورة.') % record.name)
+
         return True

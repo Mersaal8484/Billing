@@ -19,4 +19,5 @@ from . import test_multi_role_security_hardening
 from . import test_utility_cron_management
 from . import test_workflow_command_hardening
 from . import test_contract_template_clone_wizard
-
+# Phase 5
+from . import test_collector_no_coa_autocreate

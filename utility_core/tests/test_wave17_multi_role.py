@@ -1,4 +1,4 @@
-﻿"""
+"""
 Wave 17 — Multi-Role Record Rule Composition Tests
 
 Verifies that implied group hierarchies do NOT grant broader regional access:

@@ -208,156 +208,93 @@ class UtilityStaff(models.Model):
                         ) % record.display_name)
 
     def _auto_create_collector_journal(self):
-        """Create a collection journal only for postpaid field collectors."""
-        for record in self:
-            is_collector = record.has_utility_role('collector')
+        """No-op: automatic collector journal provisioning has been removed.
 
-            if is_collector and not record.collection_journal_id:
-                code_suffix = str(record.id or record.employee_code or '001')[-4:]
-                code = ('C%s' % code_suffix).upper()[:5]
-                journal_name = 'يومية تحصيل - %s' % record.name
-                existing = self.env['account.journal'].search([
-                    ('company_id', '=', record.company_id.id),
-                    ('type', '=', 'cash'),
-                    '|', ('code', '=', code), ('name', '=', journal_name)
-                ], limit=1)
-                if not existing:
-                    acc_name = 'حساب صندوق - %s' % record.name
-                    cash_acc = self.env['account.account'].search([
-                        ('name', '=', acc_name),
-                        ('company_id', '=', record.company_id.id)
-                    ], limit=1)
-                    if not cash_acc:
-                        code_num = str(record.id or 1).zfill(3)
-                        cash_acc = self.env['account.account'].create({
-                            'name': acc_name,
-                            'code': '101%s' % code_num[-3:],
-                            'account_type': 'asset_cash',
-                            'company_id': record.company_id.id,
-                        })
-                    
-                    manual_inbound = self.env['account.payment.method'].search([
-                        ('payment_type', '=', 'inbound'),
-                        ('code', '=', 'manual')
-                    ], limit=1)
-                    manual_outbound = self.env['account.payment.method'].search([
-                        ('payment_type', '=', 'outbound'),
-                        ('code', '=', 'manual')
-                    ], limit=1)
+        Rationale (Phase 5, P0): creating account.account and account.journal
+        records silently during staff.create() or staff.write() violates the
+        production invariant that no Chart-of-Accounts mutation may occur at
+        runtime without explicit administrator action.
 
-                    in_vals = {'name': 'يدوي', 'payment_method_id': manual_inbound.id} if manual_inbound else None
-                    out_vals = {'name': 'يدوي', 'payment_method_id': manual_outbound.id} if manual_outbound else None
-
-                    LineModel = self.env['account.payment.method.line']
-                    acc_field = 'payment_account_id' if hasattr(LineModel, 'payment_account_id') else ('outstanding_account_id' if hasattr(LineModel, 'outstanding_account_id') else False)
-                    if acc_field and cash_acc:
-                        if in_vals: in_vals[acc_field] = cash_acc.id
-                        if out_vals: out_vals[acc_field] = cash_acc.id
-
-                    inbound_lines = [(0, 0, in_vals)] if in_vals else []
-                    outbound_lines = [(0, 0, out_vals)] if out_vals else []
-
-                    existing = self.env['account.journal'].create({
-                        'name': journal_name,
-                        'code': code,
-                        'type': 'cash',
-                        'company_id': record.company_id.id,
-                        'default_account_id': cash_acc.id if cash_acc else False,
-                        'inbound_payment_method_line_ids': inbound_lines,
-                        'outbound_payment_method_line_ids': outbound_lines,
-                    })
-                record.collection_journal_id = existing.id
-
-            if is_collector and record.collection_journal_id:
-                journal = record.collection_journal_id
-                company = journal.company_id
-                # 1. ضمان وجود حسابات الدفعات والإيصالات المستحقة على الشركة
-                if not company.account_journal_payment_debit_account_id or not company.account_journal_payment_credit_account_id:
-                    outstanding_acc = self.env['account.account'].search([
-                        ('name', 'ilike', 'مستحق'),
-                        ('company_id', 'in', (company.id, False))
-                    ], limit=1) or self.env['account.account'].search([
-                        ('account_type', 'in', ('asset_current', 'asset_cash')),
-                        ('company_id', 'in', (company.id, False))
-                    ], limit=1)
-                    if not outstanding_acc:
-                        outstanding_acc = self.env['account.account'].create({
-                            'name': 'حساب الإيصالات والدفعات المستحقة',
-                            'code': '101200',
-                            'account_type': 'asset_current',
-                            'company_id': company.id,
-                        })
-                    c_vals = {}
-                    if not company.account_journal_payment_debit_account_id:
-                        c_vals['account_journal_payment_debit_account_id'] = outstanding_acc.id
-                    if not company.account_journal_payment_credit_account_id:
-                        c_vals['account_journal_payment_credit_account_id'] = outstanding_acc.id
-                    if c_vals:
-                        company.sudo().write(c_vals)
-
-                # 2. ضمان أن الحساب النقدي لليومية مخصص باسم هذا الموظف وليس حساسية لموظف آخر
-                j_vals = {}
-                acc_name = 'حساب صندوق - %s' % record.name
-                cash_acc = journal.default_account_id
-                if not cash_acc or (record.name and record.name not in cash_acc.name):
-                    cash_acc = self.env['account.account'].search([
-                        ('name', '=', acc_name),
-                        ('company_id', '=', company.id)
-                    ], limit=1)
-                    if not cash_acc:
-                        code_num = str(record.id or 1).zfill(3)
-                        cash_acc = self.env['account.account'].create({
-                            'name': acc_name,
-                            'code': '101%s' % code_num[-3:],
-                            'account_type': 'asset_cash',
-                            'company_id': company.id,
-                        })
-                    j_vals['default_account_id'] = cash_acc.id
-
-                LineModel = self.env['account.payment.method.line']
-                acc_field = 'payment_account_id' if hasattr(LineModel, 'payment_account_id') else ('outstanding_account_id' if hasattr(LineModel, 'outstanding_account_id') else False)
-                target_out_acc = cash_acc.id if cash_acc else False
-
-                if not journal.inbound_payment_method_line_ids:
-                    manual_inbound = self.env['account.payment.method'].search([
-                        ('payment_type', '=', 'inbound'),
-                        ('code', '=', 'manual')
-                    ], limit=1)
-                    if manual_inbound:
-                        m_line = {'name': 'يدوي', 'payment_method_id': manual_inbound.id}
-                        if acc_field and target_out_acc: m_line[acc_field] = target_out_acc
-                        j_vals['inbound_payment_method_line_ids'] = [(0, 0, m_line)]
-                elif acc_field and target_out_acc:
-                    for line in journal.inbound_payment_method_line_ids:
-                        if not getattr(line, acc_field, False):
-                            line.sudo().write({acc_field: target_out_acc})
-
-                if not journal.outbound_payment_method_line_ids:
-                    manual_outbound = self.env['account.payment.method'].search([
-                        ('payment_type', '=', 'outbound'),
-                        ('code', '=', 'manual')
-                    ], limit=1)
-                    if manual_outbound:
-                        m_line = {'name': 'يدوي', 'payment_method_id': manual_outbound.id}
-                        if acc_field and target_out_acc: m_line[acc_field] = target_out_acc
-                        j_vals['outbound_payment_method_line_ids'] = [(0, 0, m_line)]
-                elif acc_field and target_out_acc:
-                    for line in journal.outbound_payment_method_line_ids:
-                        if not getattr(line, acc_field, False):
-                            line.sudo().write({acc_field: target_out_acc})
-
-                if j_vals:
-                    journal.sudo().write(j_vals)
-
-                if record.user_id and record.user_id.collection_journal_id != journal:
-                    record.user_id.sudo().write({'collection_journal_id': journal.id})
+        To provision a collector journal, use the explicit admin action:
+            utility.staff form view → button 'إنشاء يومية التحصيل'
+            (action_create_cash_journal) — protected by Admin/Accounting Manager.
+        """
+        pass
 
     def action_create_cash_journal(self):
-        """Manual action to generate or re-assign a dedicated Cash Journal."""
+
+        """Explicit admin action to provision a dedicated Cash Journal for this collector.
+
+        Protected: requires Utility Admin or Accounting Manager group.
+        Idempotent: if a journal already exists, opens it without creating another.
+        """
         self.ensure_one()
-        self._auto_create_collector_journal()
+        if not (self.env.user.has_group('utility_core.group_utility_admin')
+                or self.env.user.has_group('base.group_account_manager')):
+            raise AccessError(_(
+                'إنشاء يومية التحصيل يستلزم صلاحية مدير النظام أو مدير المحاسبة.'
+            ))
+        # ── If journal already assigned, open it ──────────────────────────────
         if self.collection_journal_id:
             return {
+                'name': _('اليومية النقدية للمتحصل'),
+                'type': 'ir.actions.act_window',
+                'res_model': 'account.journal',
+                'res_id': self.collection_journal_id.id,
+                'view_mode': 'form',
+                'target': 'current',
+            }
+        # ── Provision a new journal — explicit admin path only ────────────────
+        if not self.has_utility_role('collector'):
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('تنبيه'),
+                    'message': _('الموظف لا يملك دور المتحصل. لا يمكن إنشاء يومية تحصيل.'),
+                    'type': 'warning',
+                    'sticky': False,
+                },
+            }
+        company = self.company_id
+        code_suffix = str(self.id or self.employee_code or '001')[-4:]
+        code = ('C%s' % code_suffix).upper()[:5]
+        journal_name = 'يومية تحصيل - %s' % self.name
+
+        # Idempotency: search before creating
+        existing_journal = self.env['account.journal'].search([
+            ('company_id', '=', company.id),
+            ('type', '=', 'cash'),
+            '|', ('code', '=', code), ('name', '=', journal_name),
+        ], limit=1)
+
+        if not existing_journal:
+            acc_name = 'حساب صندوق - %s' % self.name
+            cash_acc = self.env['account.account'].search([
+                ('name', '=', acc_name),
+                ('company_id', '=', company.id),
+            ], limit=1)
+            if not cash_acc:
+                code_num = str(self.id or 1).zfill(3)
+                cash_acc = self.env['account.account'].create({
+                    'name': acc_name,
+                    'code': '101%s' % code_num[-3:],
+                    'account_type': 'asset_cash',
+                    'company_id': company.id,
+                })
+            existing_journal = self.env['account.journal'].create({
+                'name': journal_name,
+                'code': code,
+                'type': 'cash',
+                'company_id': company.id,
+                'default_account_id': cash_acc.id,
+            })
+
+        self.collection_journal_id = existing_journal.id
+        self.message_post(body=_(
+            'تم إنشاء يومية التحصيل %s بواسطة %s.'
+        ) % (existing_journal.name, self.env.user.name))
+        return {
                 'type': 'ir.actions.client',
                 'tag': 'display_notification',
                 'params': {
@@ -436,9 +373,9 @@ class UtilityStaff(models.Model):
         old_users = self.mapped('user_id') if 'user_id' in vals else self.env['res.users']
         res = super(UtilityStaff, self).write(vals)
 
-        if any(f in vals for f in ('role_ids', 'user_role_id', 'user_id', 'name', 'collection_journal_id', 'active')):
-            for record in self:
-                record._auto_create_collector_journal()
+        # Note: _auto_create_collector_journal() removed from write() path (Phase 5 P0).
+        # Journal provisioning is now explicit-only via action_create_cash_journal().
+        if any(f in vals for f in ('role_ids', 'user_role_id', 'user_id', 'active')):
             self._sync_user_groups(old_users=old_users)
         return res
 
@@ -448,7 +385,7 @@ class UtilityStaff(models.Model):
             if vals.get('user_role_id') and not vals.get('role_ids'):
                 vals['role_ids'] = [(4, vals['user_role_id'])]
         records = super(UtilityStaff, self).create(vals_list)
-        for record in records:
-            record._auto_create_collector_journal()
+        # Note: _auto_create_collector_journal() removed from create() path (Phase 5 P0).
+        # Journal provisioning is now explicit-only via action_create_cash_journal().
         records._sync_user_groups()
         return records

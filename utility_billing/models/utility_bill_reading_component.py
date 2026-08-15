@@ -35,6 +35,9 @@ class UtilityBillReadingComponent(models.Model):
          'لا يمكن إضافة القراءة نفسها مرتين إلى الفاتورة.'),
     ]
 
+    # States in which the parent sale.order is considered confirmed/immutable
+    _IMMUTABLE_ORDER_STATES = frozenset({'sale', 'done', 'cancel'})
+
     @api.constrains('sale_order_id', 'reading_id', 'account_id', 'company_id')
     def _check_component_consistency(self):
         """Keep every snapshot in the same account and company as its bill."""
@@ -45,3 +48,39 @@ class UtilityBillReadingComponent(models.Model):
                 raise ValidationError(_('حساب القراءة لا يطابق حساب مكون الفاتورة.'))
             if component.sale_order_id.company_id != component.company_id:
                 raise ValidationError(_('شركة مكون القراءة لا تطابق شركة الفاتورة.'))
+
+    def _check_component_immutability(self):
+        """Block write/unlink on components belonging to a confirmed order.
+
+        Authorization hierarchy:
+          1. If the parent order is still draft/sent → always allowed.
+          2. If the parent order is confirmed (sale/done/cancel):
+             a. Context flag ``_allow_bill_component_regen`` AND ``env.su``
+                (i.e., the call is coming via ``sudo()`` from trusted server
+                code — NOT passable from an RPC/JSON call alone) → allowed.
+             b. Otherwise → ValidationError.
+        """
+        for comp in self:
+            if comp.sale_order_id.state not in self._IMMUTABLE_ORDER_STATES:
+                continue  # Draft / sent bills are editable
+
+            # Admin bypass: requires BOTH the context flag AND a sudo context.
+            # env.su is True only when the ORM is in superuser mode (sudo()),
+            # which cannot be set by a client RPC call.
+            if (self.env.context.get('_allow_bill_component_regen')
+                    and self.env.su):
+                continue
+
+            raise ValidationError(_(
+                'مكونات القراءة في فاتورة مؤكدة أو منتهية أو ملغاة لا يمكن تعديلها أو حذفها.\n'
+                'استخدم مستند تصحيح الفوترة (utility.billing.adjustment) لتصحيح الفاتورة.'
+            ))
+
+    def write(self, vals):
+        self._check_component_immutability()
+        return super().write(vals)
+
+    def unlink(self):
+        self._check_component_immutability()
+        return super().unlink()
+

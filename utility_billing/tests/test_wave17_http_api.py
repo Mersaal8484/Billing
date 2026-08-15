@@ -1,4 +1,4 @@
-﻿"""
+"""
 Wave 17 — HTTP API Authorization Boundary Tests (HttpCase)
 
 These tests verify that the HTTP API endpoints enforce organizational scope

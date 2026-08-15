@@ -1,19 +1,19 @@
 from odoo import api, fields, models, _
-from odoo.exceptions import ValidationError
+from odoo.exceptions import AccessError, ValidationError
 
 
 class UtilityDeposit(models.Model):
     _name = 'utility.deposit'
-    _description = 'تأمين'
+    _description = 'تأمين المشتركين'
     _inherit = ['mail.thread', 'mail.activity.mixin']
     _rec_name = 'deposit_number'
-    _order = 'deposit_date desc'
+    _order = 'deposit_date desc, id desc'
 
     active = fields.Boolean('نشط', default=True)
-    company_id = fields.Many2one('res.company', 'الشركة', default=lambda self: self.env.company)
-    deposit_number = fields.Char('رقم التأمين', required=True, default=lambda self: _('جديد'))
-    customer_id = fields.Many2one('utility.customer', 'العميل')
-    partner_id = fields.Many2one('res.partner', related='customer_id.partner_id', store=True)
+    company_id = fields.Many2one('res.company', 'الشركة', required=True, default=lambda self: self.env.company)
+    deposit_number = fields.Char('رقم التأمين', required=True, copy=False, readonly=True, default=lambda self: _('جديد'))
+    customer_id = fields.Many2one('utility.customer', 'العميل / المشترك', required=True, index=True)
+    partner_id = fields.Many2one('res.partner', related='customer_id.partner_id', store=True, index=True)
     region_id = fields.Many2one(related='partner_id.region_id', store=True, string='المنطقة')
     area_id = fields.Many2one(related='partner_id.area_id', store=True, string='المنطقة الفرعية')
     account_id = fields.Many2one('utility.customer', 'الحساب', related='customer_id', store=True)
@@ -25,24 +25,39 @@ class UtilityDeposit(models.Model):
         store=True,
         readonly=True,
     )
-    amount = fields.Monetary('المبلغ', currency_field='currency_id')
-    deposit_date = fields.Date('تاريخ التأمين')
+    amount = fields.Monetary('مبلغ التأمين', required=True, currency_field='currency_id')
+    deposit_date = fields.Date('تاريخ التأمين', default=fields.Date.context_today)
     deposit_type = fields.Selection([
         ('connection', 'توصيل'),
         ('security', 'أمان'),
         ('meter', 'عداد'),
-    ], string='نوع التأمين', default='security')
+    ], string='نوع التأمين', default='security', required=True)
     status = fields.Selection([
         ('draft', 'مسودة'),
-        ('held', 'محتجزة'),
-        ('released', 'مستردة'),
-        ('forfeited', 'مصادرة'),
-    ], string='الحالة', default='draft')
-    release_date = fields.Date('تاريخ الاسترداد')
+        ('held', 'محتجز / مستلم'),
+        ('released', 'مسترد'),
+        ('forfeited', 'مصادر'),
+    ], string='الحالة', default='draft', readonly=True, tracking=True, copy=False)
+    release_date = fields.Date('تاريخ الاسترداد', readonly=True, copy=False)
     notes = fields.Text('ملاحظات')
 
-    payment_id = fields.Many2one('account.payment', string='سند القبض', readonly=True)
-    move_id = fields.Many2one('account.move', string='القيد المحاسبي', readonly=True)
+    # ── قيود المحاسبة الحقيقية ────────────────────────────────────────────────
+    receipt_move_id = fields.Many2one(
+        'account.move', string='قيد استلام التأمين', readonly=True, copy=False, index=True,
+        help='قيد استلام التأمين: مدين (النقدية) / دائن (التزامات التأمينات المحتجزة).'
+    )
+    release_move_id = fields.Many2one(
+        'account.move', string='قيد استرداد التأمين', readonly=True, copy=False, index=True,
+        help='قيد استرداد التأمين: مدين (التزامات التأمينات) / دائن (النقدية/البنك).'
+    )
+    forfeit_move_id = fields.Many2one(
+        'account.move', string='قيد مصادرة التأمين', readonly=True, copy=False, index=True,
+        help='قيد مصادرة التأمين: مدين (التزامات التأمينات) / دائن (إيرادات الغرامات/المصادرة).'
+    )
+
+    # حقول التوافق التاريخي (Readonly)
+    payment_id = fields.Many2one('account.payment', string='سند القبض (تاريخي)', readonly=True, copy=False)
+    move_id = fields.Many2one('account.move', string='القيد المحاسبي (تاريخي)', readonly=True, copy=False)
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -51,147 +66,208 @@ class UtilityDeposit(models.Model):
                 vals['deposit_number'] = self.env['ir.sequence'].next_by_code('utility.deposit') or _('جديد')
         return super().create(vals_list)
 
-    # ── FIX-10: منع مبلغ وديعة صفر أو سالب ─────────────────────────────────
     @api.constrains('amount')
     def _check_positive_amount(self):
         for rec in self:
             if rec.amount <= 0:
-                raise ValidationError(
-                    'مبلغ التأمين يجب أن يكون أكبر من الصفر. '
-                    'القيمة المدخلة: %s' % rec.amount
-                )
+                raise ValidationError(_(
+                    'مبلغ التأمين يجب أن يكون أكبر من الصفر. القيمة المدخلة: %s'
+                ) % rec.amount)
+
+    def _lock_records(self):
+        """Row-level lock to prevent concurrent state transitions."""
+        if self.ids:
+            self.env.cr.execute(
+                "SELECT id FROM utility_deposit WHERE id IN %s FOR UPDATE",
+                [tuple(self.ids)]
+            )
 
     def _get_company_config(self, company_field, config_key):
         company = self.env.company
         val = company[company_field]
         if val:
             return val.id if hasattr(val, 'id') else val
-        return int(self.env['ir.config_parameter'].sudo().get_param(config_key, 0))
+        param = self.env['ir.config_parameter'].sudo().get_param(config_key, '0')
+        return int(param) if param and param.isdigit() else 0
 
     def action_receive_deposit(self):
+        """استلام التأمين:
+        ينشئ قيد محاسبي صريح:
+          Dr: حساب الصندوق/البنك (Cash/Bank Account)
+          Cr: حساب التزامات التأمينات (Deposit Liability Account)
+        """
+        self._lock_records()
         for rec in self:
             if rec.status != 'draft':
-                continue
+                raise ValidationError(_('يمكن استلام مبالغ التأمين للمسودات فقط.'))
             if rec.amount <= 0:
-                raise ValidationError('لا يمكن تسجيل وديعة بمبلغ صفر أو سالب.')
+                raise ValidationError(_('لا يمكن تسجيل وديعة بمبلغ صفر أو سالب.'))
+            if rec.receipt_move_id and rec.receipt_move_id.state == 'posted':
+                raise ValidationError(_('تم استلام هذا التأمين وترحيل قيده مسبقاً.'))
+
             deposit_journal_id = rec._get_company_config('deposit_journal_id', 'utility.deposit_journal_id')
             deposit_account_id = rec._get_company_config('deposit_account_id', 'utility.deposit_account_id')
             if not deposit_journal_id or not deposit_account_id:
-                raise ValidationError('يرجى تحديد يومية التأمينات وحساب التأمينات في الإعدادات أولاً.')
+                raise ValidationError(_('يرجى تحديد يومية التأمينات وحساب التأمينات (الالتزامات) في الإعدادات أولاً.'))
 
             partner = rec.customer_id.partner_id
             if not partner:
-                raise ValidationError('لا يوجد عميل مرتبط بحساب الكهرباء.')
+                raise ValidationError(_('لا يوجد عميل مرتبط بحساب المشترك.'))
 
             journal = self.env['account.journal'].browse(deposit_journal_id)
-            if not journal.inbound_payment_method_line_ids:
-                raise ValidationError(
-                    'اليومية المحددة (%s) ليس بها طرق دفع واردة. '
-                    'يرجى ضبط اليومية في الإعدادات.' % journal.name)
+            cash_account = journal.default_account_id
+            if not cash_account:
+                raise ValidationError(_('اليومية المحددة للتأمينات ليس لها حساب افتراضي.'))
 
-            payment = self.env['account.payment'].create({
-                'payment_type': 'inbound',
-                'partner_type': 'customer',
-                'partner_id': partner.id,
-                'amount': rec.amount,
-                'date': rec.deposit_date or fields.Date.today(),
-                'journal_id': deposit_journal_id,
-                'ref': f'وديعة رقم: {rec.deposit_number}',
+            # إنشاء قيد الاستلام: Dr النقدية / Cr التزامات التأمين
+            move = self.env['account.move'].create({
+                'journal_id': journal.id,
+                'company_id': rec.company_id.id,
+                'date': rec.deposit_date or fields.Date.context_today(self),
+                'ref': _('استلام تأمين رقم: %s') % rec.deposit_number,
+                'line_ids': [
+                    (0, 0, {
+                        'account_id': cash_account.id,
+                        'name': _('استلام تأمين %s') % rec.deposit_number,
+                        'debit': rec.amount,
+                        'credit': 0.0,
+                        'partner_id': partner.id,
+                    }),
+                    (0, 0, {
+                        'account_id': deposit_account_id,
+                        'name': _('تأمين محتجز %s') % rec.deposit_number,
+                        'debit': 0.0,
+                        'credit': rec.amount,
+                        'partner_id': partner.id,
+                    }),
+                ],
             })
-            payment.action_post()
+            move.action_post()
             rec.write({
                 'status': 'held',
-                'payment_id': payment.id,
+                'receipt_move_id': move.id,
+                'move_id': move.id,
             })
+            rec.message_post(body=_('تم استلام مبلغ التأمين وترحيل القيد المحاسبي %s.') % move.name)
 
     def action_release_deposit(self):
+        """استرداد التأمين:
+        ينشئ قيد استرداد صريح:
+          Dr: حساب التزامات التأمينات (Deposit Liability Account)
+          Cr: حساب الصندوق/البنك (Cash/Bank Account)
+        """
+        self._lock_records()
         for rec in self:
             if rec.status != 'held':
-                continue
-            if not rec.payment_id:
-                raise ValidationError(
-                    'لا يمكن استرداد وديعة [%s] بدون سند قبض مرتبط. '
-                    'يُرجى مراجعة سجل التأمين.' % rec.deposit_number
-                )
+                raise ValidationError(_('يمكن استرداد التأمينات المحتجزة فقط.'))
+            if rec.release_move_id and rec.release_move_id.state == 'posted':
+                raise ValidationError(_('تم استرداد هذا التأمين مسبقاً.'))
+
             deposit_journal_id = rec._get_company_config('deposit_journal_id', 'utility.deposit_journal_id')
             deposit_account_id = rec._get_company_config('deposit_account_id', 'utility.deposit_account_id')
             if not deposit_journal_id or not deposit_account_id:
-                raise ValidationError('يرجى تحديد يومية التأمينات وحساب التأمينات في الإعدادات أولاً.')
+                raise ValidationError(_('يرجى تحديد يومية التأمينات وحساب التأمينات في الإعدادات أولاً.'))
 
             partner = rec.customer_id.partner_id
             if not partner:
-                raise ValidationError('لا يوجد عميل مرتبط بحساب الكهرباء.')
+                raise ValidationError(_('لا يوجد عميل مرتبط بحساب المشترك.'))
 
             journal = self.env['account.journal'].browse(deposit_journal_id)
             bank_account = journal.default_account_id
             if not bank_account:
-                raise ValidationError('اليومية المحددة ليس لها حساب افتراضي.')
+                raise ValidationError(_('اليومية المحددة ليس لها حساب افتراضي.'))
 
             move = self.env['account.move'].create({
                 'journal_id': deposit_journal_id,
-                'date': fields.Date.today(),
-                'ref': f'استرداد وديعة رقم: {rec.deposit_number}',
+                'company_id': rec.company_id.id,
+                'date': fields.Date.context_today(self),
+                'ref': _('استرداد تأمين رقم: %s') % rec.deposit_number,
                 'line_ids': [
                     (0, 0, {
                         'account_id': deposit_account_id,
-                        'name': f'استرداد الوديعة {rec.deposit_number}',
+                        'name': _('استرداد التأمين %s') % rec.deposit_number,
                         'debit': rec.amount,
                         'credit': 0.0,
                         'partner_id': partner.id,
                     }),
                     (0, 0, {
                         'account_id': bank_account.id,
-                        'name': f'مقابل استرداد {rec.deposit_number}',
+                        'name': _('مقابل استرداد تأمين %s') % rec.deposit_number,
                         'debit': 0.0,
                         'credit': rec.amount,
-                    })
-                ]
+                        'partner_id': partner.id,
+                    }),
+                ],
             })
             move.action_post()
             rec.write({
                 'status': 'released',
-                'release_date': fields.Date.today(),
-                'move_id': move.id,
+                'release_date': fields.Date.context_today(self),
+                'release_move_id': move.id,
             })
+            rec.message_post(body=_('تم استرداد مبلغ التأمين وترحيل القيد المحاسبي %s.') % move.name)
 
     def action_forfeit_deposit(self):
+        """مصادرة التأمين:
+        ينشئ قيد مصادرة صريح:
+          Dr: حساب التزامات التأمينات (Deposit Liability Account)
+          Cr: حساب إيرادات الغرامات / المصادرات (Fine/Forfeit Revenue Account)
+        """
+        self._lock_records()
         for rec in self:
             if rec.status != 'held':
-                continue
+                raise ValidationError(_('يمكن مصادرة التأمينات المحتجزة فقط.'))
+            if rec.forfeit_move_id and rec.forfeit_move_id.state == 'posted':
+                raise ValidationError(_('تمت مصادرة هذا التأمين مسبقاً.'))
+
             partner = rec.customer_id.partner_id
             if not partner:
-                raise ValidationError(
-                    'لا يمكن مصادرة وديعة [%s] بدون عميل مرتبط.' % rec.deposit_number
-                )
+                raise ValidationError(_('لا يمكن مصادرة تأمين [%s] بدون عميل مرتبط.') % rec.deposit_number)
+
             deposit_journal_id = rec._get_company_config('deposit_journal_id', 'utility.deposit_journal_id')
             deposit_account_id = rec._get_company_config('deposit_account_id', 'utility.deposit_account_id')
             fine_account_id = rec._get_company_config('fine_account_id', 'utility.fine_account_id')
 
             if not deposit_journal_id or not deposit_account_id or not fine_account_id:
-                raise ValidationError('إعدادات الحسابات غير مكتملة للمصادرة (حساب الغرامات، التأمينات، واليومية).')
+                raise ValidationError(_('إعدادات الحسابات غير مكتملة للمصادرة (حساب الغرامات، التأمينات، واليومية).'))
 
             move = self.env['account.move'].create({
                 'journal_id': deposit_journal_id,
-                'date': fields.Date.today(),
-                'ref': f'مصادرة وديعة رقم: {rec.deposit_number}',
+                'company_id': rec.company_id.id,
+                'date': fields.Date.context_today(self),
+                'ref': _('مصادرة تأمين رقم: %s') % rec.deposit_number,
                 'line_ids': [
                     (0, 0, {
                         'account_id': deposit_account_id,
-                        'name': f'مصادرة الوديعة {rec.deposit_number}',
+                        'name': _('مصادرة التأمين %s') % rec.deposit_number,
                         'debit': rec.amount,
                         'credit': 0.0,
                         'partner_id': partner.id,
                     }),
                     (0, 0, {
                         'account_id': fine_account_id,
-                        'name': f'إيراد مصادرة {rec.deposit_number}',
+                        'name': _('إيراد مصادرة تأمين %s') % rec.deposit_number,
                         'debit': 0.0,
                         'credit': rec.amount,
-                    })
-                ]
+                        'partner_id': partner.id,
+                    }),
+                ],
             })
             move.action_post()
             rec.write({
                 'status': 'forfeited',
-                'move_id': move.id,
+                'forfeit_move_id': move.id,
             })
+            rec.message_post(body=_('تمت مصادرة مبلغ التأمين وترحيل القيد المحاسبي %s.') % move.name)
+
+    def action_reclassify_legacy_deposit(self):
+        """إعادة تصنيف وديعة تاريخية (Admin Action):
+        للتأمينات القديمة التي أنشئت عبر account.payment قبل التعديل،
+        يتيح هذا الإجراء ربط القيد المحاسبي الصحيح أو توفيق الحالة.
+        """
+        if not self.env.user.has_group('utility_core.group_utility_admin'):
+            raise AccessError(_('هذا الإجراء مخصص لمدير النظام فقط.'))
+        for rec in self:
+            if rec.payment_id and not rec.receipt_move_id:
+                rec.receipt_move_id = rec.payment_id.move_id
+                rec.message_post(body=_('تمت إعادة تصنيف التأمين التاريخي وربطه بالقيد المحاسبي %s.') % rec.receipt_move_id.name)

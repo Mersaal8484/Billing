@@ -136,6 +136,34 @@ class UtilityReadingBatchService(models.AbstractModel):
         }
 
     @api.model
+    def _validate_batch_line_scope(self, batch, meter, customer):
+        """التحقق من وقوع العداد والمشترك ضمن النطاق التنظيمي للقارئ ومنطقة الدفعة."""
+        # 1. التحقق من تطابق منطقة الدفعة مع منطقة العداد/المشترك إن وُجدت
+        if batch.region_id:
+            meter_region = getattr(meter, 'region_id', False) or (customer.region_id if customer else False)
+            if meter_region and meter_region.id != batch.region_id.id:
+                return {
+                    'valid': False,
+                    'error': _("العداد يقع في منطقة (%s) تختلف عن منطقة الدفعة (%s).") % (
+                        meter_region.name, batch.region_id.name
+                    )
+                }
+
+        # 2. التحقق من صلاحيات القارئ الجغرافية والتنظيمية
+        if batch.user_id and hasattr(batch.user_id, 'check_record_scope'):
+            try:
+                batch.user_id.check_record_scope(meter)
+            except AccessError:
+                return {
+                    'valid': False,
+                    'error': _("العداد %s يقع خارج النطاق الجغرافي/التنظيمي المخصص للقارئ %s.") % (
+                        meter.meter_number, batch.user_id.name
+                    )
+                }
+
+        return {'valid': True}
+
+    @api.model
     def _process_single_batch_line(self, batch, line, media_assets_by_name, legacy_attachments):
         meter_number = line.meter_number
         if not meter_number:
@@ -152,6 +180,11 @@ class UtilityReadingBatchService(models.AbstractModel):
         customer = meter.customer_id
         if not customer:
             return {'success': False, 'error': _("العداد %s غير مرتبط بمشترك/حساب.") % meter_number}
+
+        # التحقق من نطاق الصلاحيات التنظيمية للدفعة
+        scope_res = self._validate_batch_line_scope(batch, meter, customer)
+        if not scope_res.get('valid'):
+            return {'success': False, 'error': scope_res.get('error')}
 
         reading_value = line.reading_value
         reading_date = line.reading_date or fields.Datetime.now()

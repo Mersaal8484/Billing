@@ -480,6 +480,35 @@ class UtilityReading(models.Model):
                 r.previous_reading = 0.0
                 r.previous_reading_date = False
 
+    def _get_effective_previous_reading(self):
+        """Return the effective previous reading value for the NEXT reading's consumption calculation.
+
+        The historical ``reading_value`` is preserved immutably forever.
+        If a technically-approved (or processed) correction exists for this
+        reading, the ``corrected_reading_value`` is used as the operational
+        baseline for the subsequent reading — without mutating any stored data.
+
+        This is the canonical resolver used by downstream consumption
+        calculations. Never use ``reading_value`` directly when computing
+        consumption for the reading that *follows* this one.
+
+        Returns:
+            float: The corrected reading value if an approved settlement exists,
+                   otherwise the immutable historical reading_value.
+        """
+        self.ensure_one()
+        # Avoid circular import: use model name string, not import
+        Settlement = self.env.get('utility.reading.settlement')
+        if Settlement is not None:
+            approved = Settlement.search([
+                ('reading_id', '=', self.id),
+                ('state', 'in', ('technically_approved', 'processed')),
+            ], limit=1, order='approved_date desc')
+            if approved:
+                return approved.corrected_reading_value
+        return self.reading_value
+
+
     def action_submit_review(self):
         for r in self:
             if r.state != 'draft':

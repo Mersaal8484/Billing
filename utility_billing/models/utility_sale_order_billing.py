@@ -25,18 +25,30 @@ class UtilitySaleOrderBilling(models.Model):
         consumption = self.consumption or 0.0
         lines = []
 
-        # ── P1 Fix: Template ↔ Version consistency ─────────────────────────────
-        # الأولوية: إذا كانت الفاتورة مرتبطة بإصدار محدد، نشتق القالب من الإصدار.
-        # هذا يضمن أن template و version دائماً متسقان ولا يمكن لتغيير القالب على
-        # العميل بين حسابات Draft أن يُنتج أدلة تدقيق متناقضة.
-        version = self.contract_template_version_id
-        if version and version.template_id:
-            template = version.template_id
+        # ── P1 Fix: Template ↔ Version consistency & Historical Pricing ─────────
+        # الأولوية:
+        # 1. إذا تم تمرير _force_contract_version_id في context (مثل إعادة الفوترة/التعديلات التاريخية)
+        # 2. إذا كانت الفاتورة مرتبطة بإصدار محدد مسبقاً
+        # 3. اشتقاق الإصدار النشط من قالب العميل الحالي
+        forced_version_id = self.env.context.get('_force_contract_version_id')
+        if forced_version_id:
+            forced_version = self.env['utility.contract.template.version'].browse(forced_version_id).exists()
+            if forced_version and forced_version.template_id:
+                version = forced_version
+                template = forced_version.template_id
+                self.contract_template_version_id = forced_version.id
+            else:
+                version = self.contract_template_version_id
+                template = version.template_id if version else False
         else:
-            template = account.contract_template_id if account else False
-            version = template._get_or_create_active_version() if template else False
-            if template and version:
-                self.contract_template_version_id = version.id
+            version = self.contract_template_version_id
+            if version and version.template_id:
+                template = version.template_id
+            else:
+                template = account.contract_template_id if account else False
+                version = template._get_or_create_active_version() if template else False
+                if template and version:
+                    self.contract_template_version_id = version.id
 
         # تسجيل الإصدار كمستخدم ماليًا بشكل ذري ونهائي عند أول ربط
         if version:

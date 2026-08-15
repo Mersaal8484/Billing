@@ -1,4 +1,4 @@
-﻿"""Retire service-order fee UI and normalize one-time activation charges."""
+"""Retire service-order fee UI and normalize one-time activation charges."""
 
 
 def migrate(cr, version):

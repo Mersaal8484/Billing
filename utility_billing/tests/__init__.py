@@ -20,3 +20,17 @@ from . import test_wave17_http_api
 from . import test_payment_allocation_reversal
 from . import test_reading_lifecycle_hardening
 from . import test_contract_template_versioning_and_pricing_snapshot
+# Phase 0
+from . import test_baseline_characterization
+# Phase 1
+from . import test_billing_adjustment_debit
+# Phase 3
+from . import test_reading_component_immutability
+# Phase 4
+from . import test_deposit_accounting
+# Phase 6
+from . import test_financial_settlement_workflow
+# Phase 7
+from . import test_reading_batch_scope
+# Phase 8
+from . import test_payment_integrity_regression
