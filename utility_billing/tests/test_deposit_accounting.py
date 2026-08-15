@@ -181,3 +181,78 @@ class TestDepositAccounting(TransactionCase):
                 'amount': -100.0,
                 'deposit_type': 'security',
             })
+
+    def test_legacy_deposit_reclassification_creates_adjusting_entry(self):
+        """action_reclassify_legacy_deposit creates Dr Receivable / Cr Liability entry."""
+        # Create a mock legacy payment
+        receivable_acc = self.partner.property_account_receivable_id
+        if not receivable_acc:
+            receivable_acc = self.Account.search([
+                ('company_id', '=', self.env.company.id),
+                ('account_type', '=', 'asset_receivable'),
+            ], limit=1)
+
+        legacy_payment = self.env['account.payment'].create({
+            'payment_type': 'inbound',
+            'partner_type': 'customer',
+            'partner_id': self.partner.id,
+            'amount': 700.0,
+            'journal_id': self.deposit_journal.id,
+        })
+
+        deposit = self.Deposit.create({
+            'customer_id': self.customer.id,
+            'amount': 700.0,
+            'deposit_type': 'security',
+            'payment_id': legacy_payment.id,
+        })
+
+        # Reclassify
+        deposit.sudo().action_reclassify_legacy_deposit()
+
+        self.assertEqual(deposit.status, 'held')
+        self.assertTrue(deposit.receipt_move_id)
+        self.assertEqual(deposit.receipt_move_id.state, 'posted')
+
+        lines = deposit.receipt_move_id.line_ids
+        debit_line = lines.filtered(lambda l: l.debit > 0)
+        credit_line = lines.filtered(lambda l: l.credit > 0)
+
+        self.assertEqual(debit_line.account_id, receivable_acc,
+                         'الطرف المدين يجب أن يكون حساب الذمم المدينة لإلغاء أثر الدفعة القديمة.')
+        self.assertEqual(credit_line.account_id, self.deposit_liability_account,
+                         'الطرف الدائن يجب أن يكون حساب التزامات التأمينات.')
+        self.assertAlmostEqual(debit_line.debit, 700.0)
+        self.assertAlmostEqual(credit_line.credit, 700.0)
+
+    def test_idempotent_receive_and_transition_guards(self):
+        """Calling receive/release twice or out of order must raise ValidationError."""
+        deposit = self.Deposit.create({
+            'customer_id': self.customer.id,
+            'amount': 250.0,
+            'deposit_type': 'security',
+        })
+        # Cannot release from draft
+        with self.assertRaises(ValidationError):
+            deposit.action_release_deposit()
+
+        # Cannot forfeit from draft
+        with self.assertRaises(ValidationError):
+            deposit.action_forfeit_deposit()
+
+        # Receive once
+        deposit.action_receive_deposit()
+        self.assertEqual(deposit.status, 'held')
+
+        # Receive second time MUST raise
+        with self.assertRaises(ValidationError):
+            deposit.action_receive_deposit()
+
+        # Release once
+        deposit.action_release_deposit()
+        self.assertEqual(deposit.status, 'released')
+
+        # Release second time MUST raise
+        with self.assertRaises(ValidationError):
+            deposit.action_release_deposit()
+

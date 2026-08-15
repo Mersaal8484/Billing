@@ -97,12 +97,58 @@ class UtilityBillingAdjustment(models.Model):
         'res.company', string='الشركة', required=True,
         default=lambda self: self.env.company, index=True, check_company=True)
 
-    @api.depends('invoice_id.amount_total', 'corrected_amount')
+    @api.depends('invoice_id.amount_total', 'corrected_amount', 'corrected_consumption', 'corrected_current_reading')
     def _compute_amounts(self):
         for record in self:
             original = record.invoice_id.amount_total if record.invoice_id else 0.0
             record.original_amount = original
+            # إذا لم يتم تعيين corrected_amount في تصحيح القراءة/الاستهلاك، نحسبه آلياً من محرك التسعير
+            if record.adjustment_type in ('reading_correction', 'consumption_correction') and record.sale_order_id and record.corrected_amount == 0.0:
+                if record.adjustment_type == 'reading_correction' and record.corrected_current_reading and not record.corrected_consumption:
+                    prev = record.sale_order_id.previous_reading or 0.0
+                    mult = getattr(record.sale_order_id, 'meter_multiplier', 1.0) or 1.0
+                    record.corrected_consumption = max(0.0, (record.corrected_current_reading - prev) * mult)
+                if hasattr(record.sale_order_id, '_simulate_bill_total_for_consumption') and (record.corrected_consumption or record.corrected_current_reading):
+                    version_id = record.sale_order_id.contract_template_version_id.id if record.sale_order_id.contract_template_version_id else False
+                    curr_read = record.corrected_current_reading if record.adjustment_type == 'reading_correction' else record.sale_order_id.current_reading
+                    record.corrected_amount = record.sale_order_id._simulate_bill_total_for_consumption(
+                        record.corrected_consumption or 0.0,
+                        current_reading=curr_read,
+                        version_id=version_id,
+                    )
             record.difference_amount = record.corrected_amount - original
+
+    @api.onchange('corrected_current_reading', 'sale_order_id', 'adjustment_type')
+    def _onchange_corrected_current_reading(self):
+        if self.adjustment_type == 'reading_correction' and self.sale_order_id and self.corrected_current_reading is not False:
+            prev = self.sale_order_id.previous_reading or 0.0
+            mult = getattr(self.sale_order_id, 'meter_multiplier', 1.0) or 1.0
+            self.corrected_consumption = max(0.0, (self.corrected_current_reading - prev) * mult)
+            self._reprice_correction()
+
+    @api.onchange('corrected_consumption', 'sale_order_id', 'adjustment_type')
+    def _onchange_corrected_consumption(self):
+        if self.adjustment_type in ('reading_correction', 'consumption_correction') and self.sale_order_id:
+            self._reprice_correction()
+
+    def _reprice_correction(self):
+        """حساب المبلغ التجاري المصحح آلياً من محرك التسعير التاريخي."""
+        for record in self:
+            if record.adjustment_type in ('reading_correction', 'consumption_correction') and record.sale_order_id:
+                if record.adjustment_type == 'reading_correction' and record.corrected_current_reading is not False and not record.corrected_consumption:
+                    prev = record.sale_order_id.previous_reading or 0.0
+                    mult = getattr(record.sale_order_id, 'meter_multiplier', 1.0) or 1.0
+                    record.corrected_consumption = max(0.0, (record.corrected_current_reading - prev) * mult)
+
+                consumption = record.corrected_consumption or 0.0
+                curr_read = record.corrected_current_reading if record.adjustment_type == 'reading_correction' else record.sale_order_id.current_reading
+                version_id = record.sale_order_id.contract_template_version_id.id if record.sale_order_id.contract_template_version_id else False
+                if hasattr(record.sale_order_id, '_simulate_bill_total_for_consumption'):
+                    record.corrected_amount = record.sale_order_id._simulate_bill_total_for_consumption(
+                        consumption,
+                        current_reading=curr_read,
+                        version_id=version_id,
+                    )
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -116,6 +162,17 @@ class UtilityBillingAdjustment(models.Model):
                     vals.setdefault('customer_id', order.customer_id.id)
                     vals.setdefault('billing_period_id', order.date_range_id.id)
                     vals.setdefault('company_id', order.company_id.id)
+                    # Auto-compute corrected_consumption for reading_correction if not provided
+                    if vals.get('adjustment_type') == 'reading_correction' and vals.get('corrected_current_reading') is not None and not vals.get('corrected_consumption'):
+                        prev = order.previous_reading or 0.0
+                        mult = getattr(order, 'meter_multiplier', 1.0) or 1.0
+                        vals['corrected_consumption'] = max(0.0, (vals['corrected_current_reading'] - prev) * mult)
+                    # Auto-compute corrected_amount if not provided
+                    if vals.get('adjustment_type') in ('reading_correction', 'consumption_correction') and not vals.get('corrected_amount') and hasattr(order, '_simulate_bill_total_for_consumption'):
+                        cons = vals.get('corrected_consumption', 0.0)
+                        curr_read = vals.get('corrected_current_reading', order.current_reading)
+                        v_id = order.contract_template_version_id.id if order.contract_template_version_id else False
+                        vals['corrected_amount'] = order._simulate_bill_total_for_consumption(cons, current_reading=curr_read, version_id=v_id)
         records = super().create(vals_list)
         records._validate_original_links()
         return records
@@ -388,7 +445,7 @@ class UtilityBillingAdjustment(models.Model):
         if self.adjustment_type in ('reading_correction', 'consumption_correction') and self.corrected_consumption < 0:
             raise ValidationError(_('الاستهلاك المصحح لا يمكن أن يكون سالباً.'))
         consumption = order.consumption
-        if self.adjustment_type == 'consumption_correction':
+        if self.adjustment_type in ('consumption_correction', 'reading_correction'):
             consumption = self.corrected_consumption
         current_reading = order.current_reading
         if self.adjustment_type == 'reading_correction':

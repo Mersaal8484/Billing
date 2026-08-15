@@ -472,7 +472,7 @@ class UtilityReading(models.Model):
             found = False
             for p in candidates:
                 if p.reading_date < r.reading_date and p.id != r.id:
-                    r.previous_reading = p.reading_value
+                    r.previous_reading = p._get_effective_previous_reading()
                     r.previous_reading_date = p.reading_date
                     found = True
                     break

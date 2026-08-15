@@ -262,12 +262,68 @@ class UtilityDeposit(models.Model):
 
     def action_reclassify_legacy_deposit(self):
         """إعادة تصنيف وديعة تاريخية (Admin Action):
-        للتأمينات القديمة التي أنشئت عبر account.payment قبل التعديل،
-        يتيح هذا الإجراء ربط القيد المحاسبي الصحيح أو توفيق الحالة.
+        للتأمينات القديمة التي سُجلت عبر account.payment كذمم مدينة بالخطأ:
+        ينشئ قيد تسوية محاسبي حقيقي:
+          Dr: حساب الذمم المدينة للعميل (Customer Receivable)
+          Cr: حساب التزامات التأمينات (Deposit Liability Account)
+        لإلغاء أثر تخفيض الذمم المدينة وتأسيس التزام التأمين الفعلي دون المساس بالنقدية المقبوضة.
         """
-        if not self.env.user.has_group('utility_core.group_utility_admin'):
-            raise AccessError(_('هذا الإجراء مخصص لمدير النظام فقط.'))
+        if not (self.env.user.has_group('utility_core.group_utility_admin')
+                or self.env.user.has_group('account.group_account_manager')
+                or self.env.is_admin()):
+            raise AccessError(_('هذا الإجراء مخصص لمدير النظام أو مدير الحسابات فقط.'))
+        self._lock_records()
         for rec in self:
-            if rec.payment_id and not rec.receipt_move_id:
-                rec.receipt_move_id = rec.payment_id.move_id
-                rec.message_post(body=_('تمت إعادة تصنيف التأمين التاريخي وربطه بالقيد المحاسبي %s.') % rec.receipt_move_id.name)
+            if not rec.payment_id:
+                raise ValidationError(_('لا يمكن إعادة تصنيف تأمين ليس لديه سند قبض تاريخي.'))
+            if rec.receipt_move_id and rec.receipt_move_id.state == 'posted':
+                continue
+
+            deposit_journal_id = rec._get_company_config('deposit_journal_id', 'utility.deposit_journal_id')
+            deposit_account_id = rec._get_company_config('deposit_account_id', 'utility.deposit_account_id')
+            if not deposit_journal_id or not deposit_account_id:
+                raise ValidationError(_('يرجى تحديد يومية وحساب التأمينات في الإعدادات أولاً.'))
+
+            partner = rec.customer_id.partner_id
+            if not partner:
+                raise ValidationError(_('لا يوجد عميل مرتبط بحساب المشترك.'))
+
+            receivable_account = partner.property_account_receivable_id or rec.company_id.account_default_pos_receivable_account_id
+            if not receivable_account:
+                receivable_account = self.env['account.account'].search([
+                    ('company_id', '=', rec.company_id.id),
+                    ('account_type', '=', 'asset_receivable'),
+                ], limit=1)
+
+            # إنشاء قيد إعادة التصنيف: Dr الذمم المدينة / Cr التزامات التأمين
+            move = self.env['account.move'].create({
+                'journal_id': deposit_journal_id,
+                'company_id': rec.company_id.id,
+                'date': fields.Date.context_today(self),
+                'ref': _('إعادة تصنيف تأمين تاريخي رقم: %s') % rec.deposit_number,
+                'line_ids': [
+                    (0, 0, {
+                        'account_id': receivable_account.id,
+                        'name': _('إعادة تصنيف ذمم تأمين %s') % rec.deposit_number,
+                        'debit': rec.amount,
+                        'credit': 0.0,
+                        'partner_id': partner.id,
+                    }),
+                    (0, 0, {
+                        'account_id': deposit_account_id,
+                        'name': _('تأمين محتجز معاد تصنيفه %s') % rec.deposit_number,
+                        'debit': 0.0,
+                        'credit': rec.amount,
+                        'partner_id': partner.id,
+                    }),
+                ],
+            })
+            move.action_post()
+            rec.write({
+                'status': 'held',
+                'receipt_move_id': move.id,
+            })
+            rec.message_post(body=_(
+                'تمت إعادة تصنيف التأمين التاريخي وترحيل قيد التسوية المحاسبي %s (Dr Receivable / Cr Deposit Liability).'
+            ) % move.name)
+

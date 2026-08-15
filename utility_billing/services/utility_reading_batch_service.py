@@ -3,7 +3,7 @@ import json
 import logging
 from psycopg2 import OperationalError
 from odoo import api, fields, models, _
-from odoo.exceptions import ValidationError
+from odoo.exceptions import AccessError, ValidationError
 
 _logger = logging.getLogger(__name__)
 
@@ -137,8 +137,37 @@ class UtilityReadingBatchService(models.AbstractModel):
 
     @api.model
     def _validate_batch_line_scope(self, batch, meter, customer):
-        """التحقق من وقوع العداد والمشترك ضمن النطاق التنظيمي للقارئ ومنطقة الدفعة."""
-        # 1. التحقق من تطابق منطقة الدفعة مع منطقة العداد/المشترك إن وُجدت
+        """التحقق من وقوع العداد والمشترك ضمن النطاق التنظيمي للقارئ ومنطقة وفترة وشركة الدفعة."""
+        # 1. التحقق من تطابق الشركة
+        if meter.company_id and batch.company_id and meter.company_id.id != batch.company_id.id:
+            return {
+                'valid': False,
+                'error': _("شركة العداد (%s) لا تطابق شركة الدفعة (%s).") % (
+                    meter.company_id.name, batch.company_id.name
+                )
+            }
+
+        # 2. التحقق من صلاحية ونطاق الفترة
+        if batch.date_range_id:
+            period = batch.date_range_id
+            if getattr(period, 'state', False) and period.state in ('closed', 'archived', 'done'):
+                return {
+                    'valid': False,
+                    'error': _("فترة القراءة (%s) مغلقة أو غير صالحة لمعالجة القراءات (الحالة: %s).") % (
+                        period.name, period.state
+                    )
+                }
+            if getattr(period, 'region_ids', False):
+                meter_region = getattr(meter, 'region_id', False) or (customer.region_id if customer else False)
+                if meter_region and meter_region not in period.region_ids:
+                    return {
+                        'valid': False,
+                        'error': _("منطقة العداد (%s) غير مشمولة في نطاق الفترة (%s).") % (
+                            meter_region.name, period.name
+                        )
+                    }
+
+        # 3. التحقق من تطابق منطقة الدفعة مع منطقة العداد/المشترك
         if batch.region_id:
             meter_region = getattr(meter, 'region_id', False) or (customer.region_id if customer else False)
             if meter_region and meter_region.id != batch.region_id.id:
@@ -149,7 +178,7 @@ class UtilityReadingBatchService(models.AbstractModel):
                     )
                 }
 
-        # 2. التحقق من صلاحيات القارئ الجغرافية والتنظيمية
+        # 4. التحقق من صلاحيات القارئ الجغرافية والتنظيمية
         if batch.user_id and hasattr(batch.user_id, 'check_record_scope'):
             try:
                 batch.user_id.check_record_scope(meter)

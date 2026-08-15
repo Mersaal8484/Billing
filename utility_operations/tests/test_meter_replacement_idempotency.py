@@ -46,6 +46,8 @@ class TestMeterReplacementIdempotency(TransactionCase):
             'company_id': cls.env.company.id,
             'state': 'active',
         })
+        cls.customer.meter_id = cls.old_meter.id
+
         cls.new_meter = cls.Meter.create({
             'meter_number': 'MTR-NEW-001',
             'company_id': cls.env.company.id,
@@ -55,28 +57,21 @@ class TestMeterReplacementIdempotency(TransactionCase):
     def test_meter_replacement_lifecycle(self):
         """Standard meter replacement transitions and verifies idempotency."""
         replacement = self.Replacement.create({
-            'customer_id': self.customer.id,
+            'utility_account_id': self.customer.id,
             'old_meter_id': self.old_meter.id,
             'new_meter_id': self.new_meter.id,
-            'final_reading': 15420.0,
-            'initial_reading': 0.0,
-            'reason': 'تلف الشاشة الرقمية للعداد القديم',
+            'old_closing_reading': 15420.0,
+            'new_opening_reading': 0.0,
+            'reason': 'fault',
+            'notes': 'تلف الشاشة الرقمية للعداد القديم',
         })
         self.assertEqual(replacement.state, 'draft')
 
-        # Submit
-        if hasattr(replacement, 'action_submit'):
-            replacement.action_submit()
-            self.assertEqual(replacement.state, 'submitted')
+        # Execute replacement
+        replacement.sudo().action_complete_replacement()
+        self.assertEqual(replacement.state, 'done')
 
-        # Approve / Execute
-        if hasattr(replacement, 'action_approve'):
-            replacement.sudo().action_approve()
+        # Calling action_complete_replacement a second time MUST raise ValidationError (idempotency guard)
+        with self.assertRaises(ValidationError):
+            replacement.sudo().action_complete_replacement()
 
-        if hasattr(replacement, 'action_execute'):
-            replacement.sudo().action_execute()
-            self.assertIn(replacement.state, ('done', 'completed', 'executed'))
-
-            # Calling action_execute a second time MUST raise or be blocked
-            with self.assertRaises((UserError, ValidationError)):
-                replacement.sudo().action_execute()

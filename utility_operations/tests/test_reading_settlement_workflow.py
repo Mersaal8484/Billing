@@ -241,3 +241,34 @@ class TestReadingSettlementWorkflow(TransactionCase):
         })
         with self.assertRaises(ValidationError):
             settlement.action_submit()
+
+    def test_subsequent_reading_uses_corrected_baseline_automatically(self):
+        """Subsequent reading computes its previous reading and consumption against corrected baseline."""
+        # 1. January reading (billed at 10,000)
+        jan_reading = self._make_billed_reading(value=10000.0)
+
+        # 2. Reading correction to 9,800 (approved)
+        settlement = self.Settlement.create({
+            'reading_id': jan_reading.id,
+            'corrected_reading_value': 9800.0,
+            'reason': 'تصحيح خطأ قراءة يناير',
+        })
+        settlement.action_submit()
+        settlement.sudo().action_technically_approve()
+
+        # 3. February reading at 10,500
+        feb_reading = self.Reading.create({
+            'meter_id': self.meter.id,
+            'account_id': self.customer.id,
+            'reading_value': 10500.0,
+            'reading_date': '2026-02-15 10:00:00',
+            'reading_purpose': 'periodic',
+            'reading_type': 'manual',
+        })
+
+        # 4. Verify previous reading and consumption
+        self.assertAlmostEqual(feb_reading.previous_reading, 9800.0,
+                               msg='القراءة السابقة لفبراير يجب أن تكون الأساس المصحح 9,800 وليس القراءة الأصلية 10,000.')
+        self.assertAlmostEqual(feb_reading.consumption, 700.0,
+                               msg='استهلاك فبراير يجب أن يكون 700 (10,500 - 9,800).')
+

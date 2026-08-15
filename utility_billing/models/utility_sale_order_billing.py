@@ -54,6 +54,16 @@ class UtilitySaleOrderBilling(models.Model):
         if version:
             version.mark_as_used_in_billing()
 
+        # استخراج قيم التسعير التاريخية المعتمدة من الإصدار (أو القالب الحالي إذا لم يوجد إصدار)
+        pricing_mode = version.pricing_mode if (version and version.pricing_mode) else (template.pricing_mode if template else 'flat')
+        price_per_kwh = version.price_per_kwh if (version and version.price_per_kwh is not None) else (template.price_per_kwh if template else 0.0)
+        service_charge = version.service_charge if (version and version.service_charge is not None) else (template.service_charge if template else 0.0)
+        min_charge = version.min_charge if (version and version.min_charge is not None) else (template.min_charge if template else 0.0)
+        max_charge = version.max_charge if (version and version.max_charge is not None) else (template.max_charge if template else 0.0)
+        local_fee_mu_allim = version.local_fee_mu_allim if (version and version.local_fee_mu_allim is not None) else (template.local_fee_mu_allim if template else 0.0)
+        local_fee_cleaning = version.local_fee_cleaning if (version and version.local_fee_cleaning is not None) else (template.local_fee_cleaning if template else 0.0)
+        local_fee_per_kwh = version.local_fee_per_kwh if (version and version.local_fee_per_kwh is not None) else (template.local_fee_per_kwh if template else 0.0)
+
         self.amount_energy = 0.0
         self.amount_service = 0.0
         self.amount_discount = 0.0
@@ -78,7 +88,7 @@ class UtilitySaleOrderBilling(models.Model):
 
         if template:
             for line in template.line_ids.sorted('sequence'):
-                if template.pricing_mode in ('block', 'tier') and line.meter_line_type == 'consumption':
+                if pricing_mode in ('block', 'tier') and line.meter_line_type == 'consumption':
                     continue
 
                 if line.meter_line_type == 'discount' and template.discount_block_ids:
@@ -125,7 +135,7 @@ class UtilitySaleOrderBilling(models.Model):
                     continue
 
                 qty, price, name, product_id, sponsor_id = self._compute_line_amounts(
-                    line, consumption, account, category, template
+                    line, consumption, account, category, template, version=version
                 )
                 if not qty and not price:
                     continue
@@ -141,20 +151,20 @@ class UtilitySaleOrderBilling(models.Model):
                 }))
                 self._accumulate_amount(line.meter_line_type, amount)
 
-            if template.pricing_mode == 'flat' and consumption > 0:
+            if pricing_mode == 'flat' and consumption > 0:
                 applied_pricing_blocks.append({
                     'source_block_id': False,
                     'block_name': _('سعر موحد'),
                     'from_kwh': 0.0,
                     'to_kwh': 0.0,
                     'quantity': consumption,
-                    'price_per_kwh': template.price_per_kwh or 0.0,
-                    'amount': consumption * (template.price_per_kwh or 0.0),
+                    'price_per_kwh': price_per_kwh or 0.0,
+                    'amount': consumption * (price_per_kwh or 0.0),
                     'is_discount': False,
                 })
 
-            if template.pricing_mode in ('block', 'tier') and consumption > 0:
-                if template.pricing_mode == 'block':
+            if pricing_mode in ('block', 'tier') and consumption > 0:
+                if pricing_mode == 'block':
                     block_lines, block_amount, b_blocks = self._prepare_block_consumption_lines(
                         template, consumption, kwh_product
                     )
@@ -169,43 +179,43 @@ class UtilitySaleOrderBilling(models.Model):
             existing_local_fee_types = [l.meter_line_type for l in template.line_ids if l.meter_line_type in ('mu_allim', 'cleaning', 'municipality')]
             company = self.company_id or self.env.company
 
-            if 'mu_allim' not in existing_local_fee_types and template.local_fee_mu_allim > 0:
+            if 'mu_allim' not in existing_local_fee_types and local_fee_mu_allim > 0:
                 prod = company.mu_allim_product_id or service_product
-                amount = consumption * template.local_fee_mu_allim
+                amount = consumption * local_fee_mu_allim
                 if amount > 0:
                     lines.append((0, 0, {
                         'product_id': prod.id,
                         'name': 'رسم المعلم',
                         'product_uom_qty': consumption,
-                        'price_unit': template.local_fee_mu_allim,
+                        'price_unit': local_fee_mu_allim,
                         'meter_line_type': 'mu_allim',
                         'tax_id': [(5, 0, 0)],
                     }))
                     self.amount_local_fee += amount
 
-            if 'cleaning' not in existing_local_fee_types and template.local_fee_cleaning > 0:
+            if 'cleaning' not in existing_local_fee_types and local_fee_cleaning > 0:
                 prod = company.cleaning_product_id or service_product
-                amount = consumption * template.local_fee_cleaning
+                amount = consumption * local_fee_cleaning
                 if amount > 0:
                     lines.append((0, 0, {
                         'product_id': prod.id,
                         'name': 'رسم النظافة',
                         'product_uom_qty': consumption,
-                        'price_unit': template.local_fee_cleaning,
+                        'price_unit': local_fee_cleaning,
                         'meter_line_type': 'cleaning',
                         'tax_id': [(5, 0, 0)],
                     }))
                     self.amount_local_fee += amount
 
-            if 'municipality' not in existing_local_fee_types and template.local_fee_per_kwh > 0:
+            if 'municipality' not in existing_local_fee_types and local_fee_per_kwh > 0:
                 prod = company.local_fee_product_id or service_product
-                amount = consumption * template.local_fee_per_kwh
+                amount = consumption * local_fee_per_kwh
                 if amount > 0:
                     lines.append((0, 0, {
                         'product_id': prod.id,
                         'name': 'رسم محلي (مجالس محلية)',
                         'product_uom_qty': consumption,
-                        'price_unit': template.local_fee_per_kwh,
+                        'price_unit': local_fee_per_kwh,
                         'meter_line_type': 'municipality',
                         'tax_id': [(5, 0, 0)],
                     }))
@@ -213,11 +223,11 @@ class UtilitySaleOrderBilling(models.Model):
 
         if template:
             pre_total = (self.amount_energy + self.amount_service + self.amount_local_fee)
-            if template.min_charge and pre_total < template.min_charge:
-                adj = template.min_charge - pre_total
+            if min_charge and pre_total < min_charge:
+                adj = min_charge - pre_total
                 lines.append((0, 0, {
                     'product_id': fixed_product.id if fixed_product else False,
-                    'name': f'تسوية إلى الحد الأدنى ({template.min_charge})',
+                    'name': f'تسوية إلى الحد الأدنى ({min_charge})',
                     'product_uom_qty': 1,
                     'price_unit': adj,
                     'meter_line_type': 'fixed_fee',
@@ -225,17 +235,17 @@ class UtilitySaleOrderBilling(models.Model):
                 }))
                 self.amount_service += adj
                 min_max_adj = adj
-            elif template.max_charge and pre_total > template.max_charge:
-                adj = template.max_charge - pre_total
+            elif max_charge and pre_total > max_charge:
+                adj = max_charge - pre_total
                 lines.append((0, 0, {
                     'product_id': fixed_product.id if fixed_product else False,
-                    'name': f'تسوية إلى الحد الأقصى ({template.max_charge})',
+                    'name': f'تسوية إلى الحد الأقصى ({max_charge})',
                     'product_uom_qty': 1,
                     'price_unit': adj,
                     'meter_line_type': 'discount',
                     'tax_id': [(5, 0, 0)],
                 }))
-                self.amount_discount += pre_total - template.max_charge
+                self.amount_discount += pre_total - max_charge
                 min_max_adj = adj
 
         self._append_private_transformer_fee_line(lines)
@@ -487,15 +497,18 @@ class UtilitySaleOrderBilling(models.Model):
 
         return lines, amount_energy, applied_blocks
 
-    def _compute_line_amounts(self, line, consumption, account, category, template):
+    def _compute_line_amounts(self, line, consumption, account, category, template, version=None):
         qty = 0.0
         price = 0.0
         name = line.name or line.product_id.name or ''
         product_id = line.product_id.id if line.product_id else False
         sponsor_id = False
 
-        template_price = template.price_per_kwh if template else 0.0
-        template_service = template.service_charge if template else 0.0
+        pricing_price = version.price_per_kwh if (version and version.price_per_kwh is not None) else (template.price_per_kwh if template else 0.0)
+        pricing_service = version.service_charge if (version and version.service_charge is not None) else (template.service_charge if template else 0.0)
+        pricing_mu_allim = version.local_fee_mu_allim if (version and version.local_fee_mu_allim is not None) else (template.local_fee_mu_allim if template else 0.0)
+        pricing_cleaning = version.local_fee_cleaning if (version and version.local_fee_cleaning is not None) else (template.local_fee_cleaning if template else 0.0)
+        pricing_local_fee = version.local_fee_per_kwh if (version and version.local_fee_per_kwh is not None) else (template.local_fee_per_kwh if template else 0.0)
 
         if line.meter_line_type == 'consumption':
             if line.qty_formula_id:
@@ -510,7 +523,7 @@ class UtilitySaleOrderBilling(models.Model):
                 )
             else:
                 qty = consumption
-            price = line.specific_price or template_price
+            price = line.specific_price or pricing_price
 
         elif line.meter_line_type in ('fixed_fee', 'service_charge'):
             if line.qty_formula_id:
@@ -525,21 +538,19 @@ class UtilitySaleOrderBilling(models.Model):
                 )
             else:
                 qty = 1.0
-            price = line.specific_price or template_service
+            price = line.specific_price or pricing_service
 
         elif line.meter_line_type in ('mu_allim', 'cleaning', 'municipality'):
             qty = consumption
             if line.specific_price:
                 price = line.specific_price
-            elif template:
-                if line.meter_line_type == 'mu_allim':
-                    price = template.local_fee_mu_allim
-                elif line.meter_line_type == 'cleaning':
-                    price = template.local_fee_cleaning
-                else:
-                    price = template.local_fee_per_kwh
             else:
-                price = 0.0
+                if line.meter_line_type == 'mu_allim':
+                    price = pricing_mu_allim
+                elif line.meter_line_type == 'cleaning':
+                    price = pricing_cleaning
+                else:
+                    price = pricing_local_fee
             if not line.name:
                 type_labels = {
                     'municipality': 'رسم مجلس محلي',
@@ -572,7 +583,8 @@ class UtilitySaleOrderBilling(models.Model):
                 )
 
             discount_units = max(discount_units or 0.0, 0.0)
-            sponsor_id = template.sponsor_id.id if template and template.sponsor_id else False
+            sponsor = version.sponsor_id if (version and version.sponsor_id) else (template.sponsor_id if template else False)
+            sponsor_id = sponsor.id if sponsor else False
             if discount_units > 0 and line.specific_price:
                 qty = discount_units
                 price = -abs(line.specific_price)
@@ -593,3 +605,30 @@ class UtilitySaleOrderBilling(models.Model):
             self.amount_private_transformer_fee += amount
         elif meter_line_type == 'discount':
             self.amount_discount += abs(amount)
+
+    def _simulate_bill_total_for_consumption(self, consumption, current_reading=None, version_id=None):
+        """محاكاة إعادة تسعير الفاتورة لاستهلاك محدد باستخدام الإصدار التجاري التاريخي دون التأثير على البيانات."""
+        self.ensure_one()
+        version = self.env['utility.contract.template.version'].browse(version_id).exists() if version_id else self.contract_template_version_id
+        class _SimulationRollback(Exception):
+            def __init__(self, total):
+                self.total = total
+
+        try:
+            with self.env.cr.savepoint():
+                temp_order = self.copy({
+                    'state': 'draft',
+                    'consumption': consumption,
+                    'current_reading': current_reading if current_reading is not None else self.current_reading,
+                    'contract_template_version_id': version.id if version else False,
+                })
+                ctx = dict(self.env.context, allow_billing_adjustment=True)
+                if version:
+                    ctx['_force_contract_version_id'] = version.id
+                temp_order.with_context(ctx)._calculate_amounts_inner()
+                total = temp_order.amount_total
+                raise _SimulationRollback(total)
+        except _SimulationRollback as rollback:
+            return rollback.total
+        return self.amount_total
+

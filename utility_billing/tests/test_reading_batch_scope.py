@@ -25,7 +25,7 @@ class TestReadingBatchScope(TransactionCase):
         cls.Meter = cls.env['utility.meter']
         cls.Batch = cls.env['utility.reading.batch']
         cls.BatchLine = cls.env['utility.reading.batch.line']
-        cls.BatchService = self.BatchService = cls.env['utility.reading.batch.service']
+        cls.BatchService = cls.env['utility.reading.batch.service']
 
         cls.region_north = cls.Region.create({
             'name': 'المنطقة الشمالية',
@@ -146,3 +146,26 @@ class TestReadingBatchScope(TransactionCase):
         res = self.BatchService._process_single_batch_line(batch, line, {}, {})
         self.assertTrue(res.get('success'), 'السطر يجب أن ينجح لتطابق المنطقة.')
         self.assertTrue(res.get('reading_id'))
+
+    def test_reader_scope_validation(self):
+        """Reader restricted to north region cannot process south meter."""
+        reader = self.env['res.users'].create({
+            'name': 'قارئ الشمال',
+            'login': 'reader_north_%s' % id(self),
+            'region_id': self.region_north.id,
+        })
+        batch = self.Batch.create({
+            'user_id': reader.id,
+            'region_id': self.region_north.id,
+            'date_range_id': self.period_north.id,
+        })
+        line = self.BatchLine.create({
+            'batch_id': batch.id,
+            'meter_number': self.meter_south.meter_number,
+            'reading_value': 200.0,
+            'state': 'pending',
+        })
+
+        res = self.BatchService._process_single_batch_line(batch, line, {}, {})
+        self.assertFalse(res.get('success'))
+

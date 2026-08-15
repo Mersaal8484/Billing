@@ -76,15 +76,20 @@ class TestFinancialSettlementWorkflow(TransactionCase):
             'utility.settlement_account_id', str(cls.income_account.id)
         )
 
+        mgr_group = cls.env.ref('utility_core.group_utility_billing_manager', raise_if_not_found=False)
+        groups = [cls.env.ref('base.group_user').id]
+        if mgr_group:
+            groups.append(mgr_group.id)
+
         cls.user1 = cls.env['res.users'].create({
             'name': 'مستخدم تسوية 1',
             'login': 'fin_settle_u1_%s' % id(cls),
-            'groups_id': [(6, 0, [cls.env.ref('base.group_user').id])],
+            'groups_id': [(6, 0, groups)],
         })
         cls.user2 = cls.env['res.users'].create({
             'name': 'مستخدم تسوية 2',
             'login': 'fin_settle_u2_%s' % id(cls),
-            'groups_id': [(6, 0, [cls.env.ref('base.group_user').id])],
+            'groups_id': [(6, 0, groups)],
         })
 
     def test_full_workflow_happy_path(self):

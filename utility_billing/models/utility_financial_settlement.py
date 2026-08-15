@@ -21,7 +21,8 @@ class UtilityFinancialSettlement(models.Model):
     _order = 'date desc, id desc'
 
     _IMMUTABLE_FIELDS = frozenset({
-        'amount', 'settlement_type', 'account_id', 'company_id', 'reason', 'date'
+        'amount', 'settlement_type', 'account_id', 'company_id', 'reason', 'date',
+        'source_document', 'source_reference', 'move_id', 'state'
     })
 
     active = fields.Boolean('نشط', default=True)
@@ -44,6 +45,8 @@ class UtilityFinancialSettlement(models.Model):
     ], string='نوع التسوية المالية', required=True, default='credit')
     amount = fields.Monetary('مبلغ التسوية', required=True, currency_field='currency_id')
     reason = fields.Text('سبب التسوية المالية', required=True)
+    source_document = fields.Char('المستند المصدري', help='المستند الذي استندت إليه هذه التسوية المالية (قرار إداري، تقرير تدقيق، إلخ)')
+    source_reference = fields.Char('المرجع المصدري', help='رقم المرجع للمستند المصدري')
     date = fields.Date('تاريخ التسوية', default=fields.Date.context_today, required=True)
 
     state = fields.Selection([
@@ -90,14 +93,15 @@ class UtilityFinancialSettlement(models.Model):
     def write(self, vals):
         for rec in self:
             if rec.state in ('applied', 'cancelled'):
-                # In applied/cancelled state, immutable fields cannot be modified
-                if any(field in vals for field in self._IMMUTABLE_FIELDS):
-                    raise ValidationError(_(
-                        'لا يمكن تعديل البيانات المالية لتسوية بحالة "%s".'
-                    ) % dict(self._fields['state'].selection).get(rec.state, rec.state))
+                if not self.env.context.get('_allow_settlement_transition'):
+                    if any(field in vals for field in self._IMMUTABLE_FIELDS):
+                        raise ValidationError(_(
+                            'لا يمكن تعديل أو تغيير حالة تسوية مالية بحالة "%s".'
+                        ) % dict(self._fields['state'].selection).get(rec.state, rec.state))
             elif rec.state == 'approved':
-                if any(field in vals for field in ('amount', 'settlement_type', 'account_id')):
-                    raise ValidationError(_('لا يمكن تعديل المبلغ أو الحساب لتسوية معتمدة. يجب إلغاؤها أولاً.'))
+                if not self.env.context.get('_allow_settlement_transition'):
+                    if any(field in vals for field in ('amount', 'settlement_type', 'account_id', 'source_document', 'source_reference')):
+                        raise ValidationError(_('لا يمكن تعديل المبلغ أو الحساب لتسوية معتمدة. يجب إلغاؤها أولاً.'))
         return super().write(vals)
 
     def unlink(self):
@@ -151,6 +155,11 @@ class UtilityFinancialSettlement(models.Model):
 
     def action_apply_settlement(self):
         """تطبيق التسوية المالية وإنشاء القيد المحاسبي."""
+        if self.ids:
+            self.env.cr.execute(
+                "SELECT id FROM utility_financial_settlement WHERE id IN %s FOR UPDATE",
+                [tuple(self.ids)]
+            )
         for rec in self:
             if rec.state == 'applied':
                 raise ValidationError(_('تم تطبيق هذه التسوية بالفعل!'))
