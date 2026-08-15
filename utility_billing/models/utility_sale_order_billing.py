@@ -128,7 +128,9 @@ class UtilitySaleOrderBilling(models.Model):
                     }
                     if discount_units > 0:
                         product_id = line.product_id.id if line.product_id else False
-                        d_lines, d_amount, d_blocks = self._prepare_block_discount_lines(template, discount_units, name, product_id, sponsor_id)
+                        d_lines, d_amount, d_blocks = self._prepare_block_discount_lines(
+                            template, discount_units, name, product_id, sponsor_id, version=version
+                        )
                         lines.extend(d_lines)
                         applied_pricing_blocks.extend(d_blocks)
                         self._accumulate_amount('discount', d_amount)
@@ -166,11 +168,11 @@ class UtilitySaleOrderBilling(models.Model):
             if pricing_mode in ('block', 'tier') and consumption > 0:
                 if pricing_mode == 'block':
                     block_lines, block_amount, b_blocks = self._prepare_block_consumption_lines(
-                        template, consumption, kwh_product
+                        template, consumption, kwh_product, version=version
                     )
                 else:
                     block_lines, block_amount, b_blocks = self._prepare_tier_consumption_lines(
-                        template, consumption, kwh_product
+                        template, consumption, kwh_product, version=version
                     )
                 lines.extend(block_lines)
                 applied_pricing_blocks.extend(b_blocks)
@@ -362,43 +364,83 @@ class UtilitySaleOrderBilling(models.Model):
         }))
         self.amount_private_transformer_fee += fee
 
-    def _prepare_block_consumption_lines(self, template, consumption, kwh_product):
+    def _get_pricing_blocks_for_calculation(self, template, version=None):
+        """إرجاع قائمة الشرائح المعتمدة للتسعير، مع إعطاء الأولوية للقطة الإصدار التاريخي الثابتة."""
+        if version:
+            snapshot = version.get_parsed_snapshot()
+            blocks = snapshot.get('pricing_blocks')
+            if blocks:
+                return sorted(blocks, key=lambda b: (b.get('from_kwh', 0.0), b.get('sequence', 10), b.get('id', 0)))
+        if template and template.block_ids:
+            return [{
+                'id': b.id,
+                'name': b.name or '',
+                'sequence': b.sequence,
+                'from_kwh': b.from_kwh or 0.0,
+                'to_kwh': b.to_kwh or 0.0,
+                'price_per_kwh': b.price_per_kwh or 0.0,
+                'is_discount': False,
+            } for b in template.block_ids.sorted(lambda b: (b.from_kwh, b.sequence, b.id))]
+        return []
+
+    def _get_discount_blocks_for_calculation(self, template, version=None):
+        """إرجاع قائمة شرائح الخصم المعتمدة، مع إعطاء الأولوية للقطة الإصدار التاريخي."""
+        if version:
+            snapshot = version.get_parsed_snapshot()
+            d_blocks = snapshot.get('discount_blocks')
+            if d_blocks:
+                return sorted(d_blocks, key=lambda b: (b.get('from_kwh', 0.0), b.get('sequence', 10), b.get('id', 0)))
+        if template and template.discount_block_ids:
+            return [{
+                'id': db.id,
+                'name': db.name or '',
+                'sequence': db.sequence,
+                'from_kwh': db.from_kwh or 0.0,
+                'to_kwh': db.to_kwh or 0.0,
+                'price_per_kwh': db.price_per_kwh or 0.0,
+                'is_discount': True,
+            } for db in template.discount_block_ids.sorted(lambda b: (b.from_kwh, b.sequence, b.id))]
+        return []
+
+    def _prepare_block_consumption_lines(self, template, consumption, kwh_product, version=None):
         self.ensure_one()
-        if not template.block_ids:
+        blocks = self._get_pricing_blocks_for_calculation(template, version=version)
+        if not blocks:
             raise ValidationError(
                 _('قالب العقد "%s" مضبوط على التسعير بالشرائح، لكن لا توجد شرائح معرفة.')
-                % template.name
+                % (version.display_name if version else (template.name if template else ''))
             )
 
         lines = []
         applied_blocks = []
         priced_qty = 0.0
         amount_energy = 0.0
-        for block in template.block_ids.sorted(lambda b: (b.from_kwh, b.sequence, b.id)):
-            block_from = block.from_kwh or 0.0
-            block_to = block.to_kwh if block.to_kwh > 0 else consumption
+        for block in blocks:
+            block_from = block.get('from_kwh') or 0.0
+            block_to = block.get('to_kwh') if (block.get('to_kwh') or 0.0) > 0 else consumption
             qty_in_block = max(0.0, min(consumption, block_to) - block_from)
             if qty_in_block <= 0:
                 continue
 
-            amount = qty_in_block * block.price_per_kwh
-            block_to_label = f'{block.to_kwh:.0f}' if block.to_kwh > 0 else _('ما لا نهاية')
-            block_name = block.name or _('الشريحة %s') % block.sequence
+            price = block.get('price_per_kwh') or 0.0
+            amount = qty_in_block * price
+            block_to_label = f"{block.get('to_kwh', 0):.0f}" if (block.get('to_kwh') or 0.0) > 0 else _('ما لا نهاية')
+            block_name = block.get('name') or _('الشريحة %s') % block.get('sequence', 10)
             lines.append((0, 0, {
                 'product_id': kwh_product.id if kwh_product else False,
-                'name': _('%s: %.0f - %s kWh') % (block_name, block.from_kwh or 0.0, block_to_label),
+                'name': _('%s: %.0f - %s kWh') % (block_name, block_from, block_to_label),
                 'product_uom_qty': qty_in_block,
-                'price_unit': block.price_per_kwh,
+                'price_unit': price,
                 'meter_line_type': 'consumption',
                 'tax_id': [(5, 0, 0)],
             }))
             applied_blocks.append({
-                'source_block_id': block.id,
+                'source_block_id': block.get('id', False),
                 'block_name': block_name,
-                'from_kwh': block.from_kwh or 0.0,
-                'to_kwh': block.to_kwh or 0.0,
+                'from_kwh': block_from,
+                'to_kwh': block.get('to_kwh') or 0.0,
                 'quantity': qty_in_block,
-                'price_per_kwh': block.price_per_kwh,
+                'price_per_kwh': price,
                 'amount': amount,
                 'is_discount': False,
             })
@@ -408,25 +450,27 @@ class UtilitySaleOrderBilling(models.Model):
         if consumption - priced_qty > 0.000001:
             raise ValidationError(
                 _('قالب العقد "%s" لا يغطي كامل الاستهلاك بالشرائح. الاستهلاك: %.2f kWh، المسعر: %.2f kWh.')
-                % (template.name, consumption, priced_qty)
+                % (version.display_name if version else (template.name if template else ''), consumption, priced_qty)
             )
         return lines, amount_energy, applied_blocks
 
-    def _prepare_block_discount_lines(self, template, discount_units, base_name, product_id, sponsor_id):
+    def _prepare_block_discount_lines(self, template, discount_units, base_name, product_id, sponsor_id, version=None):
         lines = []
         applied_blocks = []
         amount_discount = 0.0
         priced_units = 0.0
-        for block in template.discount_block_ids.sorted(lambda b: (b.from_kwh, b.sequence, b.id)):
-            block_from = block.from_kwh or 0.0
-            block_to = block.to_kwh if block.to_kwh > 0 else discount_units
+        d_blocks = self._get_discount_blocks_for_calculation(template, version=version)
+        for block in d_blocks:
+            block_from = block.get('from_kwh') or 0.0
+            block_to = block.get('to_kwh') if (block.get('to_kwh') or 0.0) > 0 else discount_units
             qty_in_block = max(0.0, min(discount_units, block_to) - block_from)
             if qty_in_block <= 0:
                 continue
 
-            price = -abs(block.price_per_kwh)
+            price = -abs(block.get('price_per_kwh') or 0.0)
             amount = qty_in_block * price
-            block_name = f"{base_name or 'خصم استهلاك مدعوم'} - شريحة الخصم ({(block.from_kwh or 0.0):.0f} إلى {block.to_kwh if block.to_kwh > 0 else 'ما لا نهاية'})"
+            to_str = f"{block.get('to_kwh', 0):.0f}" if (block.get('to_kwh') or 0.0) > 0 else 'ما لا نهاية'
+            block_name = f"{base_name or 'خصم استهلاك مدعوم'} - شريحة الخصم ({(block.get('from_kwh') or 0.0):.0f} إلى {to_str})"
             lines.append((0, 0, {
                 'product_id': product_id,
                 'name': block_name,
@@ -437,10 +481,10 @@ class UtilitySaleOrderBilling(models.Model):
                 'tax_id': [(5, 0, 0)],
             }))
             applied_blocks.append({
-                'source_block_id': block.id,
+                'source_block_id': block.get('id', False),
                 'block_name': block_name,
-                'from_kwh': block.from_kwh or 0.0,
-                'to_kwh': block.to_kwh or 0.0,
+                'from_kwh': block.get('from_kwh') or 0.0,
+                'to_kwh': block.get('to_kwh') or 0.0,
                 'quantity': qty_in_block,
                 'price_per_kwh': price,
                 'amount': amount,
@@ -452,26 +496,30 @@ class UtilitySaleOrderBilling(models.Model):
         if discount_units - priced_units > 0.000001:
             raise ValidationError(
                 _('قالب العقد "%s" لا يغطي كامل وحدات الخصم بالشرائح. وحدات الخصم: %.2f، المسعر: %.2f.')
-                % (template.name, discount_units, priced_units)
+                % (version.display_name if version else (template.name if template else ''), discount_units, priced_units)
             )
         return lines, amount_discount, applied_blocks
 
-    def _prepare_tier_consumption_lines(self, template, consumption, kwh_product):
+    def _prepare_tier_consumption_lines(self, template, consumption, kwh_product, version=None):
         lines = []
         applied_blocks = []
         amount_energy = 0.0
         applicable_block = None
 
-        for block in template.block_ids.sorted(lambda b: (b.from_kwh, b.sequence, b.id)):
-            if block.from_kwh <= consumption and (block.to_kwh >= consumption or block.to_kwh == 0.0):
+        blocks = self._get_pricing_blocks_for_calculation(template, version=version)
+        for block in blocks:
+            b_from = block.get('from_kwh') or 0.0
+            b_to = block.get('to_kwh') or 0.0
+            if b_from <= consumption and (b_to >= consumption or b_to == 0.0):
                 applicable_block = block
                 break
 
-        if not applicable_block and template.block_ids:
-            applicable_block = template.block_ids.sorted(lambda b: (b.from_kwh, b.sequence, b.id))[-1]
+        if not applicable_block and blocks:
+            applicable_block = blocks[-1]
 
-        price = applicable_block.price_per_kwh if applicable_block else (template.price_per_kwh or 0.0)
-        name = applicable_block.name if applicable_block and applicable_block.name else 'استهلاك (مستوى واحد)'
+        v_price = version.price_per_kwh if (version and version.price_per_kwh is not None) else (template.price_per_kwh if template else 0.0)
+        price = applicable_block.get('price_per_kwh') if applicable_block else (v_price or 0.0)
+        name = applicable_block.get('name') if applicable_block and applicable_block.get('name') else 'استهلاك (مستوى واحد)'
 
         if price > 0:
             amount = consumption * price
@@ -484,10 +532,10 @@ class UtilitySaleOrderBilling(models.Model):
                 'tax_id': [(5, 0, 0)],
             }))
             applied_blocks.append({
-                'source_block_id': applicable_block.id if applicable_block else False,
+                'source_block_id': applicable_block.get('id', False) if applicable_block else False,
                 'block_name': name,
-                'from_kwh': applicable_block.from_kwh if applicable_block else 0.0,
-                'to_kwh': applicable_block.to_kwh if applicable_block else 0.0,
+                'from_kwh': applicable_block.get('from_kwh', 0.0) if applicable_block else 0.0,
+                'to_kwh': applicable_block.get('to_kwh', 0.0) if applicable_block else 0.0,
                 'quantity': consumption,
                 'price_per_kwh': price,
                 'amount': amount,
@@ -631,4 +679,36 @@ class UtilitySaleOrderBilling(models.Model):
         except _SimulationRollback as rollback:
             return rollback.total
         return self.amount_total
+
+    def _calculate_corrected_consumption_for_reading(self, corrected_reading_value, reading_id=None):
+        """إعادة احتساب الاستهلاك الكلي للفاتورة عند تصحيح قراءة معينة مع مراعاة سلسلة المكونات في حالة استبدال العدادات."""
+        self.ensure_one()
+        components = self.reading_component_ids
+        if components:
+            total_consumption = 0.0
+            found_component = False
+            for comp in components:
+                is_target = False
+                if reading_id and comp.reading_id.id == reading_id:
+                    is_target = True
+                elif not reading_id and comp.reading_id.id == (self.reading_id.id if self.reading_id else False):
+                    is_target = True
+                elif not reading_id and not found_component and comp.current_reading == self.current_reading:
+                    is_target = True
+
+                if is_target:
+                    found_component = True
+                    prev = comp.previous_reading or 0.0
+                    mult = comp.meter_multiplier or 1.0
+                    comp_consumption = max(0.0, (corrected_reading_value - prev) * mult)
+                    total_consumption += comp_consumption
+                else:
+                    total_consumption += comp.consumption
+            if found_component:
+                return total_consumption
+
+        # إذا لم توجد مكونات متعددة، نستخدم الحساب المباشر
+        prev = self.previous_reading or 0.0
+        mult = getattr(self, 'meter_multiplier', 1.0) or (self.meter_id.multiplier if self.meter_id else 1.0) or 1.0
+        return max(0.0, (corrected_reading_value - prev) * mult)
 

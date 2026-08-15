@@ -93,13 +93,13 @@ class UtilityFinancialSettlement(models.Model):
     def write(self, vals):
         for rec in self:
             if rec.state in ('applied', 'cancelled'):
-                if not self.env.context.get('_allow_settlement_transition'):
+                if not (self.env.su and self.env.context.get('_allow_settlement_transition')):
                     if any(field in vals for field in self._IMMUTABLE_FIELDS):
                         raise ValidationError(_(
                             'لا يمكن تعديل أو تغيير حالة تسوية مالية بحالة "%s".'
                         ) % dict(self._fields['state'].selection).get(rec.state, rec.state))
             elif rec.state == 'approved':
-                if not self.env.context.get('_allow_settlement_transition'):
+                if not (self.env.su and self.env.context.get('_allow_settlement_transition')):
                     if any(field in vals for field in ('amount', 'settlement_type', 'account_id', 'source_document', 'source_reference')):
                         raise ValidationError(_('لا يمكن تعديل المبلغ أو الحساب لتسوية معتمدة. يجب إلغاؤها أولاً.'))
         return super().write(vals)
@@ -129,7 +129,9 @@ class UtilityFinancialSettlement(models.Model):
                 raise ValidationError(_('يمكن تقديم التسويات المسودة فقط.'))
             if rec.amount <= 0:
                 raise ValidationError(_('مبلغ التسوية يجب أن يكون أكبر من الصفر.'))
-            rec.write({
+            if not (rec.source_document or '').strip() and not (rec.source_reference or '').strip():
+                raise ValidationError(_('يجب تحديد المستند المصدري أو المرجع المصدري قبل تقديم التسوية المالية للاعتماد.'))
+            rec.sudo().with_context(_allow_settlement_transition=True).write({
                 'state': 'submitted',
                 'submitted_by_id': self.env.user.id,
                 'submitted_date': fields.Datetime.now(),

@@ -55,7 +55,7 @@ class TestMeterReplacementIdempotency(TransactionCase):
         })
 
     def test_meter_replacement_lifecycle(self):
-        """Standard meter replacement transitions and verifies idempotency."""
+        """Standard meter replacement transitions and verifies idempotency with strict count assertions."""
         replacement = self.Replacement.create({
             'utility_account_id': self.customer.id,
             'old_meter_id': self.old_meter.id,
@@ -71,7 +71,46 @@ class TestMeterReplacementIdempotency(TransactionCase):
         replacement.sudo().action_complete_replacement()
         self.assertEqual(replacement.state, 'done')
 
-        # Calling action_complete_replacement a second time MUST raise ValidationError (idempotency guard)
+        # 1. Assert exact counts after execution
+        picking_count_initial = len(replacement.picking_ids)
+        closing_readings = self.env['utility.reading'].search([
+            ('meter_id', '=', self.old_meter.id),
+            ('replacement_id', '=', replacement.id),
+        ])
+        opening_readings = self.env['utility.reading'].search([
+            ('meter_id', '=', self.new_meter.id),
+            ('replacement_id', '=', replacement.id),
+        ])
+        open_assignments = self.env['utility.customer.meter.assignment'].search([
+            ('customer_id', '=', self.customer.id),
+            ('meter_id', '=', self.new_meter.id),
+            ('date_to', '=', False),
+        ])
+
+        self.assertEqual(len(closing_readings), 1, 'يجب إنشاء قراءة ختامية واحدة فقط للعداد القديم.')
+        self.assertEqual(len(opening_readings), 1, 'يجب إنشاء قراءة افتتاحية واحدة فقط للعداد الجديد.')
+        self.assertEqual(len(open_assignments), 1, 'يجب أن يكون هناك تخصيص نشط واحد فقط للعداد الجديد.')
+        self.assertEqual(self.customer.meter_id, self.new_meter, 'العداد الفعال للمشترك يجب أن يكون العداد الجديد.')
+
+        # 2. Calling action_complete_replacement a second time MUST raise ValidationError (idempotency guard)
         with self.assertRaises(ValidationError):
             replacement.sudo().action_complete_replacement()
 
+        # 3. Assert counts and records remain strictly unchanged after the blocked second attempt
+        self.assertEqual(len(replacement.picking_ids), picking_count_initial, 'لا يجب إنشاء أي حركات مخزون إضافية عند إعادة المحاولة.')
+        closing_readings_after = self.env['utility.reading'].search([
+            ('meter_id', '=', self.old_meter.id),
+            ('replacement_id', '=', replacement.id),
+        ])
+        opening_readings_after = self.env['utility.reading'].search([
+            ('meter_id', '=', self.new_meter.id),
+            ('replacement_id', '=', replacement.id),
+        ])
+        open_assignments_after = self.env['utility.customer.meter.assignment'].search([
+            ('customer_id', '=', self.customer.id),
+            ('meter_id', '=', self.new_meter.id),
+            ('date_to', '=', False),
+        ])
+        self.assertEqual(len(closing_readings_after), 1, 'لا يجوز تكرار القراءات الختامية.')
+        self.assertEqual(len(opening_readings_after), 1, 'لا يجوز تكرار القراءات الافتتاحية.')
+        self.assertEqual(len(open_assignments_after), 1, 'لا يجوز تكرار سجلات التخصيص.')

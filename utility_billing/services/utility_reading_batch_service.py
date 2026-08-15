@@ -150,11 +150,18 @@ class UtilityReadingBatchService(models.AbstractModel):
         # 2. التحقق من صلاحية ونطاق الفترة
         if batch.date_range_id:
             period = batch.date_range_id
-            if getattr(period, 'state', False) and period.state in ('closed', 'archived', 'done'):
+            if getattr(period, 'state', False) and period.state != 'open':
                 return {
                     'valid': False,
-                    'error': _("فترة القراءة (%s) مغلقة أو غير صالحة لمعالجة القراءات (الحالة: %s).") % (
+                    'error': _("فترة القراءة (%s) ليست في حالة مفتوحة (الحالة الحالية: %s).") % (
                         period.name, period.state
+                    )
+                }
+            if getattr(period, 'period_role', False) and period.period_role != 'reading':
+                return {
+                    'valid': False,
+                    'error': _("فترة القراءة (%s) مخصصة لدور (%s) وليس للقراءات.") % (
+                        period.name, period.period_role
                     )
                 }
             if getattr(period, 'region_ids', False):

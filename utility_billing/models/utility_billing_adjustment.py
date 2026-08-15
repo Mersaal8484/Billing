@@ -121,9 +121,12 @@ class UtilityBillingAdjustment(models.Model):
     @api.onchange('corrected_current_reading', 'sale_order_id', 'adjustment_type')
     def _onchange_corrected_current_reading(self):
         if self.adjustment_type == 'reading_correction' and self.sale_order_id and self.corrected_current_reading is not False:
-            prev = self.sale_order_id.previous_reading or 0.0
-            mult = getattr(self.sale_order_id, 'meter_multiplier', 1.0) or 1.0
-            self.corrected_consumption = max(0.0, (self.corrected_current_reading - prev) * mult)
+            if hasattr(self.sale_order_id, '_calculate_corrected_consumption_for_reading'):
+                self.corrected_consumption = self.sale_order_id._calculate_corrected_consumption_for_reading(self.corrected_current_reading)
+            else:
+                prev = self.sale_order_id.previous_reading or 0.0
+                mult = getattr(self.sale_order_id, 'meter_multiplier', 1.0) or 1.0
+                self.corrected_consumption = max(0.0, (self.corrected_current_reading - prev) * mult)
             self._reprice_correction()
 
     @api.onchange('corrected_consumption', 'sale_order_id', 'adjustment_type')
@@ -132,13 +135,16 @@ class UtilityBillingAdjustment(models.Model):
             self._reprice_correction()
 
     def _reprice_correction(self):
-        """حساب المبلغ التجاري المصحح آلياً من محرك التسعير التاريخي."""
+        """حساب المبلغ التجاري المصحح آلياً من محرك التسعير التاريخي (Authoritative Server Repricing)."""
         for record in self:
             if record.adjustment_type in ('reading_correction', 'consumption_correction') and record.sale_order_id:
-                if record.adjustment_type == 'reading_correction' and record.corrected_current_reading is not False and not record.corrected_consumption:
-                    prev = record.sale_order_id.previous_reading or 0.0
-                    mult = getattr(record.sale_order_id, 'meter_multiplier', 1.0) or 1.0
-                    record.corrected_consumption = max(0.0, (record.corrected_current_reading - prev) * mult)
+                if record.adjustment_type == 'reading_correction' and record.corrected_current_reading is not False:
+                    if hasattr(record.sale_order_id, '_calculate_corrected_consumption_for_reading'):
+                        record.corrected_consumption = record.sale_order_id._calculate_corrected_consumption_for_reading(record.corrected_current_reading)
+                    else:
+                        prev = record.sale_order_id.previous_reading or 0.0
+                        mult = getattr(record.sale_order_id, 'meter_multiplier', 1.0) or 1.0
+                        record.corrected_consumption = max(0.0, (record.corrected_current_reading - prev) * mult)
 
                 consumption = record.corrected_consumption or 0.0
                 curr_read = record.corrected_current_reading if record.adjustment_type == 'reading_correction' else record.sale_order_id.current_reading
@@ -162,13 +168,16 @@ class UtilityBillingAdjustment(models.Model):
                     vals.setdefault('customer_id', order.customer_id.id)
                     vals.setdefault('billing_period_id', order.date_range_id.id)
                     vals.setdefault('company_id', order.company_id.id)
-                    # Auto-compute corrected_consumption for reading_correction if not provided
-                    if vals.get('adjustment_type') == 'reading_correction' and vals.get('corrected_current_reading') is not None and not vals.get('corrected_consumption'):
-                        prev = order.previous_reading or 0.0
-                        mult = getattr(order, 'meter_multiplier', 1.0) or 1.0
-                        vals['corrected_consumption'] = max(0.0, (vals['corrected_current_reading'] - prev) * mult)
-                    # Auto-compute corrected_amount if not provided
-                    if vals.get('adjustment_type') in ('reading_correction', 'consumption_correction') and not vals.get('corrected_amount') and hasattr(order, '_simulate_bill_total_for_consumption'):
+                    # Auto-compute corrected_consumption for reading_correction
+                    if vals.get('adjustment_type') == 'reading_correction' and vals.get('corrected_current_reading') is not None:
+                        if hasattr(order, '_calculate_corrected_consumption_for_reading'):
+                            vals['corrected_consumption'] = order._calculate_corrected_consumption_for_reading(vals['corrected_current_reading'])
+                        else:
+                            prev = order.previous_reading or 0.0
+                            mult = getattr(order, 'meter_multiplier', 1.0) or 1.0
+                            vals['corrected_consumption'] = max(0.0, (vals['corrected_current_reading'] - prev) * mult)
+                    # Server-authoritative calculation for reading/consumption corrections (cannot be overridden by user input)
+                    if vals.get('adjustment_type') in ('reading_correction', 'consumption_correction') and hasattr(order, '_simulate_bill_total_for_consumption'):
                         cons = vals.get('corrected_consumption', 0.0)
                         curr_read = vals.get('corrected_current_reading', order.current_reading)
                         v_id = order.contract_template_version_id.id if order.contract_template_version_id else False
@@ -236,23 +245,31 @@ class UtilityBillingAdjustment(models.Model):
             raise AccessError(_('لا تملك صلاحية اعتماد أو تطبيق تعديلات الفوترة.'))
 
     def write(self, vals):
-        if not self.env.context.get('_allow_adjustment_transition'):
+        if not (self.env.context.get('_allow_adjustment_transition') and self.env.su):
             for record in self:
                 if record.state == 'applied':
                     raise ValidationError(_('تعديل الفوترة المطبق غير قابل للتعديل.'))
                 if record.state in ('submitted', 'approved') and set(vals) - {'message_follower_ids'}:
                     raise ValidationError(_('لا يمكن تعديل بيانات التعديل بعد إرساله للاعتماد.'))
-        return super().write(vals)
+        res = super().write(vals)
+        # Recalculate authoritative amounts on draft records if input values changed
+        if any(f in vals for f in ('corrected_current_reading', 'corrected_consumption', 'adjustment_type')):
+            for record in self:
+                if record.state == 'draft' and record.adjustment_type in ('reading_correction', 'consumption_correction'):
+                    record._reprice_correction()
+        return res
 
     def action_submit(self):
         for record in self:
             self.env.user.check_record_scope(record)
             if record.state != 'draft':
                 raise ValidationError(_('يمكن إرسال التعديلات المسودة فقط.'))
+            if record.adjustment_type in ('reading_correction', 'consumption_correction'):
+                record._reprice_correction()
             record._validate_original_links()
-            if not record.reason.strip():
+            if not (record.reason or '').strip():
                 raise ValidationError(_('يجب إدخال سبب واضح للتعديل.'))
-            record.with_context(_allow_adjustment_transition=True).write({
+            record.sudo().with_context(_allow_adjustment_transition=True).write({
                 'state': 'submitted', 'requested_date': fields.Datetime.now(),
             })
             record.message_post(body=_('تم إرسال تعديل الفوترة للاعتماد.'))

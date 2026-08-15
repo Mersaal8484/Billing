@@ -66,7 +66,7 @@ class UtilityMigrationImportWizard(models.TransientModel):
         'meter_number': ('meter_number', 'رقم العداد', 'رقم العداد *', 'رقم عداد رصد المحول', 'رقم العداد (عداد الفيدر)'),
         'meter_reading': ('meter_reading', 'قراءة العداد في النظام', 'قراءة العداد في النظام القديم'),
         'opening_reading': ('opening_reading', 'قراءة الافتتاح', 'قراءة بداية الاشتراك', 'قراءة عند تفعيل العقد', 'القراءة عند تفعيل العقد'),
-        'previous_balance': ('previous_balance', 'الرصيد السابق (الخط الساخن)'),
+        'previous_balance': ('previous_balance', 'الرصيد السابق قبل (الخط الساخن)', 'الرصيد السابق (الخط الساخن)'),
         'current_balance': ('current_balance', 'الرصيد الحالي (الافتتاحي)'),
         'phase': ('phase', 'نوع الفاز', 'نوع الفاز (single/three)', 'الطور'),
         'is_private_transformer': ('is_private_transformer', 'محول خاص?', 'محول خاص؟ (نعم/لا)'),

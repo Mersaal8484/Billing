@@ -26,7 +26,7 @@ class UtilityMigrationCustomer(models.Model):
         check_company=False)
     opening_reference = fields.Char(
         'مرجع الرصيد الافتتاحي', readonly=True, copy=False, index=True)
-    previous_balance = fields.Char('الرصيد السابق (الخط الساخن)')
+    previous_balance = fields.Char('الرصيد السابق قبل (الخط الساخن)')
 
     meter_number = fields.Char('رقم العداد')
     last_reading = fields.Float('اخر قراءة مسجلة', digits=(12, 3))

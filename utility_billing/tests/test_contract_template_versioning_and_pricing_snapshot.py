@@ -294,3 +294,116 @@ class TestContractTemplateVersioningAndPricingSnapshot(TransactionCase):
 
         with self.assertRaises(UserError):
             snapshot.unlink()
+
+    def test_10_historical_repricing_consumes_frozen_version_blocks_not_live_blocks(self):
+        """Repricing a historical bill uses the frozen snapshot blocks from its version, not modified template blocks."""
+        template_block = self.env['utility.contract.template'].create({
+            'name': 'Block Tariff for Versioning Test',
+            'code': 'BLK-HIST-01',
+            'pricing_mode': 'block',
+            'subscriber_category_ids': [(6, 0, self.category.ids)],
+            'subscriber_ids': [(6, 0, self.subscriber.ids)],
+            'scope': 'global',
+        })
+        self.env['utility.contract.template.block'].create([
+            {'template_id': template_block.id, 'sequence': 10, 'name': 'V1 Block 1', 'from_kwh': 0, 'to_kwh': 100, 'price_per_kwh': 10.0},
+            {'template_id': template_block.id, 'sequence': 20, 'name': 'V1 Block 2', 'from_kwh': 100, 'to_kwh': 0, 'price_per_kwh': 20.0},
+        ])
+
+        # Version 1 captures blocks (0-100 @ 10, 100+ @ 20)
+        v1 = template_block.current_version_id
+        self.assertEqual(v1.version_number, 1)
+
+        cust_block = self.env['utility.customer'].create({
+            'name': 'Block Customer',
+            'customer_number': 'CUST-BLK-001',
+            'partner_id': self.partner.id,
+            'subscriber_category_id': self.category.id,
+            'subscriber_id': self.subscriber.id,
+            'contract_template_id': template_block.id,
+        })
+
+        order = self.env['sale.order'].create({
+            'partner_id': self.partner.id,
+            'customer_id': cust_block.id,
+            'date_range_id': self.period.id,
+            'consumption': 250.0,
+            'contract_template_id': template_block.id,
+        })
+        order._calculate_amounts()
+        self.assertEqual(order.contract_template_version_id, v1)
+        self.assertEqual(order.amount_energy, 4000.0)  # 100*10 + 150*20 = 4000
+        order.action_confirm()
+        self.assertTrue(v1.is_used_in_billing)
+
+        # Now update the template with completely new block prices (30.0 and 50.0) -> creates Version 2
+        template_block.block_ids.unlink()
+        self.env['utility.contract.template.block'].create([
+            {'template_id': template_block.id, 'sequence': 10, 'name': 'V2 Block 1', 'from_kwh': 0, 'to_kwh': 100, 'price_per_kwh': 30.0},
+            {'template_id': template_block.id, 'sequence': 20, 'name': 'V2 Block 2', 'from_kwh': 100, 'to_kwh': 0, 'price_per_kwh': 50.0},
+        ])
+        v2 = template_block.current_version_id
+        self.assertEqual(v2.version_number, 2)
+
+        # Repricing Order 1 for 200 kWh MUST use Version 1 blocks (100*10 + 100*20 = 3000), NOT live template blocks (100*30 + 100*50 = 8000)
+        simulated_total = order._simulate_bill_total_for_consumption(200.0, version_id=v1.id)
+        self.assertEqual(simulated_total, 3000.0, 'إعادة التسعير التاريخي يجب أن تعتمد كلياً على شرائح الإصدار الأول الثابتة.')
+
+    def test_11_multi_component_reading_correction_recalculation(self):
+        """Correcting a reading on a multi-component bill recalibrates affected segment and total consumption."""
+        order = self.env['sale.order'].create({
+            'partner_id': self.partner.id,
+            'customer_id': self.customer.id,
+            'date_range_id': self.period.id,
+            'consumption': 500.0,
+            'contract_template_id': self.template_flat.id,
+        })
+        order._calculate_amounts()
+
+        reading1 = self.env['utility.reading'].with_context(_bypass_reading_protection=True).create({
+            'meter_id': self.meter.id,
+            'reading_value': 1200.0,
+            'previous_reading': 1000.0,
+            'reading_date': '2026-01-15 10:00:00',
+            'state': 'billed',
+        })
+        new_meter = self.env['utility.meter'].create({
+            'meter_number': 'MTR-NEW-MULTI',
+            'customer_id': self.customer.id,
+        })
+        reading2 = self.env['utility.reading'].with_context(_bypass_reading_protection=True).create({
+            'meter_id': new_meter.id,
+            'reading_value': 300.0,
+            'previous_reading': 0.0,
+            'reading_date': '2026-01-31 10:00:00',
+            'state': 'billed',
+        })
+
+        comp1 = self.env['utility.bill.reading.component'].create({
+            'sale_order_id': order.id,
+            'reading_id': reading1.id,
+            'account_id': self.customer.id,
+            'meter_id': self.meter.id,
+            'period_start': '2026-01-01 00:00:00',
+            'period_end': '2026-01-15 10:00:00',
+            'previous_reading': 1000.0,
+            'current_reading': 1200.0,
+            'meter_multiplier': 1.0,
+            'consumption': 200.0,
+        })
+        comp2 = self.env['utility.bill.reading.component'].create({
+            'sale_order_id': order.id,
+            'reading_id': reading2.id,
+            'account_id': self.customer.id,
+            'meter_id': new_meter.id,
+            'period_start': '2026-01-15 10:00:00',
+            'period_end': '2026-01-31 10:00:00',
+            'previous_reading': 0.0,
+            'current_reading': 300.0,
+            'meter_multiplier': 1.0,
+            'consumption': 300.0,
+        })
+
+        # Correct reading 1 from 1200 to 1150 (consumption drops from 200 to 150, total becomes 150 + 300 = 450)
+        recalculated_consumption = order._calculate_corrected_consumption_for_reading(1150.0, reading_id=reading1.id)
+        self.assertEqual(recalculated_consumption, 450.0, 'الاستهلاك الكلي يجب أن يعاد احتسابه بجمع المقاطع المصححة بدقة.')

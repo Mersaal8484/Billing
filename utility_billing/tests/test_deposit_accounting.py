@@ -183,8 +183,8 @@ class TestDepositAccounting(TransactionCase):
             })
 
     def test_legacy_deposit_reclassification_creates_adjusting_entry(self):
-        """action_reclassify_legacy_deposit creates Dr Receivable / Cr Liability entry."""
-        # Create a mock legacy payment
+        """action_reclassify_legacy_deposit creates Dr Receivable / Cr Liability entry and reconciles open receivable."""
+        # Create and post a mock legacy payment
         receivable_acc = self.partner.property_account_receivable_id
         if not receivable_acc:
             receivable_acc = self.Account.search([
@@ -199,6 +199,13 @@ class TestDepositAccounting(TransactionCase):
             'amount': 700.0,
             'journal_id': self.deposit_journal.id,
         })
+        legacy_payment.action_post()
+
+        payment_rec_line = legacy_payment.move_id.line_ids.filtered(
+            lambda l: l.account_id == receivable_acc and l.credit > 0
+        )
+        self.assertTrue(payment_rec_line, 'الدفعة المحاسبية يجب أن تحتوي على سطر دائن للذمم.')
+        self.assertFalse(payment_rec_line.reconciled, 'السطر يجب أن يكون غير موفق قبل إعادة التصنيف.')
 
         deposit = self.Deposit.create({
             'customer_id': self.customer.id,
@@ -211,10 +218,10 @@ class TestDepositAccounting(TransactionCase):
         deposit.sudo().action_reclassify_legacy_deposit()
 
         self.assertEqual(deposit.status, 'held')
-        self.assertTrue(deposit.receipt_move_id)
-        self.assertEqual(deposit.receipt_move_id.state, 'posted')
+        self.assertTrue(deposit.reclassification_move_id)
+        self.assertEqual(deposit.reclassification_move_id.state, 'posted')
 
-        lines = deposit.receipt_move_id.line_ids
+        lines = deposit.reclassification_move_id.line_ids
         debit_line = lines.filtered(lambda l: l.debit > 0)
         credit_line = lines.filtered(lambda l: l.credit > 0)
 
@@ -224,6 +231,12 @@ class TestDepositAccounting(TransactionCase):
                          'الطرف الدائن يجب أن يكون حساب التزامات التأمينات.')
         self.assertAlmostEqual(debit_line.debit, 700.0)
         self.assertAlmostEqual(credit_line.credit, 700.0)
+
+        # Assert that both the legacy payment line and reclassification debit line are fully reconciled
+        payment_rec_line.invalidate_recordset()
+        debit_line.invalidate_recordset()
+        self.assertTrue(payment_rec_line.reconciled, 'سطر الدفعة القديم يجب أن يكون موفقاً بعد إعادة التصنيف.')
+        self.assertTrue(debit_line.reconciled, 'سطر قيد إعادة التصنيف يجب أن يكون موفقاً لإغلاق الذمم المفتوحة.')
 
     def test_idempotent_receive_and_transition_guards(self):
         """Calling receive/release twice or out of order must raise ValidationError."""

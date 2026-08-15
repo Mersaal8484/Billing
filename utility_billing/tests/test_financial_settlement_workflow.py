@@ -99,6 +99,8 @@ class TestFinancialSettlementWorkflow(TransactionCase):
             'settlement_type': 'credit',
             'amount': 250.0,
             'reason': 'اختبار مسار التسوية المالية',
+            'source_document': 'قرار إداري رقم 101',
+            'source_reference': 'DEC-2026-101',
         })
         self.assertEqual(settlement.state, 'draft')
 
@@ -119,6 +121,17 @@ class TestFinancialSettlementWorkflow(TransactionCase):
         self.assertEqual(settlement.move_id.state, 'posted')
         self.assertEqual(settlement.move_id.move_type, 'out_refund')
 
+    def test_submit_without_source_blocked(self):
+        """Submitting a financial settlement without source document/reference must raise ValidationError."""
+        settlement = self.Settlement.with_user(self.user1).create({
+            'account_id': self.customer.id,
+            'settlement_type': 'credit',
+            'amount': 180.0,
+            'reason': 'اختبار إلزامية المستند المصدري',
+        })
+        with self.assertRaises(ValidationError):
+            settlement.action_submit()
+
     def test_self_approval_blocked(self):
         """User1 cannot approve a settlement submitted by User1."""
         settlement = self.Settlement.with_user(self.user1).create({
@@ -126,6 +139,8 @@ class TestFinancialSettlementWorkflow(TransactionCase):
             'settlement_type': 'credit',
             'amount': 150.0,
             'reason': 'اختبار منع الاعتماد الذاتي',
+            'source_document': 'تقرير تدقيق داخلي',
+            'source_reference': 'AUD-2026-004',
         })
         settlement.action_submit()
 
@@ -140,6 +155,8 @@ class TestFinancialSettlementWorkflow(TransactionCase):
             'settlement_type': 'credit',
             'amount': 100.0,
             'reason': 'اختبار الحماية ضد التعديل',
+            'source_document': 'توجيه مدير عام',
+            'source_reference': 'DIR-2026-012',
         })
         settlement.action_submit()
         settlement.with_user(self.user2).action_approve()
@@ -158,6 +175,8 @@ class TestFinancialSettlementWorkflow(TransactionCase):
             'settlement_type': 'debit',
             'amount': 50.0,
             'reason': 'اختبار منع إلغاء المطبق',
+            'source_document': 'محضر معاينة فنية',
+            'source_reference': 'INSP-2026-88',
         })
         settlement.action_submit()
         settlement.with_user(self.user2).action_approve()

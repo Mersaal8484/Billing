@@ -54,9 +54,14 @@ class UtilityDeposit(models.Model):
         'account.move', string='قيد مصادرة التأمين', readonly=True, copy=False, index=True,
         help='قيد مصادرة التأمين: مدين (التزامات التأمينات) / دائن (إيرادات الغرامات/المصادرة).'
     )
+    reclassification_move_id = fields.Many2one(
+        'account.move', string='قيد إعادة التصنيف المحاسبي', readonly=True, copy=False, index=True,
+        help='قيد تسوية تاريخي: مدين (ذمم المشترك) / دائن (التزامات التأمينات).'
+    )
 
-    # حقول التوافق التاريخي (Readonly)
+    # حقول التوافق التاريخي
     payment_id = fields.Many2one('account.payment', string='سند القبض (تاريخي)', readonly=True, copy=False)
+    legacy_payment_id = fields.Many2one('account.payment', related='payment_id', readonly=False, string='سند القبض التاريخي')
     move_id = fields.Many2one('account.move', string='القيد المحاسبي (تاريخي)', readonly=True, copy=False)
 
     @api.model_create_multi
@@ -319,11 +324,24 @@ class UtilityDeposit(models.Model):
                 ],
             })
             move.action_post()
+
+            # التوفيق المحاسبي الدقيق بين سطر الدفعة التاريخية وسطر قيد إعادة التصنيف لإغلاق أثر الذمم المفتوحة
+            if rec.payment_id and rec.payment_id.move_id:
+                payment_rec_lines = rec.payment_id.move_id.line_ids.filtered(
+                    lambda l: l.account_id.account_type == 'asset_receivable' and not l.reconciled
+                )
+                reclass_rec_lines = move.line_ids.filtered(
+                    lambda l: l.account_id.account_type == 'asset_receivable' and not l.reconciled
+                )
+                if payment_rec_lines and reclass_rec_lines:
+                    (payment_rec_lines + reclass_rec_lines).reconcile()
+
             rec.write({
                 'status': 'held',
+                'reclassification_move_id': move.id,
                 'receipt_move_id': move.id,
             })
             rec.message_post(body=_(
-                'تمت إعادة تصنيف التأمين التاريخي وترحيل قيد التسوية المحاسبي %s (Dr Receivable / Cr Deposit Liability).'
+                'تمت إعادة تصنيف التأمين التاريخي وترحيل قيد التسوية وتوفيق الذمم المحاسبية %s (Dr Receivable / Cr Deposit Liability).'
             ) % move.name)
 
