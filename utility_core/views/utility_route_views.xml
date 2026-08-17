@@ -26,6 +26,12 @@
         <field name="model">utility.route</field>
         <field name="arch" type="xml">
             <form>
+                <header>
+                    <button name="utility_core.action_utility_meter_reader" 
+                            type="action" string="تعيين كاشف قراءات" 
+                            class="btn-primary" icon="fa-user-circle"
+                            context="{'default_route_ids': [(4, active_id)]}"/>
+                </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
                         <button class="oe_stat_button" icon="fa-users" type="object" name="action_add_customers_wizard" help="عدد المشتركين بالمسار">

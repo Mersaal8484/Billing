@@ -151,5 +151,7 @@ access_ir_cron_utility_revenue,ir.cron.utility.revenue,base.model_ir_cron,group_
 access_ir_cron_utility_admin,ir.cron.utility.admin,base.model_ir_cron,group_utility_admin,1,1,0,0
 access_utility_contract_template_clone_wizard_admin,utility.contract.template.clone.wizard.admin,model_utility_contract_template_clone_wizard,group_utility_admin,1,1,1,1
 access_utility_contract_template_clone_wizard_billing,utility.contract.template.clone.wizard.billing,model_utility_contract_template_clone_wizard,group_utility_billing_manager,1,1,1,1
-
-
+access_utility_meter_reader_admin,utility.meter.reader.admin,model_utility_meter_reader,utility_core.group_utility_admin,1,1,1,1
+access_utility_meter_reader_supervisor,utility.meter.reader.supervisor,model_utility_meter_reader,utility_core.group_utility_supervisor,1,1,1,0
+access_utility_meter_reader_readonly,utility.meter.reader.readonly,model_utility_meter_reader,utility_core.group_utility_readonly,1,0,0,0
+access_utility_meter_reader_self,utility.meter.reader.self,model_utility_meter_reader,utility_core.group_utility_meter_reader,1,0,0,0

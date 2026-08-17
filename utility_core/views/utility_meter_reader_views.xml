@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ============================================================ -->
+    <!-- Tree View                                                      -->
+    <!-- ============================================================ -->
+    <record id="view_utility_meter_reader_tree" model="ir.ui.view">
+        <field name="name">utility.meter.reader.tree</field>
+        <field name="model">utility.meter.reader</field>
+        <field name="arch" type="xml">
+            <tree decoration-success="active == True" decoration-muted="active == False"
+                  string="كشافو القراءات">
+                <field name="code" optional="show"/>
+                <field name="name"/>
+                <field name="user_id"/>
+                <field name="mobile" optional="show"/>
+                <field name="route_ids" widget="many2many_tags" optional="show"/>
+                <field name="customer_count" string="عدد المشتركين"/>
+                <field name="active" invisible="1"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- ============================================================ -->
+    <!-- Form View                                                      -->
+    <!-- ============================================================ -->
+    <record id="view_utility_meter_reader_form" model="ir.ui.view">
+        <field name="name">utility.meter.reader.form</field>
+        <field name="model">utility.meter.reader</field>
+        <field name="arch" type="xml">
+            <form string="كاشف قراءة العدادات">
+                <header>
+                    <button name="action_view_customers" type="object"
+                            string="عرض المشتركين" class="btn-secondary"
+                            icon="fa-users"
+                            attrs="{'invisible': [('customer_count', '=', 0)]}"/>
+                </header>
+                <sheet>
+                    <field name="active" invisible="1"/>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_customers" type="object"
+                                class="oe_stat_button" icon="fa-users">
+                            <field name="customer_count" widget="statinfo"
+                                   string="مشتركون"/>
+                        </button>
+                        <button name="action_view_routes" type="object"
+                                class="oe_stat_button" icon="fa-road">
+                            <field name="route_ids" string="مسارات"
+                                   widget="statinfo_field"/>
+                        </button>
+                    </div>
+                    <widget name="web_ribbon" title="معطّل"
+                            bg_color="bg-danger"
+                            attrs="{'invisible': [('active', '=', True)]}"/>
+                    <div class="oe_title">
+                        <label for="name" string="اسم الكاشف / الموظف"/>
+                        <h1>
+                            <field name="name" placeholder="الاسم الكامل"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="بيانات الكاشف">
+                            <field name="code" placeholder="مثال: RDR-001"/>
+                            <field name="mobile" placeholder="777123456"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                        <group string="حساب النظام والتطبيق">
+                            <field name="user_id"
+                                   domain="[('share', '=', False)]"
+                                   options="{'no_create': False}"
+                                   help="حساب الدخول الذي يستخدمه الكاشف في التطبيق"/>
+                            <field name="staff_id"
+                                   options="{'no_create': True}"
+                                   help="ربط اختياري بسجل موظف في النظام"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="المسارات المخصصة" name="routes">
+                            <div class="alert alert-info" role="alert">
+                                <strong>ملاحظة:</strong> عند تعيين مسار للكاشف، سيظهر له تلقائياً
+                                جميع مشتركي هذا المسار في التطبيق.
+                                يمكنك تعيين أكثر من مسار للكاشف الواحد.
+                            </div>
+                            <field name="route_ids"
+                                   widget="many2many_checkboxes"
+                                   options="{'no_create': True}">
+                                <tree>
+                                    <field name="code"/>
+                                    <field name="name"/>
+                                    <field name="region_id"/>
+                                    <field name="area_id"/>
+                                    <field name="customer_count" string="المشتركون"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <!-- ============================================================ -->
+    <!-- Search View                                                    -->
+    <!-- ============================================================ -->
+    <record id="view_utility_meter_reader_search" model="ir.ui.view">
+        <field name="name">utility.meter.reader.search</field>
+        <field name="model">utility.meter.reader</field>
+        <field name="arch" type="xml">
+            <search string="بحث كشافو القراءات">
+                <field name="name" string="اسم الكاشف"/>
+                <field name="code"/>
+                <field name="user_id"/>
+                <field name="route_ids"/>
+                <separator/>
+                <filter name="active" string="النشطون فقط" domain="[('active','=',True)]"/>
+                <filter name="inactive" string="المعطلون" domain="[('active','=',False)]"/>
+                <group expand="0" string="تجميع حسب">
+                    <filter name="group_route" string="المسار"
+                            context="{'group_by': 'route_ids'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ============================================================ -->
+    <!-- Action                                                         -->
+    <!-- ============================================================ -->
+    <record id="action_utility_meter_reader" model="ir.actions.act_window">
+        <field name="name">كشافو قراءة العدادات</field>
+        <field name="res_model">utility.meter.reader</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_utility_meter_reader_search"/>
+        <field name="context">{'search_default_active': 1}</field>
+    </record>
+
+    <!-- ============================================================ -->
+    <!-- Menu Item — تحت "فرق العمل" في قائمة الشبكة                  -->
+    <!-- ============================================================ -->
+    <menuitem id="menu_utility_meter_reader"
+              name="كشافو العدادات"
+              parent="menu_utility_network"
+              action="action_utility_meter_reader"
+              sequence="95"
+              groups="utility_core.group_utility_admin,utility_core.group_utility_supervisor"/>
+
+</odoo>

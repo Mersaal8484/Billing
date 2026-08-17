@@ -36,6 +36,7 @@ User Role.
         'views/utility_feeder_views.xml',
         'views/utility_substation_views.xml',
         'views/utility_transformer_views.xml',
+        'views/utility_meter_reader_views.xml',
         'views/utility_route_views.xml',
         'views/utility_customer_views.xml',
         'views/utility_customer_lifecycle_views.xml',

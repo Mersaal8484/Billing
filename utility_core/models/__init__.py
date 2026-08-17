@@ -16,6 +16,7 @@ from . import utility_meter
 from . import utility_meter_log
 from . import utility_staff
 from . import utility_team
+from . import utility_meter_reader
 from . import utility_user_role
 from . import utility_subscriber_category
 from . import utility_subscriber

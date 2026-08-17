@@ -187,5 +187,14 @@
             <field name="domain_force">[(1, '=', 1)] if user._is_global_utility_scope() else (['|', ('area_id', 'in', user._get_effective_branch_ids()), ('region_id', 'in', user._get_effective_region_ids())] if (user._get_effective_branch_ids() or user._get_effective_region_ids()) else [('id', '=', False)])</field>
             <field name="global" eval="True"/>
         </record>
+
+        <!-- Meter Reader: each reader sees only their own record -->
+        <record id="utility_meter_reader_self_rule" model="ir.rule">
+            <field name="name">Meter Reader Self Access Rule</field>
+            <field name="model_id" ref="utility_core.model_utility_meter_reader"/>
+            <field name="domain_force">[(1, '=', 1)] if (user.has_group('utility_core.group_utility_admin') or user.has_group('utility_core.group_utility_supervisor')) else [('user_id', '=', user.id)]</field>
+            <field name="global" eval="True"/>
+        </record>
     </data>
 </odoo>
+

@@ -396,7 +396,132 @@ class UtilityReaderAPI(http.Controller):
                 'state': b.state,
             } for b in batches],
         }
+
+    # ================================================================
+    # استعلام: مشتركي الكاشف الحالي
+    # ================================================================
+    @http.route('/api/v1/utility/reader/subscribers', type='json',
+                auth='user', methods=['POST', 'GET'])
+    def reader_subscribers(self, **kwargs):
+        """
+        جلب قائمة المشتركين المخصصين للكاشف المسجل دخوله.
+        """
+        user = request.env.user
+        if not user.assigned_route_ids:
+            return {'success': True, 'subscribers': []}
+
+        # بسبب الـ record rules، search([]) ستجلب فقط المشتركين المسموحين للمستخدم
+        customers = request.env['utility.customer'].search([
+            ('route_id', 'in', user.assigned_route_ids.ids)
+        ])
+
+        result = []
+        for c in customers:
+            meter = c.meter_id
+            result.append({
+                'id': c.id,
+                'customer_number': c.customer_number,
+                'name': c.partner_id.name if c.partner_id else '',
+                'address': c.address or '',
+                'route_id': c.route_id.id if c.route_id else None,
+                'route_name': c.route_id.name if c.route_id else '',
+                'meter_id': meter.id if meter else None,
+                'meter_number': meter.meter_number if meter else '',
+            })
+
+        return {
+            'success': True,
+            'count': len(result),
+            'subscribers': result,
+        }
+
+    # ================================================================
+    # إجراء: رفع قراءة لعميل
+    # ================================================================
+    @http.route('/api/v1/utility/reader/reading/submit', type='json',
+                auth='user', methods=['POST'])
+    def submit_reading(self, **kwargs):
+        """
+        رفع قراءة فردية لعداد العميل من قبل الكاشف.
+        """
+        params = request.jsonrequest
+        
+        # Resolve meter
+        meter, error_code = self._resolve_meter_identifiers(params)
+        if error_code:
+            return self._error(error_code or 'METER_NOT_FOUND', 'العداد غير موجود أو البيانات غير مكتملة')
+
+        user = request.env.user
+        
+        # تحقق من ملكية المسار
+        if meter.customer_id.route_id not in user.assigned_route_ids and not user._is_global_utility_scope():
+            return self._error('ACCESS_DENIED', 'هذا المشترك لا يقع ضمن المسارات المخصصة لك.')
+
+        reading_value = params.get('reading_value')
+        if reading_value is None:
+            return self._error('VALIDATION_ERROR', 'قيمة القراءة (reading_value) مطلوبة')
+
+        try:
+            reading_value = float(reading_value)
+        except ValueError:
+            return self._error('VALIDATION_ERROR', 'قيمة القراءة يجب أن تكون رقماً')
+
+        period_id = params.get('period_id')
+        if not period_id:
+            period = request.env['date.range'].search([
+                ('period_role', '=', 'reading'),
+                ('state', '=', 'open'),
+                '|', ('company_id', '=', False), ('company_id', '=', request.env.company.id)
+            ], order='date_start desc', limit=1)
+            period_id = period.id if period else False
+
+        reading_date = params.get('reading_date', fields.Datetime.now())
+
+        try:
+            with request.env.cr.savepoint():
+                reading_vals = {
+                    'meter_id': meter.id,
+                    'customer_id': meter.customer_id.id if meter.customer_id else False,
+                    'reading_value': reading_value,
+                    'reading_date': reading_date,
+                    'reading_purpose': 'periodic',
+                    'date_range_id': period_id,
+                    'state': 'under_review',  # إرسالها للمراجعة مباشرة
+                    'reading_source': 'mobile_app',
+                    'notes': params.get('notes', ''),
+                    'gps_lat': params.get('gps_lat'),
+                    'gps_lng': params.get('gps_lng'),
+                }
+                
+                reading = request.env['utility.reading'].create(reading_vals)
+
+                # معالجة الصورة إن وُجدت
+                image_b64 = params.get('image_b64')
+                if image_b64:
+                    try:
+                        decoded = base64.b64decode(image_b64, validate=True)
+                        request.env['utility.media.service'].sudo().store_media(
+                            file_data=decoded,
+                            filename=f"reading_{reading.id}.jpg",
+                            mimetype='image/jpeg',
+                            reading_id=reading.id,
+                            asset_type='meter_reading'
+                        )
+                        reading.image_state = 'clear'
+                    except Exception as e:
+                        _logger.error("Failed to save image for reading %s: %s", reading.id, e)
+
+                return {
+                    'success': True,
+                    'reading_id': reading.id,
+                    'state': reading.state,
+                }
+        except Exception as e:
+            _logger.error("Error submitting reading: %s", str(e))
+            return self._error('SYSTEM_ERROR', str(e))
+
 class UtilityReaderApiPatch(http.Controller):
+
 
     @http.route(
         '/api/v1/utility/reading/check_period_reading',

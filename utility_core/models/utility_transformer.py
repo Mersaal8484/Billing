@@ -165,14 +165,21 @@ class UtilityTransformer(models.Model):
         for idx, rec in enumerate(records):
             if not rec.zone_region_id:
                 parent_id = passed_parents[idx]
-                zone = self.env['utility.region'].create({
+                parent = rec.area_id or rec.region_id
+                zone_vals = {
                     'name': rec.name,
                     'code': rec.code,
                     'type': 'zone',
                     'parent_id': parent_id if parent_id else False,
                     'company_id': rec.company_id.id,
                     'transformer_origin_id': rec.id,
-                })
+                }
+                # A transformer-created zone belongs to the selected area/region.
+                # It must inherit the parent's billing cadence; otherwise the
+                # geographic hierarchy constraint rejects valid transformer imports.
+                if parent and parent.recurring_rule_type:
+                    zone_vals['recurring_rule_type'] = parent.recurring_rule_type
+                zone = self.env['utility.region'].create(zone_vals)
                 rec.zone_region_id = zone.id
         return records
 

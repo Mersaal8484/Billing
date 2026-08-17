@@ -102,7 +102,11 @@ class IrAttachment(models.Model):
     def _file_read(self, fname, bin_size=False):
         # New files use a complete relative path in store_fname and are handled
         # by Odoo's standard implementation, including old standard Filestore files.
-        data = super()._file_read(fname, bin_size=bin_size)
+        try:
+            data = super()._file_read(fname)
+        except Exception:
+            data = False
+            
         if data:
             return data
 
