@@ -20,7 +20,7 @@ class FilesystemMediaAdapter(AbstractMediaStorageAdapter):
         if not os.path.exists(self.storage_path):
             try:
                 os.makedirs(self.storage_path, exist_ok=True)
-            except Exception as e:
+            except OSError as e:
                 raise UserError(_("خطأ في إعدادات البنية التحتية: تعذر إنشاء مسار تخزين الملفات: %s") % str(e))
 
     def store(self, *, file_data, filename, mimetype, metadata=None):
@@ -32,7 +32,7 @@ class FilesystemMediaAdapter(AbstractMediaStorageAdapter):
         os.makedirs(target_dir, exist_ok=True)
 
         file_bytes = file_data if isinstance(file_data, bytes) else file_data.encode('utf-8')
-        file_path = os.path.join(target_dir, filename)
+        file_path = os.path.join(target_dir, os.path.basename(filename))
         with open(file_path, 'wb') as f:
             f.write(file_bytes)
 
@@ -58,12 +58,18 @@ class FilesystemMediaAdapter(AbstractMediaStorageAdapter):
         return b''
 
     def delete(self, asset):
-        attachment = asset.original_attachment_id
-        if attachment and attachment.url:
-            file_path = attachment.url.replace('file://', '')
-            if os.path.exists(file_path):
-                os.remove(file_path)
-            attachment.unlink()
+        attachments = self.env['ir.attachment'].sudo()
+        for variant in self.VARIANTS:
+            attachment = self._get_attachment_for_variant(asset, variant)
+            if not attachment or attachment not in attachments:
+                continue
+            if attachment.url:
+                file_path = attachment.url.replace('file://', '')
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+            attachments |= attachment
+        if attachments:
+            attachments.unlink()
         return True
 
     def exists(self, asset, variant='original'):
@@ -76,10 +82,3 @@ class FilesystemMediaAdapter(AbstractMediaStorageAdapter):
     def get_url(self, asset, variant='original'):
         attachment = self._get_attachment_for_variant(asset, variant)
         return attachment.url if attachment else ''
-
-    def _get_attachment_for_variant(self, asset, variant):
-        if variant == 'thumbnail' and asset.thumbnail_attachment_id:
-            return asset.thumbnail_attachment_id
-        elif variant == 'review' and asset.review_attachment_id:
-            return asset.review_attachment_id
-        return asset.original_attachment_id

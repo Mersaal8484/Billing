@@ -75,10 +75,3 @@ class S3MediaAdapter(AbstractMediaStorageAdapter):
     def get_url(self, asset, variant='original'):
         attachment = self._get_attachment_for_variant(asset, variant)
         return attachment.url if attachment else ''
-
-    def _get_attachment_for_variant(self, asset, variant):
-        if variant == 'thumbnail' and asset.thumbnail_attachment_id:
-            return asset.thumbnail_attachment_id
-        elif variant == 'review' and asset.review_attachment_id:
-            return asset.review_attachment_id
-        return asset.original_attachment_id

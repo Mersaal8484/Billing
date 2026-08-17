@@ -1,4 +1,3 @@
-import base64
 import logging
 from odoo import http, _
 from odoo.http import request, Response
@@ -44,12 +43,6 @@ class UtilityMediaController(http.Controller):
         # 3. استرجاع البيانات الثنائية عبر Media Service
         media_service = request.env['utility.media.service'].sudo()
         raw_bytes = media_service.retrieve_media(asset, variant=variant)
-
-        if not raw_bytes:
-            # Fallback to ir.attachment if raw bytes empty from media service
-            attachment = getattr(asset, f"{variant}_attachment_id", False) or asset.original_attachment_id
-            if attachment and attachment.datas:
-                raw_bytes = base64.b64decode(attachment.datas)
 
         if not raw_bytes:
             return Response("Media content unavailable", status=404)

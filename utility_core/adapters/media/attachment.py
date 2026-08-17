@@ -1,4 +1,5 @@
 import base64
+import binascii
 from odoo import _
 from odoo.exceptions import ValidationError
 from .base import AbstractMediaStorageAdapter
@@ -35,9 +36,9 @@ class AttachmentMediaAdapter(AbstractMediaStorageAdapter):
         if not attachment or not attachment.datas:
             return b''
         try:
-            return base64.b64decode(attachment.datas)
-        except Exception:
-            return attachment.datas if isinstance(attachment.datas, bytes) else b''
+            return base64.b64decode(attachment.datas, validate=True)
+        except (binascii.Error, TypeError, ValueError):
+            return b''
 
     def delete(self, asset):
         attachments = self.env['ir.attachment'].sudo()
@@ -60,10 +61,3 @@ class AttachmentMediaAdapter(AbstractMediaStorageAdapter):
         if not attachment:
             return ''
         return f"/web/image/{attachment.id}"
-
-    def _get_attachment_for_variant(self, asset, variant):
-        if variant == 'thumbnail' and asset.thumbnail_attachment_id:
-            return asset.thumbnail_attachment_id
-        elif variant == 'review' and asset.review_attachment_id:
-            return asset.review_attachment_id
-        return asset.original_attachment_id
