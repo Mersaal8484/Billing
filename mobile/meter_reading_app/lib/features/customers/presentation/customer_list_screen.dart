@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/providers.dart';
 import '../../../shared/widgets/state_widgets.dart';
+import '../data/odoo_assignment_repository.dart';
 import '../domain/entities.dart';
 
 class CustomerListScreen extends ConsumerStatefulWidget {
@@ -76,6 +77,12 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
               loading: () => const LoadingState(),
               error: (e, _) => ErrorState(message: 'تعذر تحميل القائمة: $e'),
               data: (list) {
+                // محاولة استخراج رسالة خطأ من المستودع لو فشل الـ API
+                final error = (ref.read(assignmentRepositoryProvider) as OdooAssignmentRepository).lastError;
+                if (error != null && list.isEmpty) {
+                  return ErrorState(message: 'خطأ أثناء جلب البيانات: $error');
+                }
+
                 if (list.isEmpty) {
                   return const EmptyState(
                     icon: Icons.search_off_rounded,
