@@ -24,17 +24,15 @@ class UtilityRoute(models.Model):
 
     customer_ids = fields.One2many('utility.customer', 'route_id', string='عقود المشتركين')
     customer_count = fields.Integer('عدد المشتركين', compute='_compute_customer_count', store=True)
-    inspector_ids = fields.Many2many(
-        'utility.staff', 'route_inspector_rel', 'route_id', 'staff_id',
-        string='الكشافون',
-        domain="[('role_ids.code', '=', 'inspector')]",
+    user_ids = fields.Many2many(
+        'res.users', 'res_users_route_rel',
+        'route_id', 'user_id',
+        string='طاقم العمل (كشاف/محصل)',
+        help='المستخدمين المخصصين ككشافين أو محصلين لهذا المسار'
     )
-    cashier_ids = fields.Many2many(
-        'utility.staff', 'route_cashier_rel', 'route_id', 'staff_id',
-        string='المحصلون الميدانيون',
-        domain="[('role_ids.code', '=', 'collector')]",
+    supervisor_id = fields.Many2one(
+        'res.users', string='المشرف',
     )
-    supervisor_id = fields.Many2one('utility.staff', string='المشرف', domain="[('role_ids.code', '=', 'supervisor')]")
 
     _sql_constraints = [
         ('unique_route_code_area', 'unique(code, area_id)', 'رمز المسار يجب أن يكون فريداً لكل منطقة!'),

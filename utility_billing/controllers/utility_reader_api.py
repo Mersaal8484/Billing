@@ -398,6 +398,27 @@ class UtilityReaderAPI(http.Controller):
         }
 
     # ================================================================
+    # استعلام: صلاحيات المستخدم (Mobile App Dashboard)
+    # ================================================================
+    @http.route('/api/v1/utility/auth/roles', type='json',
+                auth='user', methods=['POST', 'GET'])
+    def auth_roles(self, **kwargs):
+        """
+        يرجع أدوار المستخدم الحالي (كاشف، محصل، مشرف) من خلال Security Groups في Odoo.
+        """
+        user = request.env.user
+        return {
+            'success': True,
+            'uid': user.id,
+            'name': user.name,
+            'roles': {
+                'is_meter_reader': user.has_group('utility_core.group_utility_meter_reader'),
+                'is_collector': user.has_group('utility_core.group_utility_collector'),
+                'is_supervisor': user.has_group('utility_core.group_utility_supervisor'),
+            }
+        }
+
+    # ================================================================
     # استعلام: مشتركي الكاشف الحالي
     # ================================================================
     @http.route('/api/v1/utility/reader/subscribers', type='json',
@@ -405,14 +426,23 @@ class UtilityReaderAPI(http.Controller):
     def reader_subscribers(self, **kwargs):
         """
         جلب قائمة المشتركين المخصصين للكاشف المسجل دخوله.
+        يبحث عبر assigned_route_ids أو عبر سجل utility.meter.reader المرتبط.
         """
         user = request.env.user
-        if not user.assigned_route_ids:
-            return {'success': True, 'subscribers': []}
 
-        # بسبب الـ record rules، search([]) ستجلب فقط المشتركين المسموحين للمستخدم
-        customers = request.env['utility.customer'].search([
-            ('route_id', 'in', user.assigned_route_ids.ids)
+        # البحث عبر سجل الكاشف المرتبط بالمستخدم
+        route_ids = user.assigned_route_ids.ids
+        meter_reader = request.env['utility.meter.reader'].sudo().search(
+            [('user_id', '=', user.id)], limit=1
+        )
+        if meter_reader:
+            route_ids = list(set(route_ids + meter_reader.route_ids.ids))
+
+        if not route_ids:
+            return {'success': True, 'subscribers': [], 'count': 0}
+
+        customers = request.env['utility.customer'].sudo().search([
+            ('route_id', 'in', route_ids)
         ])
 
         result = []
