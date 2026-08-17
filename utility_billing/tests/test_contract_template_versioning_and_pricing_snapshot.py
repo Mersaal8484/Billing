@@ -407,3 +407,43 @@ class TestContractTemplateVersioningAndPricingSnapshot(TransactionCase):
         # Correct reading 1 from 1200 to 1150 (consumption drops from 200 to 150, total becomes 150 + 300 = 450)
         recalculated_consumption = order._calculate_corrected_consumption_for_reading(1150.0, reading_id=reading1.id)
         self.assertEqual(recalculated_consumption, 450.0, 'الاستهلاك الكلي يجب أن يعاد احتسابه بجمع المقاطع المصححة بدقة.')
+
+    def test_12_empty_discount_blocks_in_snapshot_honored(self):
+        """Verify that an explicit empty list [] for discount_blocks in snapshot does not fallback to live template discount blocks."""
+        # Create template with blocks and no discount blocks
+        template = self.env['utility.contract.template'].create({
+            'name': 'Tiered Template Without Initial Discount',
+            'code': 'TIER-NO-DISC-01',
+            'pricing_mode': 'tier',
+            'block_ids': [
+                (0, 0, {'from_kwh': 0.0, 'to_kwh': 100.0, 'price_per_kwh': 50.0, 'sequence': 1}),
+                (0, 0, {'from_kwh': 100.0, 'to_kwh': 0.0, 'price_per_kwh': 100.0, 'sequence': 2}),
+            ],
+            'subscriber_category_ids': [(6, 0, self.category.ids)],
+            'scope': 'global',
+        })
+        v1 = template.current_version_id
+        snapshot = v1.get_parsed_snapshot()
+        self.assertEqual(snapshot.get('discount_blocks'), [])
+
+        # Later, someone adds discount blocks to the template directly
+        self.env['utility.contract.template.discount.block'].create({
+            'template_id': template.id,
+            'from_kwh': 0.0,
+            'to_kwh': 50.0,
+            'price_per_kwh': 20.0,
+            'sequence': 1,
+        })
+
+        order = self.env['sale.order'].create({
+            'partner_id': self.partner.id,
+            'customer_id': self.customer.id,
+            'date_range_id': self.period.id,
+            'consumption': 100.0,
+            'contract_template_id': template.id,
+            'contract_template_version_id': v1.id,
+        })
+
+        # Calculate discount blocks using v1 - must return empty list and not the template's new discount block
+        calc_d_blocks = order._get_discount_blocks_for_calculation(template, version=v1)
+        self.assertEqual(calc_d_blocks, [], 'اللقطة التاريخية الفارغة يجب أن تُحترم وألا ترجع للقالب الحي.')

@@ -1,4 +1,6 @@
 import base64
+import os
+import tempfile
 from odoo.tests.common import TransactionCase
 from odoo.exceptions import AccessError, ValidationError
 
@@ -367,3 +369,57 @@ class TestUtilityMediaAsset(TransactionCase):
 
         with self.assertRaises(ValidationError):
             batch.action_reset_to_uploaded()
+
+    def test_09_filesystem_media_adapter_delete(self):
+        """9. اختبار حذف الوسائط عبر FilesystemMediaAdapter والتأكد من إزالة الملفات والمرفقات"""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            self.env['ir.config_parameter'].sudo().set_param('utility.filesystem_storage_path', tmp_dir)
+            from odoo.addons.utility_core.adapters.media.filesystem import FilesystemMediaAdapter
+            adapter = FilesystemMediaAdapter(self.env)
+
+            orig_att = adapter.store(
+                file_data=self.sample_bytes,
+                filename='orig.png',
+                mimetype='image/png',
+                metadata={'asset_uuid': 'test-uuid-del-1'},
+            )
+            review_att = adapter.store(
+                file_data=self.sample_bytes,
+                filename='review.png',
+                mimetype='image/png',
+                metadata={'asset_uuid': 'test-uuid-del-1'},
+            )
+            thumb_att = adapter.store(
+                file_data=self.sample_bytes,
+                filename='thumb.png',
+                mimetype='image/png',
+                metadata={'asset_uuid': 'test-uuid-del-1'},
+            )
+
+            asset = self.MediaAsset.create({
+                'name': 'Test Asset For Delete',
+                'asset_uuid': 'test-uuid-del-1',
+                'storage_backend': 'filesystem',
+                'original_attachment_id': orig_att.id,
+                'review_attachment_id': review_att.id,
+                'thumbnail_attachment_id': thumb_att.id,
+            })
+
+            orig_file = orig_att.url.replace('file://', '')
+            review_file = review_att.url.replace('file://', '')
+            thumb_file = thumb_att.url.replace('file://', '')
+
+            self.assertTrue(os.path.exists(orig_file))
+            self.assertTrue(os.path.exists(review_file))
+            self.assertTrue(os.path.exists(thumb_file))
+
+            # Execute delete
+            result = adapter.delete(asset)
+            self.assertTrue(result)
+
+            self.assertFalse(os.path.exists(orig_file))
+            self.assertFalse(os.path.exists(review_file))
+            self.assertFalse(os.path.exists(thumb_file))
+            self.assertFalse(orig_att.exists())
+            self.assertFalse(review_att.exists())
+            self.assertFalse(thumb_att.exists())

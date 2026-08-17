@@ -166,14 +166,30 @@ class IrAttachment(models.Model):
                     _logger.info('Could not delete legacy attachment file: %s', fname, exc_info=True)
         return super()._file_delete(fname)
 
+    @api.model
+    def _should_use_structured_storage(self, vals=None):
+        vals = vals or {}
+        if self._context.get('utility_structured_storage') is not None:
+            return bool(self._context.get('utility_structured_storage'))
+        res_model = vals.get('res_model') or self._context.get('res_model') or self._context.get('default_res_model') or ''
+        if res_model.startswith('utility.'):
+            return True
+        if self._is_image_context(vals):
+            return True
+        return False
+
     @api.model_create_multi
     def create(self, vals_list):
         # Base Odoo writes binary data before the attachment row exists. Split
         # mixed create calls so each group receives one deterministic bucket.
         groups = {}
         for index, vals in enumerate(vals_list):
-            context = self._get_storage_context(vals)
-            key = (context['utility_attachment_storage_bucket'], context['utility_attachment_storage_path'])
+            if self._should_use_structured_storage(vals):
+                context = self._get_storage_context(vals)
+                key = (context['utility_attachment_storage_bucket'], context['utility_attachment_storage_path'])
+            else:
+                context = {}
+                key = (None, None)
             groups.setdefault(key, []).append((index, vals, context))
 
         created_by_index = {}
@@ -183,7 +199,7 @@ class IrAttachment(models.Model):
             attachments = super(IrAttachment, self.with_context(**context)).create(group_vals)
             for entry, attachment in zip(entries, attachments):
                 created_by_index[entry[0]] = attachment
-                if attachment.store_fname:
+                if attachment.store_fname and context.get('utility_attachment_storage_path'):
                     attachment.write({'custom_storage_path': context['utility_attachment_storage_path']})
 
         return self.browse([created_by_index[index].id for index in range(len(vals_list))])

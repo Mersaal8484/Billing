@@ -61,12 +61,15 @@ class FilesystemMediaAdapter(AbstractMediaStorageAdapter):
         attachments = self.env['ir.attachment'].sudo()
         for variant in self.VARIANTS:
             attachment = self._get_attachment_for_variant(asset, variant)
-            if not attachment or attachment not in attachments:
+            if not attachment or attachment in attachments:
                 continue
             if attachment.url:
                 file_path = attachment.url.replace('file://', '')
                 if os.path.exists(file_path):
-                    os.remove(file_path)
+                    try:
+                        os.remove(file_path)
+                    except OSError as e:
+                        _logger.warning("Could not remove media file %s: %s", file_path, e)
             attachments |= attachment
         if attachments:
             attachments.unlink()

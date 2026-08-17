@@ -55,3 +55,15 @@ class TestIrAttachmentStructuredStorage(TransactionCase):
         self.assertTrue(attachments[1].store_fname.startswith('base/res_partner/'))
         self.assertEqual(attachments[0].raw, self.image_bytes)
         self.assertEqual(attachments[1].raw, self.image_bytes)
+
+    def test_standard_non_image_attachment_bypasses_structured_storage(self):
+        txt_bytes = b"Standard log or document text"
+        attachment = self.Attachment.create({
+            'name': 'document.txt',
+            'raw': txt_bytes,
+            'mimetype': 'text/plain',
+            'res_model': 'res.partner',
+        })
+        # Should NOT use utility structured storage directory hierarchy
+        self.assertFalse(attachment.custom_storage_path)
+        self.assertEqual(attachment.raw, txt_bytes)

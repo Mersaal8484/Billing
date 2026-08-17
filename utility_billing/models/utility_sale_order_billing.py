@@ -368,8 +368,8 @@ class UtilitySaleOrderBilling(models.Model):
         """إرجاع قائمة الشرائح المعتمدة للتسعير، مع إعطاء الأولوية للقطة الإصدار التاريخي الثابتة."""
         if version:
             snapshot = version.get_parsed_snapshot()
-            blocks = snapshot.get('pricing_blocks')
-            if blocks:
+            if 'pricing_blocks' in snapshot:
+                blocks = snapshot.get('pricing_blocks') or []
                 return sorted(blocks, key=lambda b: (b.get('from_kwh', 0.0), b.get('sequence', 10), b.get('id', 0)))
         if template and template.block_ids:
             return [{
@@ -387,8 +387,8 @@ class UtilitySaleOrderBilling(models.Model):
         """إرجاع قائمة شرائح الخصم المعتمدة، مع إعطاء الأولوية للقطة الإصدار التاريخي."""
         if version:
             snapshot = version.get_parsed_snapshot()
-            d_blocks = snapshot.get('discount_blocks')
-            if d_blocks:
+            if 'discount_blocks' in snapshot:
+                d_blocks = snapshot.get('discount_blocks') or []
                 return sorted(d_blocks, key=lambda b: (b.get('from_kwh', 0.0), b.get('sequence', 10), b.get('id', 0)))
         if template and template.discount_block_ids:
             return [{
