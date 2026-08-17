@@ -10,6 +10,12 @@
             <field name="interval_type">minutes</field>
             <field name="numbercall">-1</field>
             <field name="active" eval="True"/>
+            <field name="utility_managed" eval="True"/>
+            <field name="utility_code">sts_retry_processor</field>
+            <field name="utility_category">integration</field>
+            <field name="prevent_overlap" eval="True"/>
+            <field name="allow_manual_run" eval="True"/>
+            <field name="batch_size">100</field>
         </record>
 
         <record id="cron_query_pending_sts" model="ir.cron">
@@ -21,6 +27,12 @@
             <field name="interval_type">hours</field>
             <field name="numbercall">-1</field>
             <field name="active" eval="True"/>
+            <field name="utility_managed" eval="True"/>
+            <field name="utility_code">sts_pending_querier</field>
+            <field name="utility_category">integration</field>
+            <field name="prevent_overlap" eval="True"/>
+            <field name="allow_manual_run" eval="True"/>
+            <field name="batch_size">100</field>
         </record>
 
         <record id="cron_reconcile_pos_vending" model="ir.cron">
@@ -32,6 +44,12 @@
             <field name="interval_type">hours</field>
             <field name="numbercall">-1</field>
             <field name="active" eval="True"/>
+            <field name="utility_managed" eval="True"/>
+            <field name="utility_code">vending_pos_reconciler</field>
+            <field name="utility_category">accounting</field>
+            <field name="prevent_overlap" eval="True"/>
+            <field name="allow_manual_run" eval="True"/>
+            <field name="batch_size">200</field>
         </record>
 
         <record id="cron_send_pending_notifications" model="ir.cron">
@@ -43,6 +61,12 @@
             <field name="interval_type">minutes</field>
             <field name="numbercall">-1</field>
             <field name="active" eval="True"/>
+            <field name="utility_managed" eval="True"/>
+            <field name="utility_code">token_notification_sender</field>
+            <field name="utility_category">notification</field>
+            <field name="prevent_overlap" eval="True"/>
+            <field name="allow_manual_run" eval="True"/>
+            <field name="batch_size">200</field>
         </record>
 
         <record id="cron_process_low_credit" model="ir.cron">
@@ -54,6 +78,12 @@
             <field name="interval_type">hours</field>
             <field name="numbercall">-1</field>
             <field name="active" eval="True"/>
+            <field name="utility_managed" eval="True"/>
+            <field name="utility_code">prepaid_low_credit_processor</field>
+            <field name="utility_category">notification</field>
+            <field name="prevent_overlap" eval="True"/>
+            <field name="allow_manual_run" eval="True"/>
+            <field name="batch_size">200</field>
         </record>
 
         <record id="cron_expire_unpaid_vending" model="ir.cron">
@@ -65,6 +95,12 @@
             <field name="interval_type">hours</field>
             <field name="numbercall">-1</field>
             <field name="active" eval="True"/>
+            <field name="utility_managed" eval="True"/>
+            <field name="utility_code">unpaid_vending_expirer</field>
+            <field name="utility_category">operations</field>
+            <field name="prevent_overlap" eval="True"/>
+            <field name="allow_manual_run" eval="True"/>
+            <field name="batch_size">500</field>
         </record>
 
         <record id="cron_monitor_provider_health" model="ir.cron">
@@ -76,6 +112,12 @@
             <field name="interval_type">hours</field>
             <field name="numbercall">-1</field>
             <field name="active" eval="True"/>
+            <field name="utility_managed" eval="True"/>
+            <field name="utility_code">sts_provider_health_monitor</field>
+            <field name="utility_category">integration</field>
+            <field name="prevent_overlap" eval="True"/>
+            <field name="allow_manual_run" eval="True"/>
+            <field name="batch_size">50</field>
         </record>
 
         <record id="cron_process_ami_events" model="ir.cron">
@@ -87,6 +129,12 @@
             <field name="interval_type">minutes</field>
             <field name="numbercall">-1</field>
             <field name="active" eval="True"/>
+            <field name="utility_managed" eval="True"/>
+            <field name="utility_code">ami_event_processor</field>
+            <field name="utility_category">integration</field>
+            <field name="prevent_overlap" eval="True"/>
+            <field name="allow_manual_run" eval="True"/>
+            <field name="batch_size">500</field>
         </record>
     </data>
 </odoo>

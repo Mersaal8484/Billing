@@ -1,6 +1,6 @@
 {
     'name': 'Utility Billing',
-    'version': '16.0.2.6.0',
+    'version': '16.0.2.7.0',
     'category': 'Utility ERP',
     'summary': 'Postpaid Billing & Collections Engine (Sale Order Based)',
     'description': """
@@ -28,8 +28,11 @@ debt management, collections, and online payment gateway integration.
         'views/utility_billing_menu.xml',
         'views/utility_service_charge_views.xml',
         'views/utility_reading_views.xml',
+        'views/utility_meter_replacement_views.xml',
+        'views/utility_reading_settlement_views.xml',
         'views/utility_reading_batch_views.xml',
         'views/utility_bill_reading_component_views.xml',
+        'views/utility_bill_pricing_snapshot_views.xml',
         'views/utility_billing_adjustment_views.xml',
         'views/utility_sale_order_views.xml',
         'views/utility_sale_order_report.xml',

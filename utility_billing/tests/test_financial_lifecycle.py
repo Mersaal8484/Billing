@@ -1,5 +1,5 @@
 from odoo.tests import TransactionCase, tagged
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 
 
 @tagged('post_install', '-at_install', 'utility_release', 'utility_financial')
@@ -245,3 +245,73 @@ class TestFinancialLifecycle(TransactionCase):
 
         self.customer._compute_accounting_balance()
         self.assertAlmostEqual(self.customer.accounting_balance, 400.0, places=2)
+
+    def test_writeoff_can_reopen_only_before_financial_application(self):
+        """An approved write-off may be returned to draft only before apply."""
+        writeoff = self.env['utility.writeoff'].create({
+            'customer_id': self.customer.id,
+            'amount': 25.0,
+            'reason': 'اختبار إعادة فتح آمن',
+        })
+        writeoff.action_approve()
+        writeoff.action_draft()
+        self.assertEqual(writeoff.state, 'draft')
+
+        with self.assertRaises(ValidationError):
+            writeoff.action_draft()
+
+    def test_writeoff_application_is_idempotent(self):
+        """Applying a write-off twice never creates a second credit note."""
+        journal = self.env['account.journal'].create({
+            'name': 'يومية اختبار idempotency',
+            'code': 'WID01',
+            'type': 'sale',
+            'company_id': self.company.id,
+        })
+        account = self.env['account.account'].search([
+            ('account_type', '=', 'expense'),
+            ('company_id', 'in', (self.company.id, False)),
+        ], limit=1)
+        if not account:
+            account = self.env['account.account'].create({
+                'name': 'حساب اختبار idempotency',
+                'code': '690001.TEST',
+                'account_type': 'expense',
+                'company_id': self.company.id,
+            })
+        self.company.write({
+            'writeoff_journal_id': journal.id,
+            'writeoff_account_id': account.id,
+        })
+        order = self.env['sale.order'].create({
+            'customer_id': self.customer.id,
+            'partner_id': self.partner.id,
+            'date_range_id': self.date_range.id,
+        })
+        writeoff = self.env['utility.writeoff'].create({
+            'customer_id': self.customer.id,
+            'sale_order_id': order.id,
+            'amount': 25.0,
+            'reason': 'اختبار عدم تكرار الإشعار الدائن',
+        })
+        writeoff.action_approve()
+        writeoff.action_apply()
+        move = writeoff.move_id
+
+        with self.assertRaises(UserError):
+            writeoff.action_apply()
+        with self.assertRaises(UserError):
+            writeoff.action_draft()
+        with self.assertRaises(ValidationError):
+            writeoff.action_approve()
+
+        self.assertEqual(writeoff.state, 'applied')
+        self.assertEqual(writeoff.move_id, move)
+        self.assertEqual(
+            self.env['account.move'].search_count([
+                ('utility_sale_order_id', '=', order.id),
+                ('ref', 'ilike', writeoff.writeoff_number),
+                ('move_type', '=', 'out_refund'),
+            ]),
+            1,
+        )

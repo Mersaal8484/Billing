@@ -1,7 +1,7 @@
 from collections import defaultdict
 
 from odoo import api, fields, models, _
-from odoo.exceptions import ValidationError
+from odoo.exceptions import AccessError, ValidationError
 from odoo.tools.float_utils import float_compare, float_is_zero
 
 
@@ -52,6 +52,7 @@ class UtilityPaymentAllocation(models.Model):
         ('draft', 'مسودة'),
         ('allocated', 'مخصص'),
         ('reconciled', 'تمت التسوية'),
+        ('reversed', 'معكوس'),
         ('cancelled', 'ملغى'),
         ('error', 'خطأ'),
     ], string='الحالة', required=True, default='draft', index=True)
@@ -63,6 +64,9 @@ class UtilityPaymentAllocation(models.Model):
     created_by = fields.Many2one(
         'res.users', string='أنشأه', default=lambda self: self.env.user,
         required=True, readonly=True)
+    reversed_at = fields.Datetime('تاريخ العكس', readonly=True, copy=False)
+    reversed_by = fields.Many2one('res.users', string='عُكس بواسطة', readonly=True, copy=False)
+    reversal_reason = fields.Text('سبب العكس', readonly=True, copy=False)
     notes = fields.Text('ملاحظات')
     error_message = fields.Text('رسالة الخطأ', readonly=True)
 
@@ -121,6 +125,15 @@ class UtilityPaymentAllocation(models.Model):
         invoice.invalidate_recordset([
             'state', 'partner_id', 'move_type', 'amount_residual', 'payment_state'])
 
+    @staticmethod
+    def _target_residual(invoice, opening=False):
+        if opening:
+            return sum(invoice.line_ids.filtered(
+                lambda line: line.account_id.account_type == 'asset_receivable'
+                and line.debit > 0 and not line.reconciled
+            ).mapped('amount_residual'))
+        return invoice.amount_residual
+
     @api.model
     def prevalidate_payment(self, payment, require_posted=False):
         """Lock and validate the exact invoice before or after payment posting."""
@@ -128,7 +141,8 @@ class UtilityPaymentAllocation(models.Model):
         order = payment.utility_sale_order_id
         customer = payment.utility_customer_id
         invoice = payment.utility_invoice_id
-        if not order or not customer or not invoice:
+        opening_move = payment.utility_opening_move_id
+        if not customer or not invoice or (not order and not opening_move):
             raise ValidationError(_('بيانات الدفعة الكهربائية غير مكتملة للتخصيص.'))
         if payment.payment_type != 'inbound':
             raise ValidationError(_('تخصيص الدفعات الصادرة خارج نطاق تحصيل الكهرباء.'))
@@ -139,16 +153,23 @@ class UtilityPaymentAllocation(models.Model):
                 or payment.partner_id != customer.partner_id
                 or invoice.partner_id != customer.partner_id):
             raise ValidationError(_('الدفعة والفاتورة لا تخصان نفس حساب الكهرباء.'))
-        if payment.currency_id != invoice.currency_id:
+        receivable_lines = invoice.line_ids.filtered(
+            lambda line: line.account_id.account_type == 'asset_receivable')
+        target_currency = (receivable_lines[:1].currency_id
+                           or invoice.currency_id)
+        if payment.currency_id != target_currency:
             raise ValidationError(_('عملة الدفعة يجب أن تطابق عملة الفاتورة المحاسبية.'))
         self._lock_invoice(invoice)
-        if invoice.state != 'posted' or invoice.move_type != 'out_invoice':
-            raise ValidationError(_('الفاتورة المحددة ليست فاتورة تحصيل مدينة ومرحلة.'))
+        valid_opening = bool(opening_move and invoice == opening_move)
+        if invoice.state != 'posted' or (
+                invoice.move_type != 'out_invoice' and not valid_opening):
+            raise ValidationError(_('المستند المحدد ليس مستند ذمم مدينة ومرحلاً.'))
         if payment.amount <= 0:
             raise ValidationError(_('يجب أن يكون مبلغ الدفعة أكبر من صفر.'))
-        if invoice.amount_residual <= 0:
+        residual = self._target_residual(invoice, opening=valid_opening)
+        if residual <= 0:
             raise ValidationError(_('الفاتورة المحددة مسددة بالكامل.'))
-        if payment.amount > invoice.amount_residual:
+        if payment.amount > residual:
             raise ValidationError(_('مبلغ الدفعة يتجاوز المتبقي الحالي للفواتير المحددة.'))
         return invoice
 
@@ -166,7 +187,7 @@ class UtilityPaymentAllocation(models.Model):
     def allocate_payment(self, payment):
         """Create one auditable allocation and reconcile only its exact invoice."""
         payment.ensure_one()
-        if not payment.utility_sale_order_id:
+        if not payment.utility_sale_order_id and not payment.utility_opening_move_id:
             return self.env['utility.payment.allocation']
 
         self.env.flush_all()
@@ -203,14 +224,16 @@ class UtilityPaymentAllocation(models.Model):
                     'تم تسجيل المرجع الخارجي %s مسبقًا لهذه الدفعة.'
                 ) % external_reference)
 
-        if payment.state != 'posted' or not customer or not order or not invoice:
+        if (payment.state != 'posted' or not customer or not invoice
+                or (not order and not payment.utility_opening_move_id)):
             raise ValidationError(_('بيانات الدفعة الكهربائية غير مكتملة للتخصيص.'))
         if payment.payment_type != 'inbound':
             raise ValidationError(_('تخصيص الدفعات الصادرة خارج نطاق تحصيل الكهرباء.'))
 
         invoice = self.prevalidate_payment(payment, require_posted=True)
 
-        residual_before = invoice.amount_residual
+        residual_before = self._target_residual(
+            invoice, opening=bool(payment.utility_opening_move_id))
         acting_user = self.env.user
         allocation = self.with_context(
             utility_allocation_internal=True,
@@ -258,7 +281,8 @@ class UtilityPaymentAllocation(models.Model):
             (payment_groups[key] | invoice_groups[key]).reconcile()
 
         invoice.invalidate_recordset(['amount_residual', 'payment_state'])
-        residual_after = invoice.amount_residual
+        residual_after = self._target_residual(
+            invoice, opening=bool(payment.utility_opening_move_id))
         allocated_amount = residual_before - residual_after
         currency = invoice.currency_id
         if (float_is_zero(allocated_amount, precision_rounding=currency.rounding)
@@ -279,6 +303,68 @@ class UtilityPaymentAllocation(models.Model):
         })
         return allocation
 
+    def action_reverse(self, reason=None):
+        return self.action_reverse_allocation(reason=reason)
+
+    def action_reverse_allocation(self, reason=None):
+        """Idempotent, controlled reversal of payment allocation.
+
+        Removes only the exact partial reconciliations, restores invoice residual
+        and order balance, and handles collection custody dependencies without
+        blindly cancelling the underlying payment.
+        Requires Billing Manager or Utility Admin privileges.
+        """
+        if not (self.env.user.has_group('utility_core.group_utility_billing_manager')
+                or self.env.user.has_group('utility_core.group_utility_admin')
+                or self.env.su):
+            raise AccessError(_('ليس لديك صلاحية عكس تخصيص الدفعات المالية. يتطلب صلاحية مدير الفوترة أو مدير النظام.'))
+
+        for allocation in self:
+            if allocation.state == 'reversed':
+                raise ValidationError(_('التخصيص %s معكوس بالفعل.') % allocation.name)
+            if allocation.state not in ('allocated', 'reconciled'):
+                raise ValidationError(_('لا يمكن عكس تخصيص في حالة %s.') % allocation.state)
+
+            # 1. Collection dependency state matrix
+            if 'utility.collection' in self.env:
+                collections = self.env['utility.collection'].search([
+                    '|', ('allocation_id', '=', allocation.id),
+                    ('payment_id', '=', allocation.payment_id.id)
+                ])
+                for col in collections:
+                    if col.state in ('settled', 'deposited', 'reconciled'):
+                        raise ValidationError(_(
+                            'لا يمكن عكس التخصيص لوجود تحصيل مرتبط في حالة تسوية أو إيداع (%s). يجب عكس التسوية أولاً.'
+                        ) % col.display_name)
+                    if hasattr(col, 'settlement_id') and col.settlement_id and col.settlement_id.state not in ('cancelled',):
+                        raise ValidationError(_(
+                            'التحصيل المرتبط بالتخصيص مدرج في تسوية عهدة (%s). يجب إزالته من التسوية أولاً.'
+                        ) % col.settlement_id.display_name)
+                    col.sudo().write({'state': 'cancelled'})
+
+            # 2. Lock records
+            self.env.flush_all()
+            self.env.cr.execute('SELECT id FROM account_move WHERE id = %s FOR UPDATE', [allocation.invoice_id.id])
+            self.env.cr.execute('SELECT id FROM account_payment WHERE id = %s FOR UPDATE', [allocation.payment_id.id])
+
+            # 3. Unlink only exact partial reconciliations
+            if allocation.partial_reconcile_ids:
+                allocation.partial_reconcile_ids.unlink()
+
+            # 4. Invalidate and refresh balances
+            allocation.invoice_id.invalidate_recordset(['amount_residual', 'payment_state'])
+            if allocation.sale_order_id:
+                allocation.sale_order_id.invalidate_recordset(['amount_paid', 'balance_due', 'bill_state'])
+
+            # 5. Mark allocation reversed
+            allocation.with_context(utility_allocation_internal=True).write({
+                'state': 'reversed',
+                'reversed_at': fields.Datetime.now(),
+                'reversed_by': self.env.user.id,
+                'reversal_reason': reason or _('عكس تخصيص مالي'),
+            })
+        return True
+
     def action_cancel(self):
         for allocation in self:
             raise ValidationError(_('لا يمكن حذف أو إلغاء سجل تخصيص مالي؛ استخدم إجراء عكس معتمد.'))
@@ -289,7 +375,8 @@ class UtilityPaymentAllocation(models.Model):
             'partner_id', 'currency_id', 'requested_amount', 'allocated_amount',
             'residual_before', 'residual_after', 'allocation_date', 'source',
             'external_reference', 'state', 'partial_reconcile_ids',
-            'reconciliation_reference', 'created_by', 'error_message',
+            'reconciliation_reference', 'created_by', 'reversed_at',
+            'reversed_by', 'reversal_reason', 'error_message',
         }
         if protected.intersection(vals) and not self.env.context.get(
                 'utility_allocation_internal'):

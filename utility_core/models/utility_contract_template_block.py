@@ -30,19 +30,33 @@ class UtilityContractTemplateBlock(models.Model):
     @api.model_create_multi
     def create(self, vals_list):
         records = super().create(vals_list)
-        records.mapped('template_id')._validate_contract_template_tiers()
+        if not self.env.context.get('skip_tier_validation'):
+            templates = records.mapped('template_id')
+            templates._validate_contract_template_tiers()
+        if not self.env.context.get('_bypass_version_sync'):
+            for t in records.mapped('template_id'):
+                t._get_or_create_active_version()
         return records
 
     def write(self, vals):
         templates = self.mapped('template_id')
         res = super().write(vals)
-        (templates | self.mapped('template_id'))._validate_contract_template_tiers()
+        if not self.env.context.get('skip_tier_validation'):
+            all_templates = (templates | self.mapped('template_id'))
+            all_templates._validate_contract_template_tiers()
+        if not self.env.context.get('_bypass_version_sync'):
+            for t in (templates | self.mapped('template_id')):
+                t._get_or_create_active_version()
         return res
 
     def unlink(self):
         templates = self.mapped('template_id')
         res = super().unlink()
-        templates._validate_contract_template_tiers()
+        if not self.env.context.get('skip_tier_validation'):
+            templates._validate_contract_template_tiers()
+        if not self.env.context.get('_bypass_version_sync'):
+            for t in templates:
+                t._get_or_create_active_version()
         return res
 
     from_month = fields.Selection([

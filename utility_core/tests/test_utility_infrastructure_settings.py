@@ -1,3 +1,4 @@
+import base64
 from odoo.tests.common import TransactionCase
 from odoo.exceptions import UserError, ValidationError
 from ..adapters.workflow.local import LocalWorkflowAdapter
@@ -119,12 +120,24 @@ class TestUtilityInfrastructureSettings(TransactionCase):
     def test_07_media_service_dynamic_storage_backend_metadata(self):
         """7. اختبار تعيين خيار التخزين ديناميكياً في السجل (storage_backend)"""
         self.ConfigParam.set_param('utility.media_backend', 'attachment')
+        valid_png = base64.b64decode(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
+        )
         asset = self.MediaService.store_media(
-            file_data=b'fake image data',
+            file_data=valid_png,
             filename='test_dynamic.jpg',
             mimetype='image/jpeg'
         )
         self.assertEqual(asset.storage_backend, 'attachment')
+
+    def test_07b_invalid_media_is_rejected_without_raw_fallback(self):
+        self.ConfigParam.set_param('utility.media_backend', 'attachment')
+        with self.assertRaises(ValidationError):
+            self.MediaService.store_media(
+                file_data=b'not-an-image',
+                filename='invalid.jpg',
+                mimetype='image/jpeg'
+            )
 
     def test_08_resolver_defense_in_depth_protection(self):
         """8. اختبار حماية التعديل المباشر لمعلمات القاعدة لمنع تشغيل Placeholder Adapters"""
@@ -166,4 +179,3 @@ class TestUtilityInfrastructureSettings(TransactionCase):
         self.assertTrue(company.legacy_three_phase_meter_model_id)
         self.assertEqual(company.legacy_single_phase_meter_model_id.phase, 'single')
         self.assertEqual(company.legacy_three_phase_meter_model_id.phase, 'three')
-

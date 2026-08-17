@@ -23,6 +23,7 @@ from . import utility_formula
 from . import utility_contract_template
 from . import utility_contract_template_block
 from . import utility_contract_template_history
+from . import utility_contract_template_version
 from . import utility_settings
 from . import utility_res_users
 from . import utility_res_partner
@@ -37,3 +38,5 @@ from . import utility_migration_feeder
 from . import utility_migration_transformer
 from . import utility_migration_mapping
 from . import utility_migration_batch
+from . import utility_cron_execution
+from . import ir_cron

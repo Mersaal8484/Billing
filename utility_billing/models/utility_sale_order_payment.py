@@ -6,152 +6,56 @@ from datetime import date
 class UtilitySaleOrderPayment(models.Model):
     _inherit = 'sale.order'
 
-    def _get_or_create_collector_cash_account(self, user, company):
-        account_model = self.env['account.account']
-        account_name = _('حساب صندوق - %s') % user.name
-        account = account_model.search([
-            ('name', '=', account_name),
-            ('company_id', '=', company.id),
-        ], limit=1)
-        if account:
-            return account
-
-        base_code = '1019%s' % str(user.id).zfill(4)
-        used_codes = set(account_model.search([
-            ('company_id', '=', company.id),
-            ('code', '=like', '%s%%' % base_code),
-        ]).mapped('code'))
-        account_code = base_code
-        suffix = 1
-        while account_code in used_codes:
-            account_code = '%s%s' % (base_code, suffix)
-            suffix += 1
-        return account_model.create({
-            'name': account_name,
-            'code': account_code,
-            'account_type': 'asset_cash',
-            'company_id': company.id,
-        })
-
-    def _get_or_create_outstanding_receipts_account(self, company):
-        account_model = self.env['account.account']
-        account_name = _('حساب الإيصالات والدفعات المستحقة')
-        account = account_model.search([
-            ('company_id', '=', company.id),
-            ('name', '=', account_name),
-            ('account_type', 'in', ('asset_current', 'asset_cash')),
-        ], limit=1)
-        if account:
-            return account
-        base_code = '101200'
-        used_codes = set(account_model.search([
-            ('company_id', '=', company.id),
-            ('code', '=like', '%s%%' % base_code),
-        ]).mapped('code'))
-        account_code = base_code
-        suffix = 1
-        while account_code in used_codes:
-            account_code = '%s%s' % (base_code, suffix)
-            suffix += 1
-        return account_model.create({
-            'name': account_name,
-            'code': account_code,
-            'account_type': 'asset_current',
-            'company_id': company.id,
-        })
-
-    def _get_unique_collector_journal_code(self, user, company):
-        journal_model = self.env['account.journal']
-        base_code = 'U%s' % str(user.id).zfill(3)[-4:]
-        used_codes = set(journal_model.search([
-            ('company_id', '=', company.id),
-            ('code', '=like', 'U%'),
-        ]).mapped('code'))
-        if base_code not in used_codes:
-            return base_code
-        alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-        prefix = base_code[:4]
-        for suffix in alphabet:
-            candidate = '%s%s' % (prefix, suffix)
-            if candidate not in used_codes:
-                return candidate
-        raise ValidationError(_(
-            'تعذر توليد رمز فريد ليومية تحصيل المستخدم %s.') % user.name)
+    # ── Removed: _get_or_create_collector_cash_account()         (Phase 5 P0)
+    # ── Removed: _get_or_create_outstanding_receipts_account()   (Phase 5 P0)
+    # ── Removed: _get_unique_collector_journal_code()            (Phase 5 P0)
+    # ── Removed: _ensure_payment_accounts()                      (Phase 5 P0)
+    #
+    # Rationale: these methods silently created account.account and
+    # account.journal records during live payment transactions, violating the
+    # production invariant that no CoA mutation may occur at runtime.
+    #
+    # Collector accounting setup must be performed explicitly by an
+    # Accounting Manager or Utility Admin via:
+    #   utility.staff → action_create_cash_journal()
+    #
+    # If a collector's journal is not pre-configured, action_register_utility_payment()
+    # below raises a clear ValidationError with an actionable message.
 
     def _ensure_collector_journal(self):
+        """Locate the collector's pre-configured cash journal — fail closed if missing.
+
+        Does NOT create any accounting records. Raises ValidationError if:
+          - The calling user has no utility.staff record with collector role
+          - The staff record has no collection_journal_id configured
+          - The configured journal is not a valid cash journal
+        """
         self.ensure_one()
         staff = self.env['utility.staff'].search([
             ('user_id', '=', self.env.user.id),
             ('company_id', '=', self.company_id.id),
-            ('user_role_id.code', '=', 'collector'),
+            ('role_ids.code', '=', 'collector'),
         ], limit=1)
         if not staff or not staff.collection_journal_id:
             raise ValidationError(_(
+                'ACCOUNTING_CONFIG_MISSING: '
                 'لا توجد يومية نقدية مستقلة مهيأة لهذا المتحصل. '
-                'قم بتجهيز يومية المتحصل قبل تسجيل التحصيل.'
+                'يجب على مدير المحاسبة أو مدير النظام إعداد يومية التحصيل '
+                'عبر سجل الموظف → إجراء "إنشاء يومية التحصيل".'
             ))
         journal = staff.collection_journal_id
-        if journal.type != 'cash' or not journal.default_account_id:
-            raise ValidationError(_('يومية المتحصل أو حساب صندوقه غير صالح.'))
-        return journal
-
-    def _ensure_payment_accounts(self, journal):
-        company = journal.company_id
-        if not company.account_journal_payment_debit_account_id or not company.account_journal_payment_credit_account_id:
-            outstanding_acc = self._get_or_create_outstanding_receipts_account(company)
-            c_vals = {}
-            if not company.account_journal_payment_debit_account_id:
-                c_vals['account_journal_payment_debit_account_id'] = outstanding_acc.id
-            if not company.account_journal_payment_credit_account_id:
-                c_vals['account_journal_payment_credit_account_id'] = outstanding_acc.id
-            if c_vals:
-                company.sudo().write(c_vals)
-
-        j_vals = {}
-        current_user = self.env.user
-        cash_acc = journal.default_account_id
-        expected_account_name = _('حساب صندوق - %s') % current_user.name
-        if not cash_acc or cash_acc.name != expected_account_name:
-            cash_acc = self._get_or_create_collector_cash_account(current_user, company)
-            j_vals['default_account_id'] = cash_acc.id
-
-        LineModel = self.env['account.payment.method.line']
-        acc_field = 'payment_account_id' if hasattr(LineModel, 'payment_account_id') else ('outstanding_account_id' if hasattr(LineModel, 'outstanding_account_id') else False)
-        target_out_acc = cash_acc.id
-
-        if not journal.inbound_payment_method_line_ids:
-            manual_inbound = self.env['account.payment.method'].search([
-                ('payment_type', '=', 'inbound'),
-                ('code', '=', 'manual')
-            ], limit=1)
-            if manual_inbound:
-                m_line = {'name': 'يدوي', 'payment_method_id': manual_inbound.id}
-                if acc_field and target_out_acc:
-                    m_line[acc_field] = target_out_acc
-                j_vals['inbound_payment_method_line_ids'] = [(0, 0, m_line)]
-        elif acc_field and target_out_acc:
-            for line in journal.inbound_payment_method_line_ids:
-                    if getattr(line, acc_field, False) != cash_acc:
-                        line.sudo().write({acc_field: target_out_acc})
-
-        if not journal.outbound_payment_method_line_ids:
-            manual_outbound = self.env['account.payment.method'].search([
-                ('payment_type', '=', 'outbound'),
-                ('code', '=', 'manual')
-            ], limit=1)
-            if manual_outbound:
-                m_line = {'name': 'يدوي', 'payment_method_id': manual_outbound.id}
-                if acc_field and target_out_acc:
-                    m_line[acc_field] = target_out_acc
-                j_vals['outbound_payment_method_line_ids'] = [(0, 0, m_line)]
-        elif acc_field and target_out_acc:
-            for line in journal.outbound_payment_method_line_ids:
-                    if getattr(line, acc_field, False) != cash_acc:
-                        line.sudo().write({acc_field: target_out_acc})
-
-        if j_vals:
-            journal.sudo().write(j_vals)
-
+        if journal.type != 'cash':
+            raise ValidationError(_(
+                'ACCOUNTING_CONFIG_INVALID: '
+                'يومية المتحصل %s ليست يومية نقدية (cash). '
+                'يرجى تصحيح الإعداد من سجل الموظف.'
+            ) % journal.name)
+        if not journal.default_account_id:
+            raise ValidationError(_(
+                'ACCOUNTING_CONFIG_INVALID: '
+                'يومية المتحصل %s ليس لها حساب صندوق مستقل. '
+                'يرجى تكوين الحساب الافتراضي لليومية.'
+            ) % journal.name)
         return journal
 
     def action_register_utility_payment(self):

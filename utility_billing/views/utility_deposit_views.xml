@@ -43,8 +43,11 @@
                             <field name="deposit_type"/>
                         </group>
                     </group>
-                    <group string="المحاسبة والاسترداد">
+                    <group string="القيود المحاسبية">
                         <group>
+                            <field name="receipt_move_id" attrs="{'invisible': [('receipt_move_id', '=', False)]}"/>
+                            <field name="release_move_id" attrs="{'invisible': [('release_move_id', '=', False)]}"/>
+                            <field name="forfeit_move_id" attrs="{'invisible': [('forfeit_move_id', '=', False)]}"/>
                             <field name="release_date" attrs="{'invisible': [('status', '!=', 'released')]}"/>
                             <field name="payment_id" attrs="{'invisible': [('payment_id', '=', False)]}"/>
                             <field name="move_id" attrs="{'invisible': [('move_id', '=', False)]}"/>
@@ -56,6 +59,11 @@
                         </page>
                     </notebook>
                 </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids"/>
+                    <field name="activity_ids"/>
+                    <field name="message_ids"/>
+                </div>
             </form>
         </field>
     </record>

@@ -1,4 +1,5 @@
-from odoo import api, fields, models
+from odoo import api, fields, models, _
+from odoo.exceptions import AccessError
 
 
 class ResUsers(models.Model):
@@ -32,9 +33,92 @@ class ResUsers(models.Model):
         domain="[('type', '=', 'region')]",
         help="المناطق الجغرافية والتشغيلية المصرح للمستخدم بإدارتها أو العمل فيها"
     )
+    assigned_branch_ids = fields.Many2many(
+        'utility.region', 'res_users_branch_rel',
+        'user_id', 'branch_id',
+        string="الفروع المخصصة صراحة (Explicit Branches)",
+        domain="[('type', '=', 'area')]",
+        help="الفروع المخصصة للمستخدم صراحة دون ترفيع كامل المنطقة الأم"
+    )
     assigned_route_ids = fields.Many2many(
         'utility.route', 'res_users_route_rel',
         'user_id', 'route_id',
         string="خطوط السير المخصصة (Assigned Routes)",
         help="خطوط السير الجغرافية المصرح للمستخدم (متحصل أو قارئ) بالعمل فيها"
     )
+    scope_mode = fields.Selection([
+        ('restricted', 'تقييد بالنطاق التنظيمي'),
+        ('global', 'وصول شامل على مستوى الشركة'),
+    ], string='وضع النطاق التنظيمي', default='restricted', required=True,
+       help='يحدد ما إذا كان المستخدم مقيداً بالتقسيمات الجغرافية المخصصة أو يملك وصولاً شاملاً.')
+
+    def write(self, vals):
+        scope_fields = {'scope_mode', 'assigned_region_ids', 'assigned_branch_ids'}
+        if scope_fields.intersection(vals.keys()):
+            if not (self.env.is_admin() or self.env.user.has_group('utility_core.group_utility_admin')):
+                raise AccessError(_("فقط مدير النظام (Utility Admin) يحق له تعديل النطاق التنظيمي وصلاحيات الوصول الجغرافي للمستخدمين."))
+        return super().write(vals)
+
+    def _is_global_utility_scope(self):
+        """Returns True if the user has explicit GLOBAL scope or belongs to Utility Admin."""
+        self.ensure_one()
+        if self._is_admin() or self.has_group('utility_core.group_utility_admin'):
+            return True
+        return self.scope_mode == 'global'
+
+    def _get_effective_region_ids(self):
+        """Returns effective Region IDs (type='region'). Assigned Regions ONLY."""
+        self.ensure_one()
+        if self._is_global_utility_scope():
+            return self.env['utility.region'].sudo().search([('type', '=', 'region')]).ids
+        return self.assigned_region_ids.ids
+
+    def _get_effective_branch_ids(self):
+        """Returns effective Branch IDs (type='area').
+        Effective Branches = Children of Assigned Regions + Explicit Branches.
+        Explicit Branches do NOT escalate to add their parent Region to effective_regions.
+        """
+        self.ensure_one()
+        if self._is_global_utility_scope():
+            return self.env['utility.region'].sudo().search([('type', '=', 'area')]).ids
+
+        region_ids = self.assigned_region_ids.ids
+        child_branches = self.env['utility.region'].sudo().search([
+            ('type', '=', 'area'),
+            ('parent_id', 'in', region_ids)
+        ]).ids if region_ids else []
+
+        explicit_branches = self.assigned_branch_ids.ids
+        return list(set(child_branches + explicit_branches))
+
+    @api.model
+    def check_pre_upgrade_scope_readiness(self):
+        """Report restricted operational users who have no assigned regions or branches."""
+        restricted_users = self.search([
+            ('scope_mode', '=', 'restricted'),
+            ('assigned_region_ids', '=', False),
+            ('assigned_branch_ids', '=', False),
+            ('share', '=', False)
+        ])
+        return {
+            'unassigned_count': len(restricted_users),
+            'unassigned_user_ids': restricted_users.ids,
+            'unassigned_user_names': restricted_users.mapped('name'),
+        }
+
+    def check_record_scope(self, record):
+        """Action-level authorization check validating whether a record falls inside the user's organizational scope."""
+        self.ensure_one()
+        if self._is_global_utility_scope():
+            return True
+        branch_ids = self._get_effective_branch_ids()
+        region_ids = self._get_effective_region_ids()
+
+        area = getattr(record, 'area_id', False) or getattr(getattr(record, 'customer_id', False), 'area_id', False) or getattr(getattr(record, 'account_id', False), 'area_id', False)
+        region = getattr(record, 'region_id', False) or getattr(getattr(record, 'customer_id', False), 'region_id', False) or getattr(getattr(record, 'account_id', False), 'region_id', False)
+
+        if area and area.id in branch_ids:
+            return True
+        if region and region.id in region_ids:
+            return True
+        raise AccessError(_("تعذر تحديد النطاق التنظيمي أو أن السجل يقع خارج نطاقك التنظيمي الجغرافي المخصص."))

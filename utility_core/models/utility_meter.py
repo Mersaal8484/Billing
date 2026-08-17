@@ -4,7 +4,7 @@ import re
 
 from odoo import api, fields, models, _
 import base64
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import AccessError, UserError, ValidationError
 
 
 PHONE_9_RE = re.compile(r'^\d{9}$')
@@ -293,6 +293,92 @@ class UtilityMeter(models.Model):
             'context': {'default_meter_id': self.id},
         }
 
+    def _check_mutation_scope(self, vals):
+        """Validate canonical ownership of a meter mutation against the acting user's scope.
+
+        utility.meter.region_id/area_id are computed-stored from _compute_location_fields
+        and will not appear in vals directly. The real attack vector is changing the
+        canonical owner (customer_id, linked_transformer_id, etc.) to an out-of-scope record.
+
+        SECURITY (P0): utility_scope_bypass is ONLY honored when env.su=True (superuser/migration)
+        or the acting user is a Utility Admin. It CANNOT be exploited via crafted RPC context.
+
+        SECURITY (P1): Fail-closed — if connection_type is subscriber/transformer/feeder/etc.
+        and the canonical owner exists but has no resolvable geography, REJECT.
+        Only 'not_connected' meters are exempt (no canonical owner by design).
+        """
+        _bypass_allowed = (
+            self.env.su
+            or self.env.user.has_group('utility_core.group_utility_admin')
+        )
+        if (
+            (self.env.context.get('utility_scope_bypass') and _bypass_allowed)
+            or self.env.user._is_global_utility_scope()
+        ):
+            return
+        effective_branches = self.env.user._get_effective_branch_ids()
+        effective_regions = self.env.user._get_effective_region_ids()
+
+        def _in_scope(region, area):
+            return (
+                (area and area.id in effective_branches)
+                or (region and region.id in effective_regions)
+            )
+
+        ownership_keys = {
+            'customer_id', 'linked_transformer_id',
+            'linked_private_transformer_id', 'linked_feeder_id', 'connection_type',
+        }
+        if not ownership_keys.intersection(vals.keys()):
+            return  # No ownership-changing field — skip
+
+        for meter in self:
+            ct = vals.get('connection_type', meter.connection_type)
+
+            if ct == 'not_connected':
+                continue  # No canonical owner — allowed explicitly
+
+            region = False
+            area = False
+            owner_found = False
+
+            if ct == 'subscriber':
+                cust_id = vals.get('customer_id', meter.customer_id.id if meter.customer_id else False)
+                if cust_id:
+                    cust = self.env['utility.customer'].sudo().browse(cust_id).exists()
+                    if cust:
+                        owner_found = True
+                        region = cust.partner_id.region_id
+                        area = cust.partner_id.area_id
+            elif ct in ('transformer', 'private_transformer'):
+                key = 'linked_transformer_id' if ct == 'transformer' else 'linked_private_transformer_id'
+                t_id = vals.get(key, getattr(meter, key).id if getattr(meter, key, False) else False)
+                if t_id:
+                    transformer = self.env['utility.transformer'].sudo().browse(t_id).exists()
+                    if transformer:
+                        owner_found = True
+                        region = transformer.region_id
+                        area = transformer.area_id
+            elif ct == 'feeder':
+                f_id = vals.get('linked_feeder_id', meter.linked_feeder_id.id if meter.linked_feeder_id else False)
+                if f_id:
+                    feeder = self.env['utility.feeder'].sudo().browse(f_id).exists()
+                    if feeder:
+                        owner_found = True
+                        region = feeder.region_id
+                        area = feeder.area_id
+
+            # FAIL-CLOSED: if connected meter has no canonical owner, or owner geography is unresolvable or out of scope = reject
+            if not owner_found:
+                raise ValidationError(_(
+                    'يجب تحديد العنصر المرتبط (مشترك، محول، فيدر) المطابق لنوع الاتصال المحدد للعداد.'
+                ))
+            if not _in_scope(region, area):
+                raise AccessError(_(
+                    'لا يمكنك ربط عداد بعنصر (عميل أو محول أو فيدر) خارج نطاقك التنظيمي المخصص، '
+                    'أو بدون منطقة/فرع محددة على العنصر المستهدف.'
+                ))
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
@@ -300,7 +386,92 @@ class UtilityMeter(models.Model):
                 vals['operational_number'] = (vals['operational_number'] or '').strip() or False
             if vals.get('meter_number', _('جديد')) == _('جديد'):
                 vals['meter_number'] = self.env['ir.sequence'].next_by_code('utility.meter') or _('جديد')
+        # Validate canonical ownership scope before creating meters.
+        # SECURITY: bypass gated to superuser / Utility Admin only.
+        _bypass_allowed = (
+            self.env.su
+            or self.env.user.has_group('utility_core.group_utility_admin')
+        )
+        if not (
+            (self.env.context.get('utility_scope_bypass') and _bypass_allowed)
+            or self.env.user._is_global_utility_scope()
+        ):
+            for vals in vals_list:
+                self._check_create_scope_vals(vals)
         return super().create(vals_list)
+
+    @api.model
+    def _check_create_scope_vals(self, vals):
+        """Scope check for meter creation (no existing record yet).
+        Resolves canonical geography from vals and validates against user scope.
+
+        SECURITY (P0): bypass gated to env.su or Utility Admin.
+        SECURITY (P1): Fail-closed — if canonical owner is missing or has no geography, reject.
+        Only 'not_connected' meters are exempt.
+        """
+        _bypass_allowed = (
+            self.env.su
+            or self.env.user.has_group('utility_core.group_utility_admin')
+        )
+        if (
+            (self.env.context.get('utility_scope_bypass') and _bypass_allowed)
+            or self.env.user._is_global_utility_scope()
+        ):
+            return
+        effective_branches = self.env.user._get_effective_branch_ids()
+        effective_regions = self.env.user._get_effective_region_ids()
+
+        def _in_scope(region, area):
+            return (
+                (area and area.id in effective_branches)
+                or (region and region.id in effective_regions)
+            )
+
+        ct = vals.get('connection_type', 'not_connected')
+
+        if ct == 'not_connected':
+            return  # No canonical owner — allowed explicitly
+
+        region = False
+        area = False
+        owner_found = False
+
+        if ct == 'subscriber':
+            cust_id = vals.get('customer_id')
+            if cust_id:
+                cust = self.env['utility.customer'].sudo().browse(cust_id).exists()
+                if cust:
+                    owner_found = True
+                    region = cust.partner_id.region_id
+                    area = cust.partner_id.area_id
+        elif ct in ('transformer', 'private_transformer'):
+            key = 'linked_transformer_id' if ct == 'transformer' else 'linked_private_transformer_id'
+            t_id = vals.get(key)
+            if t_id:
+                transformer = self.env['utility.transformer'].sudo().browse(t_id).exists()
+                if transformer:
+                    owner_found = True
+                    region = transformer.region_id
+                    area = transformer.area_id
+        elif ct == 'feeder':
+            f_id = vals.get('linked_feeder_id')
+            if f_id:
+                feeder = self.env['utility.feeder'].sudo().browse(f_id).exists()
+                if feeder:
+                    owner_found = True
+                    region = feeder.region_id
+                    area = feeder.area_id
+
+        # FAIL-CLOSED: if connected meter has no canonical owner, or owner geography is unresolvable or out of scope = reject
+        if not owner_found:
+            raise ValidationError(_(
+                'يجب تحديد العنصر المرتبط (مشترك، محول، فيدر) عند إنشاء عداد متصل.'
+            ))
+        if not _in_scope(region, area):
+            raise AccessError(_(
+                'لا يمكنك إنشاء عداد مرتبط بعنصر (عميل أو محول أو فيدر) '
+                'خارج نطاقك التنظيمي المخصص، أو بدون منطقة/فرع محددة على العنصر المستهدف.'
+            ))
 
     @api.model
     def _name_search(self, name, args=None, operator='ilike', limit=100, name_get_uid=None):
@@ -374,6 +545,8 @@ class UtilityMeter(models.Model):
         vals = dict(vals)
         if 'operational_number' in vals:
             vals['operational_number'] = (vals['operational_number'] or '').strip() or False
+        # Canonical mutation integrity: validate ownership before any DB write.
+        self._check_mutation_scope(vals)
         for meter in self:
             if not self.env.context.get('skip_implicit_log'):
                 if 'status_id' in vals and vals.get('status_id') != meter.status_id.id:
@@ -392,6 +565,61 @@ class UtilityMeter(models.Model):
                             meter.id, 'transfer', desc, customer_id=vals.get('customer_id')
                         )
         return super().write(vals)
+
+    @api.model
+    def cron_check_idle_meters(self, batch_limit=500):
+        """تحديث عدد الأشهر الخاملة لكل عداد ثم إنشاء أوامر الفحص للعدادات الخاملة 3 أشهر فما فوق."""
+        self.env.cr.execute("""
+            UPDATE utility_meter
+            SET idle_months = sub.cnt
+            FROM (
+                SELECT meter_id, COUNT(id) AS cnt
+                FROM utility_reading
+                WHERE reading_date >= current_date - interval '3 months'
+                  AND consumption = 0
+                  AND state IN ('approved', 'billed')
+                GROUP BY meter_id
+            ) sub
+            WHERE utility_meter.id = sub.meter_id
+              AND utility_meter.active = true;
+        """)
+        self.env.cr.execute("""
+            UPDATE utility_meter
+            SET idle_months = 0
+            WHERE active = true
+              AND id NOT IN (
+                  SELECT meter_id
+                  FROM utility_reading
+                  WHERE reading_date >= current_date - interval '3 months'
+                    AND consumption = 0
+                    AND state IN ('approved', 'billed')
+              );
+        """)
+        created_orders = 0
+        if 'utility.service.order' in self.env:
+            meters = self.search([
+                ('active', '=', True),
+                ('idle_months', '>=', 3),
+                ('customer_id', '!=', False),
+                ('customer_id.state', '=', 'active'),
+            ], limit=batch_limit)
+            for meter in meters:
+                existing = self.env['utility.service.order'].search([
+                    ('meter_id', '=', meter.id),
+                    ('service_type', 'in', ('inspection', 'meter_test')),
+                    ('state', 'in', ('draft', 'approved', 'scheduled', 'in_progress')),
+                ], limit=1)
+                if not existing:
+                    self.env['utility.service.order'].create({
+                        'service_type': 'inspection',
+                        'priority': 'high',
+                        'customer_id': meter.customer_id.id,
+                        'meter_id': meter.id,
+                        'description': _('تفتيش آلي: العداد خامل منذ %d أشهر. يرجى الفحص الميداني.') % meter.idle_months,
+                        'state': 'draft',
+                    })
+                    created_orders += 1
+        return {'processed': batch_limit, 'success': created_orders, 'failed': 0, 'skipped': 0}
 
 
 class UtilityMeterType(models.Model):

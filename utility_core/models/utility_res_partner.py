@@ -112,8 +112,8 @@ class ResPartner(models.Model):
             ])
             if customers:
                 ledger_balance = sum(customers.mapped('accounting_balance'))
-                # The opening balance is an informational migration field and is
-                # intentionally separate from the receivable/postpaid ledger.
+                # Opening balances are posted receivable lines.  Never add the
+                # legacy partner field to accounting truth or double-count it.
                 partner.utility_postpaid_balance = ledger_balance
             else:
                 partner.utility_postpaid_balance = 0.0

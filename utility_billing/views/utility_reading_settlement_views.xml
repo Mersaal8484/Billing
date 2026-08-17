@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_reading_settlement_billing_tree" model="ir.ui.view">
+        <field name="name">utility.reading.settlement.billing.tree</field>
+        <field name="model">utility.reading.settlement</field>
+        <field name="inherit_id" ref="utility_operations.view_utility_reading_settlement_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='state']" position="before">
+                <field name="sale_order_id"/>
+            </xpath>
+        </field>
+    </record>
+    <record id="view_utility_reading_settlement_billing_form" model="ir.ui.view">
+        <field name="name">utility.reading.settlement.billing.form</field>
+        <field name="model">utility.reading.settlement</field>
+        <field name="inherit_id" ref="utility_operations.view_utility_reading_settlement_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_open_sale_order" type="object"
+                        class="oe_stat_button" icon="fa-file-text-o"
+                        attrs="{'invisible': [('sale_order_id', '=', False)]}">
+                    <div class="o_stat_info">
+                        <field name="sale_order_id"/>
+                        <span class="o_stat_text">الفاتورة المرتبطة</span>
+                    </div>
+                </button>
+            </xpath>
+        </field>
+    </record>
+</odoo>

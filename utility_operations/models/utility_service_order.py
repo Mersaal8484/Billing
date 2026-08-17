@@ -93,11 +93,11 @@ class UtilityServiceOrder(models.Model):
     ]
 
     def _check_state_transition(self, allowed_states):
-        if self.state not in allowed_states:
-            raise ValidationError(
-                f'لا يمكن تنفيذ هذا الإجراء من الحالة "{self.state}". '
-                f'الحالات المسموحة: {", ".join(allowed_states)}'
-            )
+        for order in self:
+            self.env.user.check_record_scope(order)
+            if order.state not in allowed_states:
+                raise ValidationError(_("لا يمكن تعديل حالة أمر الخدمة من الحالة الحالية '%s'.") % order.state +
+                                      _(" الحالات المسموحة: %s") % ", ".join(allowed_states))
 
     def action_approve(self):
         self._check_state_transition(['draft'])

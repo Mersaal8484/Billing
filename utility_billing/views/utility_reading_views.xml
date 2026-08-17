@@ -69,29 +69,30 @@
             <form>
                 <field name="company_id" invisible="1"/>
                 <header>
-                    <!-- أزرار حسب الحالة متوافقة مع Odoo 17/18 -->
+                    <!-- أزرار حسب الحالة -->
                     <button name="action_submit_review" type="object"
                             string="إرسال للمراجعة" class="oe_highlight"
                             attrs="{'invisible': [('state', '!=', 'draft')]}"
-                            groups="utility_core.group_utility_technician"/>
+                            groups="utility_core.group_utility_meter_reader,utility_core.group_utility_technician,utility_core.group_utility_supervisor,utility_core.group_utility_billing_manager,utility_core.group_utility_admin"/>
                     <button name="action_approve" type="object"
                             string="اعتماد القراءة" class="oe_highlight"
                             attrs="{'invisible': [('state', '!=', 'under_review')]}"
-                            groups="utility_core.group_utility_supervisor"/>
+                            groups="utility_core.group_utility_supervisor,utility_core.group_utility_billing_manager,utility_core.group_utility_revenue_manager,utility_core.group_utility_admin"/>
                     <button name="action_reject" type="object"
                             string="رفض" class="btn-danger"
                             attrs="{'invisible': [('state', 'not in', ('under_review', 'approved'))]}"
-                            groups="utility_core.group_utility_supervisor"/>
+                            groups="utility_core.group_utility_supervisor,utility_core.group_utility_billing_manager,utility_core.group_utility_revenue_manager,utility_core.group_utility_admin"/>
                     <button name="action_generate_bill" type="object"
                             string="إنشاء فاتورة" class="oe_highlight"
                             attrs="{'invisible': ['|', ('state', '!=', 'approved'), ('reading_purpose', '!=', 'periodic')]}"
-                            groups="utility_core.group_utility_billing_manager"/>
+                            groups="utility_core.group_utility_billing_manager,utility_core.group_utility_admin"/>
                     <button name="action_requeue" type="object"
                             string="إعادة للطابور" class="oe_highlight"
                             attrs="{'invisible': [('state', '!=', 'error')]}"
-                            groups="utility_core.group_utility_billing_manager"/>
+                            groups="utility_core.group_utility_billing_manager,utility_core.group_utility_admin"/>
                     <field name="state" widget="statusbar"
-                           statusbar_visible="draft,under_review,approved,queued,billed"/>
+                           statusbar_visible="draft,under_review,approved,queued,billed,error"
+                           options="{'clickable': False}"/>
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
@@ -126,7 +127,6 @@
                             <field name="transformer_id" attrs="{'invisible': [('reading_category', '!=', 'transformer')]}"/>
                             <field name="is_private_transformer" invisible="1"/>
                             <field name="feeder_id" attrs="{'invisible': [('reading_category', '!=', 'feeder')]}"/>
-                            <field name="account_id" attrs="{'invisible': ['|', ('reading_category', 'not in', ('customer', 'transformer')), '&amp;', ('reading_category', '=', 'transformer'), ('is_private_transformer', '=', False)]}"/>
                             <field name="customer_id" attrs="{'invisible': ['|', ('reading_category', 'not in', ('customer', 'transformer')), '&amp;', ('reading_category', '=', 'transformer'), ('is_private_transformer', '=', False)]}"/>
                             <field name="reading_date" attrs="{'readonly': [('state', 'not in', ('draft', 'error'))]}"/>
                             <field name="date_range_id" options="{'no_create': True}" attrs="{'readonly': [('state', 'not in', ('draft', 'error'))], 'invisible': [('reading_purpose', '!=', 'periodic')], 'required': [('reading_purpose', '=', 'periodic')]}"/>
@@ -137,6 +137,8 @@
                             <field name="previous_reading" readonly="1"/>
                             <field name="previous_reading_date" readonly="1"/>
                             <field name="reading_value" attrs="{'readonly': [('state', 'not in', ('draft', 'error'))]}"/>
+                            <field name="is_rollover" attrs="{'readonly': [('state', 'not in', ('draft', 'under_review', 'error'))]}"/>
+                            <field name="max_reading_value" attrs="{'invisible': [('is_rollover', '=', False)], 'readonly': [('state', 'not in', ('draft', 'under_review', 'error'))]}"/>
                             <field name="raw_consumption" readonly="1"/>
                             <field name="meter_multiplier" readonly="1"/>
                             <field name="consumption" class="text-success" readonly="1"/>
@@ -161,7 +163,9 @@
                         <field name="reviewer_id" readonly="1"/>
                         <field name="review_date" readonly="1"/>
                         <field name="review_notes" attrs="{'readonly': [('state', '!=', 'under_review')]}"/>
-                        <field name="rejection_reason" attrs="{'readonly': [('state', 'in', ('queued', 'billed'))]}"/>
+                        <field name="rejection_reason" attrs="{'readonly': [('state', 'in', ('queued', 'billed'))], 'invisible': [('rejection_reason', '=', False)]}"/>
+                        <field name="rejected_by" readonly="1" attrs="{'invisible': [('rejected_by', '=', False)]}"/>
+                        <field name="rejected_at" readonly="1" attrs="{'invisible': [('rejected_at', '=', False)]}"/>
                     </group>
                     <field name="remarks" nolabel="1" placeholder="ملاحظات إضافية..."
                            attrs="{'readonly': [('state', 'not in', ('draft', 'error'))]}"/>

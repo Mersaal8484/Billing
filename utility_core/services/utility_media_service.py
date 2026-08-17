@@ -1,12 +1,13 @@
-import base64
 import hashlib
 import io
 import logging
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 
 from odoo import api, fields, models, _
-from odoo.exceptions import UserError, ValidationError
+from odoo.exceptions import AccessError, UserError, ValidationError
 from ..adapters.media.attachment import AttachmentMediaAdapter
+from ..adapters.media.filesystem import FilesystemMediaAdapter
+from ..adapters.media.s3 import S3MediaAdapter
 
 _logger = logging.getLogger(__name__)
 
@@ -19,19 +20,17 @@ class UtilityMediaService(models.AbstractModel):
     def get_media_adapter(self):
         """إرجاع المحول الخاص بتخزين الوسائط والصور الرقمية دون silent fallback"""
         backend = self.env['ir.config_parameter'].sudo().get_param('utility.media_backend', 'attachment')
-        if backend == 'attachment':
-            from ..adapters.media.attachment import AttachmentMediaAdapter
-            return AttachmentMediaAdapter(self.env)
-        elif backend == 'filesystem':
-            from ..adapters.media.filesystem import FilesystemMediaAdapter
-            return FilesystemMediaAdapter(self.env)
-        elif backend == 's3':
-            from ..adapters.media.s3 import S3MediaAdapter
-            if not getattr(S3MediaAdapter, 'PRODUCTION_READY', False):
-                raise UserError(_("محول S3 Storage غير جاهز للإنتاج حالياً (Placeholder Contract). يُرجى استخدام Odoo Attachments أو Local Filesystem."))
-            return S3MediaAdapter(self.env)
-        else:
+        adapters = {
+            'attachment': AttachmentMediaAdapter,
+            'filesystem': FilesystemMediaAdapter,
+            's3': S3MediaAdapter,
+        }
+        adapter_class = adapters.get(backend)
+        if not adapter_class:
             raise UserError(_("نوع محول تخزين الوسائط غير معروف: %s") % backend)
+        if backend == 's3' and not getattr(adapter_class, 'PRODUCTION_READY', False):
+            raise UserError(_("محول S3 Storage غير جاهز للإنتاج حالياً (Placeholder Contract). يُرجى استخدام Odoo Attachments أو Local Filesystem."))
+        return adapter_class(self.env)
 
     @api.model
     def calculate_sha256(self, raw_bytes):
@@ -69,13 +68,8 @@ class UtilityMediaService(models.AbstractModel):
                 'review': review_bytes,
                 'thumbnail': thumb_bytes,
             }
-        except Exception as e:
-            _logger.warning("Could not generate image variants (fallback to raw bytes): %s", str(e))
-            return {
-                'original': raw_bytes,
-                'review': raw_bytes,
-                'thumbnail': raw_bytes,
-            }
+        except (OSError, ValueError, KeyError) as exc:
+            raise ValidationError(_("تعذر توليد نسخ الصورة من الملف المرفوع.")) from exc
 
     @api.model
     def _detect_mime_from_bytes(self, raw_bytes):
@@ -90,11 +84,14 @@ class UtilityMediaService(models.AbstractModel):
         }
         try:
             image = Image.open(io.BytesIO(raw_bytes))
-            fmt = image.format or 'JPEG'
+            fmt = image.format
             image.close()
-            return format_to_mime.get(fmt, 'image/jpeg')
-        except Exception:
-            return 'image/jpeg'
+        except (UnidentifiedImageError, OSError, ValueError) as exc:
+            raise ValidationError(_("تعذر اكتشاف نوع الصورة الحقيقي.")) from exc
+        try:
+            return format_to_mime[fmt]
+        except KeyError as exc:
+            raise ValidationError(_("صيغة الصورة غير مدعومة: %s") % fmt) from exc
 
     @api.model
     def store_media(self, file_data, filename, mimetype='image/jpeg', reading_id=False, batch_id=False, asset_type='meter_reading'):
@@ -117,7 +114,7 @@ class UtilityMediaService(models.AbstractModel):
         try:
             img = Image.open(io.BytesIO(raw_bytes))
             img.verify()
-        except Exception as exc:
+        except (UnidentifiedImageError, OSError, ValueError) as exc:
             raise ValidationError(_(
                 "بيانات الصورة غير صالحة — لا يمكن فتحها كصورة: %s"
             ) % filename) from exc
@@ -200,13 +197,13 @@ class UtilityMediaService(models.AbstractModel):
                 'processed_at': fields.Datetime.now(),
             })
             return asset
-        except Exception as e:
+        except (AccessError, UserError, ValidationError, OSError) as exc:
             asset.write({
                 'state': 'failed',
                 'error_code': 'STORAGE_ERROR',
-                'error_message': str(e),
+                'error_message': str(exc),
             })
-            _logger.error("Failed to store media asset %s: %s", asset.asset_uuid, str(e))
+            _logger.error("Failed to store media asset %s: %s", asset.asset_uuid, str(exc))
             raise
 
     @api.model

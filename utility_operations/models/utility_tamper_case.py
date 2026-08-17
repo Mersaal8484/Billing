@@ -59,15 +59,18 @@ class UtilityTamperCase(models.Model):
         return super().create(vals_list)
 
     def write(self, vals):
+        new_proven_cases = self.env['utility.tamper.case']
+        if vals.get('state') == 'proven':
+            new_proven_cases = self.filtered(lambda c: c.state != 'proven')
+
         res = super().write(vals)
-        if 'state' in vals and vals['state'] == 'proven':
-            for case in self:
-                if case.meter_id:
-                    if 'utility.meter.log' in self.env:
-                        self.env['utility.meter.log'].with_context(allow_log_update=True)._create_log(
-                            case.meter_id.id,
-                            'tamper',
-                            _('ثبوت تلاعب بالعداد بناءً على القضية %s') % case.case_number,
-                            ref_record=case
-                        )
+
+        for case in new_proven_cases:
+            if case.meter_id and 'utility.meter.log' in self.env:
+                self.env['utility.meter.log'].with_context(allow_log_update=True)._create_log(
+                    case.meter_id.id,
+                    'tamper',
+                    _('ثبوت تلاعب بالعداد بناءً على القضية %s') % case.case_number,
+                    ref_record=case
+                )
         return res

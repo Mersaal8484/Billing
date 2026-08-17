@@ -1,8 +1,9 @@
 import os
 import logging
-from datetime import datetime
+import re
 from odoo import models, api, fields
 from odoo.tools import config
+from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
 
@@ -49,86 +50,136 @@ class IrAttachment(models.Model):
         return False
 
     @api.model
-    def _get_custom_path(self, model_name=None):
-        table = 'unknown'
-        res_model = model_name or self._context.get('res_model') or self._context.get('default_res_model', '')
-        if res_model:
-            if res_model in self.env:
-                table = self.env[res_model]._table
-            else:
-                table = res_model.replace('.', '_')
-        return os.path.join(
-            config['data_dir'], 'filestore',
-            self.env.cr.dbname,
-            table,
-            datetime.now().strftime('%Y_%m'),
+    def _sanitize_storage_component(self, value, fallback='unknown'):
+        value = re.sub(r'[^A-Za-z0-9_.-]+', '_', value or '')
+        return value.strip('._-') or fallback
+
+    @api.model
+    def _get_storage_module(self, model_name):
+        if model_name and model_name in self.env:
+            return self._sanitize_storage_component(
+                getattr(self.env[model_name], '_original_module', False)
+                or getattr(self.env[model_name], '_module', False),
+                fallback='base',
+            )
+        return self._sanitize_storage_component(
+            (model_name or '').split('.', 1)[0],
+            fallback='unlinked',
         )
 
     @api.model
-    def _store_file_read(self, fname, bin_size=False):
-        # 1. First, search for the attachment record to get the exact custom_storage_path
-        attachment = self.sudo().search([('store_fname', '=', fname)], limit=1)
-        if attachment and attachment.custom_storage_path:
-            try:
-                with open(os.path.join(attachment.custom_storage_path, fname), 'rb') as f:
-                    return f.read()
-            except IOError:
-                pass
-        
-        # 2. Fallback to context-based custom path if not found
-        if self._context.get('force_custom_storage') or self._is_image_context():
-            path = self._get_custom_path()
-            try:
-                with open(os.path.join(path, fname), 'rb') as f:
-                    return f.read()
-            except IOError:
-                pass
-        
-        # 3. Default Odoo filestore read
-        return super()._store_file_read(fname, bin_size=bin_size)
+    def _get_storage_bucket(self, model_name=None, storage_date=None):
+        model_name = model_name or self._context.get('res_model') or self._context.get('default_res_model')
+        model_component = self._sanitize_storage_component(
+            model_name.replace('.', '_') if model_name else '',
+            fallback='unlinked',
+        )
+        module_component = self._get_storage_module(model_name)
+        storage_date = storage_date or fields.Datetime.now()
+        date_component = storage_date.strftime('%Y/%m/%d')
+        return os.path.join(module_component, model_component, date_component)
 
     @api.model
-    def _store_file_write(self, key, bin_data):
-        if self._context.get('force_custom_storage') or self._is_image_context():
-            path = self._get_custom_path()
-            try:
-                os.makedirs(path, exist_ok=True)
-                with open(os.path.join(path, key), 'wb') as f:
-                    f.write(bin_data)
-                return key
-            except IOError as e:
-                _logger.error('Custom storage failed, using default: %s', e)
-        return super()._store_file_write(key, bin_data)
+    def _get_custom_path(self, model_name=None, storage_date=None):
+        return os.path.join(
+            config['data_dir'], 'filestore', self.env.cr.dbname,
+            self._get_storage_bucket(model_name=model_name, storage_date=storage_date),
+        )
 
     @api.model
-    def _store_file_delete(self, fname):
-        attachment = self.sudo().search([('store_fname', '=', fname)], limit=1)
-        if attachment and attachment.custom_storage_path:
-            try:
-                os.remove(os.path.join(attachment.custom_storage_path, fname))
-                return
-            except IOError:
-                pass
+    def _get_storage_context(self, vals):
+        model_name = vals.get('res_model') or self._context.get('res_model') or self._context.get('default_res_model')
+        storage_date = fields.Datetime.now()
+        bucket = self._get_storage_bucket(model_name=model_name, storage_date=storage_date)
+        return {
+            'utility_attachment_storage_bucket': bucket,
+            'utility_attachment_storage_path': self._get_custom_path(
+                model_name=model_name, storage_date=storage_date,
+            ),
+        }
 
-        if self._context.get('force_custom_storage') or self._is_image_context():
-            path = self._get_custom_path()
+    @api.model
+    def _file_read(self, fname, bin_size=False):
+        # New files use a complete relative path in store_fname and are handled
+        # by Odoo's standard implementation, including old standard Filestore files.
+        data = super()._file_read(fname, bin_size=bin_size)
+        if data:
+            return data
+
+        # Compatibility for files written by the former custom override, where
+        # store_fname contained only the hash and the directory was stored on the row.
+        attachment = self.sudo().search([
+            ('store_fname', '=', fname),
+            ('custom_storage_path', '!=', False),
+        ], limit=1)
+        if attachment:
             try:
-                os.remove(os.path.join(path, fname))
-                return
-            except IOError:
-                pass
-        return super()._store_file_delete(fname)
+                with open(os.path.join(attachment.custom_storage_path, os.path.basename(fname)), 'rb') as stream:
+                    return stream.read()
+            except (IOError, OSError):
+                _logger.info('Legacy attachment path is unavailable: %s', fname, exc_info=True)
+        return b''
+
+    @api.model
+    def _file_write(self, bin_data, checksum):
+        bucket = self._context.get('utility_attachment_storage_bucket')
+        if not bucket:
+            return super()._file_write(bin_data, checksum)
+
+        fname = '%s/%s' % (bucket.replace(os.sep, '/'), checksum)
+        full_path = self._full_path(fname)
+        directory = os.path.dirname(full_path)
+        try:
+            os.makedirs(directory, exist_ok=True)
+            if os.path.exists(full_path):
+                if not self._same_content(bin_data, full_path):
+                    raise UserError(_('تعارض في محتوى مرفق له نفس البصمة.'))
+            else:
+                with open(full_path, 'wb') as stream:
+                    stream.write(bin_data)
+            self._mark_for_gc(fname)
+            return fname
+        except (IOError, OSError) as exc:
+            _logger.error('Structured attachment storage failed for %s: %s', fname, exc)
+            raise UserError(_('تعذر حفظ المرفق في Filestore المنظم.')) from exc
+
+    @api.model
+    def _file_delete(self, fname):
+        # Odoo's GC handles structured paths and standard paths through the
+        # checklist. The direct legacy cleanup is needed only for old rows.
+        if '/' not in fname.replace('\\', '/'):
+            attachment = self.sudo().search([
+                ('store_fname', '=', fname),
+                ('custom_storage_path', '!=', False),
+            ], limit=1)
+            if attachment:
+                try:
+                    os.remove(os.path.join(attachment.custom_storage_path, os.path.basename(fname)))
+                    return
+                except FileNotFoundError:
+                    return
+                except OSError:
+                    _logger.info('Could not delete legacy attachment file: %s', fname, exc_info=True)
+        return super()._file_delete(fname)
 
     @api.model_create_multi
     def create(self, vals_list):
-        attachments = super().create(vals_list)
-        for attachment, vals in zip(attachments, vals_list):
-            is_image = (
-                (attachment.mimetype or '').startswith('image/')
-                or (attachment.name or '').lower().endswith(self._image_extensions)
-                or self._is_image_context(vals)
-            )
-            if is_image and attachment.store_fname:
-                res_model = vals.get('res_model') or attachment.res_model
-                attachment.write({'custom_storage_path': self._get_custom_path(model_name=res_model)})
-        return attachments
+        # Base Odoo writes binary data before the attachment row exists. Split
+        # mixed create calls so each group receives one deterministic bucket.
+        groups = {}
+        for index, vals in enumerate(vals_list):
+            context = self._get_storage_context(vals)
+            key = (context['utility_attachment_storage_bucket'], context['utility_attachment_storage_path'])
+            groups.setdefault(key, []).append((index, vals, context))
+
+        created_by_index = {}
+        for entries in groups.values():
+            context = entries[0][2]
+            group_vals = [entry[1] for entry in entries]
+            attachments = super(IrAttachment, self.with_context(**context)).create(group_vals)
+            for entry, attachment in zip(entries, attachments):
+                created_by_index[entry[0]] = attachment
+                if attachment.store_fname:
+                    attachment.write({'custom_storage_path': context['utility_attachment_storage_path']})
+
+        return self.browse([created_by_index[index].id for index in range(len(vals_list))])

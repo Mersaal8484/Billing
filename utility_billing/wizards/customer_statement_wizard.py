@@ -103,7 +103,9 @@ class UtilityCustomerStatementWizard(models.TransientModel):
 
     def _get_opening_balance(self):
         self.ensure_one()
-        base_opening = self.customer_id.opening_balance or (self.customer_id.partner_id.open_balance if hasattr(self.customer_id.partner_id, 'open_balance') else 0.0) or 0.0
+        # Opening balances are real posted receivable entries.  The legacy
+        # partner.open_balance field is intentionally excluded from statements.
+        base_opening = 0.0
         if not self.date_from:
             return base_opening
         orders = self.env['sale.order'].search(self._order_domain(before=True))
@@ -213,4 +215,7 @@ class UtilityCustomerStatementWizard(models.TransientModel):
 
     def action_print_statement(self):
         self.ensure_one()
+        # Organizational scope guard: even for read-only reports, the customer
+        # must be within the acting user's scope to prevent cross-scope data leakage.
+        self.env.user.check_record_scope(self.customer_id)
         return self.env.ref('utility_billing.action_report_customer_statement').report_action(self)

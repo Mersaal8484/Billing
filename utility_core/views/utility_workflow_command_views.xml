@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Tree View -->
+    <record id="view_utility_workflow_command_tree" model="ir.ui.view">
+        <field name="name">utility.workflow.command.tree</field>
+        <field name="model">utility.workflow.command</field>
+        <field name="arch" type="xml">
+            <tree string="أوامر مسارات العمل" decoration-info="state == 'pending'" decoration-warning="state == 'processing'" decoration-success="state == 'completed'" decoration-danger="state == 'failed'" decoration-muted="state in ('cancelled', 'dead')">
+                <field name="priority" widget="priority"/>
+                <field name="name"/>
+                <field name="workflow_type"/>
+                <field name="reference_model"/>
+                <field name="reference_id"/>
+                <field name="idempotency_key"/>
+                <field name="backend"/>
+                <field name="attempt_count"/>
+                <field name="max_attempts"/>
+                <field name="scheduled_at"/>
+                <field name="duration_seconds"/>
+                <field name="state" widget="badge" decoration-info="state == 'pending'" decoration-warning="state == 'processing'" decoration-success="state == 'completed'" decoration-danger="state == 'failed'" decoration-muted="state in ('cancelled', 'dead')"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_utility_workflow_command_form" model="ir.ui.view">
+        <field name="name">utility.workflow.command.form</field>
+        <field name="model">utility.workflow.command</field>
+        <field name="arch" type="xml">
+            <form string="أمر مسار العمل">
+                <header>
+                    <button name="action_retry_manual" string="إعادة المحاولة / Retry" type="object" class="oe_highlight" attrs="{'invisible': [('state', 'not in', ('failed', 'dead', 'cancelled'))]}" groups="utility_core.group_utility_supervisor,utility_core.group_utility_admin,base.group_system"/>
+                    <button name="action_cancel" string="إلغاء الأمر / Cancel" type="object" attrs="{'invisible': [('state', 'not in', ('pending', 'failed', 'dead'))]}" groups="utility_core.group_utility_admin,base.group_system"/>
+                    <field name="state" widget="statusbar" statusbar_visible="pending,processing,completed"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name" class="oe_edit_only"/>
+                        <h1><field name="name" readonly="1"/></h1>
+                    </div>
+                    <group>
+                        <group string="بيانات المسار">
+                            <field name="workflow_type" readonly="1"/>
+                            <field name="reference_model" readonly="1"/>
+                            <field name="reference_id" readonly="1"/>
+                            <field name="idempotency_key" readonly="1"/>
+                            <field name="backend" readonly="1"/>
+                            <field name="priority"/>
+                        </group>
+                        <group string="توقيت ومحاولات التنفيذ">
+                            <field name="attempt_count" readonly="1"/>
+                            <field name="max_attempts" readonly="1"/>
+                            <field name="scheduled_at" readonly="1"/>
+                            <field name="started_at" readonly="1"/>
+                            <field name="completed_at" readonly="1"/>
+                            <field name="duration_seconds" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="النتائج والتشخيص" name="diagnostics">
+                            <group>
+                                <field name="result_summary" readonly="1"/>
+                                <field name="error_category" readonly="1" attrs="{'invisible': [('error_category', '=', False)]}"/>
+                                <field name="last_error" readonly="1" attrs="{'invisible': [('last_error', '=', False)]}"/>
+                                <field name="last_error_details" readonly="1" attrs="{'invisible': [('last_error_details', '=', False)]}"/>
+                            </group>
+                        </page>
+                        <page string="البيانات الفنية والطلب" name="payload">
+                            <group>
+                                <field name="command_uuid" readonly="1"/>
+                                <field name="external_workflow_ref" readonly="1"/>
+                                <field name="company_id" readonly="1" groups="base.group_multi_company"/>
+                                <field name="payload_version" readonly="1"/>
+                                <field name="payload_json" readonly="1"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="view_utility_workflow_command_search" model="ir.ui.view">
+        <field name="name">utility.workflow.command.search</field>
+        <field name="model">utility.workflow.command</field>
+        <field name="arch" type="xml">
+            <search string="بحث أوامر مسارات العمل">
+                <field name="name"/>
+                <field name="workflow_type"/>
+                <field name="idempotency_key"/>
+                <field name="reference_model"/>
+                <filter string="قيد الانتظار" name="filter_pending" domain="[('state', '=', 'pending')]"/>
+                <filter string="قيد المعالجة" name="filter_processing" domain="[('state', '=', 'processing')]"/>
+                <filter string="مكتمل" name="filter_completed" domain="[('state', '=', 'completed')]"/>
+                <filter string="فاشل" name="filter_failed" domain="[('state', '=', 'failed')]"/>
+                <filter string="متعثر نهائياً" name="filter_dead" domain="[('state', '=', 'dead')]"/>
+                <separator/>
+                <filter string="محرك محلي (Local)" name="filter_backend_local" domain="[('backend', '=', 'local')]"/>
+                <filter string="محرك تيمبورال (Temporal)" name="filter_backend_temporal" domain="[('backend', '=', 'temporal')]"/>
+                <group expand="0" string="تجميع حسب">
+                    <filter string="نوع المسار" name="group_by_workflow_type" context="{'group_by': 'workflow_type'}"/>
+                    <filter string="الحالة" name="group_by_state" context="{'group_by': 'state'}"/>
+                    <filter string="المحرك" name="group_by_backend" context="{'group_by': 'backend'}"/>
+                    <filter string="تصنيف الخطأ" name="group_by_error_category" context="{'group_by': 'error_category'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action Window -->
+    <record id="action_utility_workflow_command" model="ir.actions.act_window">
+        <field name="name">طابور أوامر مسارات العمل (Workflow Commands)</field>
+        <field name="res_model">utility.workflow.command</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_utility_workflow_command_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                لا توجد أوامر مسارات عمل مسجلة حالياً.
+            </p>
+        </field>
+    </record>
+
+    <!-- Menu Item -->
+    <menuitem id="menu_utility_workflow_command"
+              name="أوامر مسارات العمل (Workflow Commands)"
+              parent="utility_core.menu_utility_config"
+              action="action_utility_workflow_command"
+              sequence="85"
+              groups="utility_core.group_utility_supervisor,utility_core.group_utility_admin,base.group_system"/>
+</odoo>

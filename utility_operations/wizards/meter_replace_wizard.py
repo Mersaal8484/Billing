@@ -1,5 +1,5 @@
 from odoo import api, fields, models, _
-from odoo.exceptions import ValidationError
+from odoo.exceptions import AccessError, ValidationError
 
 
 class UtilityMeterReplaceWizard(models.TransientModel):
@@ -33,6 +33,12 @@ class UtilityMeterReplaceWizard(models.TransientModel):
 
     def action_execute_replacement(self):
         self.ensure_one()
+        self.env.user.check_record_scope(self.account_id)
+        if not (
+            self.env.user.has_group('utility_core.group_utility_supervisor')
+            or self.env.user.has_group('utility_core.group_utility_admin')
+        ):
+            raise AccessError(_('ليس لديك صلاحية تنفيذ استبدال العداد.'))
         replacement = self.env['utility.meter.replacement'].create({
             'utility_account_id': self.account_id.id,
             'old_meter_id': self.old_meter_id.id,

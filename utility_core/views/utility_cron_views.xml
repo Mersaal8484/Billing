@@ -1,0 +1,387 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ========================================================= -->
+    <!-- IR.CRON UTILITY MANAGED VIEWS                             -->
+    <!-- ========================================================= -->
+
+    <!-- Tree View -->
+    <record id="view_utility_cron_tree" model="ir.ui.view">
+        <field name="name">ir.cron.utility.tree</field>
+        <field name="model">ir.cron</field>
+        <field name="arch" type="xml">
+            <tree string="المهام المجدولة لنظام الكهرباء"
+                  decoration-danger="health_status == 'failed'"
+                  decoration-warning="health_status in ('delayed', 'warning')"
+                  decoration-info="health_status == 'running'"
+                  decoration-muted="health_status == 'disabled'"
+                  decoration-success="health_status == 'healthy'">
+                <field name="allow_manual_run" invisible="1"/>
+                <field name="name"/>
+                <field name="utility_code"/>
+                <field name="utility_category" widget="badge"/>
+                <field name="health_status" widget="badge"
+                       decoration-danger="health_status == 'failed'"
+                       decoration-warning="health_status in ('delayed', 'warning')"
+                       decoration-info="health_status == 'running'"
+                       decoration-muted="health_status == 'disabled'"
+                       decoration-success="health_status == 'healthy'"/>
+                <field name="active" widget="boolean_toggle"/>
+                <field name="interval_number"/>
+                <field name="interval_type"/>
+                <field name="nextcall"/>
+                <field name="last_started_at"/>
+                <field name="last_success_at"/>
+                <field name="last_duration_seconds" widget="float_time"/>
+                <field name="consecutive_failure_count" decoration-danger="consecutive_failure_count > 0"/>
+                <button name="action_run_now" type="object" string="تشغيل فوري" icon="fa-play"
+                        class="btn-link" attrs="{'invisible': [('allow_manual_run', '=', False)]}"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Form View -->
+    <record id="view_utility_cron_form" model="ir.ui.view">
+        <field name="name">ir.cron.utility.form</field>
+        <field name="model">ir.cron</field>
+        <field name="priority">20</field>
+        <field name="arch" type="xml">
+            <form string="المهمة المجدولة لنظام الكهرباء">
+                <header>
+                    <button name="action_run_now" string="تشغيل فوري / Run Now" type="object"
+                            class="oe_highlight" icon="fa-play"
+                            attrs="{'invisible': [('allow_manual_run', '=', False)]}"/>
+                    <button name="action_enable" string="تمكين / Enable" type="object"
+                            class="btn-success" icon="fa-check"
+                            attrs="{'invisible': [('active', '=', True)]}"
+                            groups="utility_core.group_utility_admin,base.group_system"/>
+                    <button name="action_disable" string="تعطيل / Disable" type="object"
+                            class="btn-secondary" icon="fa-ban"
+                            attrs="{'invisible': ['|', ('active', '=', False), ('allow_disable', '=', False)]}"
+                            groups="utility_core.group_utility_admin,base.group_system"/>
+                    <button name="action_reset_failure_count" string="تصفير عداد الأخطاء / Reset Failures" type="object"
+                            class="btn-warning" icon="fa-refresh"
+                            attrs="{'invisible': [('consecutive_failure_count', '=', 0)]}"
+                            groups="utility_core.group_utility_admin,base.group_system"/>
+                    <field name="health_status" widget="statusbar" statusbar_visible="healthy,running,warning,delayed,failed,disabled"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_executions" type="object" class="oe_stat_button" icon="fa-history">
+                            <field name="execution_count" widget="statinfo" string="سجل التشغيل"/>
+                        </button>
+                        <button name="action_view_failures" type="object" class="oe_stat_button" icon="fa-exclamation-triangle">
+                            <field name="failure_count" widget="statinfo" string="الإخفاقات"/>
+                        </button>
+                    </div>
+
+                    <div class="oe_title">
+                        <label for="name" class="oe_edit_only" string="اسم المهمة"/>
+                        <h1>
+                            <field name="name" placeholder="مثال: الفوترة الجماعية للقراءات المعتمدة"/>
+                        </h1>
+                        <h3>
+                            <field name="utility_code" readonly="1" class="oe_inline"/>
+                            <field name="utility_category" widget="badge" class="oe_inline ms-2"/>
+                        </h3>
+                    </div>
+
+                    <group>
+                        <group string="الجدولة والتحكم / Schedule &amp; Timing">
+                            <label for="interval_number" string="التكرار الدوري"/>
+                            <div class="o_row">
+                                <field name="interval_number" class="oe_inline" attrs="{'readonly': [('allow_schedule_edit', '=', False)]}"/>
+                                <field name="interval_type" class="oe_inline" attrs="{'readonly': [('allow_schedule_edit', '=', False)]}"/>
+                            </div>
+                            <field name="nextcall" attrs="{'readonly': [('allow_schedule_edit', '=', False)]}"/>
+                            <field name="priority" attrs="{'readonly': [('allow_schedule_edit', '=', False)]}"/>
+                            <field name="active" widget="boolean_toggle"/>
+                        </group>
+
+                        <group string="سياسة التنفيذ / Execution Policy">
+                            <field name="prevent_overlap"/>
+                            <field name="allow_manual_run"/>
+                            <field name="allow_schedule_edit"/>
+                            <field name="allow_disable"/>
+                            <field name="batch_size"/>
+                        </group>
+                    </group>
+
+                    <group string="المراقبة والمؤشرات الصحية / Health &amp; Observability">
+                        <group>
+                            <field name="last_execution_status" widget="badge"
+                                   decoration-danger="last_execution_status == 'failed'"
+                                   decoration-warning="last_execution_status in ('partial', 'skipped')"
+                                   decoration-info="last_execution_status == 'running'"
+                                   decoration-success="last_execution_status == 'success'"/>
+                            <field name="last_started_at"/>
+                            <field name="last_finished_at"/>
+                            <field name="last_duration_seconds"/>
+                        </group>
+                        <group>
+                            <field name="last_success_at"/>
+                            <field name="last_failure_at"/>
+                            <field name="consecutive_failure_count" decoration-danger="consecutive_failure_count > 0"/>
+                        </group>
+                    </group>
+
+                    <group string="آخر رسالة خطأ" attrs="{'invisible': [('last_error_message', '=', False)]}">
+                        <field name="last_error_message" nolabel="1" readonly="1" widget="text" class="text-danger"/>
+                    </group>
+
+                    <notebook>
+                        <page string="الوصف والتعليمات التشغيلية / Description">
+                            <field name="utility_description" placeholder="اكتب وصفاً تشغيلياً يوضح وظيفة هذه المهمة وتأثيرها على العمليات والفوترة..."/>
+                        </page>
+                        <page string="البيانات الفنية / Technical Information">
+                            <group>
+                                <group>
+                                    <field name="target_model_name"/>
+                                    <field name="model_id" readonly="1"/>
+                                </group>
+                                <group>
+                                    <field name="utility_managed" readonly="1"/>
+                                </group>
+                            </group>
+                            <group string="كود التنفيذ (للقراءة فقط)">
+                                <field name="code" readonly="1" nolabel="1" widget="ace" options="{'mode': 'python'}"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="view_utility_cron_search" model="ir.ui.view">
+        <field name="name">ir.cron.utility.search</field>
+        <field name="model">ir.cron</field>
+        <field name="arch" type="xml">
+            <search string="البحث في المهام المجدولة">
+                <field name="name" string="اسم المهمة أو الرمز"
+                       filter_domain="['|', ('name', 'ilike', self), ('utility_code', 'ilike', self)]"/>
+                <field name="utility_category"/>
+                <field name="utility_code"/>
+
+                <filter string="نشط / Active" name="filter_active" domain="[('active', '=', True)]"/>
+                <filter string="معطل / Disabled" name="filter_inactive" domain="[('active', '=', False)]"/>
+                <separator/>
+                <filter string="سليم / Healthy" name="filter_healthy" domain="[('health_status', '=', 'healthy')]"/>
+                <filter string="قيد التشغيل / Running" name="filter_running" domain="[('last_execution_status', '=', 'running')]"/>
+                <filter string="فاشل / Failed" name="filter_failed" domain="['|', ('last_execution_status', '=', 'failed'), ('consecutive_failure_count', '>', 0)]"/>
+                <filter string="متأخر / Delayed" name="filter_delayed" domain="[('health_status', '=', 'delayed')]"/>
+                <filter string="تحذير (نجاح جزئي) / Warning" name="filter_warning" domain="[('last_execution_status', '=', 'partial')]"/>
+                <filter string="لم ينفذ قط / Never Run" name="filter_never" domain="[('last_execution_status', '=', 'never')]"/>
+                <separator/>
+                <filter string="مهام القراءات" name="cat_reading" domain="[('utility_category', '=', 'reading')]"/>
+                <filter string="مهام الفوترة" name="cat_billing" domain="[('utility_category', '=', 'billing')]"/>
+                <filter string="مهام المحاسبة" name="cat_accounting" domain="[('utility_category', '=', 'accounting')]"/>
+                <filter string="مهام العمليات" name="cat_operations" domain="[('utility_category', '=', 'operations')]"/>
+                <filter string="مهام الإشعارات" name="cat_notification" domain="[('utility_category', '=', 'notification')]"/>
+                <filter string="مهام الصيانة" name="cat_maintenance" domain="[('utility_category', '=', 'maintenance')]"/>
+
+                <group expand="0" string="تجميع حسب">
+                    <filter string="التصنيف / Category" name="group_category" context="{'group_by': 'utility_category'}"/>
+                    <filter string="نوع التكرار / Interval Type" name="group_interval" context="{'group_by': 'interval_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Window Action -->
+    <record id="action_utility_cron" model="ir.actions.act_window">
+        <field name="name">المهام المجدولة / Scheduled Jobs</field>
+        <field name="res_model">ir.cron</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('utility_managed', '=', True)]</field>
+        <field name="context">{'default_utility_managed': True, 'search_default_filter_active': 1}</field>
+        <field name="search_view_id" ref="view_utility_cron_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                لا توجد مهام مجدولة مدارة لنظام الكهرباء حالياً.
+            </p>
+        </field>
+    </record>
+
+    <record id="action_utility_cron_tree_view" model="ir.actions.act_window.view">
+        <field name="sequence" eval="1"/>
+        <field name="view_mode">tree</field>
+        <field name="view_id" ref="view_utility_cron_tree"/>
+        <field name="act_window_id" ref="action_utility_cron"/>
+    </record>
+
+    <record id="action_utility_cron_form_view" model="ir.actions.act_window.view">
+        <field name="sequence" eval="2"/>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_utility_cron_form"/>
+        <field name="act_window_id" ref="action_utility_cron"/>
+    </record>
+
+
+    <!-- ========================================================= -->
+    <!-- UTILITY.CRON.EXECUTION VIEWS                              -->
+    <!-- ========================================================= -->
+
+    <!-- Execution Tree View -->
+    <record id="view_utility_cron_execution_tree" model="ir.ui.view">
+        <field name="name">utility.cron.execution.tree</field>
+        <field name="model">utility.cron.execution</field>
+        <field name="arch" type="xml">
+            <tree string="سجل تنفيذ المهام المجدولة" create="false" edit="false" delete="false"
+                  decoration-danger="status == 'failed'"
+                  decoration-warning="status in ('partial', 'skipped')"
+                  decoration-info="status == 'running'"
+                  decoration-success="status == 'success'">
+                <field name="started_at"/>
+                <field name="cron_id"/>
+                <field name="utility_code"/>
+                <field name="utility_category" widget="badge"/>
+                <field name="trigger_type" widget="badge"/>
+                <field name="triggered_by"/>
+                <field name="status" widget="badge"
+                       decoration-danger="status == 'failed'"
+                       decoration-warning="status in ('partial', 'skipped')"
+                       decoration-info="status == 'running'"
+                       decoration-success="status == 'success'"/>
+                <field name="duration_seconds" string="المدة (ث)"/>
+                <field name="processed_count"/>
+                <field name="success_count"/>
+                <field name="failure_count" decoration-danger="failure_count > 0"/>
+                <field name="skipped_count"/>
+                <field name="error_message"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Execution Form View -->
+    <record id="view_utility_cron_execution_form" model="ir.ui.view">
+        <field name="name">utility.cron.execution.form</field>
+        <field name="model">utility.cron.execution</field>
+        <field name="arch" type="xml">
+            <form string="تفاصيل سجل تنفيذ المهمة" create="false" edit="false" delete="false">
+                <header>
+                    <field name="status" widget="statusbar" statusbar_visible="running,success,partial,failed,skipped"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="display_name" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="معلومات المهمة والتنفيذ / Job &amp; Trigger">
+                            <field name="cron_id" readonly="1"/>
+                            <field name="utility_code" readonly="1"/>
+                            <field name="utility_category" readonly="1"/>
+                            <field name="trigger_type" readonly="1"/>
+                            <field name="triggered_by" readonly="1"/>
+                            <field name="company_id" readonly="1"/>
+                        </group>
+                        <group string="التوقيت والمدة / Timing &amp; Duration">
+                            <field name="started_at" readonly="1"/>
+                            <field name="finished_at" readonly="1"/>
+                            <field name="duration_seconds" readonly="1"/>
+                        </group>
+                    </group>
+
+                    <group string="إحصائيات المعالجة / Processing Metrics">
+                        <group>
+                            <field name="processed_count" readonly="1"/>
+                            <field name="success_count" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="failure_count" readonly="1" decoration-danger="failure_count > 0"/>
+                            <field name="skipped_count" readonly="1"/>
+                        </group>
+                    </group>
+
+                    <group string="رسالة الخطأ / Error Message" attrs="{'invisible': [('error_message', '=', False)]}">
+                        <field name="error_message" nolabel="1" readonly="1" class="text-danger"/>
+                    </group>
+
+                    <notebook attrs="{'invisible': [('error_details', '=', False)]}">
+                        <page string="التفاصيل الفنية للخطأ / Traceback">
+                            <field name="error_details" nolabel="1" readonly="1" widget="ace" options="{'mode': 'python'}"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Execution Search View -->
+    <record id="view_utility_cron_execution_search" model="ir.ui.view">
+        <field name="name">utility.cron.execution.search</field>
+        <field name="model">utility.cron.execution</field>
+        <field name="arch" type="xml">
+            <search string="البحث في سجلات التنفيذ">
+                <field name="cron_id"/>
+                <field name="utility_code"/>
+                <field name="triggered_by"/>
+                <field name="error_message"/>
+
+                <filter string="قيد التشغيل / Running" name="filter_running" domain="[('status', '=', 'running')]"/>
+                <filter string="ناجح / Success" name="filter_success" domain="[('status', '=', 'success')]"/>
+                <filter string="ناجح جزئياً / Partial" name="filter_partial" domain="[('status', '=', 'partial')]"/>
+                <filter string="فاشل / Failed" name="filter_failed" domain="[('status', '=', 'failed')]"/>
+                <filter string="تم التخطي / Skipped" name="filter_skipped" domain="[('status', '=', 'skipped')]"/>
+                <separator/>
+                <filter string="تشغيل يدوي / Manual" name="filter_manual" domain="[('trigger_type', '=', 'manual')]"/>
+                <filter string="مجدول آلياً / Scheduled" name="filter_scheduled" domain="[('trigger_type', '=', 'scheduled')]"/>
+                <separator/>
+                <filter string="اليوم" name="filter_today" domain="[('started_at', '&gt;=', datetime.datetime.now().strftime('%Y-%m-%d 00:00:00'))]"/>
+
+                <group expand="0" string="تجميع حسب">
+                    <filter string="المهمة المجدولة / Cron Job" name="group_cron" context="{'group_by': 'cron_id'}"/>
+                    <filter string="الحالة / Status" name="group_status" context="{'group_by': 'status'}"/>
+                    <filter string="التصنيف / Category" name="group_category" context="{'group_by': 'utility_category'}"/>
+                    <filter string="نوع المشغل / Trigger Type" name="group_trigger" context="{'group_by': 'trigger_type'}"/>
+                    <filter string="المستخدم / User" name="group_user" context="{'group_by': 'triggered_by'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Execution Window Action -->
+    <record id="action_utility_cron_execution" model="ir.actions.act_window">
+        <field name="name">سجل تنفيذ المهام / Execution History</field>
+        <field name="res_model">utility.cron.execution</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_utility_cron_execution_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                لا توجد سجلات تنفيذ مسجلة حالياً.
+            </p>
+        </field>
+    </record>
+
+
+    <!-- ========================================================= -->
+    <!-- MENUS                                                     -->
+    <!-- ========================================================= -->
+
+    <!-- Automation Parent Menu under Configuration -->
+    <menuitem id="menu_utility_automation"
+              name="الأتمتة والمهام المجدولة"
+              parent="utility_core.menu_utility_config"
+              sequence="140"
+              groups="utility_core.group_utility_supervisor,utility_core.group_utility_billing_manager,utility_core.group_utility_revenue_manager,utility_core.group_utility_admin"/>
+
+    <!-- Scheduled Jobs Menu -->
+    <menuitem id="menu_utility_cron"
+              name="المهام المجدولة"
+              parent="menu_utility_automation"
+              action="action_utility_cron"
+              sequence="10"
+              groups="utility_core.group_utility_supervisor,utility_core.group_utility_billing_manager,utility_core.group_utility_revenue_manager,utility_core.group_utility_admin"/>
+
+    <!-- Execution History Menu -->
+    <menuitem id="menu_utility_cron_execution"
+              name="سجل تنفيذ المهام"
+              parent="menu_utility_automation"
+              action="action_utility_cron_execution"
+              sequence="20"
+              groups="utility_core.group_utility_supervisor,utility_core.group_utility_billing_manager,utility_core.group_utility_revenue_manager,utility_core.group_utility_admin"/>
+
+</odoo>

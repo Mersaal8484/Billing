@@ -7,33 +7,38 @@
             <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
             <field name="global" eval="True"/>
         </record>
-        <!-- Route-based Record Rules for Sale Order (Billing) -->
-        <record id="utility_sale_order_route_rule" model="ir.rule">
-            <field name="name">Sale Order Route Access Rule</field>
+        <record id="utility_sale_order_org_scope_rule" model="ir.rule">
+            <field name="name">Utility Sale Order Organizational Scope Rule</field>
             <field name="model_id" ref="sale.model_sale_order"/>
-            <field name="domain_force">[(1, '=', 1)] if user.has_group('utility_core.group_utility_admin') else ([('route_id', 'in', user.assigned_route_ids.ids)] if user.assigned_route_ids else [('id', '=', False)])</field>
-            <field name="groups" eval="[(4, ref('utility_core.group_utility_collector')), (4, ref('utility_core.group_utility_technician'))]"/>
-            <field name="perm_read" eval="True"/>
-            <field name="perm_write" eval="True"/>
-            <field name="perm_create" eval="True"/>
-            <field name="perm_unlink" eval="False"/>
+            <field name="domain_force">[(1, '=', 1)] if user._is_global_utility_scope() else (['|', ('account_id', '=', False), '|', ('account_id.area_id', 'in', user._get_effective_branch_ids()), ('account_id.region_id', 'in', user._get_effective_region_ids())] if (user._get_effective_branch_ids() or user._get_effective_region_ids()) else [('account_id', '=', False)])</field>
+            <field name="global" eval="True"/>
+        </record>
+
+        <record id="utility_billing_adjustment_org_scope_rule" model="ir.rule">
+            <field name="name">Billing Adjustment Organizational Scope Rule</field>
+            <field name="model_id" ref="model_utility_billing_adjustment"/>
+            <field name="domain_force">[(1, '=', 1)] if user._is_global_utility_scope() else (['|', ('customer_id.area_id', 'in', user._get_effective_branch_ids()), ('customer_id.region_id', 'in', user._get_effective_region_ids())] if (user._get_effective_branch_ids() or user._get_effective_region_ids()) else [('id', '=', False)])</field>
+            <field name="global" eval="True"/>
+        </record>
+
+        <record id="utility_writeoff_org_scope_rule" model="ir.rule">
+            <field name="name">Write-off Organizational Scope Rule</field>
+            <field name="model_id" ref="model_utility_writeoff"/>
+            <field name="domain_force">[(1, '=', 1)] if user._is_global_utility_scope() else (['|', ('sale_order_id.account_id.area_id', 'in', user._get_effective_branch_ids()), ('sale_order_id.account_id.region_id', 'in', user._get_effective_region_ids())] if (user._get_effective_branch_ids() or user._get_effective_region_ids()) else [('id', '=', False)])</field>
+            <field name="global" eval="True"/>
         </record>
 
         <record id="utility_service_charge_company_rule" model="ir.rule">
             <field name="name">Service Charge Multi-Company Rule</field>
             <field name="model_id" ref="model_utility_service_charge"/>
             <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
-            <field name="groups" eval="[(4, ref('utility_core.group_utility_billing_manager')), (4, ref('utility_core.group_utility_collector')), (4, ref('utility_core.group_utility_auditor'))]"/>
-            <field name="perm_read" eval="True"/>
-            <field name="perm_write" eval="True"/>
-            <field name="perm_create" eval="True"/>
-            <field name="perm_unlink" eval="False"/>
+            <field name="global" eval="True"/>
         </record>
         <record id="utility_bill_reading_component_company_rule" model="ir.rule">
             <field name="name">Bill Reading Component Multi-Company</field>
             <field name="model_id" ref="model_utility_bill_reading_component"/>
             <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
-            <field name="groups" eval="[(4, ref('utility_core.group_utility_billing_manager')), (4, ref('utility_core.group_utility_auditor'))]"/>
+            <field name="global" eval="True"/>
         </record>
 
         <record id="rule_payment_gateway_transaction_company" model="ir.rule">
@@ -60,8 +65,8 @@
         <record id="utility_payment_allocation_route_rule" model="ir.rule">
             <field name="name">Payment Allocation Route Rule</field>
             <field name="model_id" ref="model_utility_payment_allocation"/>
-            <field name="domain_force">[(1, '=', 1)] if user.has_group('utility_core.group_utility_admin') else ([('utility_customer_id.route_id', 'in', user.assigned_route_ids.ids)] if user.assigned_route_ids else [('id', '=', False)])</field>
-            <field name="groups" eval="[(4, ref('utility_core.group_utility_collector')), (4, ref('utility_core.group_utility_technician'))]"/>
+            <field name="domain_force">[(1, '=', 1)] if (user._is_global_utility_scope() or user.has_group('utility_core.group_utility_admin') or user.has_group('utility_core.group_utility_billing_manager') or user.has_group('utility_core.group_utility_revenue_manager') or user.has_group('utility_core.group_utility_supervisor') or user.has_group('utility_core.group_utility_auditor') or not (user.has_group('utility_core.group_utility_collector') or user.has_group('utility_core.group_utility_technician'))) else ([('utility_customer_id.route_id', 'in', user.assigned_route_ids.ids)] if user.assigned_route_ids else [('id', '=', False)])</field>
+            <field name="global" eval="True"/>
         </record>
 
         <record id="utility_collection_company_rule" model="ir.rule">
@@ -123,6 +128,13 @@
             <field name="perm_write" eval="False"/>
             <field name="perm_create" eval="False"/>
             <field name="perm_unlink" eval="False"/>
+        </record>
+
+        <record id="utility_reading_batch_org_scope_rule" model="ir.rule">
+            <field name="name">Reading Batch Unified Organizational Scope Rule</field>
+            <field name="model_id" ref="model_utility_reading_batch"/>
+            <field name="domain_force">[(1, '=', 1)] if user._is_global_utility_scope() else ([('region_id', 'in', user._get_effective_region_ids())] if user._get_effective_region_ids() else [('id', '=', False)])</field>
+            <field name="global" eval="True"/>
         </record>
     </data>
 </odoo>

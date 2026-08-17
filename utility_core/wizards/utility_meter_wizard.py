@@ -1,4 +1,10 @@
 from odoo import api, fields, models, _
+from odoo.exceptions import AccessError
+
+
+def _require_groups(env, *group_xmlids):
+    if not any(env.user.has_group(group_xmlid) for group_xmlid in group_xmlids):
+        raise AccessError(_('ليس لديك صلاحية تنفيذ هذه العملية التشغيلية.'))
 
 
 class UtilityMeterSubscriberWizard(models.TransientModel):
@@ -19,11 +25,26 @@ class UtilityMeterSubscriberWizard(models.TransientModel):
 
     def action_create(self):
         self.ensure_one()
+        _require_groups(
+            self.env,
+            'utility_core.group_utility_supervisor',
+            'utility_core.group_utility_admin',
+        )
         meter = self.meter_id
+        # Scope guard: verify the meter is within the acting user's organizational scope.
+        # Prevents restricted users from creating customers via meters outside their region.
+        self.env.user.check_record_scope(meter)
+        # Inherit geography from the meter's canonical location into the new partner.
+        # This ensures the resulting utility.customer has a resolvable region/area,
+        # satisfying the fail-closed scope check in utility.customer.create().
+        # For not_connected meters (visible only to global/admin users), meter.region_id
+        # and meter.area_id are False — the admin bypass in create() handles that case.
         partner = self.env['res.partner'].create({
             'name': self.partner_name,
             'mobile': self.mobile,
             'street': self.street or False,
+            'region_id': meter.region_id.id if meter.region_id else False,
+            'area_id': meter.area_id.id if meter.area_id else False,
         })
         vals = {
             'partner_id': partner.id,
@@ -78,7 +99,10 @@ class UtilityMeterPrivateTransformerWizard(models.TransientModel):
 
     def action_create(self):
         self.ensure_one()
+        _require_groups(self.env, 'utility_core.group_utility_admin')
         meter = self.meter_id
+        # Scope guard: verify the meter is within the acting user's organizational scope.
+        self.env.user.check_record_scope(meter)
         partner = self.env['res.partner'].create({
             'name': self.partner_name,
             'mobile': self.mobile,
@@ -136,6 +160,7 @@ class UtilityMeterTransformerWizard(models.TransientModel):
 
     def action_create(self):
         self.ensure_one()
+        _require_groups(self.env, 'utility_core.group_utility_admin')
         meter = self.meter_id
         transformer = self.env['utility.transformer'].create({
             'name': self.name,
@@ -177,6 +202,7 @@ class UtilityMeterFeederWizard(models.TransientModel):
 
     def action_create(self):
         self.ensure_one()
+        _require_groups(self.env, 'utility_core.group_utility_admin')
         meter = self.meter_id
         feeder = self.env['utility.feeder'].create({
             'name': self.name,

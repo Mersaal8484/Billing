@@ -194,7 +194,7 @@ class TestPaymentConcurrency(TransactionCase):
         # Concurrent manual payment of 400 posted first (residual becomes 100)
         staff = self.env['utility.staff'].search([
             ('company_id', '=', self.company.id),
-            ('user_role_id.code', '=', 'collector'),
+            ('role_ids.code', '=', 'collector'),
         ], limit=1)
         if not staff:
             cash_journal = self.env['account.journal'].create({
@@ -207,7 +207,7 @@ class TestPaymentConcurrency(TransactionCase):
             staff = self.env['utility.staff'].create({
                 'name': 'متحصل اختبار',
                 'user_id': self.env.uid,
-                'user_role_id': role.id,
+                'role_ids': [(6, 0, [role.id])],
                 'collection_journal_id': cash_journal.id,
             })
 

@@ -1,5 +1,5 @@
 from odoo import api, fields, models, _
-from odoo.exceptions import ValidationError
+from odoo.exceptions import AccessError, ValidationError
 
 
 class UtilityCustomerLifecycleWizard(models.TransientModel):
@@ -41,6 +41,9 @@ class UtilityCustomerLifecycleWizard(models.TransientModel):
     def action_confirm(self):
         self.ensure_one()
         customer = self.customer_id
+        # Organizational scope guard: wizard target must be within acting user's scope.
+        # active_id is untrusted context data — validate server-side before any write.
+        self.env.user.check_record_scope(customer)
         context = dict(self.env.context)
         if self.administrative_override:
             if not self.env.user.has_group('utility_core.group_utility_admin'):

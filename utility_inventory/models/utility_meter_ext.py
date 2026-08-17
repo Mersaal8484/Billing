@@ -585,7 +585,23 @@ class UtilityMeterExt(models.Model):
         تستخدم الدالة Cursor مبنياً على تاريخ آخر فحص لتغطية جميع العدادات بالتتابع،
         وتكتشف وتسجل الفروقات في نموذج Exception Log (utility.meter.integrity.issue)
         دون أي تعديل آلي لحماية بيانات الأصول والمحاسبة، مع تطبيق منع التكرار (Deduplication)."""
-        meters = self.search([('active', '=', True)], order='last_integrity_check_at asc nulls first, id asc', limit=batch_limit)
+        # Odoo 16 ORM لا يقبل 'NULLS FIRST' في order string.
+        # نعوّض بدفعتين: أولاً العدادات التي لم تُفحص قط، ثم الأقدم فحصاً.
+        never_checked = self.search(
+            [('active', '=', True), ('last_integrity_check_at', '=', False)],
+            order='id asc',
+            limit=batch_limit,
+        )
+        remaining = batch_limit - len(never_checked)
+        if remaining > 0:
+            already_checked = self.search(
+                [('active', '=', True), ('last_integrity_check_at', '!=', False)],
+                order='last_integrity_check_at asc, id asc',
+                limit=remaining,
+            )
+        else:
+            already_checked = self.browse()
+        meters = never_checked | already_checked
         Issue = self.env['utility.meter.integrity.issue']
         Quant = self.env['stock.quant']
         processed_issues = Issue.browse()

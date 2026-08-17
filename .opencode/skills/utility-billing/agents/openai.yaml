@@ -1,0 +1,4 @@
+interface:
+  display_name: "Utility Billing"
+  short_description: "Review readings, bills, and payment flow"
+  default_prompt: "Use $utility-billing to review a Utility ERP billing change."

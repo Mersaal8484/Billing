@@ -48,6 +48,12 @@ class ResCompany(models.Model):
         string='يومية الأرصدة الافتتاحية',
         domain="[('type', '=', 'general')]",
         check_company=True)
+    opening_clearing_account_id = fields.Many2one(
+        'account.account',
+        string='حساب مقابلة الأرصدة الافتتاحية',
+        domain="[('deprecated', '=', False)]",
+        check_company=True,
+        help='الحساب المقابل لقيد الرصيد الافتتاحي. يجب إعداده مسبقاً؛ لا ينشئ النظام حسابات تلقائياً.')
     
     penalty_product_id = fields.Many2one(
         'product.product',

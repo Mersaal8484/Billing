@@ -1,8 +1,9 @@
 import base64
 import json
 import logging
+from psycopg2 import OperationalError
 from odoo import api, fields, models, _
-from odoo.exceptions import ValidationError
+from odoo.exceptions import AccessError, ValidationError
 
 _logger = logging.getLogger(__name__)
 
@@ -17,6 +18,18 @@ class UtilityReadingBatchService(models.AbstractModel):
         batch = self.env['utility.reading.batch'].sudo().browse(batch_id)
         if not batch or not batch.exists():
             raise ValidationError(_("دفعة القراءات غير موجودة."))
+
+        try:
+            self.env.cr.execute(
+                "SELECT id FROM utility_reading_batch WHERE id = %s FOR UPDATE NOWAIT",
+                (batch_id,)
+            )
+        except OperationalError as e:
+            pgcode = getattr(e, 'pgcode', None)
+            if pgcode == '55P03':
+                _logger.info("Reading batch %s is currently locked by another worker (55P03). Skipping concurrent execution.", batch.id)
+                return {'status': 'locked', 'reason': 'batch_locked'}
+            raise
 
         _logger.info("Starting persistent line batch processing for batch %s", batch.name)
 
@@ -123,6 +136,70 @@ class UtilityReadingBatchService(models.AbstractModel):
         }
 
     @api.model
+    def _validate_batch_line_scope(self, batch, meter, customer):
+        """التحقق من وقوع العداد والمشترك ضمن النطاق التنظيمي للقارئ ومنطقة وفترة وشركة الدفعة."""
+        # 1. التحقق من تطابق الشركة
+        if meter.company_id and batch.company_id and meter.company_id.id != batch.company_id.id:
+            return {
+                'valid': False,
+                'error': _("شركة العداد (%s) لا تطابق شركة الدفعة (%s).") % (
+                    meter.company_id.name, batch.company_id.name
+                )
+            }
+
+        # 2. التحقق من صلاحية ونطاق الفترة
+        if batch.date_range_id:
+            period = batch.date_range_id
+            if getattr(period, 'state', False) and period.state != 'open':
+                return {
+                    'valid': False,
+                    'error': _("فترة القراءة (%s) ليست في حالة مفتوحة (الحالة الحالية: %s).") % (
+                        period.name, period.state
+                    )
+                }
+            if getattr(period, 'period_role', False) and period.period_role != 'reading':
+                return {
+                    'valid': False,
+                    'error': _("فترة القراءة (%s) مخصصة لدور (%s) وليس للقراءات.") % (
+                        period.name, period.period_role
+                    )
+                }
+            if getattr(period, 'region_ids', False):
+                meter_region = getattr(meter, 'region_id', False) or (customer.region_id if customer else False)
+                if meter_region and meter_region not in period.region_ids:
+                    return {
+                        'valid': False,
+                        'error': _("منطقة العداد (%s) غير مشمولة في نطاق الفترة (%s).") % (
+                            meter_region.name, period.name
+                        )
+                    }
+
+        # 3. التحقق من تطابق منطقة الدفعة مع منطقة العداد/المشترك
+        if batch.region_id:
+            meter_region = getattr(meter, 'region_id', False) or (customer.region_id if customer else False)
+            if meter_region and meter_region.id != batch.region_id.id:
+                return {
+                    'valid': False,
+                    'error': _("العداد يقع في منطقة (%s) تختلف عن منطقة الدفعة (%s).") % (
+                        meter_region.name, batch.region_id.name
+                    )
+                }
+
+        # 4. التحقق من صلاحيات القارئ الجغرافية والتنظيمية
+        if batch.user_id and hasattr(batch.user_id, 'check_record_scope'):
+            try:
+                batch.user_id.check_record_scope(meter)
+            except AccessError:
+                return {
+                    'valid': False,
+                    'error': _("العداد %s يقع خارج النطاق الجغرافي/التنظيمي المخصص للقارئ %s.") % (
+                        meter.meter_number, batch.user_id.name
+                    )
+                }
+
+        return {'valid': True}
+
+    @api.model
     def _process_single_batch_line(self, batch, line, media_assets_by_name, legacy_attachments):
         meter_number = line.meter_number
         if not meter_number:
@@ -139,6 +216,11 @@ class UtilityReadingBatchService(models.AbstractModel):
         customer = meter.customer_id
         if not customer:
             return {'success': False, 'error': _("العداد %s غير مرتبط بمشترك/حساب.") % meter_number}
+
+        # التحقق من نطاق الصلاحيات التنظيمية للدفعة
+        scope_res = self._validate_batch_line_scope(batch, meter, customer)
+        if not scope_res.get('valid'):
+            return {'success': False, 'error': scope_res.get('error')}
 
         reading_value = line.reading_value
         reading_date = line.reading_date or fields.Datetime.now()
@@ -165,7 +247,7 @@ class UtilityReadingBatchService(models.AbstractModel):
                 except Exception as e:
                     _logger.warning("Could not store media asset for %s: %s", image_filename, str(e))
 
-        reading_state = 'under_review' if media_asset else 'approved'
+        reading_state = 'under_review'
         reading_vals = {
             'meter_id': meter.id,
             'account_id': customer.id,

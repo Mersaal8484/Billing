@@ -1,7 +1,11 @@
 from datetime import date
+import json
+import logging
 
 from odoo import api, fields, models, _
-from odoo.exceptions import ValidationError
+from odoo.exceptions import ValidationError, UserError
+
+_logger = logging.getLogger(__name__)
 
 
 class UtilityContractTemplate(models.Model):
@@ -112,6 +116,45 @@ class UtilityContractTemplate(models.Model):
     history_ids = fields.One2many('utility.contract.template.history', 'template_id',
         string='سجل التغييرات', readonly=True)
 
+    # إصدارات قالب العقد الثابتة تاريخياً
+    version_ids = fields.One2many(
+        'utility.contract.template.version',
+        'template_id',
+        string='إصدارات القالب',
+        readonly=True,
+    )
+    current_version_id = fields.Many2one(
+        'utility.contract.template.version',
+        string='الإصدار التجاري الحالي',
+        compute='_compute_current_version',
+        store=True,
+    )
+    version_count = fields.Integer(
+        string='عدد الإصدارات',
+        compute='_compute_version_count',
+    )
+
+    # ── تتبع الاستنساخ (Clone Provenance) ──────────────────────────────────
+    cloned_from_template_id = fields.Many2one(
+        'utility.contract.template',
+        string='مستنسخ من قالب',
+        readonly=True,
+        copy=False,
+        ondelete='set null',
+        help='قالب العقد الأصلي الذي تم استنساخ هذه التهيئة منه.',
+    )
+    cloned_at = fields.Datetime(
+        string='وقت الاستنساخ',
+        readonly=True,
+        copy=False,
+    )
+    cloned_by = fields.Many2one(
+        'res.users',
+        string='المستنسخ بواسطة',
+        readonly=True,
+        copy=False,
+    )
+
     # سير العمل الآلي
     sale_autoconfirm = fields.Boolean(default=True, string='تأكيد أمر البيع تلقائياً')
     create_invoice_automatically = fields.Boolean(default=True, string='إنشاء الفاتورة تلقائياً')
@@ -124,11 +167,21 @@ class UtilityContractTemplate(models.Model):
     active = fields.Boolean('نشط', default=True)
 
     _sql_constraints = [
-        # FIX: منع تكرار رمز القالب داخل نفس الشركة
         ('unique_code_company',
          'unique(code, company_id)',
          'رمز قالب العقد موجود مسبقاً في هذه الشركة. يجب أن يكون الرمز فريداً.'),
     ]
+
+    @api.depends('version_ids', 'version_ids.version_number')
+    def _compute_current_version(self):
+        for rec in self:
+            latest = rec.version_ids.sorted('version_number', reverse=True)[:1]
+            rec.current_version_id = latest.id if latest else False
+
+    @api.depends('version_ids')
+    def _compute_version_count(self):
+        for rec in self:
+            rec.version_count = len(rec.version_ids)
 
     @api.depends('effective_date', 'end_date')
     def _compute_is_active(self):
@@ -141,7 +194,21 @@ class UtilityContractTemplate(models.Model):
             else:
                 r.is_active = True
 
-    # ── FIX: قيود منطقية على التسعير ────────────────────────────────────────────
+    # ── قيود منطقية على التسعير والأنماط المدعومة ──────────────────────────────
+    @api.constrains('pricing_mode')
+    def _check_pricing_mode_supported(self):
+        for rec in self:
+            if rec.pricing_mode == 'seasonal':
+                raise ValidationError(_(
+                    "نمط التسعير 'الموسمي' (Seasonal) غير مدعوم في الإصدار الحالي لعدم اكتمال دورة التسعير الشهرية/الموسمية في قراءات العدادات. "
+                    "يُرجى استخدام 'Flat' أو 'Flat Tier' أو 'Progressive Tier'."
+                ))
+            elif rec.pricing_mode == 'tou':
+                raise ValidationError(_(
+                    "نمط التسعير 'حسب وقت الاستخدام' (TOU) غير مدعوم في الإصدار الحالي ويتطلب توفر بيانات القراءات الفترية اللحظية (AMI/Interval Data). "
+                    "يُرجى استخدام 'Flat' أو 'Flat Tier' أو 'Progressive Tier'."
+                ))
+
     @api.constrains('min_charge', 'max_charge')
     def _check_min_max_charge(self):
         for r in self:
@@ -160,19 +227,30 @@ class UtilityContractTemplate(models.Model):
             if r.service_charge < 0:
                 raise ValidationError('رسم الخدمة الثابت لا يمكن أن يكون سالباً.')
 
+    @api.onchange('pricing_mode')
+    def _onchange_pricing_mode(self):
+        """تهيئة شريحة أولية تلقائياً عند اختيار نمط شرائح لتسهيل الإدخال ومنع رسائل الخطأ المفاجئة."""
+        if self.pricing_mode in ('tier', 'block') and not self.block_ids:
+            self.block_ids = [(0, 0, {
+                'sequence': 10,
+                'name': _('الشريحة الأولى (0-1,000)'),
+                'from_kwh': 0,
+                'to_kwh': 1000,
+                'price_per_kwh': self.price_per_kwh or 150.0,
+                'is_discount': False,
+            })]
+
     def _get_pricing_blocks(self):
         self.ensure_one()
-        return self.env['utility.contract.template.block'].search([
-            ('template_id', '=', self.id),
-            ('is_discount', '=', False),
-        ], order='from_kwh asc, sequence asc, id asc')
+        return self.block_ids.filtered(lambda b: not b.is_discount).sorted(
+            lambda b: (b.from_kwh or 0.0, b.sequence or 0, b.id or 0)
+        )
 
     def _get_discount_blocks(self):
         self.ensure_one()
-        return self.env['utility.contract.template.block'].search([
-            ('template_id', '=', self.id),
-            ('is_discount', '=', True),
-        ], order='from_kwh asc, sequence asc, id asc')
+        return self.discount_block_ids.filtered(lambda b: b.is_discount).sorted(
+            lambda b: (b.from_kwh or 0.0, b.sequence or 0, b.id or 0)
+        )
 
     def _validate_contract_template_tiers(self):
         """Validate complete pricing and discount tier configuration."""
@@ -196,10 +274,13 @@ class UtilityContractTemplate(models.Model):
                         % rec.name
                     )
 
-
     @api.constrains('pricing_mode', 'discount_formula_id', 'block_ids', 'discount_block_ids', 'line_ids')
     def _check_contract_template_tiers(self):
-        if self.env.context.get('install_mode') or self.env.context.get('install_module'):
+        if (
+            self.env.context.get('install_mode')
+            or self.env.context.get('install_module')
+            or self.env.context.get('skip_tier_validation')
+        ):
             return
         self._validate_contract_template_tiers()
 
@@ -223,15 +304,175 @@ class UtilityContractTemplate(models.Model):
             if rec.scope == 'restricted' and not rec.region_ids and not rec.area_ids:
                 raise ValidationError(_("يجب اختيار منطقة رئيسية أو منطقة فرعية واحدة على الأقل عند تحديد نطاق التغطية كمخصص!"))
 
+    # ── إدارة وتوليد الإصدارات التجارية (Version Management) ──────────────────
+    def _generate_version_snapshot_data(self):
+        """تجميع لقطة البيانات التجارية المسعرة بصيغة JSON قابلة للتدقيق التاريخي الكامل."""
+        self.ensure_one()
+        blocks_data = []
+        for b in self.block_ids.sorted(lambda x: (x.from_kwh, x.sequence, x.id)):
+            blocks_data.append({
+                'id': b.id,
+                'name': b.name or '',
+                'sequence': b.sequence,
+                'from_kwh': b.from_kwh or 0.0,
+                'to_kwh': b.to_kwh or 0.0,
+                'price_per_kwh': b.price_per_kwh or 0.0,
+                'is_discount': False,
+            })
+        discount_blocks_data = []
+        for db in self.discount_block_ids.sorted(lambda x: (x.from_kwh, x.sequence, x.id)):
+            discount_blocks_data.append({
+                'id': db.id,
+                'name': db.name or '',
+                'sequence': db.sequence,
+                'from_kwh': db.from_kwh or 0.0,
+                'to_kwh': db.to_kwh or 0.0,
+                'price_per_kwh': db.price_per_kwh or 0.0,
+                'is_discount': True,
+            })
+        lines_data = []
+        for l in self.line_ids.sorted('sequence'):
+            lines_data.append({
+                'id': l.id,
+                'sequence': l.sequence,
+                'name': l.name or '',
+                'meter_line_type': l.meter_line_type,
+                'specific_price': l.specific_price or 0.0,
+                'product_id': l.product_id.id if l.product_id else False,
+                'product_name': l.product_id.display_name if l.product_id else '',
+                'qty_formula_id': l.qty_formula_id.id if l.qty_formula_id else False,
+                'qty_formula_code': l.qty_formula_id.code if l.qty_formula_id else '',
+            })
+
+        return {
+            'template_id': self.id,
+            'template_code': self.code,
+            'template_name': self.name,
+            'pricing_mode': self.pricing_mode,
+            'price_per_kwh': self.price_per_kwh or 0.0,
+            'service_charge': self.service_charge or 0.0,
+            'min_charge': self.min_charge or 0.0,
+            'max_charge': self.max_charge or 0.0,
+            'local_fee_per_kwh': self.local_fee_per_kwh or 0.0,
+            'local_fee_mu_allim': self.local_fee_mu_allim or 0.0,
+            'local_fee_cleaning': self.local_fee_cleaning or 0.0,
+            'sponsor_id': self.sponsor_id.id if self.sponsor_id else False,
+            'sponsor_name': self.sponsor_id.name if self.sponsor_id else '',
+            'discount_formula_id': self.discount_formula_id.id if self.discount_formula_id else False,
+            'discount_formula_code': self.discount_formula_id.code if self.discount_formula_id else '',
+            'discount_formula_name': self.discount_formula_id.name if self.discount_formula_id else '',
+            'pricing_blocks': blocks_data,
+            'discount_blocks': discount_blocks_data,
+            'contract_lines': lines_data,
+        }
+
+    def _get_or_create_active_version(self):
+        """الحصول على الإصدار التجاري النشط أو إنشاء إصدار جديد إذا كان الإصدار السابق مستخدماً في فواتير."""
+        self.ensure_one()
+        latest = self.version_ids.sorted('version_number', reverse=True)[:1]
+        snapshot_dict = self._generate_version_snapshot_data()
+        snapshot_json = json.dumps(snapshot_dict, ensure_ascii=False, sort_keys=True)
+
+        if not latest:
+            version_num = 1
+            version_code = f"{self.code or 'CT'}-V{version_num}"
+            return self.env['utility.contract.template.version'].create({
+                'template_id': self.id,
+                'version_number': version_num,
+                'version_code': version_code,
+                'pricing_mode': self.pricing_mode,
+                'price_per_kwh': self.price_per_kwh,
+                'service_charge': self.service_charge,
+                'min_charge': self.min_charge,
+                'max_charge': self.max_charge,
+                'local_fee_per_kwh': self.local_fee_per_kwh,
+                'local_fee_mu_allim': self.local_fee_mu_allim,
+                'local_fee_cleaning': self.local_fee_cleaning,
+                'sponsor_id': self.sponsor_id.id if self.sponsor_id else False,
+                'discount_formula_id': self.discount_formula_id.id if self.discount_formula_id else False,
+                'discount_formula_name': self.discount_formula_id.name if self.discount_formula_id else False,
+                'pricing_snapshot_json': snapshot_json,
+            })
+
+        # فحص ما إذا كان هناك تغيير في التكوين التجاري مقارنة بأحدث إصدار
+        is_changed = (
+            latest.pricing_mode != self.pricing_mode or
+            latest.price_per_kwh != self.price_per_kwh or
+            latest.service_charge != self.service_charge or
+            latest.min_charge != self.min_charge or
+            latest.max_charge != self.max_charge or
+            latest.local_fee_per_kwh != self.local_fee_per_kwh or
+            latest.local_fee_mu_allim != self.local_fee_mu_allim or
+            latest.local_fee_cleaning != self.local_fee_cleaning or
+            latest.sponsor_id != self.sponsor_id or
+            latest.discount_formula_id != self.discount_formula_id or
+            latest.pricing_snapshot_json != snapshot_json
+        )
+
+        if not is_changed:
+            return latest
+
+        # إذا كان الإصدار الأخير مستخدماً في فواتير كهرباء سابقة -> ننشئ إصداراً جديداً برقم تصاعدي
+        if latest._is_actually_used_in_billing():
+            next_num = latest.version_number + 1
+            version_code = f"{self.code or 'CT'}-V{next_num}"
+            return self.env['utility.contract.template.version'].create({
+                'template_id': self.id,
+                'version_number': next_num,
+                'version_code': version_code,
+                'pricing_mode': self.pricing_mode,
+                'price_per_kwh': self.price_per_kwh,
+                'service_charge': self.service_charge,
+                'min_charge': self.min_charge,
+                'max_charge': self.max_charge,
+                'local_fee_per_kwh': self.local_fee_per_kwh,
+                'local_fee_mu_allim': self.local_fee_mu_allim,
+                'local_fee_cleaning': self.local_fee_cleaning,
+                'sponsor_id': self.sponsor_id.id if self.sponsor_id else False,
+                'discount_formula_id': self.discount_formula_id.id if self.discount_formula_id else False,
+                'discount_formula_name': self.discount_formula_id.name if self.discount_formula_id else False,
+                'pricing_snapshot_json': snapshot_json,
+            })
+        else:
+            # إذا لم يُستخدم الإصدار بعد في أي فاتورة -> نحدثه في مكانه
+            latest.with_context(_force_version_update=True).write({
+                'pricing_mode': self.pricing_mode,
+                'price_per_kwh': self.price_per_kwh,
+                'service_charge': self.service_charge,
+                'min_charge': self.min_charge,
+                'max_charge': self.max_charge,
+                'local_fee_per_kwh': self.local_fee_per_kwh,
+                'local_fee_mu_allim': self.local_fee_mu_allim,
+                'local_fee_cleaning': self.local_fee_cleaning,
+                'sponsor_id': self.sponsor_id.id if self.sponsor_id else False,
+                'discount_formula_id': self.discount_formula_id.id if self.discount_formula_id else False,
+                'discount_formula_name': self.discount_formula_id.name if self.discount_formula_id else False,
+                'pricing_snapshot_json': snapshot_json,
+            })
+            return latest
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        for rec in records:
+            rec._get_or_create_active_version()
+        return records
+
     def write(self, vals):
-        """عند تغيير الأسعار الرئيسية، سجّل التاريخ تلقائياً."""
+        """عند تغيير الأسعار أو التكوين التجاري، نسجل التاريخ ونحدث الإصدار التجاري."""
+        commercial_fields = {
+            'pricing_mode', 'price_per_kwh', 'service_charge', 'min_charge', 'max_charge',
+            'local_fee_per_kwh', 'local_fee_mu_allim', 'local_fee_cleaning',
+            'sponsor_id', 'discount_formula_id', 'block_ids', 'discount_block_ids', 'line_ids'
+        }
+        needs_version_sync = bool(commercial_fields & set(vals))
         price_fields = {'price_per_kwh', 'service_charge'}
         needs_history = bool(price_fields & set(vals))
 
         # التقاط القيم القديمة قبل الكتابة
         old_prices = {}
         if needs_history:
-                old_prices = {
+            old_prices = {
                 r.id: {
                     'price_per_kwh': r.price_per_kwh,
                     'service_charge': r.service_charge,
@@ -258,6 +499,11 @@ class UtilityContractTemplate(models.Model):
                         'changed_by': self.env.user.id,
                         'reason': 'تغيير تلقائي عبر النموذج',
                     })
+
+        if needs_version_sync and not self.env.context.get('_bypass_version_sync'):
+            for r in self:
+                r._get_or_create_active_version()
+
         return res
 
     def action_sync_lines_with_template(self):
@@ -277,7 +523,6 @@ class UtilityContractTemplate(models.Model):
             or service_product
         )
 
-        # FIX: التحقق من وجود المنتجات قبل إنشاء البنود
         if not kwh_product:
             raise ValidationError(
                 'لا يوجد منتج kWh محدد. المسار: '
@@ -389,27 +634,65 @@ class UtilityContractTemplate(models.Model):
 
     def action_create_biweekly_blocks(self):
         """إنشاء الشرائح الثمانية النموذجية لقالب العقد الحالي"""
+        blocks_data = [
+            {'sequence': 10, 'name': 'الشريحة الأولى (0-2,999)', 'from_kwh': 0, 'to_kwh': 3000, 'price_per_kwh': 230, 'is_discount': False},
+            {'sequence': 20, 'name': 'الشريحة الثانية (3,000-9,999)', 'from_kwh': 3000, 'to_kwh': 10000, 'price_per_kwh': 220, 'is_discount': False},
+            {'sequence': 30, 'name': 'الشريحة الثالثة (10,000-19,999)', 'from_kwh': 10000, 'to_kwh': 20000, 'price_per_kwh': 200, 'is_discount': False},
+            {'sequence': 40, 'name': 'الشريحة الرابعة (20,000-29,999)', 'from_kwh': 20000, 'to_kwh': 30000, 'price_per_kwh': 190, 'is_discount': False},
+            {'sequence': 50, 'name': 'الشريحة الخامسة (30,000-99,999)', 'from_kwh': 30000, 'to_kwh': 100000, 'price_per_kwh': 185, 'is_discount': False},
+            {'sequence': 60, 'name': 'الشريحة السادسة (100,000-199,999)', 'from_kwh': 100000, 'to_kwh': 200000, 'price_per_kwh': 180, 'is_discount': False},
+            {'sequence': 70, 'name': 'الشريحة السابعة (200,000-299,999)', 'from_kwh': 200000, 'to_kwh': 300000, 'price_per_kwh': 175, 'is_discount': False},
+            {'sequence': 80, 'name': 'الشريحة الثامنة (300,000+)', 'from_kwh': 300000, 'to_kwh': 0, 'price_per_kwh': 170, 'is_discount': False},
+        ]
+        ctx = dict(self.env.context, skip_tier_validation=True)
+        Block = self.env['utility.contract.template.block']
         for template in self:
-            template.block_ids.unlink()
-            blocks_data = [
-                {'sequence': 10, 'name': 'الشريحة الأولى (0-2,999)', 'from_kwh': 0, 'to_kwh': 3000, 'price_per_kwh': 230},
-                {'sequence': 20, 'name': 'الشريحة الثانية (3,000-9,999)', 'from_kwh': 3000, 'to_kwh': 10000, 'price_per_kwh': 220},
-                {'sequence': 30, 'name': 'الشريحة الثالثة (10,000-19,999)', 'from_kwh': 10000, 'to_kwh': 20000, 'price_per_kwh': 200},
-                {'sequence': 40, 'name': 'الشريحة الرابعة (20,000-29,999)', 'from_kwh': 20000, 'to_kwh': 30000, 'price_per_kwh': 190},
-                {'sequence': 50, 'name': 'الشريحة الخامسة (30,000-99,999)', 'from_kwh': 30000, 'to_kwh': 100000, 'price_per_kwh': 185},
-                {'sequence': 60, 'name': 'الشريحة السادسة (100,000-199,999)', 'from_kwh': 100000, 'to_kwh': 200000, 'price_per_kwh': 180},
-                {'sequence': 70, 'name': 'الشريحة السابعة (200,000-299,999)', 'from_kwh': 200000, 'to_kwh': 300000, 'price_per_kwh': 175},
-                {'sequence': 80, 'name': 'الشريحة الثامنة (300,000+)', 'from_kwh': 300000, 'to_kwh': 0, 'price_per_kwh': 170},
-            ]
-            for b in blocks_data:
-                b['template_id'] = template.id
-            self.env['utility.contract.template.block'].create(blocks_data)
+            # حذف الشرائح الحالية بشكل صريح مع تجاوز التحقق المؤقت
+            existing = Block.with_context(ctx).search([
+                ('template_id', '=', template.id),
+                ('is_discount', '=', False),
+            ])
+            existing.with_context(ctx).unlink()
+            # إنشاء الشرائح الثمانية الجديدة
+            new_blocks = [{**b, 'template_id': template.id} for b in blocks_data]
+            Block.with_context(ctx).create(new_blocks)
+            # التحقق النهائي الصارم بعد اكتمال العملية
+            template._validate_contract_template_tiers()
         
         if len(self) == 1:
             return {
                 'type': 'ir.actions.client',
                 'tag': 'reload',
             }
+
+    def action_view_versions(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('إصدارات قالب العقد: %s') % self.name,
+            'res_model': 'utility.contract.template.version',
+            'view_mode': 'tree,form',
+            'domain': [('template_id', '=', self.id)],
+            'context': {'default_template_id': self.id, 'create': False, 'delete': False},
+        }
+
+    def action_open_clone_wizard(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('استنساخ كقالب جديد (Create From Existing Template)'),
+            'res_model': 'utility.contract.template.clone.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {
+                'default_source_template_id': self.id,
+                'default_new_name': _('%s (نسخة)') % self.name,
+                'default_new_code': f"{self.code or 'CT'}_COPY",
+                'default_target_scope': self.scope,
+                'default_target_region_ids': [(6, 0, self.region_ids.ids)],
+                'default_target_area_ids': [(6, 0, self.area_ids.ids)],
+            },
+        }
 
 
 class UtilityContractTemplateLine(models.Model):
@@ -457,3 +740,27 @@ class UtilityContractTemplateLine(models.Model):
         help='معادلة ديناميكية تحسب الكمية تلقائياً (متغيرات: الاستهلاك، قالب العقد، الحساب، الفئة)')
     is_subsidized = fields.Boolean('خصم مدعوم',
         help='يطبق الخصم حسب فئة المشترك — يعمل فقط مع نوع بند العداد = خصم')
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        if not self.env.context.get('_bypass_version_sync'):
+            for t in records.mapped('template_id'):
+                t._get_or_create_active_version()
+        return records
+
+    def write(self, vals):
+        templates = self.mapped('template_id')
+        res = super().write(vals)
+        if not self.env.context.get('_bypass_version_sync'):
+            for t in (templates | self.mapped('template_id')):
+                t._get_or_create_active_version()
+        return res
+
+    def unlink(self):
+        templates = self.mapped('template_id')
+        res = super().unlink()
+        if not self.env.context.get('_bypass_version_sync'):
+            for t in templates:
+                t._get_or_create_active_version()
+        return res

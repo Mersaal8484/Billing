@@ -11,8 +11,8 @@
                 <field name="bank_journal_id"/>
                 <field name="deposited_amount" widget="monetary"/>
                 <field name="state" widget="badge"
-                       decoration-success="state == 'reconciled'"
-                       decoration-warning="state in ('confirmed', 'waiting_bank_match')"
+                       decoration-success="state == 'settled'"
+                       decoration-warning="state == 'confirmed'"
                        decoration-muted="state in ('draft', 'cancelled')"/>
             </tree>
         </field>
@@ -26,12 +26,8 @@
                 <header>
                     <button name="action_confirm" type="object" string="تأكيد"
                             class="btn-primary" attrs="{'invisible': [('state', '!=', 'draft')]}"/>
-                    <button name="action_post" type="object" string="إرسال للمطابقة"
-                            class="btn-primary" attrs="{'invisible': [('state', '!=', 'confirmed')]}"/>
-                    <button name="action_reconcile" type="object" string="مطابقة البنك"
-                            class="btn-primary" attrs="{'invisible': [('state', '!=', 'waiting_bank_match')]}"/>
                     <field name="state" widget="statusbar"
-                           statusbar_visible="draft,confirmed,waiting_bank_match,reconciled"/>
+                           statusbar_visible="draft,confirmed,settled"/>
                 </header>
                 <sheet>
                     <group>
@@ -40,13 +36,13 @@
                             <field name="deposit_date"/>
                             <field name="bank_reference"/>
                             <field name="deposit_slip_number"/>
+                            <field name="collector_id"/>
+                            <field name="deposit_amount"/>
                             <field name="currency_id"/>
                         </group>
                         <group string="الحساب البنكي">
                             <field name="bank_journal_id"/>
                             <field name="bank_account_id"/>
-                            <field name="statement_line_id"
-                                   attrs="{'readonly': [('state', '!=', 'waiting_bank_match')]}"/>
                             <field name="account_move_id"/>
                         </group>
                     </group>
@@ -82,10 +78,8 @@
                 <field name="bank_reference"/>
                 <field name="bank_journal_id"/>
                 <field name="state"/>
-                <filter name="waiting" string="بانتظار البنك"
-                        domain="[('state', '=', 'waiting_bank_match')]"/>
-                <filter name="reconciled" string="مطابق"
-                        domain="[('state', '=', 'reconciled')]"/>
+                <filter name="settled" string="تمت التسوية"
+                        domain="[('state', '=', 'settled')]"/>
             </search>
         </field>
     </record>

@@ -7,7 +7,7 @@
             <tree decoration-success="active == True" decoration-muted="active == False">
                 <field name="employee_code"/>
                 <field name="name"/>
-                <field name="user_role_id" widget="badge" optional="show"/>
+                <field name="role_ids" widget="many2many_tags" optional="show"/>
                 <field name="region_id" optional="show"/>
                 <field name="area_id" optional="show"/>
                 <field name="team_id" optional="show"/>
@@ -57,19 +57,19 @@
                         </h1>
                         <h3>
                             <field name="employee_code" placeholder="رمز الموظف (مثال: EMP001)" class="oe_inline me-2"/>
-                            <field name="user_role_id" widget="badge" options="{'no_create': True}" class="oe_inline"/>
+                            <field name="role_ids" widget="many2many_tags" options="{'no_create': True}" class="oe_inline"/>
                         </h3>
                     </div>
 
                     <group>
-                        <group name="identity" string="بيانات الهوية والعمل والجغرافيا">
-                            <field name="user_role_id" options="{'no_create': True}"/>
+                        <group name="identity" string="بيانات الهوية والأدوار التشغيلية">
+                            <field name="role_ids" widget="many2many_tags" options="{'no_create': True}"/>
                             <field name="region_id" options="{'no_create': True}"/>
                             <field name="area_id" options="{'no_create': True}" domain="[('type', '=', 'area')]"/>
                             <field name="team_id" options="{'no_create': True}"/>
                             <field name="company_id" groups="base.group_multi_company" options="{'no_create': True}"/>
                         </group>
-                        <group name="contact" string="بيانات الاتصال والحساب">
+                        <group name="contact" string="بيانات الاتصال وحساب المستخدم">
                             <field name="mobile" placeholder="77XXXXXXX"/>
                             <field name="phone" placeholder="01XXXXXX"/>
                             <field name="user_id" options="{'no_create': True}"/>
@@ -81,6 +81,7 @@
                             <group>
                                 <group string="إعدادات اليومية النقدية">
                                     <field name="collection_journal_id" options="{'no_create': True}"/>
+                                    <field name="cash_account_id" readonly="1"/>
                                 </group>
                                 <group string="حالة الحساب">
                                     <field name="active"/>
@@ -105,7 +106,7 @@
             <search string="بحث الموظفين">
                 <field name="name" string="اسم الموظف"/>
                 <field name="employee_code"/>
-                <field name="user_role_id"/>
+                <field name="role_ids"/>
                 <field name="region_id"/>
                 <field name="area_id"/>
                 <field name="team_id"/>
@@ -114,7 +115,6 @@
                 <filter name="active" string="النشطون فقط" domain="[('active','=',True)]"/>
                 <filter name="inactive" string="المعطلون" domain="[('active','=',False)]"/>
                 <group expand="0" string="تجميع حسب">
-                    <filter name="group_user_role_id" string="الدور" context="{'group_by':'user_role_id'}"/>
                     <filter name="group_region_id" string="المنطقة" context="{'group_by':'region_id'}"/>
                     <filter name="group_area_id" string="الفرع / المنطقة الفرعية" context="{'group_by':'area_id'}"/>
                     <filter name="group_team" string="الفريق" context="{'group_by':'team_id'}"/>

@@ -1,4 +1,4 @@
-﻿from odoo import api, fields, models, _
+from odoo import api, fields, models, _
 from odoo.exceptions import UserError
 
 
@@ -89,3 +89,4 @@ class UtilityCustomer(models.Model):
             'domain': [('utility_customer_id', '=', self.id)],
             'context': {'default_utility_customer_id': self.id, 'create': False},
         }
+

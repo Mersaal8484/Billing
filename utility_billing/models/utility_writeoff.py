@@ -1,5 +1,5 @@
 from odoo import api, fields, models, _
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError, ValidationError
 
 
 class UtilityWriteoff(models.Model):
@@ -33,7 +33,13 @@ class UtilityWriteoff(models.Model):
     ], string='الحالة', default='draft')
 
     # ربط القيد المحاسبي الناتج
-    move_id = fields.Many2one('account.move', 'إشعار الدائن', readonly=True)
+    move_id = fields.Many2one(
+        'account.move',
+        'إشعار الدائن',
+        readonly=True,
+        copy=False,
+        ondelete='restrict',
+    )
 
     @api.constrains('amount')
     def _check_positive_amount(self):
@@ -50,6 +56,11 @@ class UtilityWriteoff(models.Model):
 
     def action_approve(self):
         for rec in self:
+            self.env.user.check_record_scope(rec)
+            if rec.move_id or rec.state != 'draft':
+                raise ValidationError(
+                    _('لا يمكن اعتماد الإعفاء إلا من حالة المسودة ومن دون إشعار دائن.')
+                )
             rec.write({
                 'state': 'approved',
                 'approved_by': self.env.user.id
@@ -62,11 +73,39 @@ class UtilityWriteoff(models.Model):
             return val.id if hasattr(val, 'id') else val
         return int(self.env['ir.config_parameter'].sudo().get_param(config_key, 0))
 
+    def action_view_credit_note(self):
+        """Open the single credit note generated for this write-off."""
+        self.ensure_one()
+        if not self.move_id:
+            return False
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('إشعار الدائن'),
+            'res_model': 'account.move',
+            'view_mode': 'form',
+            'res_id': self.move_id.id,
+            'target': 'current',
+        }
+
     def action_apply(self):
         for rec in self:
+            # Serialize concurrent applications so exactly one credit note can
+            # be created and linked to this write-off.
+            self.env.flush_all()
+            self.env.cr.execute(
+                'SELECT id FROM utility_writeoff WHERE id = %s FOR UPDATE',
+                [rec.id],
+            )
+            rec.invalidate_recordset(['state', 'move_id'])
+
+            if rec.move_id:
+                raise UserError(
+                    _('تم تطبيق هذا الإعفاء مسبقاً وإشعار الدائن المرتبط به هو %s.')
+                    % rec.move_id.display_name
+                )
             if rec.state != 'approved':
                 raise ValidationError(
-                    'يجب اعتماد الإثبات أولاً قبل التطبيق. الحالة الحالية: %s' % rec.state
+                    _('يجب اعتماد الإعفاء أولاً قبل التطبيق. الحالة الحالية: %s') % rec.state
                 )
             if not rec.sale_order_id:
                 raise ValidationError('يجب تحديد الفاتورة المرتبطة قبل تطبيق الإثبات.')
@@ -117,6 +156,14 @@ class UtilityWriteoff(models.Model):
 
     def action_draft(self):
         for rec in self:
+            if rec.move_id or rec.state == 'applied':
+                raise UserError(
+                    _('لا يمكن إعادة فتح إعفاء تم تطبيقه أو نتج عنه أثر مالي.')
+                )
+            if rec.state != 'approved':
+                raise ValidationError(
+                    _('لا يمكن إعادة الإعفاء إلى المسودة إلا من حالة الاعتماد.')
+                )
             rec.write({
                 'state': 'draft',
                 'approved_by': False

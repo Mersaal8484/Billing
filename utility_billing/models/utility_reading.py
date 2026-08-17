@@ -1,6 +1,8 @@
 import logging
+from psycopg2 import IntegrityError
 from odoo import api, fields, models, _
-from odoo.exceptions import ValidationError
+from odoo.exceptions import AccessError, ValidationError
+from odoo.addons.utility_core.models.utility_date_range import normalize_billing_cadence
 
 _logger = logging.getLogger(__name__)
 
@@ -9,6 +11,123 @@ class UtilityReading(models.Model):
     _inherit = 'utility.reading'
 
     batch_id = fields.Many2one('utility.reading.batch', 'الدفعة', readonly=True, index=True)
+    is_billable = fields.Boolean(
+        string='قراءة قابلة للفوترة',
+        compute='_compute_is_billable',
+        store=True,
+        index=True,
+    )
+    billing_anchor_id = fields.Many2one(
+        'utility.reading', 'القراءة الدورية المرتبطة', index=True,
+        readonly=True, copy=False, ondelete='restrict',
+    )
+    billing_component_ids = fields.One2many(
+        'utility.reading', 'billing_anchor_id', 'قراءات الإغلاق المضمّنة',
+    )
+    included_sale_order_id = fields.Many2one(
+        'sale.order', 'الفاتورة المتضمنة', index=True, readonly=True,
+        copy=False, ondelete='restrict',
+    )
+    carried_consumption = fields.Float(
+        'استهلاك مرحل', compute='_compute_billing_consumption', store=True,
+    )
+    billing_consumption = fields.Float(
+        'استهلاك الفاتورة', compute='_compute_billing_consumption', store=True,
+    )
+    billing_error = fields.Text('خطأ الفوترة', readonly=True)
+
+    def init(self):
+        """Keep core performance and review query indexes."""
+        super().init()
+        self.env.cr.execute("""
+            CREATE INDEX IF NOT EXISTS utility_reading_review_state_billable_date_idx
+            ON utility_reading (state, is_billable, reading_date DESC, id DESC);
+        """)
+
+    def _is_commercial_subject(self):
+        """Return whether the reading belongs to a billable subject."""
+        self.ensure_one()
+        return (
+            self.reading_category == 'customer'
+            or (
+                self.reading_category == 'transformer'
+                and self.is_private_transformer
+            )
+        )
+
+    def _canonical_reading_purpose(self):
+        self.ensure_one()
+        return 'closing' if self.reading_purpose == 'replacement_closing' else self.reading_purpose
+
+    def _is_replacement_reading(self):
+        self.ensure_one()
+        return self.reading_event == 'replacement' or self.reading_purpose == 'replacement_closing'
+
+    def _is_billable_reading(self):
+        """Return whether this reading directly creates a postpaid bill."""
+        self.ensure_one()
+        return self._is_commercial_subject() and self.reading_purpose == 'periodic'
+
+    def _requires_billing_review(self):
+        self.ensure_one()
+        return self.is_billable
+
+    @api.depends('reading_category', 'reading_purpose', 'is_private_transformer')
+    def _compute_is_billable(self):
+        for reading in self:
+            reading.is_billable = reading._is_billable_reading()
+
+    @api.depends('consumption', 'reading_purpose', 'billing_component_ids.consumption')
+    def _compute_billing_consumption(self):
+        for reading in self:
+            if reading.reading_purpose == 'periodic':
+                reading.carried_consumption = sum(reading.billing_component_ids.mapped('consumption'))
+                reading.billing_consumption = reading.consumption + reading.carried_consumption
+            else:
+                reading.carried_consumption = 0.0
+                reading.billing_consumption = 0.0
+
+    @api.constrains('account_id', 'date_range_id', 'state', 'reading_category', 'reading_purpose', 'active')
+    def _check_unique_billable_reading_per_period(self):
+        """Prevent duplicate active periodic readings for one account and period."""
+        for reading in self.filtered(lambda rec: rec.is_billable and rec.date_range_id and rec.active):
+            duplicate = self.search([
+                ('account_id', '=', reading.account_id.id),
+                ('date_range_id', '=', reading.date_range_id.id),
+                ('reading_purpose', '=', 'periodic'),
+                ('reading_category', '=', reading.reading_category),
+                ('active', '=', True),
+                ('id', '!=', reading.id),
+            ], limit=1)
+            if duplicate:
+                raise ValidationError(_(
+                    'يوجد قراءة دورية أخرى للحساب [%s] في فترة الفوترة [%s].'
+                ) % (reading.account_id.display_name, reading.date_range_id.name))
+
+    @api.constrains('reading_purpose', 'date_range_id', 'billing_anchor_id', 'account_id', 'reading_date')
+    def _check_billing_reading_rules(self):
+        """Validate billing-specific period and component invariants."""
+        for reading in self:
+            if reading.is_billable:
+                if not reading.account_id:
+                    raise ValidationError(_('القراءة القابلة للفوترة تتطلب حساب مشترك.'))
+                if not reading.date_range_id:
+                    raise ValidationError(_('القراءة الدورية تتطلب تحديد الفترة المفتوحة للقراءة بحسب العقد.'))
+                period = reading.date_range_id
+                expected = reading.account_id._get_effective_billing_period()
+                if period.period_role and period.period_role != 'reading':
+                    raise ValidationError(_('فترة القراءة الدورية يجب أن تكون من نوع قراءات.'))
+                cadence = period.billing_cadence or getattr(period, 'billing_period', False)
+                if expected and cadence and normalize_billing_cadence(cadence) != normalize_billing_cadence(expected):
+                    raise ValidationError(_(
+                        'دورية الفترة المختارة (%s) لا تطابق دورية المشترك (%s).'
+                    ) % (cadence, expected))
+            anchor = reading.billing_anchor_id
+            if anchor and (
+                    anchor.reading_purpose != 'periodic'
+                    or anchor.account_id != reading.account_id
+                    or anchor.reading_date < reading.reading_date):
+                raise ValidationError(_('يجب أن تكون قراءة الربط دورية ولاحقة ومن حساب المشترك نفسه.'))
 
     def _check_billing_period_mutation(self, vals=None):
         """Prevent ordinary reading changes after the billing period is closed."""
@@ -30,7 +149,14 @@ class UtilityReading(models.Model):
             if closed:
                 raise ValidationError(_(
                     'لا يمكن إنشاء قراءة في الفترة المغلقة أو المقفلة [%s].') % closed.name)
-        return super().create(vals_list)
+        try:
+            with self.env.cr.savepoint():
+                return super().create(vals_list)
+        except IntegrityError as e:
+            err_str = f"{str(e)} {getattr(e, 'pgerror', '')}"
+            if 'utility_reading_unique_periodic_account_period_idx' in err_str:
+                raise ValidationError(_('يوجد قراءة دورية أخرى مسجلة مسبقاً لنفس الحساب والفترة.'))
+            raise
 
     def write(self, vals):
         self._check_billing_period_mutation(vals)
@@ -57,7 +183,7 @@ class UtilityReading(models.Model):
             )
         )
         if readings:
-            readings.with_context(_bypass_reading_protection=True).write({
+            readings.with_context(_reading_state_transition=True, _bypass_reading_protection=True).write({
                 'state': 'queued',
                 'billing_error': False,
             })
@@ -113,30 +239,32 @@ class UtilityReading(models.Model):
         return self.search(domain, order='reading_date, id')
 
     def _lock_closing_components(self, closings):
-        """Lock still-unassigned closing readings against concurrent billing workers."""
+        """Serialize closing components so two concurrent bills cannot both claim them."""
         if not closings:
             return closings
         self.env.flush_all()
-        self.env.cr.execute("""
-            SELECT id
-              FROM utility_reading
-             WHERE id IN %s
-               AND billing_anchor_id IS NULL
-               AND included_sale_order_id IS NULL
-             FOR UPDATE
-        """, [tuple(closings.ids)])
-        locked_ids = [row[0] for row in self.env.cr.fetchall()]
-        return self.browse(locked_ids)
+        self.env.cr.execute(
+            'SELECT id FROM utility_reading WHERE id IN %s FOR UPDATE',
+            [tuple(closings.ids)],
+        )
+        closings.invalidate_cache(['billing_anchor_id', 'included_sale_order_id'])
+        claimed = closings.filtered(lambda reading: reading.billing_anchor_id or reading.included_sale_order_id)
+        if claimed:
+            raise ValidationError(_('تم تضمين قراءة استبدال في فاتورة أخرى بالفعل.'))
+        return closings
 
     def _prepare_component_vals(self, order, readings):
-        """Prepare immutable billing snapshots for all consumption segments."""
+        self.ensure_one()
         return [{
-            'sale_order_id': order.id,
+            'order_id': order.id,
             'reading_id': reading.id,
-            'account_id': reading.account_id.id,
+            'customer_id': self.account_id.id,
             'meter_id': reading.meter_id.id,
-            'period_start': reading.previous_reading_date,
-            'period_end': reading.reading_date,
+            'reading_purpose': self._canonical_reading_purpose(),
+            'period_start': self.date_range_id.date_start or (
+                self.previous_reading_date.date() if self.previous_reading_date else fields.Date.today()),
+            'period_end': self.date_range_id.date_end or (
+                self.reading_date.date() if self.reading_date else fields.Date.today()),
             'previous_reading': reading.previous_reading,
             'current_reading': reading.reading_value,
             'meter_multiplier': reading.meter_multiplier or 1.0,
@@ -146,7 +274,22 @@ class UtilityReading(models.Model):
 
     def _action_generate_periodic_bill(self):
         """Create one bill from a periodic reading and pending closing segments."""
+        if not (self.env.user.has_group('utility_core.group_utility_billing_manager')
+                or self.env.user.has_group('utility_core.group_utility_admin')
+                or self.env.su):
+            raise AccessError(_('ليس لديك صلاحية إصدار فواتير الكهرباء. يتطلب صلاحية مدير الفوترة أو مدير النظام.'))
+
         self.ensure_one()
+        if self.state == 'billed' or self.included_sale_order_id:
+            if self.included_sale_order_id and self.included_sale_order_id.state != 'cancel':
+                return {
+                    'type': 'ir.actions.act_window',
+                    'res_model': 'sale.order',
+                    'res_id': self.included_sale_order_id.id,
+                    'views': [(False, 'form')],
+                }
+            raise ValidationError(_('هذه القراءة مفوترة بالفعل مسبقاً.'))
+
         if self.reading_purpose != 'periodic':
             raise ValidationError(_('لا يمكن إنشاء فاتورة إلا من قراءة دورية.'))
         if self.state not in ('approved', 'queued'):
@@ -155,7 +298,7 @@ class UtilityReading(models.Model):
             period = self._get_current_billing_date_range()
             if not period:
                 raise ValidationError(_('يجب تحديد فترة القراءة الدورية قبل الفوترة.'))
-            self.with_context(_bypass_reading_protection=True).write({'date_range_id': period.id})
+            self.with_context(_reading_state_transition=True, _bypass_reading_protection=True).write({'date_range_id': period.id})
         
         if self.date_range_id.state in ('closed', 'locked'):
             raise ValidationError(_('فترة القراءة (%s) في حالة (%s) وتمنع إنشاء فواتير جديدة.') % (self.date_range_id.name, self.date_range_id.state))
@@ -177,32 +320,41 @@ class UtilityReading(models.Model):
             self._get_unbilled_closing_components())
         total_consumption = self.consumption + sum(closings.mapped('consumption'))
         template = self.account_id.contract_template_id
-        order = self.env['sale.order'].create({
-            'partner_id': self.account_id.partner_id.id or self.env.company.partner_id.id,
-            'customer_id': self.account_id.id,
-            'meter_id': self.meter_id.id,
-            'reading_id': self.id,
-            'date_range_id': self.date_range_id.id,
-            'date_order': fields.Datetime.now(),
-            'period_start': self.date_range_id.date_start or (
-                self.previous_reading_date.date() if self.previous_reading_date else fields.Date.today()),
-            'period_end': self.date_range_id.date_end or (
-                self.reading_date.date() if self.reading_date else fields.Date.today()),
-            'previous_reading': self.previous_reading,
-            'current_reading': self.reading_value,
-            'consumption': total_consumption,
-            'contract_template_id': template.id if template else False,
-        })
+        version = template._get_or_create_active_version() if template else False
+        try:
+            with self.env.cr.savepoint():
+                order = self.env['sale.order'].create({
+                    'partner_id': self.account_id.partner_id.id or self.env.company.partner_id.id,
+                    'customer_id': self.account_id.id,
+                    'meter_id': self.meter_id.id,
+                    'reading_id': self.id,
+                    'date_range_id': self.date_range_id.id,
+                    'date_order': fields.Datetime.now(),
+                    'period_start': self.date_range_id.date_start or (
+                        self.previous_reading_date.date() if self.previous_reading_date else fields.Date.today()),
+                    'period_end': self.date_range_id.date_end or (
+                        self.reading_date.date() if self.reading_date else fields.Date.today()),
+                    'previous_reading': self.previous_reading,
+                    'current_reading': self.reading_value,
+                    'consumption': total_consumption,
+                    'contract_template_id': template.id if template else False,
+                    'contract_template_version_id': version.id if version else False,
+                })
+        except IntegrityError as e:
+            err_str = f"{str(e)} {getattr(e, 'pgerror', '')}"
+            if 'utility_sale_order_unique_active_reading_idx' in err_str:
+                raise ValidationError(_('تم إنشاء فاتورة نشطة لهذه القراءة مسبقاً.'))
+            raise
         all_components = closings | self
         self.env['utility.bill.reading.component'].create(
             self._prepare_component_vals(order, all_components))
         if closings:
-            closings.with_context(_bypass_reading_protection=True).write({
+            closings.with_context(_reading_state_transition=True, _bypass_reading_protection=True).write({
                 'billing_anchor_id': self.id,
                 'included_sale_order_id': order.id,
                 'state': 'billed',
             })
-        self.with_context(_bypass_reading_protection=True).write({
+        self.with_context(_reading_state_transition=True, _bypass_reading_protection=True).write({
             'included_sale_order_id': order.id,
         })
         if template:
@@ -214,7 +366,7 @@ class UtilityReading(models.Model):
             order.attachment_id = self.image_asset_id.original_attachment_id
         elif self.attachment_id:
             order.attachment_id = self.attachment_id
-        self.with_context(_bypass_reading_protection=True).write({
+        self.with_context(_reading_state_transition=True, _bypass_reading_protection=True).write({
             'state': 'billed', 'billing_error': False,
         })
         self.account_id.write({
@@ -232,13 +384,21 @@ class UtilityReading(models.Model):
         return self._action_generate_periodic_bill()
 
     def action_generate_bills_batch(self):
+        if not (self.env.user.has_group('utility_core.group_utility_billing_manager')
+                or self.env.user.has_group('utility_core.group_utility_admin')
+                or self.env.su):
+            raise AccessError(_('ليس لديك صلاحية إصدار فواتير الكهرباء. يتطلب صلاحية مدير الفوترة أو مدير النظام.'))
+
         readings = self.filtered(lambda r: r.reading_purpose == 'periodic' and r.date_range_id and r.state == 'approved' and r.is_billable and (
             r.reading_category == 'customer' or
             (r.reading_category == 'transformer' and r.is_private_transformer)
         ))
         if not readings:
             raise ValidationError('لا توجد قراءات معتمدة قابلة للفوترة!')
-        readings.write({'state': 'queued', 'billing_error': False})
+        readings.with_context(_reading_state_transition=True, _bypass_reading_protection=True).write({
+            'state': 'queued',
+            'billing_error': False,
+        })
         return {
             'type': 'ir.actions.client',
             'tag': 'display_notification',
@@ -266,13 +426,20 @@ class UtilityReading(models.Model):
             ('is_private_transformer', '=', True),
         ], limit=batch_size, order='reading_date asc, id asc')
         if readings:
-            readings.write({'state': 'queued', 'billing_error': False})
+            readings.with_context(_reading_state_transition=True, _bypass_reading_protection=True).write({
+                'state': 'queued',
+                'billing_error': False,
+            })
         return len(readings)
+
     def action_requeue(self):
         for r in self:
             if r.state != 'error':
                 raise ValidationError('يمكن إعادة المحاولة فقط للقراءات التي بها خطأ!')
-            r.write({'state': 'queued', 'billing_error': False})
+            r.with_context(_reading_state_transition=True, _bypass_reading_protection=True).write({
+                'state': 'queued',
+                'billing_error': False,
+            })
 
     @api.model
     def _cron_generate_bills(self):
@@ -290,7 +457,7 @@ class UtilityReading(models.Model):
                     reading.action_generate_bill()
                 success_count += 1
             except Exception as exc:
-                reading.write({
+                reading.with_context(_reading_state_transition=True, _bypass_reading_protection=True).write({
                     'state': 'error',
                     'billing_error': str(exc),
                 })
@@ -299,8 +466,9 @@ class UtilityReading(models.Model):
                     reading.display_name,
                 )
                 error_count += 1
-
         _logger.info(
-            'Batch Billing: processed %d readings (%d success, %d errors)',
-            len(readings), success_count, error_count
+            'Billing cron processed %d readings: %d success, %d failed',
+            len(readings),
+            success_count,
+            error_count,
         )

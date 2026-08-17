@@ -1,4 +1,5 @@
 from odoo import api, fields, models, _
+from odoo.exceptions import AccessError
 
 
 class UtilityRoute(models.Model):
@@ -26,14 +27,14 @@ class UtilityRoute(models.Model):
     inspector_ids = fields.Many2many(
         'utility.staff', 'route_inspector_rel', 'route_id', 'staff_id',
         string='الكشافون',
-        domain="[('user_role_id.code', '=', 'inspector')]",
+        domain="[('role_ids.code', '=', 'inspector')]",
     )
     cashier_ids = fields.Many2many(
         'utility.staff', 'route_cashier_rel', 'route_id', 'staff_id',
         string='المحصلون الميدانيون',
-        domain="[('user_role_id.code', '=', 'collector')]",
+        domain="[('role_ids.code', '=', 'collector')]",
     )
-    supervisor_id = fields.Many2one('utility.staff', string='المشرف', domain="[('user_role_id.code', '=', 'supervisor')]")
+    supervisor_id = fields.Many2one('utility.staff', string='المشرف', domain="[('role_ids.code', '=', 'supervisor')]")
 
     _sql_constraints = [
         ('unique_route_code_area', 'unique(code, area_id)', 'رمز المسار يجب أن يكون فريداً لكل منطقة!'),
@@ -108,6 +109,11 @@ class UtilityRouteAddCustomerWizard(models.TransientModel):
 
     def action_add(self):
         self.ensure_one()
+        if not (
+            self.env.user.has_group('utility_core.group_utility_supervisor')
+            or self.env.user.has_group('utility_core.group_utility_admin')
+        ):
+            raise AccessError(_('ليس لديك صلاحية إسناد المشتركين إلى المسارات.'))
         if self.customer_ids and self.route_id:
             self.customer_ids.write({'route_id': self.route_id.id})
         return {'type': 'ir.actions.act_window_close'}
@@ -138,6 +144,11 @@ class UtilityRouteRemoveCustomerWizard(models.TransientModel):
 
     def action_remove(self):
         self.ensure_one()
+        if not (
+            self.env.user.has_group('utility_core.group_utility_supervisor')
+            or self.env.user.has_group('utility_core.group_utility_admin')
+        ):
+            raise AccessError(_('ليس لديك صلاحية إزالة المشتركين من المسارات.'))
         if self.customer_ids:
             self.customer_ids.write({'route_id': False})
         return {'type': 'ir.actions.act_window_close'}

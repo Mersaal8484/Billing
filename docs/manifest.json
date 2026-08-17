@@ -1,0 +1,52 @@
+{
+  "documentation_version": "2.1",
+  "repository": "AbdulrhmanBashammmakh/utility_erp",
+  "branch": "development",
+  "documentation_root": "docs",
+  "implementation_sha": "51e8dba5c47ed8ff9d1485b519e1b1586cb30522",
+  "architecture_baseline_sha": "13df4c5263abe2e211fc12dc0c3c62f86e87a048",
+  "updated_date": "2026-08-14",
+  "scope": {
+    "current_v1": [
+      "date_range",
+      "utility_core",
+      "utility_inventory",
+      "utility_operations",
+      "utility_billing"
+    ],
+    "out_of_scope": ["utility_prepaid"]
+  },
+  "requested_documents": [
+    "MASTER_SPECIFICATION.md",
+    "SRS.md",
+    "TECHNICAL_ARCHITECTURE.md",
+    "BILLING_ENGINE.md",
+    "PERIOD_LIFECYCLE.md",
+    "READING_BATCH_ARCHITECTURE.md",
+    "MEDIA_ARCHITECTURE.md",
+    "PAYMENT_ALLOCATION.md",
+    "ACCOUNTING_FLOWS.md",
+    "METER_REPLACEMENT.md",
+    "INVENTORY_CUSTODY.md",
+    "SECURITY_MATRIX.md",
+    "API_SPECIFICATION.md",
+    "INTEGRATION_ARCHITECTURE.md",
+    "CAPACITY_AND_PERFORMANCE.md",
+    "DATA_MIGRATION.md",
+    "DEPLOYMENT.md",
+    "BACKUP_RESTORE.md",
+    "OBSERVABILITY.md",
+    "UAT_PLAN.md",
+    "GO_LIVE_RUNBOOK.md"
+  ],
+  "included_additional_documents": [
+    "DOCUMENT_INDEX.md",
+    "UTILITY_ERP_MASTER_ARCHITECTURE_V2.md",
+    "CURRENT_V1_IMPLEMENTATION_BASELINE.md",
+    "TARGET_V2_ARCHITECTURE_ROADMAP.md",
+    "ARCHITECTURE_DECISION_LOG.md",
+    "OPERATIONAL_UI_UX_ARCHITECTURE.md",
+    "RELEASE_TRACEABILITY_MATRIX.md",
+    "ORGANIZATIONAL_SECURITY_AND_DATA_ISOLATION.md"
+  ]
+}

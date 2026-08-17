@@ -1,17 +1,33 @@
 from odoo import api, fields, models, _
-from odoo.exceptions import ValidationError
+from odoo.exceptions import AccessError, ValidationError
 
 
 class UtilityFinancialSettlement(models.Model):
+    """تسوية مالية لحسابات المشتركين.
+
+    دورة الحياة:
+        draft → submitted → approved → applied
+        [من draft / submitted / approved] → cancelled
+
+    قواعد النزاهة:
+      1. فصل المهام (Segregation of Duties): المعتمد لا يمكن أن يكون هو مقدّم الطلب.
+      2. الحماية ضد التعديل (Immutability): بعد التطبيق لا يمكن تعديل الحقول المالية أو حذف السجل.
+      3. الربط المحاسبي الصريح: لا يمكن أن تكون الحالة 'applied' دون قيد محاسبي مرحّل.
+    """
     _name = 'utility.financial.settlement'
     _description = 'تسوية مالية'
     _rec_name = 'name'
     _inherit = ['mail.thread', 'mail.activity.mixin']
-    _order = 'date desc'
+    _order = 'date desc, id desc'
+
+    _IMMUTABLE_FIELDS = frozenset({
+        'amount', 'settlement_type', 'account_id', 'company_id', 'reason', 'date',
+        'source_document', 'source_reference', 'move_id', 'state'
+    })
 
     active = fields.Boolean('نشط', default=True)
-    name = fields.Char('رقم التسوية المالية', default=lambda self: _('جديد'), readonly=True)
-    company_id = fields.Many2one('res.company', 'الشركة', default=lambda self: self.env.company)
+    name = fields.Char('رقم التسوية المالية', default=lambda self: _('جديد'), readonly=True, copy=False)
+    company_id = fields.Many2one('res.company', 'الشركة', required=True, default=lambda self: self.env.company)
     currency_id = fields.Many2one(
         'res.currency',
         related='company_id.currency_id',
@@ -19,29 +35,40 @@ class UtilityFinancialSettlement(models.Model):
         store=True,
         readonly=True,
     )
-    account_id = fields.Many2one('utility.customer', 'حساب الكهرباء', required=True)
+    account_id = fields.Many2one('utility.customer', 'حساب الكهرباء', required=True, index=True)
     partner_id = fields.Many2one('res.partner', related='account_id.partner_id', store=True, string='العميل')
     region_id = fields.Many2one(related='partner_id.region_id', store=True, string='المنطقة')
     area_id = fields.Many2one(related='partner_id.area_id', store=True, string='المنطقة الفرعية')
     settlement_type = fields.Selection([
         ('credit', 'دائن (خصم للمشترك)'),
         ('debit', 'مدين (غرامة/إضافة على المشترك)'),
-    ], string='نوع التسوية المالية', required=True)
+    ], string='نوع التسوية المالية', required=True, default='credit')
     amount = fields.Monetary('مبلغ التسوية', required=True, currency_field='currency_id')
     reason = fields.Text('سبب التسوية المالية', required=True)
-    date = fields.Date('تاريخ التسوية', default=fields.Date.today)
+    source_document = fields.Char('المستند المصدري', help='المستند الذي استندت إليه هذه التسوية المالية (قرار إداري، تقرير تدقيق، إلخ)')
+    source_reference = fields.Char('المرجع المصدري', help='رقم المرجع للمستند المصدري')
+    date = fields.Date('تاريخ التسوية', default=fields.Date.context_today, required=True)
+
     state = fields.Selection([
         ('draft', 'مسودة'),
+        ('submitted', 'مُقدَّمة للاعتماد'),
+        ('approved', 'معتمدة'),
         ('applied', 'تم التطبيق'),
-    ], string='الحالة', default='draft')
+        ('cancelled', 'ملغاة'),
+    ], string='الحالة', default='draft', readonly=True, tracking=True, copy=False)
 
-    move_id = fields.Many2one('account.move', string='القيد المحاسبي', readonly=True)
+    # ── سجل الإجراءات وفصل المهام ──────────────────────────────────────────
+    submitted_by_id = fields.Many2one('res.users', 'مُقدِّم الطلب', readonly=True, copy=False)
+    submitted_date = fields.Datetime('تاريخ التقديم', readonly=True, copy=False)
+    approved_by_id = fields.Many2one('res.users', 'المعتمِد المالي', readonly=True, copy=False)
+    approved_date = fields.Datetime('تاريخ الاعتماد', readonly=True, copy=False)
+    applied_by_id = fields.Many2one('res.users', 'المنفّذ', readonly=True, copy=False)
+    applied_date = fields.Datetime('تاريخ التطبيق', readonly=True, copy=False)
+    cancelled_by_id = fields.Many2one('res.users', 'من ألغى', readonly=True, copy=False)
+    cancelled_date = fields.Datetime('تاريخ الإلغاء', readonly=True, copy=False)
+    cancel_reason = fields.Text('سبب الإلغاء', copy=False)
 
-    def name_get(self):
-        res = []
-        for rec in self:
-            res.append((rec.id, f'[{rec.name}] {rec.account_id.partner_id.name or ""}'))
-        return res
+    move_id = fields.Many2one('account.move', string='القيد المحاسبي', readonly=True, copy=False, index=True)
 
     @api.model_create_multi
     def create(self, vals_list):
@@ -50,71 +77,165 @@ class UtilityFinancialSettlement(models.Model):
                 vals['name'] = self.env['ir.sequence'].next_by_code('utility.financial.settlement') or _('جديد')
         return super().create(vals_list)
 
+    @api.constrains('amount')
+    def _check_positive_amount(self):
+        for rec in self:
+            if rec.amount <= 0:
+                raise ValidationError(_('مبلغ التسوية المالية يجب أن يكون أكبر من الصفر.'))
+
+    @api.constrains('state', 'move_id')
+    def _check_applied_has_move(self):
+        for rec in self:
+            if rec.state == 'applied':
+                if not rec.move_id or rec.move_id.state != 'posted':
+                    raise ValidationError(_('لا يمكن تطبيق التسوية المالية دون قيد محاسبي مرحّل.'))
+
+    def write(self, vals):
+        for rec in self:
+            if rec.state in ('applied', 'cancelled'):
+                if not (self.env.su and self.env.context.get('_allow_settlement_transition')):
+                    if any(field in vals for field in self._IMMUTABLE_FIELDS):
+                        raise ValidationError(_(
+                            'لا يمكن تعديل أو تغيير حالة تسوية مالية بحالة "%s".'
+                        ) % dict(self._fields['state'].selection).get(rec.state, rec.state))
+            elif rec.state == 'approved':
+                if not (self.env.su and self.env.context.get('_allow_settlement_transition')):
+                    if any(field in vals for field in ('amount', 'settlement_type', 'account_id', 'source_document', 'source_reference')):
+                        raise ValidationError(_('لا يمكن تعديل المبلغ أو الحساب لتسوية معتمدة. يجب إلغاؤها أولاً.'))
+        return super().write(vals)
+
+    def unlink(self):
+        for rec in self:
+            if rec.state != 'draft':
+                raise ValidationError(_(
+                    'لا يمكن حذف تسوية مالية في حالة "%s". يمكنك إلغاؤها بدلاً من ذلك.'
+                ) % dict(self._fields['state'].selection).get(rec.state, rec.state))
+        return super().unlink()
+
     def _get_company_config(self, company_field, config_key):
         company = self.env.company
         val = company[company_field]
         if val:
             return val.id if hasattr(val, 'id') else val
-        return int(self.env['ir.config_parameter'].sudo().get_param(config_key, 0))
+        param = self.env['ir.config_parameter'].sudo().get_param(config_key, '0')
+        return int(param) if param and param.isdigit() else 0
+
+    # ── إجراءات دورة الحياة ───────────────────────────────────────────────────
+
+    def action_submit(self):
+        """تقديم التسوية المالية للاعتماد."""
+        for rec in self:
+            if rec.state != 'draft':
+                raise ValidationError(_('يمكن تقديم التسويات المسودة فقط.'))
+            if rec.amount <= 0:
+                raise ValidationError(_('مبلغ التسوية يجب أن يكون أكبر من الصفر.'))
+            if not (rec.source_document or '').strip() and not (rec.source_reference or '').strip():
+                raise ValidationError(_('يجب تحديد المستند المصدري أو المرجع المصدري قبل تقديم التسوية المالية للاعتماد.'))
+            rec.sudo().with_context(_allow_settlement_transition=True).write({
+                'state': 'submitted',
+                'submitted_by_id': self.env.user.id,
+                'submitted_date': fields.Datetime.now(),
+            })
+            rec.message_post(body=_('تم تقديم التسوية المالية للاعتماد.'))
+
+    def action_approve(self):
+        """اعتماد التسوية المالية مع التحقق من فصل المهام."""
+        for rec in self:
+            if rec.state != 'submitted':
+                raise ValidationError(_('يمكن اعتماد التسويات المُقدَّمة فقط.'))
+            # Segregation of duties: approver != submitter
+            if rec.submitted_by_id == self.env.user and not self.env.su:
+                raise AccessError(_(
+                    'لا يمكن لمن قدّم طلب التسوية (%s) أن يعتمده مالياً. (مبدأ فصل المهام)'
+                ) % self.env.user.name)
+            rec.write({
+                'state': 'approved',
+                'approved_by_id': self.env.user.id,
+                'approved_date': fields.Datetime.now(),
+            })
+            rec.message_post(body=_('تم اعتماد التسوية المالية.'))
 
     def action_apply_settlement(self):
-        self.ensure_one()
-        if self.state == 'applied':
-            raise ValidationError('تم تطبيق هذه التسوية بالفعل!')
+        """تطبيق التسوية المالية وإنشاء القيد المحاسبي."""
+        if self.ids:
+            self.env.cr.execute(
+                "SELECT id FROM utility_financial_settlement WHERE id IN %s FOR UPDATE",
+                [tuple(self.ids)]
+            )
+        for rec in self:
+            if rec.state == 'applied':
+                raise ValidationError(_('تم تطبيق هذه التسوية بالفعل!'))
+            if rec.state != 'approved':
+                raise ValidationError(_('يجب اعتماد التسوية المالية قبل تطبيقها.'))
 
-        settlement_journal_id = self._get_company_config('settlement_journal_id', 'utility.settlement_journal_id')
-        settlement_account_id = self._get_company_config('settlement_account_id', 'utility.settlement_account_id')
+            settlement_journal_id = rec._get_company_config('settlement_journal_id', 'utility.settlement_journal_id')
+            settlement_account_id = rec._get_company_config('settlement_account_id', 'utility.settlement_account_id')
 
-        if not settlement_journal_id or not settlement_account_id:
-            raise ValidationError('يرجى تحديد يومية التسويات وحساب التسويات في إعدادات النظام أولاً.')
+            if not settlement_journal_id or not settlement_account_id:
+                raise ValidationError(_('يرجى تحديد يومية التسويات وحساب التسويات في إعدادات النظام أولاً.'))
 
-        journal = self.env['account.journal'].browse(settlement_journal_id)
-        if journal.type != 'sale':
-            sale_journal = self.env['account.journal'].search([
-                ('type', '=', 'sale'),
-                ('company_id', '=', self.company_id.id),
-            ], limit=1)
-            if sale_journal:
-                journal = sale_journal
-            else:
-                raise ValidationError(
-                    'اليومية المحددة للتسويات ليست يومية مبيعات. '
-                    'يرجى تحديد يومية مبيعات في إعدادات النظام أو إنشاء واحدة.')
+            journal = self.env['account.journal'].browse(settlement_journal_id)
+            if journal.type != 'sale':
+                sale_journal = self.env['account.journal'].search([
+                    ('type', '=', 'sale'),
+                    ('company_id', '=', rec.company_id.id),
+                ], limit=1)
+                if sale_journal:
+                    journal = sale_journal
+                else:
+                    raise ValidationError(_(
+                        'اليومية المحددة للتسويات ليست يومية مبيعات. '
+                        'يرجى تحديد يومية مبيعات في إعدادات النظام.'
+                    ))
 
-        partner = self.account_id.partner_id
-        if not partner:
-            raise ValidationError('حساب الكهرباء غير مربوط بعميل (Partner).')
+            partner = rec.account_id.partner_id
+            if not partner:
+                raise ValidationError(_('حساب الكهرباء غير مربوط بعميل (Partner).'))
 
-        move_type = 'out_refund' if self.settlement_type == 'credit' else 'out_invoice'
+            move_type = 'out_refund' if rec.settlement_type == 'credit' else 'out_invoice'
 
-        move_vals = {
-            'journal_id': journal.id,
-            'date': self.date or fields.Date.today(),
-            'ref': f"تسوية مالية: {self.name} - {self.reason}",
-            'move_type': move_type,
-            'partner_id': partner.id,
-            'invoice_line_ids': [(0, 0, {
-                'name': self.reason,
-                'quantity': 1.0,
-                'price_unit': self.amount,
-                'account_id': settlement_account_id,
-                'tax_ids': False,
-            })]
-        }
+            move_vals = {
+                'journal_id': journal.id,
+                'company_id': rec.company_id.id,
+                'date': rec.date or fields.Date.context_today(self),
+                'ref': f"تسوية مالية: {rec.name} - {rec.reason}",
+                'move_type': move_type,
+                'partner_id': partner.id,
+                'invoice_line_ids': [(0, 0, {
+                    'name': rec.reason,
+                    'quantity': 1.0,
+                    'price_unit': rec.amount,
+                    'account_id': settlement_account_id,
+                    'tax_ids': False,
+                })],
+            }
 
-        move = self.env['account.move'].create(move_vals)
-        move.action_post()
+            move = self.env['account.move'].create(move_vals)
+            move.action_post()
 
-        self.move_id = move.id
-        self.state = 'applied'
-        return {
-            'type': 'ir.actions.act_window',
-            'name': _('القيد المحاسبي'),
-            'res_model': 'account.move',
-            'res_id': move.id,
-            'view_mode': 'form',
-            'target': 'current',
-        }
+            rec.write({
+                'state': 'applied',
+                'move_id': move.id,
+                'applied_by_id': self.env.user.id,
+                'applied_date': fields.Datetime.now(),
+            })
+            rec.message_post(body=_('تم تطبيق التسوية المالية وإنشاء القيد المحاسبي %s.') % move.name)
+
+        return True
+
+    def action_cancel(self):
+        """إلغاء التسوية من أي حالة غير applied."""
+        for rec in self:
+            if rec.state == 'applied':
+                raise ValidationError(_(
+                    'لا يمكن إلغاء تسوية مالية تم تطبيقها وترحيل قيدها المحاسبي (%s).'
+                ) % (rec.move_id.name if rec.move_id else ''))
+            rec.write({
+                'state': 'cancelled',
+                'cancelled_by_id': self.env.user.id,
+                'cancelled_date': fields.Datetime.now(),
+            })
+            rec.message_post(body=_('تم إلغاء التسوية المالية. السبب: %s') % (rec.cancel_reason or _('لم يُحدد')))
 
     def action_view_move(self):
         self.ensure_one()

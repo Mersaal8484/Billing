@@ -294,6 +294,15 @@ class UtilityCollectionSettlement(models.Model):
         ('deposited', 'مودع'), ('reconciled', 'مطابق'),
         ('cancelled', 'ملغى')
     ], default='draft', tracking=True)
+    allocation_policy = fields.Selection([
+        ('explicit', 'تخصيص صريح'),
+        ('oldest_first', 'الأقدم أولاً'),
+    ], string='سياسة التخصيص', default='oldest_first', required=True,
+        readonly=True, copy=False)
+    settlement_key = fields.Char(
+        string='مفتاح التسوية', readonly=True, copy=False, index=True)
+    created_automatically = fields.Boolean(
+        string='منشأة تلقائياً', default=False, readonly=True, copy=False)
     account_move_id = fields.Many2one(
         'account.move', readonly=True, copy=False)
     reference = fields.Char('المرجع الميداني / البنكي')
@@ -304,12 +313,26 @@ class UtilityCollectionSettlement(models.Model):
          'مرجع التسوية يجب أن يكون فريدًا.'),
     ]
 
+    def init(self):
+        self.env.cr.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS utility_collection_settlement_key_uniq
+                ON utility_collection_settlement (company_id, settlement_key)
+             WHERE settlement_key IS NOT NULL AND settlement_key <> ''
+            """
+        )
+
     @api.model_create_multi
     def create(self, vals_list):
         for vals in vals_list:
             vals.setdefault(
                 'name', self.env['ir.sequence'].next_by_code(
                     'utility.collection.settlement') or _('جديد'))
+            if vals.get('reference'):
+                vals.setdefault(
+                    'settlement_key', 'COLLECTOR-DEPOSIT:%s:%s' % (
+                        vals.get('company_id') or self.env.company.id,
+                        vals['reference'].strip().upper()))
         return super().create(vals_list)
 
     @api.depends('line_ids.amount', 'line_ids.actual_settled_amount',
@@ -331,7 +354,7 @@ class UtilityCollectionSettlement(models.Model):
         'declared_amount',
     )
     def _compute_bank_allocation(self):
-        states = ('confirmed', 'waiting_bank_match', 'reconciled')
+        states = ('confirmed', 'settled')
         grouped = self.env['utility.bank.settlement.line'].read_group(
             [
                 ('collection_settlement_id', 'in', self.ids),
@@ -354,10 +377,46 @@ class UtilityCollectionSettlement(models.Model):
         collections._lock_for_settlement()
         return collections
 
+    def _auto_allocate_oldest_first(self):
+        """Allocate an agent deposit against open custody, oldest first."""
+        self.ensure_one()
+        if self.line_ids or self.allocation_policy != 'oldest_first':
+            return
+        if self.declared_amount <= 0:
+            raise ValidationError(_('يجب أن يكون مبلغ الإيداع أكبر من صفر.'))
+        candidates = self.env['utility.collection'].search([
+            ('collector_id', '=', self.collector_id.id),
+            ('company_id', '=', self.company_id.id),
+            ('currency_id', '=', self.currency_id.id),
+            ('state', 'in', ('posted', 'included_in_settlement')),
+            ('remaining_amount', '>', 0),
+        ], order='collection_date asc, id asc')
+        candidates._lock_for_settlement()
+        remaining = self.declared_amount
+        line_vals = []
+        for collection in candidates:
+            collection.invalidate_recordset(['remaining_amount', 'state'])
+            available = collection.remaining_amount
+            if self.currency_id.is_zero(available) or self.currency_id.is_zero(remaining):
+                continue
+            amount = min(available, remaining)
+            line_vals.append((0, 0, {
+                'collection_id': collection.id,
+                'amount': amount,
+            }))
+            remaining -= amount
+        if not line_vals:
+            raise ValidationError(_('لا توجد تحصيلات معلقة قابلة للإيداع لهذا المحصل.'))
+        self.write({'line_ids': line_vals, 'created_automatically': True})
+
     def action_confirm(self):
-        collections = self._lock_collections()
         for record in self:
-            if record.state != 'draft' or not record.line_ids:
+            if record.state != 'draft':
+                continue
+            if not record.line_ids:
+                record._auto_allocate_oldest_first()
+            collections = record._lock_collections()
+            if not record.line_ids:
                 raise ValidationError(
                     _('أضف تحصيلات مؤهلة قبل تأكيد التسوية.'))
             if record.company_id.currency_id != record.currency_id:
@@ -370,7 +429,8 @@ class UtilityCollectionSettlement(models.Model):
             remaining_declared = record.declared_amount
             for line in record.line_ids.sorted('id'):
                 collection = line.collection_id
-                if collection not in collections or collection.state != 'posted':
+                if collection not in collections or collection.state not in (
+                        'posted', 'included_in_settlement'):
                     raise ValidationError(_('أحد تحصيلات التسوية غير مرحّل.'))
                 if collection.collector_id != record.collector_id:
                     raise ValidationError(_('كل التحصيلات يجب أن تخص المحصل نفسه.'))
@@ -383,10 +443,13 @@ class UtilityCollectionSettlement(models.Model):
                     line.amount, remaining_declared, available)
                 remaining_declared = max(remaining_declared - line.actual_settled_amount, 0.0)
             record.state = 'confirmed'
+            record.action_post()
         return True
 
     def action_post(self):
         for record in self:
+            if record.state in ('posted', 'settled'):
+                continue
             if record.state != 'confirmed':
                 raise ValidationError(_('يجب تأكيد التسوية قبل ترحيلها.'))
             record._lock_collections()

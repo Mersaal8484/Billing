@@ -282,6 +282,17 @@ class UtilityUpgradeValidationWizard(models.TransientModel):
 
         summary = 'fail' if f_cnt > 0 else ('warning' if w_cnt > 0 else 'pass')
 
+        # -----------------------------------------------------------------------
+        # Organizational Scope Distribution Report (Wave 17 Upgrade Readiness)
+        # -----------------------------------------------------------------------
+        lines.extend(self._check_org_scope_distribution())
+
+        # Recalculate after scope lines
+        p_cnt = sum(1 for _, _, l in lines if l['status'] == 'pass')
+        w_cnt = sum(1 for _, _, l in lines if l['status'] == 'warning')
+        f_cnt = sum(1 for _, _, l in lines if l['status'] == 'fail')
+        summary = 'fail' if f_cnt > 0 else ('warning' if w_cnt > 0 else 'pass')
+
         self.write({
             'line_ids': lines,
             'pass_count': p_cnt,
@@ -298,6 +309,82 @@ class UtilityUpgradeValidationWizard(models.TransientModel):
         }
 
 
+    def _check_org_scope_distribution(self):
+        """Produce org scope distribution lines for the upgrade readiness report.
+
+        Categories:
+            Global          — scope_mode='global' or Utility Admin
+            Restricted/Regions — scope_mode='restricted' with assigned_region_ids
+            Restricted/Branches — scope_mode='restricted' with only assigned_branch_ids
+            Restricted/Mixed  — scope_mode='restricted' with both
+            No Scope        — scope_mode='restricted', no assignments → ACTION REQUIRED
+        """
+        lines = []
+        # Internal users only (share=False)
+        Users = self.env['res.users'].sudo()
+        utility_users = Users.search([('share', '=', False), ('active', '=', True)])
+
+        global_users = utility_users.filtered(
+            lambda u: u.scope_mode == 'global' or u.has_group('utility_core.group_utility_admin'))
+        restricted = utility_users - global_users
+
+        def _has_region(u):
+            return bool(u.assigned_region_ids)
+        def _has_branch(u):
+            return bool(u.assigned_branch_ids)
+
+        region_only = restricted.filtered(lambda u: _has_region(u) and not _has_branch(u))
+        branch_only = restricted.filtered(lambda u: not _has_region(u) and _has_branch(u))
+        mixed = restricted.filtered(lambda u: _has_region(u) and _has_branch(u))
+        no_scope = restricted.filtered(lambda u: not _has_region(u) and not _has_branch(u))
+
+        total = len(utility_users)
+        lines.append((0, 0, {
+            'section': 'scope',
+            'status': 'pass',
+            'check_name': 'توزيع النطاق التنظيمي — المجموع الكلي',
+            'detail': f'إجمالي المستخدمين الداخليين النشطين: {total}',
+        }))
+        lines.append((0, 0, {
+            'section': 'scope',
+            'status': 'pass',
+            'check_name': 'نطاق شامل (Global)',
+            'detail': f'{len(global_users)} مستخدم | '
+                       + (', '.join(global_users.mapped('name')) if global_users else 'لا يوجد'),
+        }))
+        lines.append((0, 0, {
+            'section': 'scope',
+            'status': 'pass',
+            'check_name': 'مقيد بمناطق فقط',
+            'detail': f'{len(region_only)} مستخدم',
+        }))
+        lines.append((0, 0, {
+            'section': 'scope',
+            'status': 'pass',
+            'check_name': 'مقيد بفروع فقط (بدون منطقة)',
+            'detail': f'{len(branch_only)} مستخدم',
+        }))
+        lines.append((0, 0, {
+            'section': 'scope',
+            'status': 'pass',
+            'check_name': 'مقيد بمناطق وفروع (مختلط)',
+            'detail': f'{len(mixed)} مستخدم',
+        }))
+        # No scope = ACTION REQUIRED
+        no_scope_status = 'fail' if no_scope else 'pass'
+        no_scope_detail = (
+            f'{len(no_scope)} مستخدم — إجراء مطلوب: \n'
+            + '\n'.join(f'  - {u.name} ({u.login})' for u in no_scope)
+        ) if no_scope else 'لا يوجد مستخدمون بدون تخصيص — جيد'
+        lines.append((0, 0, {
+            'section': 'scope',
+            'status': no_scope_status,
+            'check_name': 'مقيد بدون تخصيص (يتطلب إجراء)',
+            'detail': no_scope_detail,
+        }))
+        return lines
+
+
 class UtilityUpgradeValidationLine(models.TransientModel):
     _name = 'utility.upgrade.validation.line'
     _description = 'سطر نتيجة فحص الترقية'
@@ -309,6 +396,7 @@ class UtilityUpgradeValidationLine(models.TransientModel):
         ('stock', 'الأرصدة والمخزون المادي'),
         ('billing', 'إعدادات الفوترة والحسابات'),
         ('relation', 'العلاقات والشركات'),
+        ('scope', 'توزيع النطاق التنظيمي للمستخدمين'),
     ], string='قسم الفحص', required=True)
     status = fields.Selection([
         ('pass', 'PASS'),

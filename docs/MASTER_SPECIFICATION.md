@@ -1,558 +1,266 @@
-# Utility ERP — Master Specification
+# MASTER SPECIFICATION
 
-> **Document Version:** 1.0  
-> **Date:** July 2026  
-> **Classification:** Internal — Engineering  
-> **Platform:** Odoo 16.0 Community/Enterprise  
-> **Industry:** Electricity Distribution & Retail (Utility)
+**Platform:** Odoo 16 Community
+**Architecture Baseline:** `UTILITY_ERP_MASTER_ARCHITECTURE_V2.md`
+**Last Verified Implementation SHA:** `51e8dba5c47ed8ff9d1485b519e1b1586cb30522`
+**Target Scale:** Up to 1,000,000 subscribers (capacity-planning baseline)
+**Documentation Version:** 2.1
+**Last Verified Date:** 2026-08-14
+**Status:** Current V1 + Target V2
+
+**Document Type:** Master Functional & Non-Functional Specification
+
+## Current Implementation Baseline
+
+Repository: `AbdulrhmanBashammmakh/utility_erp`
+Branch: `development`
+Implementation SHA: `51e8dba5c47ed8ff9d1485b519e1b1586cb30522`
+Documentation Version: `2.1`
+Documentation Status: Current V1 + Target V2
+
+This document separates implementation evidence at the reviewed SHA from accepted forward-looking V2 architecture. Current behavior is authoritative for V1; accepted newer ADRs supersede stale documentation. Target V2 components remain target/deferred until their trigger and runtime gate are satisfied.
+
+### Current V1 scope
+
+`date_range → utility_core → utility_inventory → utility_operations → utility_billing`
+
+`utility_prepaid` is **OUT OF SCOPE** for the current V1 release. There is no customer wallet architecture, no parallel financial ledger, and no duplicate stock ledger.
+
+### Current workflow and safety baseline
+
+- `utility.reading`: `draft`, `under_review`, `approved`, `queued`, `billed`, `error`; a separate `billing_state` is **TARGET / FUTURE OPTIONAL DESIGN**, not current V1.
+- `utility.writeoff`: `draft → approved → applied`; only `approved → draft` is allowed before financial application. After application, reopening and duplicate application are forbidden.
+- Operational state changes occur through named actions, not direct statusbar edits, for the hardened critical forms.
+- Runtime/CI proof and production-scale performance validation remain **DEFERRED**.
+
+### Current V1 business path
+
+```text
+Customer → Contract Template → Contract Version (`utility.contract.template.version`)
+         → Reading → Reading Snapshot (`utility.bill.reading.component`)
+         → Pricing Snapshot (`utility.bill.pricing.snapshot` + `utility.bill.pricing.block`)
+         → Bill (`sale.order`) → Accounting Invoice (`account.move`)
+                               → Payment (`account.payment`)
+                               → Allocation/Reconciliation → Settlement
+```
+
+The Bill form provides direct smart-button navigation to related Pricing Snapshots, Reading Components, Accounting Invoices, Payments, and Billing Adjustments. Commercial pricing versions (`utility.contract.template.version`) and calculation snapshots (`utility.bill.pricing.snapshot`) guarantee full immutability and historical audit integrity.
+
+### Organizational security classification
+
+Functional role authorization is **CURRENT V1**. User-assigned Regions/Routes and selected company/Region/Route rules are also current. In the canonical `utility.region` hierarchy, `type='area'` is the organizational Branch. Complete `GLOBAL/RESTRICTED` scope mode, user-level explicit Branch assignments, Region-to-area expansion, and comprehensive scope rules across all operational/reporting paths are **TARGET V1 SECURITY HARDENING**. Empty restricted scope must be default-deny, never global.
+
+> المرجع التنفيذي الأعلى للمتطلبات الوظيفية وغير الوظيفية التي يجب أن تحقق المعمارية المستهدفة.
 
 ---
 
-## Table of Contents
 
-1. [Executive Summary](#1-executive-summary)
-2. [Project Scope](#2-project-scope)
-3. [Business Context](#3-business-context)
-4. [Stakeholders](#4-stakeholders)
-5. [Glossary & Terminology](#5-glossary--terminology)
-6. [Module Architecture Overview](#6-module-architecture-overview)
-7. [Module Dependency Map](#7-module-dependency-map)
-8. [Data Domain Summary](#8-data-domain-summary)
-9. [Integration Landscape](#9-integration-landscape)
-10. [Non-Functional Requirements Summary](#10-non-functional-requirements-summary)
-11. [Regulatory & Compliance](#11-regulatory--compliance)
-12. [Deployment Model](#12-deployment-model)
-13. [Open Items & Assumptions](#13-open-items--assumptions)
+## المبادئ المعمارية الملزمة
 
----
+- Odoo 16 Community هو **System of Record** للـUtility Domain والمحاسبة.
+- التشغيل المستهدف لمؤسسة تشغيلية واحدة؛ النطاق الأمني والتشغيلي يعتمد على Geography وليس Business Multi-Company.
+- لا توجد Customer Wallet في Postpaid Utility.
+- لا توجد Taxes في Utility Billing Flow الحالي.
+- Reading + Review مرحلة تشغيلية واحدة.
+- لكل Cycle فترة Reading وفترة Payment مستقلة مرتبطة بنفس `cycle_key`.
+- `utility.bill.reading.component` هو Immutable Billing Segment Snapshot ولا يعاد تصميمه.
+- `periodic` هو Billing Anchor، و`replacement_closing` و`opening` يحتفظان بدلالتهما.
+- عدة عمليات Replacement داخل نفس Cycle تنتهي إلى **فاتورة واحدة** للحساب/الفترة مع عدة Reading Components.
+- `utility.media.asset` هو Canonical Media Model.
+- Payment Reconciliation يجب أن يكون Targeted/Explicit، وليس Partner-wide.
+- التصحيحات التاريخية تتم بواسطة Correction/Reversal Documents، وليس بتعديل السجل التاريخي المنشور.
+- Hybrid Workflow: المعاملات القصيرة داخل Odoo؛ Temporal للعمليات الطويلة وReading Batch orchestration عند Target Scale.
+- Redis مساعد للـRate Limiting/Cache فقط، وليس Source of Truth.
+- PgBouncer جزء من Target Production Scale عند تعدد العقد والـWorkers.
+- Persistent Staging + Idempotency + Partial Failure هي القاعدة لدفعات القراءات.
 
-## 1. Executive Summary
 
-**Utility ERP** is a comprehensive, purpose-built Enterprise Resource Planning system for **electricity distribution companies**, developed on the **Odoo 16.0** platform. It replaces the legacy PEC (Pastoral Energy Company) system with a modern, integrated solution covering the full utility lifecycle:
+## 1. الهدف والنطاق
 
-- **Customer Management** — subscriber registration, contracts, categories, and account lifecycle
-- **Metering** — meter installation, tracking, readings (manual, batch upload, AMI), and replacement
-- **Prepaid Vending** — STS token generation, POS-based paid sales, cashier shifts, and token delivery
-- **Postpaid Billing** — dynamic formula-based billing, cycles, invoices, penalties, and collections
-- **Field Operations** — service orders, inspections, tamper detection, installation, and work orders
-- **Inventory & Warehouse** — standard Odoo stock integration, seamless field operations picking generation, meter serialization tracking
-- **Customer Portal & API** — self-service portal, REST API for third-party integrations, payment gateways
-- **Legacy Migration** — staged data import with mapping tables and validation
+تحدد هذه الوثيقة ما يجب أن يقدمه Utility ERP عند اكتمال Target Architecture، دون أن تعيد تعريف تفاصيل التنفيذ الموجودة في الوثائق المتخصصة.
 
-The system serves **10 security roles** from field technicians to revenue managers, supports **Arabic-first UI**, and handles dual-pathway hierarchies converging at the Route level:
-- **Commercial/Sales (Geographic):** `Region → Area → Zone → Route`
-- **Distribution (Network):** `Substation → Feeder → Transformer → Route`
+### داخل النطاق
 
----
+- إدارة حسابات الكهرباء والمشتركين.
+- إدارة العدادات والبنية الفنية والجغرافية.
+- إدارة دورات القراءة والفوترة والتحصيل.
+- Manual/AMI reading ingestion.
+- Reading Review/VEE.
+- Media evidence.
+- Postpaid billing.
+- Accounting invoices.
+- Collections and payment allocation.
+- Payment gateway integration.
+- Meter replacement.
+- Field operations.
+- Meter inventory/custody.
+- Penalties, deposits, write-offs, financial settlements.
+- Portal/API.
+- Migration, security, observability, backup/restore، وGo-Live.
 
-## 2. Project Scope
+### خارج النطاق الحالي
 
-### 2.1 In Scope
-
-| Domain | Capabilities |
-|--------|-------------|
-| **Customer Management** | Customer registration, contracts, subscriber categories/types, accounting balance visibility, credit control |
-| **Metering** | Meter catalog (type/model/status), installation tracking, meter logs, QR codes, AMI integration, meter replacement workflow |
-| **Hierarchies** | Dual pathways converging at Route: Commercial (`Region→Area→Zone→Route`) and Distribution (`Substation→Feeder→Transformer→Route`) |
-| **Prepaid Vending** | STS token generation, paid POS sales, cashier shifts, token audit trail, payment corrections, reversals |
-| **Postpaid Billing** | Dynamic billing formulas, consumption block/tier pricing, billing cycles, automated bill generation, penalties, write-offs, deposits, installment plans |
-| **Collections** | Payment collection via POS, field collectors, bank transfer; automatic reconciliation |
-| **Field Operations** | Service orders (11 types), meter inspection, tamper cases, alarm monitoring, installation orders, work orders with GPS tracking |
-| **Reading Management** | Manual entry, batch JSON upload, AMI callbacks, reading review/approval, settlement corrections |
-| **Inventory** | Standard Odoo stock module integration, automated picking creation, meter tracking via products and lots |
-| **Notifications** | SMS dispatch via external providers, portal notifications, internal notifications |
-| **Accounting Integration** | Journal entries, invoice generation, payment reconciliation, credit notes, write-offs |
-| **Portal & API** | Customer self-service portal, 7 REST API endpoints, payment gateway integration |
-| **Migration** | Legacy data staging, code mapping, Excel import, opening balance generation |
-| **Automation** | 13+ cron jobs, automated workflow engine, batch processing |
-
-### 2.2 Out of Scope
-
-- SCADA / real-time grid monitoring (AMI only for reading callbacks)
-- Revenue assurance / loss reduction analytics (future phase)
-- HR / payroll modules
-- Procurement / tendering
-- GIS mapping / asset geo-location (GPS available on work orders only)
-- Multi-currency (single currency per company)
-- Multi-entity consolidation
-
-### 2.3 Project Boundaries
-
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                        UTILITY ERP                               │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐        │
-│  │ utility  │  │ utility  │  │ utility  │  │ utility  │        │
-│  │  _core   │→ │_inventory│→ │_prepaid  │→ │operations│        │
-│  └────┬─────┘  └──────────┘  └────┬─────┘  └──────────┘        │
-│       │                           │                             │
-│       ↓                           ↓                             │
-│  ┌──────────┐               ┌──────────┐                        │
-│  │ utility  │               │ utility  │                        │
-│  │ _billing │←──────────────│_portal   │                        │
-│  └──────────┘               └──────────┘                        │
-│       │                                                           │
-│       ↓                                                           │
-│  ┌──────────┐                                                    │
-│  │ utility  │                                                    │
-│  │_migration│                                                    │
-│  └──────────┘                                                    │
-└──────────────────────────────────────────────────────────────────┘
-         ↕                    ↕                    ↕
-    ┌─────────┐         ┌──────────┐         ┌──────────┐
-    │  STS    │         │ Payment  │         │   SMS    │
-    │ Token   │         │ Gateway  │         │ Provider │
-    │ Server  │         │          │         │          │
-    └─────────┘         └──────────┘         └──────────┘
-```
+- Customer Wallet.
+- Tax Engine داخل Utility Billing.
+- Kafka.
+- Distributed SQL.
+- Temporal per invoice/notification.
+- Full redesign لـ`utility_prepaid`.
+- Business Multi-Company partitioning.
 
 ---
 
-## 3. Business Context
+## 2. مصادر الحقيقة
 
-### 3.1 Industry Background
-
-Electricity distribution companies operate in a highly regulated environment requiring:
-
-- **Mass metering** — thousands to millions of customer meters requiring regular reading
-- **Dual revenue models** — prepaid (token-based) and postpaid (invoice-based) customers
-- **Complex tariff structures** — block pricing, tiered rates, subsidized categories, seasonal variations
-- **Geographic dispersion** — operations spread across regions, areas, substations, and individual routes
-- **Regulatory compliance** — energy authority reporting, consumer protection, tariff approval
-- **Revenue protection** — tamper detection, consumption anomalies, loss accounting
-
-### 3.2 Business Model
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                    REVENUE STREAMS                       │
-├─────────────────────┬───────────────────────────────────┤
-│  Prepaid Revenue    │  Postpaid Revenue                 │
-│  • Token sales (POS)│  • Monthly bills                  │
-│  • Emergency credit │  • Service charges                │
-│  • Reconnections    │  • Penalty fees                   │
-│                     │  • Connection/disconnection fees  │
-├─────────────────────┴───────────────────────────────────┤
-│                    COST CENTERS                          │
-├─────────────────────┬───────────────────────────────────┤
-│  Field Operations   │  Asset Management                 │
-│  • Installations    │  • Meter lifecycle                 │
-│  • Inspections      │  • Transformer maintenance        │
-│  • Tamper cases     │  • Feeder monitoring              │
-│  • Work orders      │  • Inventory management           │
-└─────────────────────┴───────────────────────────────────┘
-```
-
-### 3.3 Subscriber Categories
-
-| Category (فئات المشتركين) | Description | Billing Method |
-|---------------------------|-------------|----------------|
-| Residential (سكني) | Household customers | Postpaid or Prepaid |
-| Commercial (تجاري) | Business customers | Postpaid |
-| Industrial (صناعي) | Industrial facilities | Postpaid |
-| Government (حكومي) | Government entities | Postpaid |
-| Agricultural (زراعي) | Agricultural operations | Postpaid |
-| Special (خاص) | Special agreements | Custom |
+| المجال | Source of Truth |
+|---|---|
+| الشخص/الجهة | `res.partner` |
+| حساب الكهرباء | `utility.customer` |
+| العداد المنطقي | `utility.meter` |
+| الجهاز الفيزيائي/السيريال | `stock.lot` |
+| القراءة | `utility.reading` |
+| دورة التشغيل | `date.range` |
+| مكون استهلاك الفاتورة | `utility.bill.reading.component` |
+| فاتورة الكهرباء التشغيلية | `sale.order` |
+| الحقيقة المحاسبية | `account.move` / `account.move.line` |
+| السداد | `account.payment` + explicit allocation |
+| دليل الصورة | `utility.media.asset` |
+| الاستبدال | `utility.meter.replacement` |
+| العملية الميدانية | `utility.service.order` |
+| Outbox/Workflow Command | `utility.workflow.command` |
 
 ---
 
-## 4. Stakeholders
+## 3. المتطلبات الوظيفية العليا
 
-### 4.1 User Roles (Security Groups)
+### MS-FR-001 — Utility Accounts
+يجب أن يدعم النظام حسابات كهرباء مستقلة عن Partner، مع Region/Area/Zone/Route، Contract Template، Current Meter، وحالة تشغيلية.
 
-| Role (Arabic) | Role (English) | Implies | Access Level |
-|---------------|----------------|---------|--------------|
-| م体量 فقط | Read-only | — | Read-only access to all modules |
-| أمين صندوق | Cashier | Read-only | POS sales, token generation, payment collection |
-| cobuctor | Collector | Read-only | Field collection, payment recording |
-| فني | Technician | Read-only | Service orders, inspections, meter work |
-| مفتتش | Field Inspector | Technician | Inspection oversight, approval |
-| مشرف | Supervisor | Cashier + Collector + Technician | Order approval, shift management |
-| مدير الفوترة | Billing Manager | Supervisor | Bill generation, batch processing, write-offs |
-| مدير الإيرادات | Revenue Manager | Billing Manager | Financial reports, settlement, penalties |
-| مراجع | Auditor | Read-only | Audit trail, log review, compliance |
-| مدير النظام | Admin | Revenue Manager + Auditor + Field Inspector | Full system access, configuration |
+### MS-FR-002 — Meter Lifecycle
+يجب أن يدعم العداد حالات الربط بالمشترك/الفيدر/المحول، وسجلًا تاريخيًا لاختلافات الربط والاستبدال.
 
-### 4.2 External Actors
+### MS-FR-003 — Billing Cycles
+يجب إنشاء Reading Period وPayment Period كزوج ذري لكل Cycle، بدورية شهرية أو نصف شهرية.
 
-| Actor | Interface | Purpose |
-|-------|-----------|---------|
-| STS Token Server | HTTP API | Token generation/validation |
-| Payment Gateway | REST API + Webhook | Online payment processing |
-| SMS Provider | HTTP API | Customer notifications |
-| AMI System | REST API | Automated meter reading |
-| POS Terminal | Odoo POS | In-store prepaid sales |
+### MS-FR-004 — Reading Intake
+يجب استقبال القراءات يدويًا أو عبر Batch/AMI مع Idempotency، والتحقق من الفترة والعداد والحساب.
 
----
+### MS-FR-005 — Reading Review
+يجب أن تمر القراءة بمرحلة Validation/VEE/Review قبل أن تصبح Approved/Billable وفق السياسة.
 
-## 5. Glossary & Terminology
+### MS-FR-006 — Media Evidence
+يجب أن يرتبط دليل الصورة بـ`utility.media.asset`، مع Original/Review/Thumbnail، وتخزين قابل للتبديل عبر Adapter.
 
-| Term | Arabic | Definition |
-|------|--------|------------|
-| **STS** | رمز ر务务务 | Standard Transfer Specification — international protocol for prepaid electricity tokens |
-| **AMI** | قراءة ذكية | Advanced Metering Infrastructure — automated meter reading system |
-| **NUTS** | التقسيم الجغرافي | Nomenclature of Territorial Units — hierarchical geographic classification |
-| **Token** | رمز شحن | 20-digit numeric code entered into prepaid meters to load credit |
-| **Reading** | قراءة العدّاد | Meter consumption reading (kWh) at a point in time |
-| **Bill** | فاتورة | Postpaid invoice generated from meter readings and tariff calculations |
-| **Tariff** |تعريفة | Price schedule for electricity consumption (per kWh, block/tier pricing) |
-| **Formula** | صيغة حسابية | Dynamic Python formula for bill calculation using `safe_eval()` |
-| **Contract Template** | نموذج العقد | Defines billing rules, lines, and fee structure for a subscriber category |
-| **Subscriber Category** | فئة المشترك | Main classification of customers (residential, commercial, etc.) |
-| **Subscriber Type** | نوع المشترك | Sub-classification within a category (e.g., villa, apartment) |
-| **Cell** | خلية | Distribution cell — group of transformers serving a geographic zone |
-| **Feeder** | خط تغذية | High-voltage line from substation to transformers |
-| **Substation** | محطة فرعية | Transformer station stepping down voltage |
-| **Route** | خط مسرب | Physical meter reading route/area |
-| **Payment Confirmation** | ????? ????? | Posted POS/payment evidence required before issuing prepaid tokens or clearing service charges |
-| **Meter Emergency Policy** | ????? ????? ?????? | Optional meter/STS-side capability, outside the internal customer accounting ledger |
-| **Tamper** | تلاعب | Unauthorized meter interference or bypass |
-| **Write-off** | شطب | Cancellation of uncollectible debt |
-| **Settlement** | تسوية | Financial adjustment to correct billing errors |
-| **Installment Plan** | خطة التقسيط | Payment plan spreading a bill across multiple periods |
-| **Cashier Shift** | وردية أمين الصندوق | POS cashier work session with opening/closing balances |
-| **Collector Shift** | وردية cobuctor | Field collection work session |
-| **Bill State** | حالة الفاتورة | Computed lifecycle state: draft → confirmed → sent → paid → overdue → cancelled |
-| **Balance Due** | المبلغ المستحق | Outstanding amount owed by customer |
-| **Previous Balance** | الرصيد السابق | Carried-forward balance from prior billing period |
+### MS-FR-007 — Billing
+يجب أن ينتج النظام فاتورة Utility واحدة لكل Account + Reading Period نشط، مع Reading Components Immutable.
+
+### MS-FR-008 — Tariff
+يجب دعم Flat, Tier, Progressive Block, service/fixed fees, local fees, discount, min/max charge, formula-driven quantity، مع Historical Snapshot.
+
+### MS-FR-009 — Replacement
+يجب أن يولد الاستبدال Closing Reading للعداد القديم وOpening Reading للجديد، ويضم الاستهلاك غير المفوتر إلى الفاتورة الدورية التالية.
+
+### MS-FR-010 — Accounting
+يجب أن تتحول Utility Bill إلى Accounting Invoice قابلة للتتبع إلى Reading Components.
+
+### MS-FR-011 — Payment
+يجب تسجيل المدفوعات مع Allocation صريح إلى فواتير محددة، ومنع Over-allocation تحت التزامن.
+
+### MS-FR-012 — Operations
+يجب أن يدير Service Order دورة Request→Approval→Assignment→Schedule→Execution→Evidence→Completion.
+
+### MS-FR-013 — Inventory/Custody
+يجب تتبع العداد الفيزيائي من Receipt حتى Installation ثم Removal/Quarantine/Repair/Return/Scrap.
+
+### MS-FR-014 — Corrections
+لا يجوز تعديل Billed Historical Reading بصورة destructive. يجب استخدام Settlement/Correction Document ينتج Debit/Credit Accounting Document عند الحاجة.
+
+### MS-FR-015 — Portal/API
+يجب أن توفر الواجهات الخارجية نفس قواعد Authorization والـDomain، دون Business Logic بديل.
 
 ---
 
-## 6. Module Architecture Overview
+## 4. المتطلبات غير الوظيفية
 
-### 6.1 Module Summary
+### MS-NFR-001 — Integrity
+كل عملية مالية أو تاريخية يجب أن تكون قابلة لإعادة البناء من المستندات الأصلية.
 
-| # | Module | Models | Purpose | Lines (est.) |
-|---|--------|--------|---------|-------------|
-| 1 | `utility_core` | 32+ | Master data, customers, meters, readings, regions, tariffs, formulas, contracts, notifications, settings | ~5,000 |
-| 2 | `utility_inventory` | 5 | Storage locations, items, movements, physical counts | ~800 |
-| 3 | `utility_prepaid` | 6 | POS integration, STS tokens, transactions, reversals, cashier shifts | ~1,200 |
-| 4 | `utility_operations` | 8 | Service orders, inspections, tamper cases, alarms, work orders, meter replacement, settlements | ~2,000 |
-| 5 | `utility_billing` | 16 | Sale order billing, batch processing, cycles, penalties, write-offs, deposits, installments, workflow automation | ~4,000 |
-| 6 | `utility_portal` | 1 + 7 endpoints | Customer portal, REST API, payment gateway | ~1,500 |
-| 7 | `utility_migration` | 3 + 1 wizard | Legacy data import, staging, mapping | ~600 |
+### MS-NFR-002 — Idempotency
+كل Batch/Payment Callback/Billing Command/Workflow حساس يجب أن يمتلك Idempotency Key.
 
-### 6.2 Core Models by Domain
+### MS-NFR-003 — Concurrency
+عمليات Billing/Payment/Callback يجب أن تستخدم Constraints وRow Locks حيث يلزم.
 
-#### Geographic Hierarchy (utility_core)
-```
-utility.region (type=region)
-  └── utility.region (type=area)
-        └── utility.region (type=zone)
-              └── utility.region (type=office)
-                    └── utility.region (type=substation)
-                          └── utility.region (type=feeder)
-                                └── utility.region (type=transformer)
-                                      └── utility.region (type=route)
+### MS-NFR-004 — Partial Failure
+دفعات القراءات والفوترة واسعة النطاق يجب ألا تستخدم Fail-All.
 
-utility.office        — Office with staff and phone
-utility.substation    — Substation linked to office
-utility.feeder        — Feeder linked to substation
-utility.transformer   — Transformer with cell/parent hierarchy
-utility.route         — Reading route with assigned transformers
-```
+### MS-NFR-005 — Security
+النطاق الجغرافي Default-Deny لكل Non-Admin.
 
-#### Customer Domain (utility_core)
-```
-utility.subscriber.category  — Subscriber category (residential, commercial...)
-utility.subscriber           — Subscriber type (belongs to category)
-utility.customer             — Customer account (linked to res.partner)
-utility.customer.wizard      — Customer creation wizard
-utility.customer.statement/account.move.line — Accounting balance and receivable history
-utility.connection           — Connection record
-utility.connection.type      — Connection type catalog
-```
+### MS-NFR-006 — Auditability
+كل تعديل استثنائي يحفظ Who/When/What/Why/Old/New/Source/Result.
 
-#### Metering Domain (utility_core + utility_operations + utility_inventory)
-```
-utility.meter              — Meter device (linked to customer, transformer)
-utility.meter.type         — Meter type catalog
-utility.meter.model        — Meter model catalog
-utility.meter.status       — Meter status catalog
-utility.meter.log          — Meter event log
-utility.meter.replacement  — Meter replacement workflow
-utility.reading            — Unified reading model (customer/cell/transformer)
-utility.reading.batch      — JSON file batch upload processor
-utility.reading.settlement — Post-billed reading correction
+### MS-NFR-007 — Scale
+يجب أن تصمم المنظومة لسعة تخطيطية تصل إلى مليون مشترك مع Batch Processing وPartition Planning.
+
+### MS-NFR-008 — Recoverability
+يجب اختبار Backup/Restore قبل Go-Live.
+
+### MS-NFR-009 — Observability
+يجب قياس معدلات ingestion, billing, payment, errors, queue depth, media latency, DB health.
+
+### MS-NFR-010 — Compatibility
+لا تبنى Features جديدة على Compatibility Fields مثل `meter_image`, `attachment_id`, legacy period fields.
+
+---
+
+## 5. Traceability Rule
+
+أي مبلغ يجب أن يكون قابلًا للتتبع:
+
+```text
+Utility Account
+  → Reading
+  → Bill Reading Component
+  → Sale Order
+  → Accounting Invoice
+  → Payment Allocation
+  → Payment
 ```
 
-#### Billing Domain (utility_billing)
-```
-sale.order (inherited)           — Main billing document (bill_state, amounts, calculations)
-sale.order.line (inherited)      — Bill line items (meter_line_type, sponsor, contract)
-account.move (inherited)         — Accounting journal entry with utility fields
-account.payment (inherited)      — Payment with utility reconciliation
-utility.reading.batch            — Reading batch upload
-utility.billing.cycle            — Billing cycle management
-utility.recurring.invoice        — Recurring invoice generation
-utility.penalty                  — Late payment penalty
-utility.penalty.type             — Penalty type catalog
-utility.writeoff                 — Debt write-off with credit note
-utility.deposit                  — Customer deposit management
-utility.financial.settlement     — Credit/debit financial adjustments
-utility.installment.plan         — Installment payment plans
-utility.installment.plan.line    — Individual installment lines
-utility.cashier.shift (extended) — POS cashier shifts with bill collections
-utility.collector.shift          — Field collector shifts
-sale.workflow.process            — Automated workflow configuration
-automatic.workflow.job           — Workflow job runner
-```
+وأي استبدال:
 
-#### Operations Domain (utility_operations)
-```
-utility.service.order      — 11 service types with state machine
-utility.installation       — Installation orders
-utility.inspection         — 6 inspection types with signatures
-utility.tamper.case        — 6 tamper types with evidence
-utility.alarm              — 13 alarm types with auto-service-order
-utility.work.order         — GPS-tracked work orders with parts/labor
-```
-
-#### Prepaid Domain (utility_prepaid)
-```
-pos.order (inherited)      — POS sale with utility fields and token generation
-utility.token              — STS token (20-digit, status tracking)
-utility.transaction        — Prepaid token/payment audit record
-utility.reversal           — Transaction reversal workflow
-utility.adjustment         — Approved prepaid correction/reversal support
-utility.cashier.shift      — POS cashier shift management
-utility.service.charge     — Service order fee ledger linked to invoices, direct payments, or next-bill deferral
-```
-
-#### Integration Domain (utility_core + utility_portal)
-```
-utility.integration.provider — External provider config (SMS, AMI, payment)
-utility.integration.log     — API call audit log
-utility.notification.log    — SMS/portal notification dispatch
-utility.payment.gateway.transaction — Payment gateway integration
+```text
+Service Order
+  → Replacement
+  → Closing/Opening Readings
+  → Stock Movements
+  → Billing Components
 ```
 
 ---
 
-## 7. Module Dependency Map
+## 6. Release Gates
 
-```
-                    ┌──────────────┐
-                    │  date_range  │  (OCA module)
-                    │   (OCA)      │
-                    └──────┬───────┘
-                           │
-                    ┌──────▼───────┐
-                    │ utility_core │  ← First to install
-                    └──────┬───────┘
-                           │
-              ┌────────────┼────────────┐
-              │            │            │
-     ┌────────▼───────┐   │   ┌────────▼───────┐
-     │utility_inventory│   │   │utility_operations│
-     └────────┬───────┘   │   └────────┬───────┘
-              │            │            │
-              │     ┌──────▼───────┐   │
-              │     │utility_prepaid│   │
-              │     └──────┬───────┘   │
-              │            │            │
-              └────────┬───┴────────────┘
-                       │
-                ┌──────▼───────┐
-                │utility_billing│
-                └──────┬───────┘
-                       │
-              ┌────────┼────────┐
-              │        │        │
-     ┌────────▼───────┐│ ┌─────▼────────┐
-     │utility_portal  ││ │utility_migration│
-     └────────────────┘│ └──────────────┘
-                       │
-              ┌────────▼───────┐
-              │  Standard Odoo │
-              │ (sale, account, │
-              │  pos, stock)    │
-              └────────────────┘
-```
-
-**Installation Order:** `date_range` → `utility_core` → `utility_inventory` → `utility_prepaid` → `utility_operations` → `utility_billing` → `utility_portal` → `utility_migration`
+1. **Critical Integrity:** Media legacy repair, period migration, targeted reconciliation, immutable reading corrections.
+2. **Billing/Period Production:** tariff snapshot, period impact, due-date policy, concurrency.
+3. **Operations/Inventory:** custody and canonical stock logistics.
+4. **Security/Integration:** unified scope, webhook hardening, outbox retry.
+5. **Portal/UX:** customer-facing completeness.
+6. **Migration/Scale:** rehearsals, partitioning/load tests, backup restore.
+7. **UAT/Release Candidate:** no new features.
 
 ---
 
-## 8. Data Domain Summary
+## 7. Definition of Done
 
-### 8.1 Total Model Count
-
-| Module | New Models | Inherited Models | Transient (Wizards) |
-|--------|-----------|-----------------|-------------------|
-| utility_core | 28 | 4 (res.partner, res.company, res.users, sale.order.type) | 1 |
-| utility_inventory | 4 | 1 (utility.meter) | 0 |
-| utility_prepaid | 5 | 2 (pos.order, pos.order.line) | 0 |
-| utility_operations | 7 | 1 (utility.meter.replacement) | 0 |
-| utility_billing | 12 | 4 (sale.order, sale.order.line, account.move, account.payment) | 0 |
-| utility_portal | 1 | 0 | 0 |
-| utility_migration | 2 | 0 | 1 |
-| **Total** | **59** | **12** | **2** |
-
-### 8.2 Key Relationships
-
-```
-res.partner ──1:1──> utility.customer ──1:1──> utility.meter ──N:1──> utility.transformer
-                                                              │
-                                                              └──N:1──> utility.meter.type
-                                                              └──N:1──> utility.meter.model
-                                                              └──N:1──> utility.meter.status
-
-utility.customer ──N:1──> utility.subscriber.category
-utility.customer ──N:1──> utility.subscriber
-utility.customer ──N:1──> utility.contract.template
-utility.customer ──N:1──> utility.region (area)
-utility.customer ──N:1──> utility.transformer (cell_id)
-
-sale.order ──N:1──> utility.customer (account_id)
-sale.order ──N:1──> utility.meter
-sale.order ──N:1──> date.range
-sale.order ──N:1──> utility.contract.template
-sale.order ──1:N──> sale.order.line
-sale.order ──1:N──> account.payment
-sale.order ──1:N──> utility.penalty
-sale.order ──1:N──> utility.installment.plan
-
-account.payment ──N:1──> utility.cashier.shift
-account.payment ──N:1──> utility.collector.shift
-account.payment ──N:1──> utility.reading.batch
-
-utility.reading ──N:1──> utility.meter
-utility.reading ──N:1──> utility.customer
-utility.reading ──N:1──> date.range
-utility.reading ──N:1──> utility.reading.batch
-
-utility.service.order ──N:1──> utility.customer
-utility.service.order ──N:1──> utility.meter
-utility.service.order ──1:N──> utility.work.order
-
-pos.order ──N:1──> utility.customer
-pos.order ──1:N──> utility.token
-pos.order ──N:1──> utility.cashier.shift
-```
-
----
-
-## 9. Integration Landscape
-
-### 9.1 External System Integrations
-
-| System | Direction | Protocol | Purpose | Module |
-|--------|-----------|----------|---------|--------|
-| STS Token Server | Outbound | HTTP/REST | Generate & validate prepaid tokens | utility_prepaid |
-| Payment Gateway | Bidirectional | REST + Webhook | Process online payments | utility_portal |
-| SMS Provider | Outbound | HTTP/REST | Send customer notifications | utility_core |
-| AMI System | Inbound | REST Webhook | Receive automated readings | utility_portal |
-| POS Terminal | Internal | Odoo POS | Prepaid sales interface | utility_prepaid |
-
-### 9.2 Standard Odoo Module Dependencies
-
-| Odoo Module | Used By | Purpose |
-|-------------|---------|---------|
-| `sale` | billing | Sale order framework (base for bills) |
-| `account` | billing | Invoices, payments, reconciliation |
-| `pos` | prepaid | POS terminal interface |
-| `stock` | inventory | Lot tracking for meters |
-| `mail` | all | Chatter (limited use — no email) |
-| `date_range` | core, billing | Billing periods and cycles |
-| `product` | billing | Products for fees and charges |
-| `base_setup` | core | Settings framework |
-
----
-
-## 10. Non-Functional Requirements Summary
-
-### 10.1 Performance
-
-| Metric | Target |
-|--------|--------|
-| Bill generation (single) | < 2 seconds |
-| Batch bill generation (1000 bills) | < 5 minutes |
-| Reading upload (1000 readings) | < 3 minutes |
-| Token generation | < 5 seconds |
-| API response time (95th percentile) | < 500ms |
-| Dashboard load time | < 3 seconds |
-
-### 10.2 Scalability
-
-| Dimension | Target |
-|-----------|--------|
-| Concurrent users | 100+ |
-| Customer accounts | 500,000+ |
-| Meter records | 500,000+ |
-| Historical readings | 10,000,000+ |
-| Monthly transactions | 100,000+ |
-| API requests/hour | 10,000+ |
-
-### 10.3 Security
-
-- Role-based access control (10 groups)
-- Record-level security (multi-company rules)
-- API token authentication (portal endpoints)
-- `safe_eval()` sandbox for formula execution
-- Input validation (regex patterns on phone, meter numbers)
-- Audit logging for all critical operations
-- No email-based notifications (SMS + portal only)
-
-### 10.4 Availability
-
-- Database backups: daily automated
-- Zero-downtime deployment for code updates
-- Graceful degradation for external integrations (retry queues)
-
----
-
-## 11. Regulatory & Compliance
-
-| Requirement | Implementation |
-|-------------|---------------|
-| Consumer data protection | Multi-company record rules, portal ownership validation |
-| Financial audit trail | `account.move` journal entries for all financial transactions |
-| Meter accuracy | Meter log tracking, tamper case management |
-| Tariff regulation | Configurable contract templates with approval workflow |
-| Revenue protection | Tamper detection, consumption anomaly alerts, overdue and exception monitoring |
-| Reporting | Daily/monthly summaries, outstanding balance reports, transformer balance reports |
-
----
-
-## 12. Deployment Model
-
-| Component | Technology |
-|-----------|-----------|
-| Application Server | Odoo 16.0 (Python 3.10+) |
-| Database | PostgreSQL 14+ |
-| Frontend | Odoo Web Client (OWL 2.0) |
-| POS | Odoo POS (local network) |
-| API Layer | Odoo HTTP Controllers (JSON REST) |
-| External Integrations | `requests` library (outbound HTTP) |
-| Notifications | SMS via HTTP API (no email) |
-| Payments | Payment gateway REST API + webhook |
-
----
-
-## 13. Open Items & Assumptions
-
-### 13.1 Assumptions
-
-1. All customers have unique 11-digit customer numbers
-2. All meters have unique meter numbers with QR codes
-3. STS token server is available on the local network
-4. SMS provider supports Arabic text messages
-5. Payment gateway supports the local currency
-6. AMI system provides REST API for reading callbacks
-7. Internet connectivity is available at all office locations
-8. POS terminals are on a local network with the Odoo server
-
-### 13.2 Open Items
-
-| Item | Status | Priority |
-|------|--------|----------|
-| Barcode OCR service integration | Pending | Low |
-| Multi-language UI (English toggle) | Not Started | Low |
-| Advanced analytics dashboard | Not Started | Medium |
-| Mobile app for field technicians | Not Started | Medium |
-| Real-time SCADA integration | Out of Scope | — |
-
----
-
-*End of Master Specification*
+- جميع الـP0 المالية والتاريخية مغلقة.
+- Billing Golden Tests تمر.
+- Payment concurrency tests تمر.
+- Media upload/display/repair تمر.
+- Replacement end-to-end يمر.
+- Inventory custody مترابط.
+- Security matrix مطبقة.
+- Migration rehearsed.
+- Backup restored successfully.
+- UAT signed off.

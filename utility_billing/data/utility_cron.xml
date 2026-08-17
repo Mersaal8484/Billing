@@ -12,6 +12,13 @@
             <field name="interval_type">days</field>
             <field name="numbercall">-1</field>
             <field name="active">True</field>
+            <field name="utility_managed" eval="True"/>
+            <field name="utility_code">daily_bill_generator</field>
+            <field name="utility_category">billing</field>
+            <field name="utility_description">توليد وإصدار فواتير الكهرباء الدورية يومياً بناء على القراءات المعتمدة ودورات الفوترة</field>
+            <field name="prevent_overlap" eval="True"/>
+            <field name="allow_manual_run" eval="True"/>
+            <field name="batch_size">500</field>
         </record>
 
     </data>

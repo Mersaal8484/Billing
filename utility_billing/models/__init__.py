@@ -1,4 +1,6 @@
 from . import utility_reading
+from . import utility_meter_replacement
+from . import utility_reading_settlement
 from . import utility_reading_batch
 from . import utility_reading_batch_line
 from . import utility_billing_cycle
@@ -18,10 +20,11 @@ from . import utility_financial_settlement
 from . import utility_sale_workflow
 from . import utility_billing_settings
 from . import utility_bill_reading_component
+from . import utility_bill_pricing_snapshot
+from . import utility_bill_pricing_block
 from . import utility_billing_adjustment
 from . import utility_payment_gateway_transaction
 from . import utility_payment_allocation
 from . import utility_collection
 from . import utility_bank_settlement
 from . import utility_media_asset
-

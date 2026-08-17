@@ -1,0 +1,4 @@
+interface:
+  display_name: "Utility Migration"
+  short_description: "Review bounded and traceable migrations"
+  default_prompt: "Use $utility-migration to review a Utility ERP migration change."

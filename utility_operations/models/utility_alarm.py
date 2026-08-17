@@ -1,4 +1,5 @@
 from odoo import api, fields, models, _
+from odoo.exceptions import UserError, ValidationError
 
 
 class UtilityAlarm(models.Model):
@@ -54,34 +55,59 @@ class UtilityAlarm(models.Model):
     tamper_case_id = fields.Many2one('utility.tamper.case', 'قضية تلاعب')
 
     def action_acknowledge(self):
-        self.state = 'acknowledged'
+        for rec in self:
+            if rec.state != 'open':
+                raise UserError(_('يمكن فقط التسليم بالإنذار من حالة المفتوح (مفتوح).'))
+            rec.state = 'acknowledged'
 
     def action_start(self):
-        self.state = 'investigating'
+        for rec in self:
+            if rec.state != 'acknowledged':
+                raise UserError(_('يمكن فقط بدء التحقيق بعد التسليم بالإنذار (مُسلّم به).'))
+            rec.state = 'investigating'
 
     def action_resolve(self):
-        self.state = 'resolved'
-        self.resolution_date = fields.Datetime.now()
+        for rec in self:
+            if rec.state != 'investigating':
+                raise UserError(_('يمكن فقط حل الإنذار عندما يكون قيد التحقيق.'))
+            rec.state = 'resolved'
+            rec.resolution_date = fields.Datetime.now()
 
     def action_close(self):
-        self.state = 'dismissed'
+        for rec in self:
+            if rec.state in ('resolved', 'dismissed'):
+                raise UserError(_('لا يمكن رفض إنذار تم حله أو رفضه بالفعل.'))
+            rec.state = 'dismissed'
 
     def action_create_service_order(self):
         self.ensure_one()
+        # Acquire row-level lock FOR UPDATE on the alarm before re-checking service_order_id & tamper_case_id
+        self.env.cr.execute("SELECT id FROM utility_alarm WHERE id = %s FOR UPDATE", [self.id])
+        self.invalidate_recordset(['service_order_id', 'tamper_case_id'])
+
+        if self.service_order_id:
+            return {
+                'type': 'ir.actions.act_window',
+                'res_model': 'utility.service.order',
+                'res_id': self.service_order_id.id,
+                'view_mode': 'form',
+                'target': 'current',
+            }
+
         order = self.env['utility.service.order'].create({
             'service_type': 'tamper_investigation' if self.alarm_type == 'tamper' else 'maintenance',
             'description': self.description,
-            'customer_id': self.customer_id.id,
-            'account_id': self.account_id.id,
-            'meter_id': self.meter_id.id,
+            'customer_id': self.customer_id.id if self.customer_id else False,
+            'account_id': self.account_id.id if self.account_id else False,
+            'meter_id': self.meter_id.id if self.meter_id else False,
             'priority': 'urgent' if self.severity in ('critical', 'emergency') else 'high',
         })
         self.service_order_id = order.id
 
         if self.alarm_type == 'tamper' and not self.tamper_case_id:
             case = self.env['utility.tamper.case'].create({
-                'customer_id': self.customer_id.id,
-                'meter_id': self.meter_id.id,
+                'customer_id': self.customer_id.id if self.customer_id else False,
+                'meter_id': self.meter_id.id if self.meter_id else False,
                 'tamper_type': 'other',
                 'description': _('تم فتح القضية تلقائياً بناءً على إنذار رقم %s: %s') % (self.alarm_code, self.description),
                 'severity': self.severity,

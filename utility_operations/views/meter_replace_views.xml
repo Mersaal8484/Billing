@@ -28,12 +28,12 @@
                 <field name="company_id" invisible="1"/>
                 <field name="closing_reading_id" invisible="1"/>
                 <field name="opening_reading_id" invisible="1"/>
-                <field name="sale_order_id" invisible="1"/>
                 <header>
                     <button name="action_complete_replacement" type="object"
                             string="إكمال الاستبدال" class="oe_highlight"
-                            attrs="{'invisible': [('state', '=', 'done')]}"/>
-                    <field name="state" widget="statusbar" statusbar_visible="draft,done"/>
+                            attrs="{'invisible': [('state', '=', 'done')]}"
+                            confirm="سيؤدي هذا الإجراء إلى تنفيذ حركات المخزون وتحديث حالة العدادين. هل تريد المتابعة؟"/>
+                    <field name="state" widget="statusbar" statusbar_visible="draft,done" options="{'clickable': False}"/>
                 </header>
                 <sheet>
                     <div class="oe_button_box" name="button_box">
@@ -54,13 +54,6 @@
                                 attrs="{'invisible': [('opening_reading_id', '=', False)]}">
                             <div class="o_stat_info">
                                 <span class="o_stat_text">القراءة الافتتاحية</span>
-                            </div>
-                        </button>
-                        <button class="oe_stat_button" type="object" name="action_view_sale_order"
-                                icon="fa-file-text-o"
-                                attrs="{'invisible': [('sale_order_id', '=', False)]}">
-                            <div class="o_stat_info">
-                                <span class="o_stat_text">فاتورة الاستهلاك</span>
                             </div>
                         </button>
                     </div>
@@ -128,7 +121,8 @@
                     </group>
                 </sheet>
                 <footer>
-                    <button name="action_execute_replacement" string="تنفيذ الاستبدال فوراً" type="object" class="oe_highlight"/>
+                    <button name="action_execute_replacement" string="تنفيذ الاستبدال فوراً" type="object" class="oe_highlight"
+                            confirm="سيؤدي هذا الإجراء إلى تنفيذ حركات المخزون وتحديث حالة العدادين. هل تريد المتابعة؟"/>
                     <button string="إغلاق" class="btn-secondary" special="cancel"/>
                 </footer>
             </form>

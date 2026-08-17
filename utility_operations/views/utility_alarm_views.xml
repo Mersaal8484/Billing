@@ -23,15 +23,12 @@
             <field name="arch" type="xml">
                 <form>
                     <header>
-                        <field name="state" widget="statusbar"/>
-                        <button name="action_acknowledge" string="تأكيد الاستلام" type="object"
-                                states="open" class="btn-primary"/>
-                        <button name="action_resolve" string="حل" type="object"
-                                states="acknowledged,investigating" class="btn-primary"/>
-                        <button name="action_close" string="إغلاق" type="object"
-                                states="resolved" class="btn-primary"/>
-                        <button name="action_create_service_order" string="إنشاء أمر خدمة / قضية تلاعب" type="object"
-                                states="open,acknowledged,investigating" class="btn-secondary"/>
+                        <button name="action_acknowledge" string="تأكيد الاستلام" type="object" states="open" class="btn-primary"/>
+                        <button name="action_start" string="بدء التحقيق" type="object" states="acknowledged" class="btn-primary"/>
+                        <button name="action_resolve" string="حل الإنذار" type="object" states="investigating" class="btn-success"/>
+                        <button name="action_close" string="رفض / إغلاق" type="object" states="open,acknowledged,investigating" class="btn-secondary"/>
+                        <button name="action_create_service_order" string="إنشاء أمر خدمة / قضية تلاعب" type="object" states="open,acknowledged,investigating" class="btn-info"/>
+                        <field name="state" widget="statusbar" statusbar_visible="open,acknowledged,investigating,resolved,dismissed" options="{'clickable': False}"/>
                     </header>
                     <sheet>
                         <h1>
@@ -86,6 +83,34 @@
             <field name="name">الإنذارات</field>
             <field name="res_model">utility.alarm</field>
             <field name="view_mode">tree,form</field>
+            <field name="context">{'search_default_open_alarms': 1}</field>
+        </record>
+
+        <record id="view_utility_alarm_search" model="ir.ui.view">
+            <field name="name">utility.alarm.search</field>
+            <field name="model">utility.alarm</field>
+            <field name="arch" type="xml">
+                <search>
+                    <field name="alarm_code"/>
+                    <field name="customer_id"/>
+                    <field name="assigned_to"/>
+                    <field name="alarm_type"/>
+                    <field name="severity"/>
+                    <field name="state"/>
+                    <filter name="open_alarms" string="تحتاج متابعة"
+                            domain="[('state','not in',('resolved','dismissed'))]"/>
+                    <filter name="critical_alarms" string="حرجة أو طوارئ"
+                            domain="[('severity','in',('critical','emergency'))]"/>
+                    <filter name="alarms_today" string="اليوم" date="alarm_date"/>
+                    <separator/>
+                    <group expand="0" string="تجميع حسب">
+                        <filter name="group_state" string="الحالة" context="{'group_by': 'state'}"/>
+                        <filter name="group_severity" string="الخطورة" context="{'group_by': 'severity'}"/>
+                        <filter name="group_type" string="نوع الإنذار" context="{'group_by': 'alarm_type'}"/>
+                        <filter name="group_assignee" string="المسؤول" context="{'group_by': 'assigned_to'}"/>
+                    </group>
+                </search>
+            </field>
         </record>
 
     </data>

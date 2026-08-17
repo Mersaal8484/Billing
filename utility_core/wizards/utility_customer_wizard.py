@@ -1,5 +1,5 @@
 from odoo import api, fields, models, _
-from odoo.exceptions import ValidationError
+from odoo.exceptions import AccessError, ValidationError
 
 
 class UtilityCustomerWizard(models.TransientModel):
@@ -305,6 +305,15 @@ class UtilityCustomerWizard(models.TransientModel):
 
     def action_create_customer(self):
         self.ensure_one()
+        if not (
+            self.env.user.has_group('utility_core.group_utility_supervisor')
+            or self.env.user.has_group('utility_core.group_utility_admin')
+        ):
+            raise AccessError(_('ليس لديك صلاحية إنشاء مشترك من هذا المعالج.'))
+        if self.use_private_transformer and not self.env.user.has_group(
+            'utility_core.group_utility_admin'
+        ):
+            raise AccessError(_('إنشاء محول خاص يتطلب صلاحية مدير النظام.'))
         self._validate_operational_number_required_for_new_meter()
 
         if self.subscriber_id and self.category_id and self.subscriber_id.category_id != self.category_id:

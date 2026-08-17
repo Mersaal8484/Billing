@@ -37,6 +37,16 @@
                         attrs="{'invisible': ['|', ('customer_id', '=', False), ('balance_due', '&gt;', 0)]}"/>
             </xpath>
             <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_utility_invoices" type="object"
+                        class="oe_stat_button" icon="fa-file-text-o"
+                        attrs="{'invisible': [('utility_invoice_count', '=', 0)]}">
+                    <field name="utility_invoice_count" widget="statinfo" string="الفواتير المحاسبية"/>
+                </button>
+                <button name="action_view_utility_payments" type="object"
+                        class="oe_stat_button" icon="fa-money"
+                        attrs="{'invisible': [('payment_count', '=', 0)]}">
+                    <field name="payment_count" widget="statinfo" string="الدفعات"/>
+                </button>
                 <button name="action_view_billing_adjustments" type="object"
                         class="oe_stat_button" icon="fa-exchange"
                         attrs="{'invisible': [('billing_adjustment_count', '=', 0)]}">
@@ -46,6 +56,11 @@
                         class="oe_stat_button" icon="fa-tachometer"
                         attrs="{'invisible': [('reading_component_count', '=', 0)]}">
                     <field name="reading_component_count" widget="statinfo" string="مقاطع القراءة"/>
+                </button>
+                <button name="action_view_pricing_snapshot" type="object"
+                        class="oe_stat_button" icon="fa-calculator"
+                        attrs="{'invisible': [('pricing_snapshot_count', '=', 0)]}">
+                    <field name="pricing_snapshot_count" widget="statinfo" string="لقطة التسعير"/>
                 </button>
             </xpath>
             <field name="partner_id" position="after">
@@ -85,6 +100,7 @@
                                 <field name="current_reading" decoration-bf="1" attrs="{'readonly': [('bill_state', '!=', 'draft')]}"/>
                                 <field name="consumption" decoration-bf="1" decoration-info="1" attrs="{'readonly': [('bill_state', '!=', 'draft')]}"/>
                                 <field name="contract_template_id" options="{'no_create': True}" attrs="{'readonly': [('bill_state', '!=', 'draft')]}"/>
+                                <field name="contract_template_version_id" readonly="1" options="{'no_open': False}"/>
                                 <field name="reading_id" readonly="1"/>
                             </group>
                         </div>

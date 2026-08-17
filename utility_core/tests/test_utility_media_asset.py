@@ -53,6 +53,16 @@ class TestUtilityMediaAsset(TransactionCase):
         retrieved_orig = self.MediaService.retrieve_media(asset, variant='original')
         self.assertEqual(retrieved_orig, self.sample_bytes)
 
+    def test_01b_invalid_variant_is_rejected_by_the_adapter_contract(self):
+        asset = self.MediaService.store_media(
+            file_data=self.sample_bytes,
+            filename='meter_read_variant.jpg',
+            mimetype='image/png'
+        )
+        adapter = self.MediaService.get_media_adapter()
+        with self.assertRaises(ValueError):
+            adapter.retrieve(asset, variant='unsupported')
+
     def test_02_duplicate_media_binary_deduplication(self):
         """2. اختبار إعادة استخدام المرفق الثنائي دون إنشاء سجلات مرفقات متكررة مع إنشاء أصل مستقل لكل إثبات"""
         asset1 = self.MediaService.store_media(

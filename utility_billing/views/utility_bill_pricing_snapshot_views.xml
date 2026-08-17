@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Pricing Snapshot Tree View -->
+    <record id="view_utility_bill_pricing_snapshot_tree" model="ir.ui.view">
+        <field name="name">utility.bill.pricing.snapshot.tree</field>
+        <field name="model">utility.bill.pricing.snapshot</field>
+        <field name="arch" type="xml">
+            <tree create="false" edit="false" delete="false" decoration-info="pricing_mode in ('block', 'tier')">
+                <field name="created_at" string="تاريخ اللقطة"/>
+                <field name="sale_order_id"/>
+                <field name="customer_id"/>
+                <field name="meter_id"/>
+                <field name="version_code"/>
+                <field name="pricing_mode"/>
+                <field name="billing_consumption"/>
+                <field name="amount_energy" sum="إجمالي الطاقة"/>
+                <field name="amount_service" sum="إجمالي الخدمات"/>
+                <field name="amount_local_fee" sum="إجمالي الرسوم المحلية"/>
+                <field name="amount_discount" sum="إجمالي الخصومات"/>
+                <field name="calculated_total" sum="المجموع الكلي"/>
+                <field name="snapshot_origin" widget="badge"/>
+            </tree>
+        </field>
+    </record>
+
+    <!-- Pricing Snapshot Form View -->
+    <record id="view_utility_bill_pricing_snapshot_form" model="ir.ui.view">
+        <field name="name">utility.bill.pricing.snapshot.form</field>
+        <field name="model">utility.bill.pricing.snapshot</field>
+        <field name="arch" type="xml">
+            <form string="لقطة التسعير المطبقة في الفاتورة" create="false" edit="false" delete="false">
+                <sheet>
+                    <div class="oe_title">
+                        <label for="display_name" string="وثيقة لقطة التسعير المالي"/>
+                        <h1>
+                            <field name="display_name" readonly="1"/>
+                        </h1>
+                        <h3>
+                            <field name="sale_order_id" readonly="1"/> - <field name="customer_id" readonly="1"/>
+                        </h3>
+                    </div>
+                    <group>
+                        <group string="مرجعية العقد والإصدار المطبق">
+                            <field name="contract_template_id" readonly="1"/>
+                            <field name="contract_template_version_id" readonly="1"/>
+                            <field name="version_code" readonly="1"/>
+                            <field name="pricing_mode" readonly="1"/>
+                            <field name="date_range_id" readonly="1"/>
+                            <field name="reading_id" readonly="1"/>
+                            <field name="meter_id" readonly="1"/>
+                        </group>
+                        <group string="تفاصيل الاستهلاك والأسعار الأساسية">
+                            <field name="billing_consumption" readonly="1"/>
+                            <field name="price_per_kwh" readonly="1"/>
+                            <field name="service_charge" readonly="1"/>
+                            <field name="min_charge" readonly="1"/>
+                            <field name="max_charge" readonly="1"/>
+                            <field name="currency_id" invisible="1"/>
+                            <field name="company_id" invisible="1"/>
+                        </group>
+                    </group>
+                    <group string="النتائج المالية للقطة التسعير">
+                        <group>
+                            <field name="amount_energy" readonly="1"/>
+                            <field name="amount_service" readonly="1"/>
+                            <field name="amount_local_fee" readonly="1"/>
+                            <field name="amount_private_transformer_fee" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="pre_adjustment_total" readonly="1"/>
+                            <field name="min_max_adjustment_amount" readonly="1"/>
+                            <field name="amount_discount" readonly="1"/>
+                            <field name="calculated_total" class="oe_subtotal_footer_separator" decoration-bf="1" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="أدلة الشرائح المطبقة (Applied Pricing Blocks)" attrs="{'invisible': [('pricing_mode', 'not in', ['block', 'tier', 'flat'])]}">
+                            <field name="block_ids" readonly="1">
+                                <tree create="false" edit="false" delete="false">
+                                    <field name="sequence"/>
+                                    <field name="block_name"/>
+                                    <field name="from_kwh"/>
+                                    <field name="to_kwh"/>
+                                    <field name="quantity" sum="إجمالي الكميات"/>
+                                    <field name="price_per_kwh"/>
+                                    <field name="amount" sum="إجمالي مبالغ الشرائح"/>
+                                    <field name="is_discount" widget="boolean_toggle"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="بيانات الخصم والدعم ومعادلات الاحتساب" attrs="{'invisible': [('discount_units', '=', 0), ('amount_discount', '=', 0)]}">
+                            <group>
+                                <group string="معادلة الخصم">
+                                    <field name="discount_formula_id" readonly="1"/>
+                                    <field name="discount_formula_code" readonly="1"/>
+                                    <field name="discount_formula_result" readonly="1"/>
+                                </group>
+                                <group string="الدعم والكميات">
+                                    <field name="discount_units" readonly="1"/>
+                                    <field name="discount_sponsor_id" readonly="1"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="معلومات التدقيق التاريخي">
+                            <group>
+                                <field name="snapshot_origin" readonly="1"/>
+                                <field name="created_at" readonly="1"/>
+                                <field name="created_by" readonly="1"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Pricing Snapshot Action -->
+    <record id="action_utility_bill_pricing_snapshot" model="ir.actions.act_window">
+        <field name="name">لقطات التسعير التاريخية (Pricing Snapshots)</field>
+        <field name="res_model">utility.bill.pricing.snapshot</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                لا توجد لقطات تسعير مسجلة بعد.
+            </p>
+        </field>
+    </record>
+
+    <menuitem id="menu_utility_bill_pricing_snapshot"
+              name="لقطات التسعير للفواتير"
+              parent="utility_billing.menu_utility_billing"
+              action="action_utility_bill_pricing_snapshot"
+              sequence="25"/>
+</odoo>

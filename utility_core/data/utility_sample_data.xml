@@ -21,10 +21,6 @@
             <field name="key">utility.consumption_variation_alert_percentage</field>
             <field name="value">50.0</field>
         </record>
-        <record id="config_max_auto_pay_retries" model="ir.config_parameter">
-            <field name="key">utility.max_auto_pay_retries</field>
-            <field name="value">3</field>
-        </record>
         <record id="base.YER" model="res.currency">
             <field name="active" eval="True" />
         </record>
@@ -345,19 +341,19 @@ if products:
         <record id="demo_staff_inspector" model="utility.staff">
             <field name="name">سالم السقاف (مفتش ميداني - Inspector)</field>
             <field name="employee_code">EMP_INSP_YE01</field>
-            <field name="user_role_id" ref="role_inspector" />
+            <field name="role_ids" eval="[(4, ref('role_inspector'))]" />
             <field name="mobile">771122334</field>
         </record>
         <record id="demo_staff_cashier" model="utility.staff">
             <field name="name">عبد الله الحروي (صراف الإيرادات - Cashier)</field>
             <field name="employee_code">EMP_CASH_YE01</field>
-            <field name="user_role_id" ref="role_cashier" />
+            <field name="role_ids" eval="[(4, ref('role_cashier'))]" />
             <field name="mobile">772233445</field>
         </record>
         <record id="demo_staff_supervisor" model="utility.staff">
             <field name="name">أحمد العولقي (مشرف هندسي - Supervisor)</field>
             <field name="employee_code">EMP_SUPER_YE01</field>
-            <field name="user_role_id" ref="role_supervisor" />
+            <field name="role_ids" eval="[(4, ref('role_supervisor'))]" />
             <field name="mobile">773344556</field>
         </record>
         <record id="demo_tmpl_general_biweekly" model="utility.contract.template">
