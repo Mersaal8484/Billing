@@ -52,6 +52,12 @@
 | bills/month | up to 1M |
 | collections/month | up to 1M |
 
+### Initial 300k-Customer Sizing Baseline
+
+The separate production sizing target is 300,000 customers, 1,100–2,500 internal users, 600–750 concurrent users, and up to 7.2 million readings/year. With annual database rotation, the active Odoo PostgreSQL database contains one operational year rather than a multi-year live working set.
+
+Initial planning resources are 24–32 vCPU / 128 GB RAM / 2 TB enterprise NVMe for each Odoo PostgreSQL Primary/Standby, and 4 TB usable shared Filestore. These are planning values, not capacity proof; retain 4 TB PostgreSQL only if yearly growth, WAL, maintenance headroom, or index/bloat measurements require it.
+
 ---
 
 ## 2. Critical Workloads
@@ -219,3 +225,5 @@ Before Go-Live:
 **DEFERRED:** optimize that path only after profiling demonstrates production impact. Runtime load benchmarking, million-subscriber capacity claims, partition rollout, PgBouncer validation, and horizontal topology are not proven by this documentation update.
 
 **TARGET V2:** partition planning, micro-batch billing, connection pooling, and scale observability remain conditional roadmap items.
+
+**TARGET V2 / CONDITIONAL:** the 300k-customer annual-rotation sizing is a deployment target that requires production-like load tests, annual-close rehearsal, media-retention tests, and restore measurements. It must not be presented as a verified capacity claim before those gates pass.

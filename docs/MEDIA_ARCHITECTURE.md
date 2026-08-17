@@ -219,6 +219,10 @@ Architecture supports:
 - checksum/integrity verification.
 - restoration of archived evidence.
 
+For the initial annual-rotation sizing target, image bytes have a maximum retention of 365 days. This does not delete `utility.media.asset`, reading metadata, or audit history. Database archive retention is independent from image-byte retention; an archived yearly database may therefore show expired evidence rather than expose the original file.
+
+Deletion must be a bounded, resumable, audited job with dry-run reporting, checksum/state checks, and an exception path for legal holds or an explicitly approved business retention override.
+
 ---
 
 ## 13. Acceptance
@@ -239,3 +243,5 @@ Architecture supports:
 **CURRENT V1:** media is represented through the current `utility.media.asset`/attachment compatibility path and protected by ownership/geographic authorization. Reading and batch UIs expose operational image evidence without making media storage a second business truth.
 
 **TARGET V2 / CONDITIONAL:** organized filesystem/NGINX or S3-compatible storage behind a storage-agnostic Media Adapter. Delivery scaling is triggered by measured attachment volume, latency, or backup impact; it is not a current V1 deployment assumption.
+
+**TARGET V2 / CONDITIONAL:** the initial recommendation is `ir.attachment` backed by a shared Odoo Filestore with 4 TB usable capacity. MinIO is intentionally deferred until measured storage/IOPS, retention, public-upload, object-size, or immutability triggers justify it.

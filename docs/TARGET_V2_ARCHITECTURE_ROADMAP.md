@@ -20,6 +20,9 @@ This document contains accepted forward-looking architecture only. It must not b
 | Observability scaling | TARGET / CONDITIONAL | Current logs/metrics cannot explain queue, DB, or integration latency | Centralized metrics, traces, alerting, and workflow backlog signals |
 | Redis rate-limit/cache layer | TARGET / CONDITIONAL | API rate limiting or hot-read cache needs shared state | Redis as helper only; never canonical operational truth |
 | Capacity targets | TARGET / DEFERRED | Actual workload profile and load evidence are available | Validate subscriber, reading, batch, API, DB, and recovery targets |
+| Annual operational DB rotation | TARGET / CONDITIONAL | One-year active DB policy is approved and annual-close/restore rehearsal passes | Read-only yearly archive, new operational DB, archive catalog, rollback and restore controls |
+| 365-day image-byte retention | TARGET / CONDITIONAL | Business/legal retention approval and safe deletion evidence are available | Delete eligible Filestore bytes while preserving media metadata and audit history |
+| Shared Filestore initial backend | TARGET / CONDITIONAL | Multi-node Odoo deployment requires shared durable attachment access | `ir.attachment` plus shared HA Filestore; reconsider MinIO only on measured triggers |
 
 ## Non-negotiable V2 boundaries
 
@@ -29,6 +32,8 @@ This document contains accepted forward-looking architecture only. It must not b
 - No customer wallet is introduced for V1 postpaid or silently assumed for V2.
 - Temporal is not a workflow per invoice, payment, image, or trivial notification; it is scoped to long-running orchestration and large-batch coordination.
 - Partitioning and infrastructure expansion are not emergency changes to be made without profiling, rehearsal, and rollback evidence.
+- Annual database archives and image-byte retention are separate lifecycles; archiving a database does not override the approved media deletion policy.
+- Excluding DR and MinIO from the initial footprint is a scoped sizing decision and must be revisited if business continuity, object immutability, or media scale requirements change.
 
 ## Release discipline
 

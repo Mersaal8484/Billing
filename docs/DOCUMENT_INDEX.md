@@ -81,6 +81,8 @@
 - [`MEDIA_ARCHITECTURE.md`](MEDIA_ARCHITECTURE.md)
 - [`OBSERVABILITY.md`](OBSERVABILITY.md)
 - [`BACKUP_RESTORE.md`](BACKUP_RESTORE.md)
+- [`utility_erp_final_sizing_annual_db_ir_attachment_no_dr.md`](../utility_erp_final_sizing_annual_db_ir_attachment_no_dr.md)
+- [`PRODUCTION_SIZING_IMPLEMENTATION_PLAN.md`](PRODUCTION_SIZING_IMPLEMENTATION_PLAN.md)
 
 ## Release
 

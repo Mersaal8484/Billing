@@ -84,6 +84,8 @@ Before Go-Live record:
 
 No unapproved numeric promise is assumed here.
 
+The initial sizing decision excludes a DR site. This is a scope decision, not a claim that local HA or backup restores provide disaster recovery. PostgreSQL local HA, protected Filestore, annual archive copies, and restore drills remain required.
+
 ---
 
 ## 5. Restore Order
@@ -166,3 +168,18 @@ Prevent replay:
 ## 11. Acceptance
 
 Backup is not accepted until a restore succeeds and business-critical flows are verified.
+
+## 12. Annual Archive and Media Retention Boundary
+
+At operational year close:
+
+1. complete or explicitly suspend in-flight work;
+2. take and verify the final database backup;
+3. capture a matching Filestore/attachment recovery point;
+4. register the database archive and checksum evidence;
+5. enforce read-only access to the archived database;
+6. create the next operational database only after restore and smoke checks pass.
+
+Image bytes are not retained forever with the database archive. The 365-day media-retention job removes eligible bytes while preserving media identity, reading history, and deletion audit. Restore tooling must tolerate expired evidence and must not silently recreate deleted image bytes.
+
+The initial archive/backup planning capacity is 12 TB usable and must be expanded based on the number of retained annual databases and backup generations. It is not a DR repository.

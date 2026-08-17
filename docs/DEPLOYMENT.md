@@ -33,6 +33,8 @@
 - Redis مساعد للـRate Limiting/Cache فقط، وليس Source of Truth.
 - PgBouncer جزء من Target Production Scale عند تعدد العقد والـWorkers.
 - Persistent Staging + Idempotency + Partial Failure هي القاعدة لدفعات القراءات.
+- Annual database rotation is a target operating model, not a current V1 runtime fact: one active operational year is closed read-only, archived, and replaced by a new operational database only after rehearsal and approval.
+- Initial sizing assumes shared Odoo Filestore for `ir.attachment`; MinIO and a DR site are excluded from the initial footprint.
 
 
 ## 1. Target Topology
@@ -194,10 +196,20 @@ Do not autoscale blindly against a saturated DB.
 - migration repeatable in staging.
 - rollback tested.
 
+## 13. Annual Rotation and Initial Production Sizing
+
+The target sizing baseline is documented in [`utility_erp_final_sizing_annual_db_ir_attachment_no_dr.md`](../utility_erp_final_sizing_annual_db_ir_attachment_no_dr.md). It targets 300,000 customers, 600–750 concurrent users, and up to 7.2 million readings/year.
+
+The initial physical baseline is approximately three compute/virtualization hosts, two dedicated PostgreSQL hosts, and one protected shared-storage platform. The logical baseline is three Odoo application nodes, two job/media nodes, PostgreSQL Primary/Standby, shared Filestore with 4 TB usable capacity, and 12 TB initial archive/backup capacity.
+
+Annual close must include completion of in-flight work, read-only controls, final backup, archive catalog registration, integrity checks, and a tested restore. Database archive retention and image-byte retention are separate lifecycles.
+
 ## V2.1 Current vs Target Topology
 
 **CURRENT V1 supported topology:** one Odoo 16 application deployment using PostgreSQL, installed in dependency order `date_range → utility_core → utility_inventory → utility_operations → utility_billing`, with standard local/Odoo workflow execution and the configured media compatibility path.
 
 **TARGET V2 / CONDITIONAL:** PgBouncer, multiple Odoo workers/nodes, scalable filesystem/NGINX media delivery, Redis helpers, Temporal workers, and partitioned high-volume tables. These are not mandatory V1 runtime dependencies and require load evidence, security review, migration rehearsal, and rollback planning.
+
+**TARGET V2 / CONDITIONAL:** annual operational database rotation, shared HA Filestore at the stated capacity, read-only yearly archives, and the no-DR/no-MinIO initial footprint require the execution plan, policy approval, performance evidence, and restore rehearsal before production adoption.
 
 **DEFERRED:** deployment runtime proof, upgrade rehearsal, load validation, and production restore timing.
