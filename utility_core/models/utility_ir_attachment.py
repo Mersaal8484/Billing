@@ -1,7 +1,7 @@
 import os
 import logging
 import re
-from odoo import models, api, fields
+from odoo import models, api, fields, _
 from odoo.tools import config
 from odoo.exceptions import UserError
 
@@ -99,10 +99,10 @@ class IrAttachment(models.Model):
         }
 
     @api.model
-    def _file_read(self, fname, bin_size=False):
+    def _file_read(self, fname):
         # New files use a complete relative path in store_fname and are handled
         # by Odoo's standard implementation, including old standard Filestore files.
-        data = super()._file_read(fname, bin_size=bin_size)
+        data = super()._file_read(fname)
         if data:
             return data
 
