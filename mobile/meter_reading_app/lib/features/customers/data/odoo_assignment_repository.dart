@@ -11,6 +11,9 @@ class OdooAssignmentRepository implements AssignmentRepository {
 
   OdooAssignmentRepository(this._client);
 
+  String? _lastError;
+  String? get lastError => _lastError;
+
   Future<void> _fetchData() async {
     try {
       final response = await _client.postJson('/api/v1/utility/reader/subscribers', {});
@@ -27,7 +30,7 @@ class OdooAssignmentRepository implements AssignmentRepository {
           final customer = Customer(
             remoteId: cId,
             customerNumber: s['customer_number']?.toString() ?? '',
-            accountNumber: 'ACC-$cId', // Fallback
+            accountNumber: 'ACC-$cId',
             name: s['name']?.toString() ?? '',
             address: s['address']?.toString(),
             regionName: s['route_name']?.toString(),
@@ -51,10 +54,15 @@ class OdooAssignmentRepository implements AssignmentRepository {
         }
 
         _all = List.unmodifiable(list);
+        _lastError = null;
+        _notifyListeners();
+      } else {
+        _lastError = 'API returned success=false';
         _notifyListeners();
       }
     } catch (e) {
-      // Fetch failed
+      _lastError = e.toString();
+      _notifyListeners();
     }
   }
 
