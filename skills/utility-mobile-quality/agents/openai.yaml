@@ -1,0 +1,4 @@
+interface:
+  display_name: "Utility Mobile Quality"
+  short_description: "اختبارات وتحليل جودة تطبيق Flutter"
+  default_prompt: "Use $utility-mobile-quality to add Flutter/Dart tests, coverage, analysis, mocks, or integration validation."

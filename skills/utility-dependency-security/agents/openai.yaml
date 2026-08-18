@@ -1,0 +1,4 @@
+interface:
+  display_name: "Utility Dependency Security"
+  short_description: "فحص تبعيات Python وDart والأسرار"
+  default_prompt: "Use $utility-dependency-security to audit dependencies, lockfiles, secrets, and supply-chain changes."

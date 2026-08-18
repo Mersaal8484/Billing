@@ -1,0 +1,4 @@
+interface:
+  display_name: "Observability & Performance"
+  short_description: "رصد وقياس وتحسين أداء Utility ERP"
+  default_prompt: "Use $utility-observability-performance to plan telemetry, profiling, load testing, or performance triage."

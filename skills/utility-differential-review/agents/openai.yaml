@@ -1,0 +1,4 @@
+interface:
+  display_name: "Utility Differential Review"
+  short_description: "مراجعة أمنية دقيقة للتغييرات"
+  default_prompt: "Use $utility-differential-review to review a diff for security, integrity, scope, and regression risk."

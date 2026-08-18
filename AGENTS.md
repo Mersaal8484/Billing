@@ -27,6 +27,13 @@ Do not present TARGET V2 proposals, a UI affordance, a test file, or an empty CI
 | REST, callbacks, webhooks, media, error contracts | `utility-api` | API specification, integration, security, reading batches, UAT |
 | Staging, templates, mappings, import/retry controls | `utility-migration` | data migration, baseline, technical architecture |
 | Static/runtime/UAT evidence and release verdicts | `utility-release-gate` | index, baseline, ADR, UAT, go-live, traceability |
+| Deployment, backup/restore, cutover, rollback, Filestore, production operations | `utility-deployment-operations` | deployment, backup/restore, go-live runbook, baseline |
+| Logging, metrics, alerts, profiling, load tests, capacity, queue/DB health | `utility-observability-performance` | observability, capacity/performance, deployment, UAT |
+| Flutter meter-reading app, offline sync, mobile API/media/printer integration | `utility-mobile-integration` | API, integration, reading batches, media, mobile README |
+| Diff/PR security review, blast radius, auth, workflow and integrity regressions | `utility-differential-review` | diff, baseline, ADR, security scope, routed domain skill |
+| Python/Dart dependencies, lockfiles, package provenance, secrets, supply chain | `utility-dependency-security` | requirements, pubspec, lockfiles, manifests, CI/deployment |
+| Flutter/Dart unit, widget, integration, offline-sync, mocks, analysis, coverage | `utility-mobile-quality` | mobile package, sync engine, API client, mobile integration, API specification |
+| Odoo 16 backend JavaScript, OWL components, client actions, field widgets, templates, assets, RTL UX | `utility-frontend-owl` | operational UX, SRS, UAT, module asset blocks, existing static/src |
 | Odoo 16 ORM performance, OCA code quality, N+1, XML, sudo | `odoo-framework-best-practices` | skills/odoo-framework-best-practices/SKILL.md |
 
 ## Project and dependency invariants

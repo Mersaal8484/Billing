@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mobile Reading Integration"
+  short_description: "تكامل تطبيق القراءة المحمول مع ERP"
+  default_prompt: "Use $utility-mobile-integration to change the Flutter meter-reading app or its offline/API synchronization contract."

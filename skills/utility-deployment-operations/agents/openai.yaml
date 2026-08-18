@@ -1,0 +1,4 @@
+interface:
+  display_name: "Deployment & Recovery"
+  short_description: "نشر واستعادة وتشغيل Utility ERP بأمان"
+  default_prompt: "Use $utility-deployment-operations to review a deployment, backup/restore, cutover, or rollback task."
