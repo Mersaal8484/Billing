@@ -119,6 +119,15 @@ class OdooAssignmentRepository implements AssignmentRepository {
   }
 
   @override
+  Future<ReadingAssignment?> getById(String id) async {
+    try {
+      return _all.firstWhere((a) => a.id == id);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
   Future<ReadingAssignment?> lookupByMeterNumber(String meterNumber) async {
     try {
       return _all.firstWhere((a) => a.meter.meterNumber == meterNumber);

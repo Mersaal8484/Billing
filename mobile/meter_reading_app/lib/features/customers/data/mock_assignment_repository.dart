@@ -6,6 +6,7 @@ import '../domain/entities.dart';
 abstract class AssignmentRepository {
   Stream<List<ReadingAssignment>> watchAssignments(
       {String? query, AssignmentStatus? filter});
+  Future<ReadingAssignment?> getById(String id);
   Future<ReadingAssignment?> lookupByMeterNumber(String meterNumber);
   Future<ReadingAssignment?> resolveQr(String payload);
   Future<void> markStatus(String assignmentId, AssignmentStatus status);
@@ -70,6 +71,15 @@ class MockAssignmentRepository implements AssignmentRepository {
       );
       controller.onCancel = sub.cancel;
     });
+  }
+
+  @override
+  Future<ReadingAssignment?> getById(String id) async {
+    try {
+      return _all.firstWhere((a) => a.id == id);
+    } catch (_) {
+      return null;
+    }
   }
 
   @override

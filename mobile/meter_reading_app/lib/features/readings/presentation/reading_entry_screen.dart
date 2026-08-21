@@ -59,8 +59,9 @@ class _ReadingEntryScreenState extends ConsumerState<ReadingEntryScreen> {
     try {
       final repo = ref.read(assignmentRepositoryProvider);
 
-      // lookupByMeterNumber أو resolveQr — نستخدم assignmentId كرقم عداد
+      // استخدام getById أولاً، ثم البحث برقم العداد أو QR
       final assignment =
+          await repo.getById(widget.assignmentId) ??
           await repo.lookupByMeterNumber(widget.assignmentId) ??
           await repo.resolveQr(widget.assignmentId);
 

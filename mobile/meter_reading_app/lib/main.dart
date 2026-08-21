@@ -70,7 +70,8 @@ void main() async {
   final db = AppDatabase();
 
   // 3️⃣ التحقق من وجود session cookie صالح → نتخطى شاشة Login إذا كان موجوداً
-  final isLoggedIn = await AuthService(apiClient).isLoggedIn();
+  final authService = AuthService(apiClient);
+  final isLoggedIn = await authService.restoreSession();
 
   // 4️⃣ تسجيل WorkManager للمزامنة الدورية في الخلفية
   await Workmanager().initialize(callbackDispatcher);
@@ -93,6 +94,9 @@ void main() async {
 
         // ✅ حالة تسجيل الدخول من الـ cookie الحقيقي
         authStateProvider.overrideWith((ref) => isLoggedIn),
+
+        // ✅ تمرير AuthService بعد استعادة بيانات الجلسة
+        authServiceProvider.overrideWithValue(authService),
       ],
       child: const MeterReadingApp(),
     ),

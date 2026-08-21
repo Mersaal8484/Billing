@@ -92,6 +92,36 @@ class AuthService {
   /// Quick check used at app startup to decide Login vs Home screen.
   Future<bool> isLoggedIn() => _client.hasSessionCookie();
 
+  /// Restores session user info and roles if cookie is still valid
+  Future<bool> restoreSession() async {
+    final hasCookie = await isLoggedIn();
+    if (!hasCookie) return false;
+
+    final db = await _storage.read(key: _dbKey);
+    final login = await _storage.read(key: _loginKey);
+    if (db == null || login == null) return false;
+
+    Map<String, bool>? userRoles;
+    try {
+      final roleResult = await _client.postJson('/api/v1/utility/auth/roles', {});
+      if (roleResult['success'] == true) {
+        final r = roleResult['roles'] as Map<String, dynamic>?;
+        if (r != null) {
+          userRoles = r.map((k, v) => MapEntry(k, v == true));
+        }
+      }
+    } catch (_) {}
+
+    _currentUser = OdooUserInfo(
+      uid: 0,
+      name: login,
+      login: login,
+      db: db,
+      roles: userRoles,
+    );
+    return true;
+  }
+
   Future<String?> get savedDb => _storage.read(key: _dbKey);
   Future<String?> get savedLogin => _storage.read(key: _loginKey);
 }
