@@ -90,6 +90,7 @@
                             </span>
                         </div>
 
+                        <field name="available_customer_ids" invisible="1"/>
                         <field name="selected_customer_ids"
                                widget="many2many"
                                domain="[('id', 'in', available_customer_ids)]"
