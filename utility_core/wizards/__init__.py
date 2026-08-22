@@ -8,3 +8,4 @@ from . import utility_period_adjust_wizard
 from . import utility_customer_lifecycle_wizard
 from . import utility_upgrade_validation_wizard
 from . import utility_contract_template_clone_wizard
+from . import utility_route_assignment_wizard

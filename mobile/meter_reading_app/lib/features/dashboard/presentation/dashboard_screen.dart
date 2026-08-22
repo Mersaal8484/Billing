@@ -13,7 +13,10 @@ class DashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final assignments = ref.watch(assignmentsProvider(const AssignmentQuery()));
     final sync = ref.watch(syncSnapshotProvider);
-    final userRoles = ref.watch(authServiceProvider).currentUser?.roles;
+    final user = ref.watch(currentUserProvider);
+    final isReader = ref.watch(isReaderProvider);
+    final isCollector = ref.watch(isCollectorProvider);
+    final isSupervisor = ref.watch(isSupervisorProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -35,34 +38,76 @@ class DashboardScreen extends ConsumerWidget {
               list.where((a) => a.status == AssignmentStatus.read).length;
           final pending =
               list.where((a) => a.status == AssignmentStatus.pending).length;
-          final offline = sync.value?.connectivity.name == 'offline';
+          final offline =
+              sync.value?.connectivity.name == 'offline';
           final batch = sync.value?.batchPipeline;
-          final pendingSync = (batch?.pending ?? 0) + (batch?.inProgress ?? 0);
-          final synced = (batch?.succeeded ?? 0);
-          final failed = (batch?.failed ?? 0);
+          final pendingSync =
+              (batch?.pending ?? 0) + (batch?.inProgress ?? 0);
+          final synced = batch?.succeeded ?? 0;
+          final failed = batch?.failed ?? 0;
 
           return Column(
             children: [
               OfflineBanner(
-                  offline: offline,
-                  pendingCount: pendingSync,
-                  onSyncNow: () => context.push('/sync')),
+                offline: offline,
+                pendingCount: pendingSync,
+                onSyncNow: () => context.push('/sync'),
+              ),
+
+              // بطاقة ترحيب بالمستخدم
+              if (user != null)
+                Padding(
+                  padding:
+                      const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  child: Card(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .primaryContainer
+                        .withOpacity(0.4),
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        child: Text(
+                          user.name.isNotEmpty
+                              ? user.name[0].toUpperCase()
+                              : '؟',
+                        ),
+                      ),
+                      title: Text(user.name,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold)),
+                      subtitle: Text(
+                        _roleLabel(isReader, isCollector, isSupervisor),
+                        style: TextStyle(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .primary),
+                      ),
+                    ),
+                  ),
+                ),
+
               Expanded(
                 child: ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
-                    _ProgressCard(
-                      total: total,
-                      done: done,
-                      pending: pending,
-                      pendingSync: pendingSync,
-                      synced: synced,
-                      failed: failed,
-                    ),
-                    const SizedBox(height: 16),
+                    // بطاقة التقدم — فقط للكاشف
+                    if (isReader) ...[
+                      _ProgressCard(
+                        total: total,
+                        done: done,
+                        pending: pending,
+                        pendingSync: pendingSync,
+                        synced: synced,
+                        failed: failed,
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
                     Text('مسارات العمل',
-                        style: Theme.of(context).textTheme.titleMedium),
+                        style:
+                            Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 8),
+
                     GridView.count(
                       shrinkWrap: true,
                       crossAxisCount: 2,
@@ -71,41 +116,77 @@ class DashboardScreen extends ConsumerWidget {
                       mainAxisSpacing: 10,
                       physics: const NeverScrollableScrollPhysics(),
                       children: [
-                        if (userRoles?['is_meter_reader'] ?? true)
+                        // ✅ الكاشف — فقط إذا كان is_meter_reader
+                        if (isReader)
                           _QuickAction(
                             icon: Icons.speed_rounded,
                             label: 'الكاشف',
                             subtitle: 'مهام القراءة',
+                            badge: pending > 0 ? '$pending متبقي' : null,
                             onTap: () => context.push('/customers'),
                           ),
-                        if (userRoles?['is_collector'] ?? true)
+
+                        // ✅ المتحصل — فقط إذا كان is_collector
+                        if (isCollector)
                           _QuickAction(
                             icon: Icons.qr_code_scanner_rounded,
                             label: 'المتحصل',
                             subtitle: 'QR والتحصيل',
                             onTap: () => context.push('/collector'),
                           ),
-                        if (userRoles?['is_supervisor'] ?? true)
+
+                        // ✅ المشرف — فقط إذا كان is_supervisor
+                        if (isSupervisor)
                           _QuickAction(
                             icon: Icons.rule_folder_outlined,
                             label: 'المشرف',
                             subtitle: 'اعتماد ومتابعة',
                             onTap: () => context.push('/supervisor'),
                           ),
+
+                        // المزامنة — للجميع
                         _QuickAction(
                           icon: Icons.sync_rounded,
                           label: 'المزامنة',
                           subtitle: 'الطابور والحالة',
+                          badge: pendingSync > 0
+                              ? '$pendingSync قيد الرفع'
+                              : null,
                           onTap: () => context.push('/sync'),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 24),
-                    Text('مهام قريبة',
-                        style: Theme.of(context).textTheme.titleMedium),
-                    const SizedBox(height: 8),
-                    ...list.take(4).map((assignment) =>
-                        _UpcomingTaskTile(assignment: assignment)),
+
+                    // مهام قريبة — فقط للكاشف
+                    if (isReader && list.isNotEmpty) ...[
+                      const SizedBox(height: 24),
+                      Text('مهام قريبة',
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium),
+                      const SizedBox(height: 8),
+                      ...list.take(4).map(
+                            (a) => _UpcomingTaskTile(assignment: a),
+                          ),
+                    ],
+
+                    // رسالة للمحصل فقط
+                    if (isCollector && !isReader) ...[
+                      const SizedBox(height: 24),
+                      Card(
+                        child: ListTile(
+                          leading: const Icon(
+                              Icons.info_outline_rounded),
+                          title: const Text(
+                              'انتقل لشاشة التحصيل لبدء العمل'),
+                          trailing: TextButton(
+                            onPressed: () =>
+                                context.push('/collector'),
+                            child: const Text('انتقل'),
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -115,16 +196,20 @@ class DashboardScreen extends ConsumerWidget {
       ),
     );
   }
+
+  String _roleLabel(bool isReader, bool isCollector, bool isSupervisor) {
+    final roles = <String>[];
+    if (isSupervisor) roles.add('مشرف');
+    if (isReader) roles.add('كاشف');
+    if (isCollector) roles.add('متحصل');
+    return roles.isEmpty ? 'مستخدم' : roles.join(' · ');
+  }
 }
 
-class _ProgressCard extends StatelessWidget {
-  final int total;
-  final int done;
-  final int pending;
-  final int pendingSync;
-  final int synced;
-  final int failed;
+// ── Widgets ───────────────────────────────────────────────────────────────────
 
+class _ProgressCard extends StatelessWidget {
+  final int total, done, pending, pendingSync, synced, failed;
   const _ProgressCard({
     required this.total,
     required this.done,
@@ -147,15 +232,18 @@ class _ProgressCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('تقدم قراءات اليوم',
-                    style: Theme.of(context).textTheme.titleMedium),
+                    style:
+                        Theme.of(context).textTheme.titleMedium),
                 Text('$done / $total',
-                    style: Theme.of(context).textTheme.titleMedium),
+                    style:
+                        Theme.of(context).textTheme.titleMedium),
               ],
             ),
             const SizedBox(height: 12),
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: LinearProgressIndicator(value: progress, minHeight: 10),
+              child: LinearProgressIndicator(
+                  value: progress, minHeight: 10),
             ),
             const SizedBox(height: 14),
             Wrap(
@@ -192,12 +280,14 @@ class _QuickAction extends StatelessWidget {
   final IconData icon;
   final String label;
   final String subtitle;
+  final String? badge;
   final VoidCallback onTap;
 
   const _QuickAction({
     required this.icon,
     required this.label,
     required this.subtitle,
+    this.badge,
     required this.onTap,
   });
 
@@ -212,15 +302,40 @@ class _QuickAction extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(icon,
-                  size: 30, color: Theme.of(context).colorScheme.primary),
+              Row(
+                children: [
+                  Icon(icon,
+                      size: 30,
+                      color:
+                          Theme.of(context).colorScheme.primary),
+                  if (badge != null) ...[
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        badge!,
+                        style: const TextStyle(
+                            fontSize: 10,
+                            color: Colors.orange,
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
               const Spacer(),
               Text(label,
                   style: Theme.of(context)
                       .textTheme
                       .titleMedium
                       ?.copyWith(fontWeight: FontWeight.w800)),
-              Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+              Text(subtitle,
+                  style: Theme.of(context).textTheme.bodySmall),
             ],
           ),
         ),
@@ -231,7 +346,6 @@ class _QuickAction extends StatelessWidget {
 
 class _UpcomingTaskTile extends StatelessWidget {
   final ReadingAssignment assignment;
-
   const _UpcomingTaskTile({required this.assignment});
 
   @override
@@ -239,23 +353,26 @@ class _UpcomingTaskTile extends StatelessWidget {
     return Card(
       child: ListTile(
         onTap: () => context.push('/customers/${assignment.id}'),
-        leading: const CircleAvatar(child: Icon(Icons.speed_rounded)),
+        leading:
+            const CircleAvatar(child: Icon(Icons.speed_rounded)),
         title: Text(assignment.customer.name,
-            style: const TextStyle(fontWeight: FontWeight.w700)),
+            style:
+                const TextStyle(fontWeight: FontWeight.w700)),
         subtitle: Text(
             '${assignment.customer.accountNumber} · عداد ${assignment.meter.meterNumber}'),
-        trailing: Text(_statusLabel(assignment.status),
-            style: Theme.of(context).textTheme.bodySmall),
+        trailing: Text(
+          assignment.status == AssignmentStatus.read
+              ? 'مكتمل'
+              : 'متبقي',
+          style: TextStyle(
+            color: assignment.status == AssignmentStatus.read
+                ? Colors.green
+                : Colors.orange,
+            fontWeight: FontWeight.bold,
+            fontSize: 12,
+          ),
+        ),
       ),
     );
   }
-
-  String _statusLabel(AssignmentStatus status) => switch (status) {
-        AssignmentStatus.pending => 'متبقي',
-        AssignmentStatus.pendingDecision => 'بانتظار قرار',
-        AssignmentStatus.read => 'مكتمل',
-        AssignmentStatus.rejected => 'مرفوض',
-        AssignmentStatus.escalated => 'مصعد',
-        AssignmentStatus.skipped => 'متجاوز',
-      };
 }

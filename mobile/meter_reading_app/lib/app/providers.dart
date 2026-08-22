@@ -11,18 +11,52 @@ import '../core/sync/sync_engine.dart';
 import '../core/sync/sync_settings_service.dart';
 import '../features/collections/data/mock_collection_repository.dart';
 import '../features/collections/domain/collection_models.dart';
-import '../features/customers/data/mock_assignment_repository.dart' show AssignmentRepository;
+import '../features/customers/data/mock_assignment_repository.dart';
 import '../features/customers/data/odoo_assignment_repository.dart';
 import '../features/customers/domain/entities.dart';
 import '../features/readings/data/drift_reading_repository.dart';
 import '../features/readings/domain/reading.dart';
 
+// ─── Network ──────────────────────────────────────────────────────────────────
+
 final odooApiClientProvider = Provider<OdooApiClient>((ref) {
   throw UnimplementedError('odooApiClientProvider must be overridden in main.dart.');
 });
 
+/// AuthService كـ singleton — يحتفظ بـ currentUser طوال عمر التطبيق
 final authServiceProvider = Provider<AuthService>((ref) {
   return AuthService(ref.watch(odooApiClientProvider));
+});
+
+/// بيانات المستخدم الحالي — يُحدَّث بعد تسجيل الدخول
+final currentUserProvider = StateProvider<OdooUserInfo?>((ref) => null);
+
+/// الدور الوظيفي — مشتق من currentUser
+final userRolesProvider = Provider<Map<String, bool>>((ref) {
+  final user = ref.watch(currentUserProvider);
+  return user?.roles ?? {};
+});
+
+/// هل المستخدم كاشف؟
+final isReaderProvider = Provider<bool>((ref) {
+  final roles = ref.watch(userRolesProvider);
+  // إذا لم تُعرَّف أدوار، نفترض أنه كاشف (للتوافق)
+  if (roles.isEmpty) return true;
+  return roles['is_meter_reader'] == true;
+});
+
+/// هل المستخدم محصل؟
+final isCollectorProvider = Provider<bool>((ref) {
+  final roles = ref.watch(userRolesProvider);
+  if (roles.isEmpty) return true;
+  return roles['is_collector'] == true;
+});
+
+/// هل المستخدم مشرف؟
+final isSupervisorProvider = Provider<bool>((ref) {
+  final roles = ref.watch(userRolesProvider);
+  if (roles.isEmpty) return false;
+  return roles['is_supervisor'] == true;
 });
 
 final readingApiServiceProvider = Provider<ReadingApiService>((ref) {
@@ -33,18 +67,24 @@ final billingApiServiceProvider = Provider<BillingApiService>((ref) {
   return BillingApiService(ref.watch(odooApiClientProvider));
 });
 
+// ─── Database ─────────────────────────────────────────────────────────────────
+
 final databaseProvider = Provider<AppDatabase>((ref) {
   final db = AppDatabase();
   ref.onDispose(db.close);
   return db;
 });
 
+// ─── Repositories ─────────────────────────────────────────────────────────────
+
 final readingRepositoryProvider = Provider<DriftReadingRepository>((ref) {
   return DriftReadingRepository(ref.watch(databaseProvider));
 });
 
+/// ✅ يستخدم OdooAssignmentRepository الحقيقي
 final assignmentRepositoryProvider = Provider<AssignmentRepository>((ref) {
-  final repo = OdooAssignmentRepository(ref.watch(odooApiClientProvider));
+  final client = ref.watch(odooApiClientProvider);
+  final repo = OdooAssignmentRepository(client);
   ref.onDispose(repo.dispose);
   return repo;
 });
@@ -78,6 +118,8 @@ final syncEngineProvider = Provider<SyncEngine>((ref) {
   ref.onDispose(engine.dispose);
   return engine;
 });
+
+// ─── Streamed state ───────────────────────────────────────────────────────────
 
 final assignmentsProvider = StreamProvider.autoDispose
     .family<List<ReadingAssignment>, AssignmentQuery>((ref, query) {

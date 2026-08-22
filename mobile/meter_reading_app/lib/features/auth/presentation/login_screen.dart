@@ -21,6 +21,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   String? _errorText;
 
   @override
+  void dispose() {
+    _userCtrl.dispose();
+    _passCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
@@ -34,13 +41,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const SizedBox(height: 32),
-                  Center(
-                    child: Image.asset(
-                      'assets/icons/pec_logo.png',
-                      width: 120,
-                      height: 120,
-                      fit: BoxFit.contain,
-                    ),
+                  CircleAvatar(
+                    radius: 38,
+                    backgroundColor: scheme.primaryContainer,
+                    child: Icon(Icons.speed_rounded,
+                        size: 38, color: scheme.onPrimaryContainer),
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -67,8 +72,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       labelText: 'اسم المستخدم',
                       prefixIcon: Icon(Icons.person_outline),
                     ),
-                    validator: (value) =>
-                        (value == null || value.isEmpty) ? 'مطلوب' : null,
+                    validator: (v) =>
+                        (v == null || v.isEmpty) ? 'مطلوب' : null,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
@@ -78,15 +83,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       labelText: 'كلمة المرور',
                       prefixIcon: const Icon(Icons.lock_outline),
                       suffixIcon: IconButton(
-                        tooltip:
-                            _obscure ? 'إظهار كلمة المرور' : 'إخفاء كلمة المرور',
-                        icon: Icon(
-                            _obscure ? Icons.visibility_off : Icons.visibility),
-                        onPressed: () => setState(() => _obscure = !_obscure),
+                        tooltip: _obscure ? 'إظهار' : 'إخفاء',
+                        icon: Icon(_obscure
+                            ? Icons.visibility_off
+                            : Icons.visibility),
+                        onPressed: () =>
+                            setState(() => _obscure = !_obscure),
                       ),
                     ),
-                    validator: (value) =>
-                        (value == null || value.isEmpty) ? 'مطلوب' : null,
+                    validator: (v) =>
+                        (v == null || v.isEmpty) ? 'مطلوب' : null,
                   ),
                   if (_errorText != null) ...[
                     const SizedBox(height: 12),
@@ -127,15 +133,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     try {
       final auth = ref.read(authServiceProvider);
-      // TODO: move `db` to a Settings field if the app should support more
-      // than one Odoo database — 'utility_db' matches the current odoo.conf.
-      await auth.login(
+      final userInfo = await auth.login(
         db: 'invoice_utility_erp',
         login: _userCtrl.text.trim(),
         password: _passCtrl.text,
       );
+
+      // ✅ حفظ بيانات المستخدم والأدوار في Provider
+      ref.read(currentUserProvider.notifier).state = userInfo;
       ref.read(authStateProvider.notifier).state = true;
-      if (mounted) context.go('/dashboard');
+
+      if (mounted) {
+        // توجيه حسب الدور
+        _navigateByRole(userInfo.roles ?? {});
+      }
     } on OdooSessionExpiredException catch (e) {
       setState(() => _errorText = e.message);
     } on OdooApiException catch (e) {
@@ -145,5 +156,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  void _navigateByRole(Map<String, bool> roles) {
+    if (!mounted) return;
+
+    // مشرف → لوحة المشرف
+    if (roles['is_supervisor'] == true) {
+      context.go('/supervisor');
+      return;
+    }
+    // محصل فقط → شاشة التحصيل
+    if (roles['is_collector'] == true &&
+        roles['is_meter_reader'] != true) {
+      context.go('/collector');
+      return;
+    }
+    // كاشف أو عام → الرئيسية
+    context.go('/dashboard');
   }
 }

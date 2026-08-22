@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         View: معالج تعيين المشتركين بالمحول
+    ══════════════════════════════════════════════════════════════════════ -->
+    <record id="view_route_assignment_wizard_form" model="ir.ui.view">
+        <field name="name">utility.route.assignment.wizard.form</field>
+        <field name="model">utility.route.assignment.wizard</field>
+        <field name="arch" type="xml">
+            <form string="معالج تعيين المشتركين">
+                <sheet>
+
+                    <!-- ── العنوان ──────────────────────────────────────── -->
+                    <div class="oe_title">
+                        <h1>تعيين المشتركين للمسار</h1>
+                        <p class="text-muted">
+                            اختر المحول ← حدد المشتركين ← حدد المستخدم المسؤول
+                        </p>
+                    </div>
+
+                    <group>
+                        <!-- ── القسم 1: المحولات ──────────────────────── -->
+                        <group string="① اختر المحول / المحولات" colspan="2">
+                            <field name="transformer_ids"
+                                   widget="many2many_tags"
+                                   options="{'no_create': True}"
+                                   placeholder="ابحث عن محول..."
+                                   colspan="2"/>
+                            <div class="alert alert-info" colspan="2"
+                                 attrs="{'invisible': [('customer_count', '=', 0)]}">
+                                <i class="fa fa-info-circle"/> 
+                                تم العثور على <strong><field name="customer_count" nolabel="1"/></strong> مشترك مرتبط بالمحولات المختارة.
+                            </div>
+                            <div class="alert alert-warning" colspan="2"
+                                 attrs="{'invisible': [('customer_count', '!=', 0)]}">
+                                <i class="fa fa-exclamation-triangle"/> 
+                                لا يوجد مشتركون مرتبطون بالمحولات المختارة.
+                                تأكد من ربط العدادات بالمحول أولاً.
+                            </div>
+                        </group>
+
+                        <!-- ── القسم 2: المسار ────────────────────────── -->
+                        <group string="② المسار" colspan="2">
+                            <field name="route_id"
+                                   options="{'no_create': True}"
+                                   placeholder="اختر مساراً موجوداً أو اتركه فارغاً لإنشاء جديد"/>
+                            <field name="assign_mode" widget="radio"/>
+                            <field name="new_route_name"
+                                   attrs="{'invisible': [('route_id', '!=', False)],
+                                           'required': [('route_id', '=', False)]}"/>
+                            <field name="new_route_code"
+                                   attrs="{'invisible': [('route_id', '!=', False)],
+                                           'required': [('route_id', '=', False)]}"/>
+                        </group>
+
+                        <!-- ── القسم 3: طاقم العمل ───────────────────── -->
+                        <group string="③ طاقم العمل والمشرف" colspan="2">
+                            <field name="user_ids"
+                                   widget="many2many_tags"
+                                   placeholder="اختر الكاشف / المتحصل..."
+                                   colspan="2"/>
+                            <field name="supervisor_id"
+                                   placeholder="اختر المشرف (اختياري)..."
+                                   colspan="2"/>
+                            <div class="text-muted small" colspan="2">
+                                <i class="fa fa-info-circle"/>
+                                دور كل مستخدم (كاشف/متحصل/مشرف) يُحدَّد تلقائياً
+                                من صلاحياته في Odoo — لا حاجة لتحديده هنا.
+                            </div>
+                        </group>
+                    </group>
+
+                    <!-- ── القسم 4: المشتركون ─────────────────────────── -->
+                    <group string="④ تحديد المشتركين" colspan="2"
+                           attrs="{'invisible': [('customer_count', '=', 0)]}">
+
+                        <!-- أزرار سريعة -->
+                        <div class="mb-3" colspan="2">
+                            <button type="object"
+                                    name="action_select_all"
+                                    string="✓ تحديد الكل"
+                                    class="btn btn-sm btn-primary me-2"/>
+                            <button type="object"
+                                    name="action_deselect_all"
+                                    string="✗ إلغاء الكل"
+                                    class="btn btn-sm btn-secondary"/>
+                            <span class="ms-3 text-info">
+                                المحدد: <field name="selected_count" nolabel="1"/> مشترك
+                            </span>
+                        </div>
+
+                        <field name="selected_customer_ids"
+                               widget="many2many"
+                               domain="[('id', 'in', available_customer_ids)]"
+                               colspan="2">
+                            <tree>
+                                <field name="display_name" string="المشترك"/>
+                                <field name="customer_number" string="رقم المشترك"/>
+                                <field name="route_id" string="المسار الحالي"
+                                       optional="show"/>
+                            </tree>
+                        </field>
+                    </group>
+
+                </sheet>
+
+                <!-- ── أزرار التأكيد ────────────────────────────────────── -->
+                <footer>
+                    <button type="object"
+                            name="action_confirm"
+                            string="تأكيد التعيين"
+                            class="btn-primary"
+                            attrs="{'invisible': [('selected_count', '=', 0)]}"/>
+                    <button special="cancel"
+                            string="إلغاء"
+                            class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         Action: فتح الـ Wizard
+    ══════════════════════════════════════════════════════════════════════ -->
+    <record id="action_route_assignment_wizard" model="ir.actions.act_window">
+        <field name="name">معالج تعيين المشتركين</field>
+        <field name="res_model">utility.route.assignment.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         تحديث view المسار: إضافة زر لفتح الـ Wizard + توحيد طاقم العمل
+    ══════════════════════════════════════════════════════════════════════ -->
+    <record id="view_utility_route_form_inherited" model="ir.ui.view">
+        <field name="name">utility.route.form.assignment.wizard</field>
+        <field name="model">utility.route</field>
+        <field name="inherit_id" ref="utility_core.view_utility_route_form"/>
+        <field name="arch" type="xml">
+
+            <!-- إضافة زر الـ Wizard في الأزرار الرئيسية -->
+            <xpath expr="//sheet/div[@class='oe_button_box']"
+                   position="inside">
+                <button type="action"
+                        name="%(action_route_assignment_wizard)d"
+                        string="تعيين مشتركين"
+                        icon="fa-users"
+                        class="oe_stat_button"
+                        context="{'default_route_id': active_id,
+                                  'default_transformer_ids': [(6,0,[transformer_id])] if transformer_id else []}"/>
+            </xpath>
+
+            <!-- توحيد حقل المشرف مع طاقم العمل في نفس المجموعة -->
+            <xpath expr="//field[@name='supervisor_id']" position="before">
+                <separator string="طاقم العمل"/>
+            </xpath>
+
+        </field>
+    </record>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         Menu: إضافة عنصر قائمة للـ Wizard
+    ══════════════════════════════════════════════════════════════════════ -->
+    <menuitem id="menu_route_assignment_wizard"
+              name="تعيين مشتركين بالمحول"
+              parent="utility_core.menu_utility_network"
+              action="action_route_assignment_wizard"
+              sequence="85"/>
+
+</odoo>

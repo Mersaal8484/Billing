@@ -84,6 +84,8 @@ User Role.
         'wizards/views/formula_test_wizard_views.xml',
         'wizards/views/utility_meter_wizard_views.xml',
         'wizards/views/utility_contract_template_clone_wizard_views.xml',
+        'wizards/views/utility_route_assignment_wizard_views.xml',
+        'wizards/views/utility_migration_import_wizard_views.xml',
         'data/utility_migration_actions.xml',
         'data/utility_migration_cron.xml',
         'views/utility_migration_mapping_views.xml',
