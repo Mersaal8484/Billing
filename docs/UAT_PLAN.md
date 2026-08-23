@@ -2,10 +2,10 @@
 
 **Platform:** Odoo 16 Community
 **Architecture Baseline:** `UTILITY_ERP_MASTER_ARCHITECTURE_V2.md`
-**Last Verified Implementation SHA:** `45d738693ec70bad542df76f568425b01d44359c`
+**Last Verified Implementation SHA:** `bf951a05a6031e94192e692dacbeb9dd01ca035e`
 **Target Scale:** Up to 1,000,000 subscribers (capacity-planning baseline)
-**Documentation Version:** 3.0
-**Last Verified Date:** 2026-08-14
+**Documentation Version:** 3.2
+**Last Verified Date:** 2026-08-24
 **Status:** Current V1 (Including Implemented Organizational Region/Branch Data Isolation)
 
 **Document Type:** User Acceptance Test Plan

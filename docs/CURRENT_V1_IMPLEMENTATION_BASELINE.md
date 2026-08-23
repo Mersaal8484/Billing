@@ -2,10 +2,10 @@
 
 **Repository:** `AbdulrhmanBashammmakh/utility_erp`
 **Branch:** `development`
-**Reviewed SHA:** `45d738693ec70bad542df76f568425b01d44359c`
-**Commit:** `dev ++ ----------- enhance lifecycle impv 15 +2`
-**Reviewed Date:** 2026-08-14
-**Documentation Version:** 3.1
+**Reviewed SHA:** `bf951a05a6031e94192e692dacbeb9dd01ca035e`
+**Commit:** `bf951a0 dev ++ ----------- +1`
+**Reviewed Date:** 2026-08-24
+**Documentation Version:** 3.2
 **Status:** CURRENT V1 implementation truth (Including Organizational Region/Branch Isolation)
 
 This document answers: **what is actually implemented now?** It does not describe speculative V2 scale infrastructure.
@@ -34,6 +34,7 @@ utility_billing
 - Billing does not move commercial reading fields back into Core and Core does not dynamically detect whether Billing is installed.
 - Standard Odoo `stock.lot`/stock movements remain physical inventory truth; `utility.meter` is the logical operational meter identity.
 - Standard Odoo `account.move` and `account.payment` remain financial truth. There is no parallel ledger and no customer wallet.
+- `utility_core` provides structured attachment storage in `ir.attachment` via deterministic folder hierarchy (`module/model/YYYY/MM/DD/checksum`) and legacy path compatibility.
 
 ## 3. Current workflows
 
@@ -68,6 +69,7 @@ The commercial Bill is represented by `sale.order`; an Accounting Invoice is `ac
 
 - **`utility.contract.template.version`**: Authoritative immutable version record owned by `utility_core`. Any modification to a contract template already referenced by a bill automatically generates a new version (V1 → V2), while unbilled templates update in place. Direct edits and deletions on used versions are strictly blocked with `UserError`.
 - **`utility.contract.template.clone.wizard`**: Professional transient wizard allowing authorized users (Billing Managers/Admins) to create a new, completely independent Contract Template by copying pricing, lines, blocks, discount configurations, local fees, and workflow settings from an existing template. The new template receives a unique name/code, its own fresh Version 1 (V1), clean history isolation, and optional geographic overrides without mutating the source or historical billing records.
+- **Dynamic Blocks & Context Guard**: `skip_tier_validation` context guard is supported during programmatic block replacement/creation, preventing false constraint errors when rearranging pricing tiers.
 - **`utility.bill.pricing.snapshot` & `utility.bill.pricing.block`**: Immutable pricing and formula calculation evidence recorded on each `sale.order` bill by `utility_billing`. Captures energy, service, local fee, discount, and private transformer amounts, along with exact applied pricing block breakdown. Once the bill is confirmed, pricing snapshots and their block lines are locked against direct mutation.
 - **Audit Chain**: `Customer -> Contract Template -> Contract Version -> Reading -> Reading Snapshot (Component) -> Pricing Snapshot -> Sale Order -> Invoice -> Accounting`.
 - **Pricing Modes**: `flat`, `tier` (single tier), and `block` (progressive tier) are fully supported. `seasonal` and `tou` modes are explicitly unsupported in V1 and blocked with `ValidationError`.
@@ -108,9 +110,11 @@ point, while the user-facing confirmation action executes the business event.
 Automatic entries carry a company-scoped unique `settlement_key`; duplicate
 creation is rejected by the database constraint.
 
-### Operations and inventory
+### Operations, field management, and inventory
 
-Critical operational forms use named action transitions with readonly state fields and non-clickable statusbars. Installation, work order, inspection, and alarm lifecycles expose terminal/error paths in the UI. Meter replacement is an operational orchestration over standard stock movements and requires explicit confirmation before immediate execution.
+- **`utility.route.assignment.wizard`**: Transformer-based route assignment wizard allowing supervisors to select transformers, automatically aggregate connected active customers, select field staff (`res.users`), and assign/add/replace customers on existing or newly generated routes.
+- **`utility.meter.reader`**: Dedicated Meter Reader entity linking `res.users` with assigned routes, tracking mobile/staff credentials, and keeping route assignments synchronized with user scopes and mobile APIs.
+- Critical operational forms use named action transitions with readonly state fields and non-clickable statusbars. Installation, work order, inspection, and alarm lifecycles expose terminal/error paths in the UI. Meter replacement is an operational orchestration over standard stock movements and requires explicit confirmation before immediate execution.
 
 ## 4. Security and migration
 
@@ -119,7 +123,7 @@ Critical operational forms use named action transitions with readonly state fiel
 - API ownership checks restrict records to the authorized customer/user scope.
 - Migration staging is persistent, bounded, retryable, lock-aware, and traceable to source data. Manual Run Now remains an admin-only/test-oriented path where present; normal processing is background-driven.
 
-## 5. Current API contract
+## 5. Current API contract and Mobile Integration
 
 Verified billing and Reader API hardening uses this normalized error envelope on updated endpoints:
 
@@ -131,11 +135,12 @@ Verified billing and Reader API hardening uses this normalized error envelope on
 }
 ```
 
-Reader confirmation translates expected `AccessError`, `UserError`, and `ValidationError` into deterministic business errors. Unexpected database/integrity/programming failures are not the desired generic business response. This contract is verified for the updated billing/reader scope, not assumed for every endpoint in the repository.
+- Mobile API endpoints (`/api/v1/reader/...` and `/api/v1/auth/...`) support dynamic user roles, subscriber listing by assigned routes, offline sync payload generation, and batch confirmation.
+- Reader confirmation translates expected `AccessError`, `UserError`, and `ValidationError` into deterministic business errors. Unexpected database/integrity/programming failures are not the desired generic business response.
 
 ## 6. Evidence and limits
 
-Regression test files exist for core/billing ownership, Reader/API hardening, gateway idempotency, payment allocation, financial lifecycle, write-off, sensitive wizard permissions, and reading-batch concurrency. This document records test existence only; it does not claim that a full runtime suite, CI, concurrency proof, upgrade rehearsal, or production load test passed at this SHA.
+Regression test files exist for core/billing ownership, Reader/API hardening, gateway idempotency, payment allocation, financial lifecycle, write-off, sensitive wizard permissions, structured `ir.attachment` storage, and reading-batch concurrency. This document records test existence only; it does not claim that a full runtime suite, CI, concurrency proof, upgrade rehearsal, or production load test passed at this SHA.
 
 **DEFERRED:** runtime/CI proof, production-scale load validation, and `stock.quant` N+1 optimization until profiling confirms meaningful impact.
 

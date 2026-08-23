@@ -1,8 +1,9 @@
 # Operational UI/UX Architecture
 
 **Repository:** `AbdulrhmanBashammmakh/utility_erp`
-**Reviewed SHA:** `51e8dba5c47ed8ff9d1485b519e1b1586cb30522`
-**Documentation Version:** 2.1
+**Reviewed SHA:** `bf951a05a6031e94192e692dacbeb9dd01ca035e`
+**Documentation Version:** 3.2
+**Reviewed Date:** `2026-08-24`
 **Status:** CURRENT V1 operational contract
 
 ## 1. Purpose
@@ -31,6 +32,8 @@ Customer → Meter → Reading → Bill (sale.order) → Accounting Invoice (acc
 
 Meter → Stock/Serial → Installation → Replacement → Reading
                                   ↘ Alarm → Service Order → Work Order
+
+Transformer → Route Assignment Wizard → Route → Meter Reader & Assigned Customers
 ```
 
 Bill, Accounting Invoice, and Payment are distinct concepts and records.
@@ -43,9 +46,22 @@ Reading state is visible and compatible with V1: `draft`, `under_review`, `appro
 
 The batch form presents upload metadata, `total_readings`, `processed_count`, `error_count`, `image_count`, and `progress_percent`. The lifecycle statusbar shows `uploaded`, `processing`, `done`, `partial`, and `error`. The list opens with active batches by default and provides a needs-attention filter; terminal history remains discoverable by clearing the filter.
 
-## 7. Operations UX
+## 7. Operations and Field Assignment UX
 
 Service Orders, Work Orders, Installations, and Inspections use named lifecycle actions. Work Order, Installation, Inspection, and Alarm screens expose meaningful terminal/error paths. Alarm operations prioritize open/attention records, critical/emergency filters, today filters, and grouping by state/severity/type/assignee. Operational lists provide useful state, responsible person, date, customer, and type filters.
+
+### Transformer Route Assignment Wizard UX (`utility.route.assignment.wizard`)
+- **Step 1:** Select one or multiple transformers (`utility.transformer`).
+- **Step 2:** Wizard automatically computes connected active subscribers.
+- **Step 3:** Multi-select/deselect subscribers with count indicators (`action_select_all`, `action_deselect_all`).
+- **Step 4:** Select assigned staff (`res.users`) and optional supervisor.
+- **Step 5:** Choose existing route or create a new one, specifying assignment mode (`add`, `replace`, `move`).
+- **Confirmation:** Server applies updates, posts a chatter summary audit log on the route, and navigates directly to the updated route.
+
+### Meter Reader Management UX (`utility.meter.reader`)
+- Dedicated views for reader staff, displaying user account, mobile number, assigned routes, and computed subscriber counts.
+- Smart buttons provide instant navigation to assigned routes and active subscriber list.
+- Modifying reader routes automatically synchronizes `assigned_route_ids` on the underlying `res.users` record and reader groups.
 
 ## 8. Billing UX
 

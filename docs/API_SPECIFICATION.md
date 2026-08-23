@@ -2,10 +2,10 @@
 
 **Platform:** Odoo 16 Community
 **Architecture Baseline:** `UTILITY_ERP_MASTER_ARCHITECTURE_V2.md`
-**Last Verified Implementation SHA:** `51e8dba5c47ed8ff9d1485b519e1b1586cb30522`
+**Last Verified Implementation SHA:** `bf951a05a6031e94192e692dacbeb9dd01ca035e`
 **Target Scale:** Up to 1,000,000 subscribers (capacity-planning baseline)
-**Documentation Version:** 2.1
-**Last Verified Date:** 2026-08-14
+**Documentation Version:** 3.2
+**Last Verified Date:** 2026-08-24
 **Status:** Current V1 + Target V2
 
 **Document Type:** External & Internal API Contract
@@ -268,7 +268,7 @@ Never log full secrets or sensitive payload unnecessarily.
 - closed period reading.
 - concurrent payment intent confirmation.
 
-## V2.1 Current API Contract
+## V3.2 Current API Contract
 
 **CURRENT V1 verified scope:** updated Billing and Reader endpoints use:
 
@@ -277,6 +277,13 @@ Never log full secrets or sensitive payload unnecessarily.
 ```
 
 Verified stable codes include `VALIDATION_ERROR`, `CUSTOMER_NOT_FOUND`, `ORDER_NOT_FOUND`, `INVALID_LIMIT`, `INVALID_INVOICE`, `INVOICE_REQUIRED`, `AMOUNT_EXCEEDS_RESIDUAL`, `BILL_NOT_PAYABLE`, `PAYMENT_PROVIDER_UNAVAILABLE`, `PAYMENT_DIRECTION_UNSUPPORTED`, `TRANSACTION_NOT_FOUND`, `AUTHENTICATION_REQUIRED`, `INVALID_TOKEN`, `INVALID_TRANSACTION_STATE`, `PAYMENT_FAILED`, `BATCH_NOT_FOUND`, `BATCH_NOT_EDITABLE`, `INVALID_BASE64`, `IMAGE_TOO_LARGE`, and `BUSINESS_RULE_ERROR`. This is not an unverified claim that every repository endpoint has identical payloads.
+
+- **Reader & Customer APIs (`/api/v1/reader/customers`, `/api/v1/reader/reading_batches`):**
+  - Resolves assigned routes via `utility.meter.reader` and `res.users.assigned_route_ids`.
+  - Returns paginated subscriber lists filtered by assigned routes, active status, and address details.
+- **Authentication & Dynamic Roles (`/api/v1/auth/profile`, `/api/v1/auth/token`):**
+  - Exposes user metadata, assigned groups, active company, and assigned geographical scopes.
+  - Dynamically informs client UI of operational capabilities (Collector, Reader, Supervisor).
 
 Reader confirmation translates expected `AccessError`, `UserError`, and `ValidationError` into deterministic business errors. `IntegrityError`, `OperationalError`, unexpected database exceptions, and programming failures are not the desired generic business response.
 

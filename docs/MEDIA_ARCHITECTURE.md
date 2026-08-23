@@ -2,10 +2,10 @@
 
 **Platform:** Odoo 16 Community
 **Architecture Baseline:** `UTILITY_ERP_MASTER_ARCHITECTURE_V2.md`
-**Last Verified Implementation SHA:** `51e8dba5c47ed8ff9d1485b519e1b1586cb30522`
+**Last Verified Implementation SHA:** `bf951a05a6031e94192e692dacbeb9dd01ca035e`
 **Target Scale:** Up to 1,000,000 subscribers (capacity-planning baseline)
-**Documentation Version:** 2.1
-**Last Verified Date:** 2026-08-14
+**Documentation Version:** 3.2
+**Last Verified Date:** 2026-08-24
 **Status:** Current V1 + Target V2
 
 **Document Type:** Canonical Evidence & Media Storage Specification
@@ -238,9 +238,9 @@ Deletion must be a bounded, resumable, audited job with dry-run reporting, check
 - legacy double-base64 repair.
 - NGINX/X-Accel target delivery.
 
-## V2.1 Current vs Target
+## V3.2 Current vs Target
 
-**CURRENT V1:** media is represented through the current `utility.media.asset`/attachment compatibility path and protected by ownership/geographic authorization. Reading and batch UIs expose operational image evidence without making media storage a second business truth.
+**CURRENT V1:** media is represented through `utility.media.asset` and structured `ir.attachment` storage (`utility_ir_attachment.py`) protected by ownership and geographic authorization. Files are stored in a deterministic directory tree (`module/model/YYYY/MM/DD/checksum`) in the Odoo Filestore with checksum deduplication, while maintaining full backward-compatibility for reading and deleting legacy files. Reading and batch UIs expose operational image evidence without making media storage a second business truth.
 
 **TARGET V2 / CONDITIONAL:** organized filesystem/NGINX or S3-compatible storage behind a storage-agnostic Media Adapter. Delivery scaling is triggered by measured attachment volume, latency, or backup impact; it is not a current V1 deployment assumption.
 

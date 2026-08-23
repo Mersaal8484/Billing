@@ -1,8 +1,9 @@
 # Release Traceability Matrix
 
 **Repository:** `AbdulrhmanBashammmakh/utility_erp`
-**Reviewed SHA:** `45d738693ec70bad542df76f568425b01d44359c`
-**Documentation Version:** 3.0
+**Reviewed SHA:** `bf951a05a6031e94192e692dacbeb9dd01ca035e`
+**Documentation Version:** 3.2
+**Reviewed Date:** `2026-08-24`
 **Rule:** Test coverage below means test files/scenarios exist; it does not claim execution passed.
 
 | Business Capability | Module | Primary Model | Accounting/Inventory Artifact | Security Group | UI Entry Point | Test Coverage Exists | Documentation |
@@ -15,6 +16,9 @@
 | Work Order | `utility_operations` | `utility.work.order` | Operational task | Technician/Supervisor | Work Orders | operations tests where present | SRS, UAT_PLAN |
 | Alarm/service request | `utility_operations`/Billing API | `utility.alarm`, `utility.service.order` | Service/work links | Supervisor/Technician | Alarms/Service Orders | alarm and API tests | SECURITY_MATRIX, UAT_PLAN |
 | Meter Replacement | `utility_operations` | `utility.meter.replacement` | Standard stock pickings/moves | Technician/Supervisor | Replacement wizard | meter replacement tests | METER_REPLACEMENT, INVENTORY_CUSTODY |
+| Transformer Route Assignment | `utility_core` | `utility.route.assignment.wizard` | Route customer assignments | Supervisor/Admin | Route Assignment Wizard | route assignment tests where present | OPERATIONAL_UI_UX_ARCHITECTURE, SECURITY_MATRIX |
+| Meter Reader Staff & Sync | `utility_core` / Billing API | `utility.meter.reader` | User route synchronization | Meter Reader/Supervisor/Admin | Meter Readers / Mobile App | reader auth and API tests | API_SPECIFICATION, OPERATIONAL_UI_UX_ARCHITECTURE |
+| Structured Attachment Storage | `utility_core` | `ir.attachment` | Filestore directory structure | System-wide / Internal | Attachment handlers | `test_ir_attachment_structured_storage.py` | MEDIA_ARCHITECTURE, CAPACITY_AND_PERFORMANCE |
 | Bill | `utility_billing` | `sale.order` | Commercial bill context | Billing User/Manager | Bills | financial UAT tests | BILLING_ENGINE |
 | Accounting Invoice | `utility_billing`/Odoo Accounting | `account.move` | Canonical invoice/credit note | Billing/Admin/Accounting | Bill smart button | financial lifecycle tests | ACCOUNTING_FLOWS |
 | Payment | `utility_billing`/Odoo Accounting | `account.payment` | Receivable/payment entry | Cashier/Collector/Billing | Bill smart button/payment form | payment allocation/concurrency tests | PAYMENT_ALLOCATION |

@@ -2,10 +2,10 @@
 
 **Platform:** Odoo 16 Community
 **Architecture Baseline:** `UTILITY_ERP_MASTER_ARCHITECTURE_V2.md`
-**Last Verified Implementation SHA:** `51e8dba5c47ed8ff9d1485b519e1b1586cb30522`
+**Last Verified Implementation SHA:** `bf951a05a6031e94192e692dacbeb9dd01ca035e`
 **Target Scale:** Up to 1,000,000 subscribers (capacity-planning baseline)
-**Documentation Version:** 2.1
-**Last Verified Date:** 2026-08-14
+**Documentation Version:** 3.2
+**Last Verified Date:** 2026-08-24
 **Status:** Current V1 + Target V2
 
 **Document Type:** Capacity Planning, Performance & Load Test Specification
@@ -218,9 +218,9 @@ Before Go-Live:
 - restore performance validated.
 - report workload separated/throttled as required.
 
-## V2.1 Classification
+## V3.2 Classification
 
-**CURRENT V1:** bounded jobs, indexed critical fields, bulk-oriented reading computations, and operational search defaults are implemented. The current static review records one deferred performance debt: physical meter-state computation may issue per-meter `stock.quant` queries.
+**CURRENT V1:** bounded jobs, indexed critical fields, bulk-oriented reading computations, structured `ir.attachment` filesystem storage, and operational search defaults are implemented. The current static review records one deferred performance debt: physical meter-state computation may issue per-meter `stock.quant` queries.
 
 **DEFERRED:** optimize that path only after profiling demonstrates production impact. Runtime load benchmarking, million-subscriber capacity claims, partition rollout, PgBouncer validation, and horizontal topology are not proven by this documentation update.
 

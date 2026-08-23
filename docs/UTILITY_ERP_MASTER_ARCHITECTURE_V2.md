@@ -6,10 +6,10 @@
 **Platform:** Odoo 16 Community
 **Baseline Repository:** `AbdulrhmanBashammmakh/utility_erp`
 **Architecture Baseline SHA:** `13df4c5263abe2e211fc12dc0c3c62f86e87a048`
-**Last Verified Implementation SHA:** `51e8dba5c47ed8ff9d1485b519e1b1586cb30522`
+**Last Verified Implementation SHA:** `bf951a05a6031e94192e692dacbeb9dd01ca035e`
 **Architecture Status:** Current V1 + Target V2 Architecture
-**Version:** 2.1
-**Last Verified Date:** 2026-08-14
+**Version:** 3.2
+**Last Verified Date:** 2026-08-24
 
 **Architecture Precedence:** هذه الوثيقة تحفظ قرارات Target V2، لكنها لا تلغي دليل التنفيذ الحالي أو قرارًا معماريًا أحدث مقبولًا.
 **Source Synthesis:** تم دمج المعمارية الوظيفية والتقنية السابقة مع مراجعة السعة والتنفيذ الخاصة بهدف يصل إلى **1,000,000 مشترك**.
@@ -21,8 +21,8 @@
 
 **Repository:** `AbdulrhmanBashammmakh/utility_erp`
 **Branch:** `development`
-**Implementation SHA:** `51e8dba5c47ed8ff9d1485b519e1b1586cb30522`
-**Documentation Version:** `2.1`
+**Implementation SHA:** `bf951a05a6031e94192e692dacbeb9dd01ca035e`
+**Documentation Version:** `3.2`
 **Documentation Status:** Current V1 + Target V2
 
 **Architecture baseline:** القرارات المعمارية الأصلية المثبتة في وثائق V2، ومرجعها التاريخي منفصل في `Architecture Baseline SHA`.

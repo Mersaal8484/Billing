@@ -2,10 +2,10 @@
 
 **Platform:** Odoo 16 Community
 **Architecture Baseline:** `UTILITY_ERP_MASTER_ARCHITECTURE_V2.md`
-**Last Verified Implementation SHA:** `51e8dba5c47ed8ff9d1485b519e1b1586cb30522`
+**Last Verified Implementation SHA:** `bf951a05a6031e94192e692dacbeb9dd01ca035e`
 **Target Scale:** Up to 1,000,000 subscribers (capacity-planning baseline)
-**Documentation Version:** 2.1
-**Last Verified Date:** 2026-08-14
+**Documentation Version:** 3.2
+**Last Verified Date:** 2026-08-24
 **Status:** Current V1 + Target V2
 
 **Document Type:** Target Production Deployment Specification
@@ -204,7 +204,7 @@ The initial physical baseline is approximately three compute/virtualization host
 
 Annual close must include completion of in-flight work, read-only controls, final backup, archive catalog registration, integrity checks, and a tested restore. Database archive retention and image-byte retention are separate lifecycles.
 
-## V2.1 Current vs Target Topology
+## V3.2 Current vs Target Topology
 
 **CURRENT V1 supported topology:** one Odoo 16 application deployment using PostgreSQL, installed in dependency order `date_range → utility_core → utility_inventory → utility_operations → utility_billing`, with standard local/Odoo workflow execution and the configured media compatibility path.
 

@@ -2,10 +2,10 @@
 
 **Platform:** Odoo 16 Community
 **Architecture Baseline:** `UTILITY_ERP_MASTER_ARCHITECTURE_V2.md`
-**Last Verified Implementation SHA:** `51e8dba5c47ed8ff9d1485b519e1b1586cb30522`
+**Last Verified Implementation SHA:** `bf951a05a6031e94192e692dacbeb9dd01ca035e`
 **Target Scale:** Up to 1,000,000 subscribers (capacity-planning baseline)
-**Documentation Version:** 2.1
-**Last Verified Date:** 2026-08-14
+**Documentation Version:** 3.2
+**Last Verified Date:** 2026-08-24
 **Status:** Current V1 + Target V2
 
 **Document Type:** Billing Domain & Execution Specification
@@ -315,9 +315,12 @@ Settlement
 - Posted accounting document links back to Utility Bill.
 - Historical tariff interpretation survives future configuration changes.
 
-## V2.1 Current Implementation Synchronization
+## V3.2 Current Implementation Synchronization
 
 **CURRENT V1:** `utility_core.models.utility_reading` is operational truth. The Billing extension inherits `utility.reading` and owns commercial fields/behavior: `is_billable`, `billing_anchor_id`, `billing_component_ids`, `included_sale_order_id`, `carried_consumption`, `billing_consumption`, and `billing_error`. Core exposes hooks such as `_requires_billing_review()` and does not dynamically detect Billing installation.
+
+- **Contract Template Versioning & Blocks:** `utility.contract.template.version` provides immutable contract versioning. Modification of billed templates automatically triggers version increments (V1 → V2). Dynamic block replacement supports `skip_tier_validation` context guard to prevent false boundary errors during reconfiguration.
+- **Pricing Snapshot Evidence:** Each confirmed `sale.order` bill generates an immutable `utility.bill.pricing.snapshot` and associated `utility.bill.pricing.block` records, locking calculated components (energy, service fees, discounts, local fees) against future tariff changes.
 
 The current reading state compatibility is `draft`, `under_review`, `approved`, `queued`, `billed`, and `error`; a separate `billing_state` is **TARGET / FUTURE OPTIONAL DESIGN** only.
 

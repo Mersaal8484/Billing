@@ -2,10 +2,10 @@
 
 **Platform:** Odoo 16 Community
 **Architecture Baseline:** `UTILITY_ERP_MASTER_ARCHITECTURE_V2.md`
-**Last Verified Implementation SHA:** `51e8dba5c47ed8ff9d1485b519e1b1586cb30522`
+**Last Verified Implementation SHA:** `bf951a05a6031e94192e692dacbeb9dd01ca035e`
 **Target Scale:** Up to 1,000,000 subscribers (capacity-planning baseline)
-**Documentation Version:** 2.1
-**Last Verified Date:** 2026-08-14
+**Documentation Version:** 3.2
+**Last Verified Date:** 2026-08-24
 **Status:** Current V1 + Target V2
 
 **Document Type:** Operational Period & Cycle Lifecycle Specification
@@ -237,7 +237,7 @@ No stale legacy-state checks may remain in runtime code.
 - closing with unresolved readings rejects.
 - close after fully billed/posted succeeds.
 
-## V2.1 Current Implementation Synchronization
+## V3.2 Current Implementation Synchronization
 
 **CURRENT V1:** reading periods and payment periods remain distinct concepts linked by the accepted cycle semantics. Eligibility, open/closed/locked checks, billing-period validation, and controlled correction paths remain in the Odoo domain models. Period closure must not be represented as a destructive rewrite of historical billing evidence.
 

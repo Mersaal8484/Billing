@@ -1,5 +1,8 @@
 # Production Sizing Implementation Plan
 
+**Repository:** `AbdulrhmanBashammmakh/utility_erp`\
+**Documentation Version:** 3.2\
+**Reviewed Date:** `2026-08-24`\
 **Scope:** 300,000 customers, 600–750 concurrent users, up to 7.2 million readings/year, annual operational database rotation, `ir.attachment` with shared Filestore, 365-day image-byte retention, no initial DR site, and no initial MinIO cluster.
 
 **Classification:** TARGET V2 / CONDITIONAL. This plan does not claim that the target topology is deployed or that the capacity numbers are runtime-proven.

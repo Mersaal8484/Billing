@@ -2,8 +2,9 @@
 
 **Repository:** `AbdulrhmanBashammmakh/utility_erp`
 **Branch:** `development`
-**Reference Implementation SHA:** `51e8dba5c47ed8ff9d1485b519e1b1586cb30522`
-**Documentation Version:** 2.1
+**Reference Implementation SHA:** `bf951a05a6031e94192e692dacbeb9dd01ca035e`
+**Documentation Version:** 3.2
+**Reviewed Date:** `2026-08-24`
 **Status:** TARGET V2 / not current deployment
 
 This document contains accepted forward-looking architecture only. It must not be read as evidence that the components below are deployed in V1.
