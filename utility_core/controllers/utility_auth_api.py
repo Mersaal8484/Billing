@@ -1,10 +1,4 @@
-"""
-أضف هذا الـ controller في:
-F:\invo-system\utility_core\controllers\
-
-أنشئ ملف جديد: utility_auth_api.py
-أو أضف الدالة لأي controller موجود
-"""
+"""Utility Auth API controller for role and route checks."""
 
 from odoo import http
 from odoo.http import request
