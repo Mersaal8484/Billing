@@ -92,6 +92,12 @@ class _PhotoCaptureScreenState extends ConsumerState<PhotoCaptureScreen>
       // setFocusMode/setExposureMode may not be supported on all devices
       try { await newController.setFocusMode(FocusMode.auto); } catch (_) {}
       try { await newController.setExposureMode(ExposureMode.auto); } catch (_) {}
+      // The guide is centred, so focus there initially. This affects focus
+      // only; the complete photo is always retained as inspection evidence.
+      try {
+        await newController.setFocusPoint(const Offset(0.5, 0.5));
+        await newController.setExposurePoint(const Offset(0.5, 0.5));
+      } catch (_) {}
 
       if (!mounted) {
         newController.dispose();
@@ -124,35 +130,11 @@ class _PhotoCaptureScreenState extends ConsumerState<PhotoCaptureScreen>
       // 1. Take the picture
       final xfile = await controller.takePicture();
 
-      // 2. Calculate crop ratio based on the screen frame
-      final size = MediaQuery.of(context).size;
-      final camRatio = controller.value.aspectRatio;
-      final screenRatio = size.width / size.height;
-      final scale = camRatio < screenRatio ? screenRatio / camRatio : camRatio / screenRatio;
-      
-      double scaledPreviewWidth;
-      double scaledPreviewHeight;
-      if (camRatio < screenRatio) {
-        scaledPreviewWidth = size.width;
-        scaledPreviewHeight = size.height * scale;
-      } else {
-        scaledPreviewWidth = size.width * scale;
-        scaledPreviewHeight = size.height;
-      }
-      
-      final frameWidth = size.width * 0.75;
-      final frameHeight = 140.0;
-      
-      final cropRatio = CropRatio(
-        left: 0.5 - (frameWidth / scaledPreviewWidth / 2),
-        top: 0.5 - (frameHeight / scaledPreviewHeight / 2),
-        width: frameWidth / scaledPreviewWidth,
-        height: frameHeight / scaledPreviewHeight,
-      );
-
-      // 3. Process in a separate Isolate (no UI jank).
+      // 2. Process the complete camera image in a separate Isolate.
+      // The on-screen frame is an alignment/focus guide only: it must never
+      // crop inspection evidence such as the meter seal, enclosure or damage.
       final processor = ref.read(imageProcessingServiceProvider);
-      final result = await processor.process(File(xfile.path), cropRatio: cropRatio);
+      final result = await processor.process(File(xfile.path));
 
       // 4. Delete the raw temp file from the camera plugin's cache dir
       try { await File(xfile.path).delete(); } catch (_) {}
@@ -190,6 +172,20 @@ class _PhotoCaptureScreenState extends ConsumerState<PhotoCaptureScreen>
       await c.dispose();
     } catch (_) {}
     if (_controller == c) _controller = null;
+  }
+
+  Future<void> _focusOnMeter() async {
+    final controller = _controller;
+    if (controller == null || !controller.value.isInitialized) return;
+
+    // The guide is intentionally centred. Tapping it re-runs autofocus and
+    // auto-exposure on the meter without changing the captured image area.
+    try {
+      await controller.setFocusPoint(const Offset(0.5, 0.5));
+      await controller.setExposurePoint(const Offset(0.5, 0.5));
+    } catch (_) {
+      // Some device cameras do not expose focus/exposure point controls.
+    }
   }
 
   void _retake() {
@@ -287,14 +283,19 @@ class _PhotoCaptureScreenState extends ConsumerState<PhotoCaptureScreen>
                 ),
               ),
             ),
-            // Framing guide rectangle
+            // A visual guide only. The whole camera image is saved so a
+            // reviewer can inspect the meter body, seal and surrounding state.
             Center(
-              child: Container(
-                width: size.width * 0.75,
-                height: 140,
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.white70, width: 2),
-                  borderRadius: BorderRadius.circular(12),
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: _focusOnMeter,
+                child: Container(
+                  width: size.width * 0.86,
+                  height: (size.height * 0.42).clamp(230.0, 390.0).toDouble(),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.white70, width: 2),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                 ),
               ),
             ),

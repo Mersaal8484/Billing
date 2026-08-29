@@ -110,11 +110,25 @@ class CustomerDetailScreen extends ConsumerWidget {
                   value: (assignment.customer.lastReadingValue ?? 500) -
                       assignment.averageConsumption * 2),
               const SizedBox(height: 20),
-              FilledButton.icon(
-                icon: const Icon(Icons.speed_rounded),
-                label: const Text('إدخال قراءة جديدة'),
-                onPressed: () => context.push('/readings/new/${assignment.id}'),
-              ),
+              if (assignment.status == AssignmentStatus.read ||
+                  assignment.status == AssignmentStatus.pendingDecision)
+                const Card(
+                  child: ListTile(
+                    leading: Icon(Icons.lock_outline),
+                    title: Text('القراءة مكتملة ولا يمكن إدخال قراءة أخرى'),
+                    subtitle: Text('تُفتح القراءة فقط عند إعادتها من المراجعة للتصحيح.'),
+                  ),
+                )
+              else
+                FilledButton.icon(
+                  icon: Icon(assignment.status == AssignmentStatus.rejected
+                      ? Icons.replay_rounded
+                      : Icons.speed_rounded),
+                  label: Text(assignment.status == AssignmentStatus.rejected
+                      ? 'إعادة إدخال القراءة'
+                      : 'إدخال قراءة جديدة'),
+                  onPressed: () => context.push('/readings/new/${assignment.id}'),
+                ),
             ],
           );
         },

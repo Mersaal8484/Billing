@@ -150,7 +150,7 @@ class DashboardScreen extends ConsumerWidget {
                           label: 'المزامنة',
                           subtitle: 'الطابور والحالة',
                           badge: pendingSync > 0
-                              ? '$pendingSync قيد الرفع'
+                              ? '$pendingSync بانتظار الرفع'
                               : null,
                           onTap: () => context.push('/sync'),
                         ),
@@ -255,9 +255,9 @@ class _ProgressCard extends StatelessWidget {
                     color: Colors.orange,
                     icon: Icons.hourglass_empty_rounded),
                 SyncStatusChip(
-                    label: '$pendingSync قيد الرفع',
-                    color: Colors.blue,
-                    icon: Icons.sync_rounded),
+                    label: '$pendingSync بانتظار الرفع',
+                    color: Colors.orange,
+                    icon: Icons.schedule_outlined),
                 SyncStatusChip(
                     label: '$synced تم الرفع',
                     color: Colors.green,

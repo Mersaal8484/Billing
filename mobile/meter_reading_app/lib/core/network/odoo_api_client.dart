@@ -134,6 +134,12 @@ class OdooApiClient {
 
     final result = body['result'];
     if (result is Map<String, dynamic>) {
+      if (result['success'] == false) {
+        throw OdooApiException(
+          (result['error'] as String?) ?? 'The server rejected the request',
+          code: result['code'] as int?,
+        );
+      }
       return result;
     }
     // Some endpoints might return a list/primitive; wrap it.

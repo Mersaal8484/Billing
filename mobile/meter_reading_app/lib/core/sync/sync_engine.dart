@@ -42,10 +42,9 @@ class SyncSnapshot {
 /// SyncEngine الإنتاجي — يستخدم [DriftReadingRepository] + [ReadingApiService].
 ///
 /// ملاحظة meterNumber: الخادم يطابق القراءات بالعداد عبر
-/// `utility.meter.meter_number` (نص مثل "100004") وليس الـ id الرقمي.
-/// حتى يُضاف حقل `meterNumber` لـ [MeterReading]، نستخدم
-/// `meterRemoteId.toString()` كحل مؤقت — تحقق من أن meter_number في Odoo
-/// يطابق الـ DB id قبل الإنتاج.
+/// كل قراءة ترسل معرّف العداد في Odoo (`meter_id`) بوصفه المرجع المعتمد.
+/// رقم العداد النصي يُرسل عندما يكون متاحاً لأغراض العرض والتدقيق، ولا يُستبدل
+/// أبداً بالمعرّف الرقمي عند استعادة قراءة مؤجلة من قاعدة البيانات المحلية.
 class SyncEngine {
   final DriftReadingRepository readingRepository;
   final AppDatabase db;
@@ -101,11 +100,14 @@ class SyncEngine {
     await _checkThreshold();
   }
 
-  void retryFailed() async {
+  /// Returns failed readings to the queue, then uploads them immediately.
+  /// This deliberately bypasses batch-threshold waiting for an explicit retry.
+  Future<void> retryFailed() async {
     final failed = await readingRepository.getByStatus('error');
     for (final r in failed) {
-      enqueue(r);
+      await enqueue(r);
     }
+    await syncNow();
   }
 
   /// زر "مزامنة الآن" في sync_center_screen
@@ -174,26 +176,43 @@ class SyncEngine {
       final batchId = batchResult['batch_id'] as int;
 
       // رفع البيانات
-      final payloads = readings
-          .map((r) => MeterReadingPayload(
-                meterNumber: r.effectiveMeterNumber,
-                readingValue: r.readingValue,
-                readingDate: r.readingDate,
-                readingCategory: r.category.name,
-                clientReadingUuid: r.id,
-              ))
-          .toList();
+      final payloads = <MeterReadingPayload>[];
+      final imageFilesByReadingId = <String, File>{};
+      for (final reading in readings) {
+        File? imageFile;
+        if (reading.imageLocalPath != null) {
+          final candidate = File(reading.imageLocalPath!);
+          if (await candidate.exists()) {
+            imageFile = candidate;
+            imageFilesByReadingId[reading.id] = candidate;
+          }
+        }
+
+        payloads.add(MeterReadingPayload(
+          meterId: reading.meterRemoteId,
+          meterNumber: reading.meterNumber,
+          resubmitReadingId: reading.remoteId,
+          readingValue: reading.readingValue,
+          readingDate: reading.readingDate,
+          readingCategory: reading.category.name,
+          clientReadingUuid: reading.id,
+          imageFilename:
+              imageFile?.uri.pathSegments.isNotEmpty == true
+                  ? imageFile!.uri.pathSegments.last
+                  : null,
+        ));
+      }
       await readingApi.uploadData(batchId: batchId, readings: payloads);
 
       // رفع الصور
       for (final r in readings) {
-        if (r.imageLocalPath == null) continue;
-        final file = File(r.imageLocalPath!);
-        if (!await file.exists()) continue;
+        final file = imageFilesByReadingId[r.id];
+        if (file == null) continue;
         await readingApi.uploadImageMultipart(
           batchId: batchId,
           imageFile: file,
           readingUuid: r.id,
+          filename: file.uri.pathSegments.last,
         );
       }
 

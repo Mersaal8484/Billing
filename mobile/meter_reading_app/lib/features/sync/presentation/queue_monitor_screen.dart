@@ -125,7 +125,7 @@ class _ReadingQueueTile extends ConsumerWidget {
       case ReadingSyncStatus.draft:
         return ('مسودة', StatusColors.offline, Icons.edit_outlined);
       case ReadingSyncStatus.pendingDataSync:
-        return ('قيد الرفع', StatusColors.inProgress, Icons.upload_outlined);
+        return ('بانتظار الرفع', StatusColors.pending, Icons.schedule_outlined);
       case ReadingSyncStatus.dataSynced:
         return (
           'بيانات مرفوعة',

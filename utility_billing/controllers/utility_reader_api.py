@@ -63,7 +63,7 @@ class UtilityReaderAPI(http.Controller):
           - region_id: معرف المنطقة (اختياري)
           - total_readings: عدد القراءات في الدفعة (اختياري — يُحسب من الـ JSON لاحقاً)
         """
-        params = request.jsonrequest
+        params = kwargs
         date_range_id = params.get('date_range_id')
         if not date_range_id:
             return self._error('VALIDATION_ERROR', 'date_range_id is required')
@@ -124,7 +124,7 @@ class UtilityReaderAPI(http.Controller):
           - batch_id: معرف الدفعة (إلزامي)
           - data: محتوى JSON كـ dict أو string (إلزامي)
         """
-        params = request.jsonrequest
+        params = kwargs
         batch_id = params.get('batch_id')
         data = params.get('data')
         if not batch_id or data is None:
@@ -184,7 +184,7 @@ class UtilityReaderAPI(http.Controller):
           - filename: اسم الملف مثل MTR-001234_20260701.jpg (إلزامي)
           - image: محتوى الصورة بصيغة Base64 (إلزامي)
         """
-        params = request.jsonrequest
+        params = kwargs
         batch_id = params.get('batch_id')
         filename = params.get('filename')
         image_data = params.get('image')
@@ -242,7 +242,7 @@ class UtilityReaderAPI(http.Controller):
         يجب تمرير:
           - batch_id: معرف الدفعة (إلزامي)
         """
-        params = request.jsonrequest
+        params = kwargs
         batch_id = params.get('batch_id')
         if not batch_id:
             return self._error('VALIDATION_ERROR', 'batch_id is required')
@@ -277,7 +277,7 @@ class UtilityReaderAPI(http.Controller):
         يجب تمرير:
           - batch_id: معرف الدفعة (إلزامي)
         """
-        params = request.jsonrequest
+        params = kwargs
         batch_id = params.get('batch_id')
         if not batch_id:
             return self._error('VALIDATION_ERROR', 'batch_id is required')
@@ -306,11 +306,28 @@ class UtilityReaderAPI(http.Controller):
         """
         جلب الفترات (الأشهر) المتاحة لربط القراءات بها.
         """
-        periods = request.env['date.range'].search([
+        user = request.env.user
+        route_ids = user.assigned_route_ids.ids
+        meter_reader = request.env['utility.meter.reader'].sudo().search(
+            [('user_id', '=', user.id)], limit=1
+        )
+        if meter_reader:
+            route_ids = list(set(route_ids + meter_reader.route_ids.ids))
+
+        user_region_ids = request.env['utility.route'].sudo().browse(route_ids).mapped('region_id').ids
+
+        domain = [
             ('period_role', '=', 'reading'),
             ('state', '=', 'open'),
             '|', ('company_id', '=', False), ('company_id', '=', request.env.company.id)
-        ], order='date_start desc', limit=12)
+        ]
+
+        if user_region_ids:
+            domain.extend(['|', ('region_ids', '=', False), ('region_ids', 'in', user_region_ids)])
+        else:
+            domain.append(('region_ids', '=', False))
+
+        periods = request.env['date.range'].search(domain, order='date_start desc', limit=12)
 
         return {
             'success': True,
@@ -334,7 +351,7 @@ class UtilityReaderAPI(http.Controller):
         يجب تمرير:
           - meter_id أو operational_number أو meter_number: أحد معرفات العداد
         """
-        params = request.jsonrequest
+        params = kwargs
         meter, error_code = self._resolve_meter_identifiers(params)
         if error_code == 'IDENTIFIER_REQUIRED':
             return self._error(
@@ -370,7 +387,7 @@ class UtilityReaderAPI(http.Controller):
         """
         جلب دفعات الجابي الحالي (آخر 20 دفعة).
         """
-        params = request.jsonrequest or {}
+        params = kwargs
         limit_raw = params.get('limit', 20)
         try:
             limit = int(limit_raw)
@@ -424,41 +441,100 @@ class UtilityReaderAPI(http.Controller):
     @http.route('/api/v1/utility/reader/subscribers', type='json',
                 auth='user', methods=['POST', 'GET'])
     def reader_subscribers(self, **kwargs):
-        """
-        جلب قائمة المشتركين المخصصين للكاشف المسجل دخوله.
-        يبحث عبر assigned_route_ids أو عبر سجل utility.meter.reader المرتبط.
-        """
+        """جلب المشتركين المخصصين للكاشف عبر utility.route.user_ids"""
         user = request.env.user
 
-        # البحث عبر سجل الكاشف المرتبط بالمستخدم
-        route_ids = user.assigned_route_ids.ids
-        meter_reader = request.env['utility.meter.reader'].sudo().search(
-            [('user_id', '=', user.id)], limit=1
-        )
-        if meter_reader:
-            route_ids = list(set(route_ids + meter_reader.route_ids.ids))
+        # البحث عبر utility.route.user_ids مباشرة
+        routes = request.env['utility.route'].sudo().search([
+            ('user_ids', 'in', [user.id]),
+            ('active', '=', True),
+        ])
+        route_ids = routes.ids
+
+        # fallback عبر utility.meter.reader
+        try:
+            mr = request.env['utility.meter.reader'].sudo().search(
+                [('user_id', '=', user.id)], limit=1
+            )
+            if mr:
+                route_ids = list(set(route_ids + mr.route_ids.ids))
+        except Exception:
+            pass
+
+        routes = request.env['utility.route'].sudo().browse(route_ids)
 
         if not route_ids:
-            return {'success': True, 'subscribers': [], 'count': 0}
+            return {
+                'success': True,
+                'subscribers': [],
+                'count': 0,
+                'debug': f'No routes for user {user.login}',
+            }
 
         customers = request.env['utility.customer'].sudo().search([
-            ('route_id', 'in', route_ids)
+            ('route_id', 'in', route_ids),
+            ('active', '=', True),
         ])
+
+        # Return the server-authoritative work state for the open reading
+        # period. This prevents a restarted mobile app from treating an
+        # already-submitted subscriber as pending again.
+        route_regions = routes.mapped('region_id').ids
+        period_domain = [
+            ('period_role', '=', 'reading'),
+            ('state', '=', 'open'),
+            '|', ('company_id', '=', False), ('company_id', '=', request.env.company.id),
+        ]
+        if route_regions:
+            period_domain.extend([
+                '|', ('region_ids', '=', False), ('region_ids', 'in', route_regions),
+            ])
+        open_periods = request.env['date.range'].sudo().search(period_domain)
+        readings_by_meter = {}
+        meter_ids = customers.mapped('meter_id').ids
+        if meter_ids and open_periods:
+            current_readings = request.env['utility.reading'].sudo().search([
+                ('meter_id', 'in', meter_ids),
+                ('date_range_id', 'in', open_periods.ids),
+                ('reading_purpose', '=', 'periodic'),
+                ('active', '=', True),
+            ], order='reading_date desc, id desc')
+            for reading in current_readings:
+                readings_by_meter.setdefault(reading.meter_id.id, reading)
 
         result = []
         for c in customers:
             meter = c.meter_id
-            # استخدام عنوان الشريك المحاسبي إذا توفر لتجنب خطأ AttributeError
-            address = c.partner_id.contact_address if c.partner_id and hasattr(c.partner_id, 'contact_address') else ''
+            current_reading = readings_by_meter.get(meter.id) if meter else False
+            is_returned_for_correction = bool(
+                current_reading
+                and current_reading.state == 'draft'
+                and current_reading.rejected_at
+            )
+            if is_returned_for_correction:
+                reading_status = 'rejected'
+            elif current_reading:
+                reading_status = 'pending_decision' if current_reading.state == 'draft' else 'read'
+            else:
+                reading_status = 'pending'
+            address = ''
+            try:
+                address = c.partner_id.contact_address if c.partner_id else ''
+            except Exception:
+                pass
             result.append({
                 'id': c.id,
-                'customer_number': c.customer_number,
-                'name': c.partner_id.name if c.partner_id else '',
+                'customer_number': c.customer_number or '',
+                'name': c.partner_id.name if c.partner_id else c.display_name or '',
                 'address': address or '',
                 'route_id': c.route_id.id if c.route_id else None,
                 'route_name': c.route_id.name if c.route_id else '',
                 'meter_id': meter.id if meter else None,
                 'meter_number': meter.meter_number if meter else '',
+                'last_reading_value': getattr(meter, 'last_reading_value', 0) if meter else 0,
+                'reading_status': reading_status,
+                'resubmit_reading_id': current_reading.id if is_returned_for_correction else None,
+                'rejection_reason': current_reading.rejection_reason if is_returned_for_correction else None,
             })
 
         return {
@@ -467,16 +543,13 @@ class UtilityReaderAPI(http.Controller):
             'subscribers': result,
         }
 
-    # ================================================================
-    # إجراء: رفع قراءة لعميل
-    # ================================================================
     @http.route('/api/v1/utility/reader/reading/submit', type='json',
                 auth='user', methods=['POST'])
     def submit_reading(self, **kwargs):
         """
         رفع قراءة فردية لعداد العميل من قبل الكاشف.
         """
-        params = request.jsonrequest
+        params = kwargs
         
         # Resolve meter
         meter, error_code = self._resolve_meter_identifiers(params)
@@ -506,6 +579,13 @@ class UtilityReaderAPI(http.Controller):
                 '|', ('company_id', '=', False), ('company_id', '=', request.env.company.id)
             ], order='date_start desc', limit=1)
             period_id = period.id if period else False
+
+        if period_id:
+            period = request.env['date.range'].sudo().browse(period_id)
+            if not period.exists() or period.state != 'open':
+                return self._error('PERIOD_CLOSED', 'الفترة المحددة مغلقة أو غير متاحة للقراءة حالياً')
+        else:
+            return self._error('PERIOD_NOT_FOUND', 'لم يتم تحديد فترة ولا توجد فترات مفتوحة')
 
         reading_date = params.get('reading_date', fields.Datetime.now())
 
@@ -598,12 +678,16 @@ class UtilityReaderApiPatch(http.Controller):
         ], limit=1, order='reading_date desc')
 
         if existing:
+            can_resubmit = bool(existing.state == 'draft' and existing.rejected_at)
             return {
                 'has_reading': True,
+                'can_resubmit': can_resubmit,
                 'reading_value': existing.reading_value,
                 'reading_date': str(existing.reading_date) if existing.reading_date else None,
                 'reading_id': existing.reading_id,
                 'state': existing.state if hasattr(existing, 'state') else 'unknown',
+                'resubmit_reading_id': existing.id if can_resubmit else None,
+                'rejection_reason': existing.rejection_reason if can_resubmit else None,
             }
 
         return {'has_reading': False}

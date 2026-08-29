@@ -84,7 +84,7 @@ class _ReadingEntryScreenState extends ConsumerState<ReadingEntryScreen> {
       });
 
       // ── منع القراءة المكررة ──────────────────────────────────────────────
-      if (meterInfo.alreadyReadThisPeriod && mounted) {
+      if (meterInfo.alreadyReadThisPeriod && !meterInfo.canResubmit && mounted) {
         await showDialog(
           context: context,
           barrierDismissible: false,
@@ -146,6 +146,9 @@ class _ReadingEntryScreenState extends ConsumerState<ReadingEntryScreen> {
 
     // التحقق من القراءة المكررة
     bool alreadyRead = false;
+    bool canResubmit = false;
+    int? resubmitReadingId;
+    String? rejectionReason;
     if (currentPeriodId != null) {
       try {
         final checkResult = await client.postJson(
@@ -154,6 +157,9 @@ class _ReadingEntryScreenState extends ConsumerState<ReadingEntryScreen> {
           'period_id': currentPeriodId,
         });
         alreadyRead = checkResult['has_reading'] == true;
+        canResubmit = checkResult['can_resubmit'] == true;
+        resubmitReadingId = checkResult['resubmit_reading_id'] as int?;
+        rejectionReason = checkResult['rejection_reason'] as String?;
       } catch (_) {}
     }
 
@@ -163,6 +169,9 @@ class _ReadingEntryScreenState extends ConsumerState<ReadingEntryScreen> {
       avgConsumption: avgConsumption,
       currentPeriodId: currentPeriodId,
       alreadyReadThisPeriod: alreadyRead,
+      canResubmit: canResubmit,
+      resubmitReadingId: resubmitReadingId,
+      rejectionReason: rejectionReason,
     );
   }
 
@@ -217,7 +226,8 @@ class _ReadingEntryScreenState extends ConsumerState<ReadingEntryScreen> {
       _showSnack('يجب تصوير العداد قبل الحفظ');
       return;
     }
-    if (_meterInfo?.alreadyReadThisPeriod == true) {
+    if (_meterInfo?.alreadyReadThisPeriod == true &&
+        _meterInfo?.canResubmit != true) {
       _showSnack('تم أخذ هذه القراءة مسبقاً في الفترة الحالية');
       return;
     }
@@ -238,6 +248,7 @@ class _ReadingEntryScreenState extends ConsumerState<ReadingEntryScreen> {
 
       final reading = MeterReading(
         id: const Uuid().v4(),
+        remoteId: _meterInfo?.resubmitReadingId,
         meterRemoteId: assignment.meter.remoteId,
         meterNumber: assignment.meter.meterNumber,
         readingValue: readingValue,
@@ -316,6 +327,28 @@ class _ReadingEntryScreenState extends ConsumerState<ReadingEntryScreen> {
             ),
           ),
           const SizedBox(height: 12),
+
+          if (meterInfo.canResubmit)
+            Card(
+              color: scheme.errorContainer,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    Icon(Icons.replay_rounded, color: scheme.onErrorContainer),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        meterInfo.rejectionReason?.isNotEmpty == true
+                            ? 'أعاد المراجع هذه القراءة للتصحيح: ${meterInfo.rejectionReason}'
+                            : 'أعاد المراجع هذه القراءة للتصحيح. أدخل القراءة والتقط صورة جديدة.',
+                        style: TextStyle(color: scheme.onErrorContainer),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
 
           // القراءة السابقة
           Card(
@@ -486,7 +519,9 @@ class _ReadingEntryScreenState extends ConsumerState<ReadingEntryScreen> {
           // زر الحفظ
           FilledButton.icon(
             onPressed:
-                (_savingReading || meterInfo.alreadyReadThisPeriod)
+                (_savingReading ||
+                        (meterInfo.alreadyReadThisPeriod &&
+                            !meterInfo.canResubmit))
                     ? null
                     : _saveReading,
             icon: _savingReading
@@ -675,6 +710,9 @@ class _MeterInfo {
   final double avgConsumption;
   final int? currentPeriodId;
   final bool alreadyReadThisPeriod;
+  final bool canResubmit;
+  final int? resubmitReadingId;
+  final String? rejectionReason;
   final bool isOffline;
 
   const _MeterInfo({
@@ -683,6 +721,9 @@ class _MeterInfo {
     this.avgConsumption = 0,
     this.currentPeriodId,
     this.alreadyReadThisPeriod = false,
+    this.canResubmit = false,
+    this.resubmitReadingId,
+    this.rejectionReason,
     this.isOffline = false,
   });
 

@@ -8,9 +8,17 @@ import 'odoo_api_client.dart';
 /// `utility.reading.batch.service.process_batch` — field names and
 /// defaults are matched exactly to the server-side parsing logic.
 class MeterReadingPayload {
-  /// Matches `utility.meter.meter_number` — REQUIRED, batch line is
-  /// rejected server-side if the meter isn't found.
-  final String meterNumber;
+  /// Authoritative Odoo `utility.meter` identifier. This remains available
+  /// even for readings that were captured offline and restored from Drift.
+  final int meterId;
+
+  /// Optional human-readable meter number for display and audit. The server
+  /// uses [meterId] as the authoritative identifier when both are provided.
+  final String? meterNumber;
+
+  /// Existing rejected `utility.reading` to correct and return for review.
+  /// A non-null value never creates a second reading for the same period.
+  final int? resubmitReadingId;
 
   /// The reading value itself. Defaults to 0.0 server-side if omitted,
   /// but always send it explicitly.
@@ -41,7 +49,9 @@ class MeterReadingPayload {
   final int? seq;
 
   const MeterReadingPayload({
-    required this.meterNumber,
+    required this.meterId,
+    this.meterNumber,
+    this.resubmitReadingId,
     required this.readingValue,
     this.readingDate,
     this.readingCategory,
@@ -53,7 +63,10 @@ class MeterReadingPayload {
   });
 
   Map<String, dynamic> toJson() => {
-        'meter_number': meterNumber,
+        'meter_id': meterId,
+        if (meterNumber?.isNotEmpty == true) 'meter_number': meterNumber,
+        if (resubmitReadingId != null)
+          'resubmit_reading_id': resubmitReadingId,
         'reading_value': readingValue,
         if (readingDate != null)
           'reading_date': readingDate!.toIso8601String(),

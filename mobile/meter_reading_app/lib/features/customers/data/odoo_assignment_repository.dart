@@ -47,7 +47,7 @@ class OdooAssignmentRepository implements AssignmentRepository {
             id: 'assign-$cId',
             meter: meter,
             customer: customer,
-            status: AssignmentStatus.pending,
+            status: _assignmentStatusFromApi(s['reading_status']),
             scheduledAt: now,
             averageConsumption: 0.0,
           ));
@@ -65,6 +65,15 @@ class OdooAssignmentRepository implements AssignmentRepository {
       _notifyListeners();
     }
   }
+
+  AssignmentStatus _assignmentStatusFromApi(dynamic value) => switch (value) {
+        'read' => AssignmentStatus.read,
+        'rejected' => AssignmentStatus.rejected,
+        'pending_decision' => AssignmentStatus.pendingDecision,
+        'escalated' => AssignmentStatus.escalated,
+        'skipped' => AssignmentStatus.skipped,
+        _ => AssignmentStatus.pending,
+      };
 
   void _notifyListeners() {
     if (!_changeHub.isClosed) _changeHub.add(List.unmodifiable(_all));

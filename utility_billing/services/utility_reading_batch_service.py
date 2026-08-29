@@ -48,12 +48,35 @@ class UtilityReadingBatchService(models.AbstractModel):
                 })
                 return {'status': 'failed', 'reason': 'empty_data'}
 
+            meter_ids = set()
+            for item in readings_raw:
+                try:
+                    meter_id = int(item.get('meter_id'))
+                except (TypeError, ValueError):
+                    continue
+                if meter_id > 0:
+                    meter_ids.add(meter_id)
+
+            meters_by_id = {
+                meter.id: meter
+                for meter in self.env['utility.meter'].sudo().browse(list(meter_ids)).exists()
+            }
             line_vals = []
             for item in readings_raw:
+                try:
+                    meter_id = int(item.get('meter_id'))
+                except (TypeError, ValueError):
+                    meter_id = False
+                meter = meters_by_id.get(meter_id)
+                meter_number = item.get('meter_number') or (
+                    meter.meter_number if meter else str(meter_id or '')
+                )
                 line_vals.append({
                     'batch_id': batch.id,
                     'seq': item.get('seq', 1),
-                    'meter_number': item.get('meter_number'),
+                    'meter_id': meter.id if meter else False,
+                    'resubmit_reading_id': item.get('resubmit_reading_id') or False,
+                    'meter_number': meter_number,
                     'reading_value': item.get('reading_value', 0.0),
                     'reading_date': item.get('reading_date') or fields.Datetime.now(),
                     'reading_category': item.get('reading_category', 'customer'),
@@ -209,7 +232,8 @@ class UtilityReadingBatchService(models.AbstractModel):
         Reading = self.env['utility.reading'].sudo()
         MediaService = self.env['utility.media.service'].sudo()
 
-        meter = Meter.search([('meter_number', '=', meter_number)], limit=1)
+        meter = line.meter_id or Meter.search(
+            [('meter_number', '=', meter_number)], limit=1)
         if not meter:
             return {'success': False, 'error': _("العداد رقم %s غير موجود بالمنظومة.") % meter_number}
 
@@ -247,7 +271,6 @@ class UtilityReadingBatchService(models.AbstractModel):
                 except Exception as e:
                     _logger.warning("Could not store media asset for %s: %s", image_filename, str(e))
 
-        reading_state = 'under_review'
         reading_vals = {
             'meter_id': meter.id,
             'account_id': customer.id,
@@ -255,7 +278,6 @@ class UtilityReadingBatchService(models.AbstractModel):
             'reading_value': reading_value,
             'reading_date': reading_date,
             'reading_purpose': 'periodic',
-            'state': reading_state,
         }
 
         if media_asset:
@@ -263,7 +285,34 @@ class UtilityReadingBatchService(models.AbstractModel):
             if media_asset.original_attachment_id:
                 reading_vals['attachment_id'] = media_asset.original_attachment_id.id
 
-        reading = Reading.create(reading_vals)
+        resubmit_reading = line.resubmit_reading_id
+        if resubmit_reading:
+            if (resubmit_reading.state != 'draft' or not resubmit_reading.rejected_at
+                    or resubmit_reading.meter_id != meter
+                    or resubmit_reading.account_id != customer
+                    or resubmit_reading.date_range_id != batch.date_range_id):
+                return {
+                    'success': False,
+                    'error': _('لا يمكن إعادة إرسال هذه القراءة؛ يجب أن تكون قراءة مرفوضة لنفس العداد والفترة.'),
+                }
+            reading = resubmit_reading
+            reading.with_context(
+                _reading_state_transition=True,
+                _bypass_reading_protection=True,
+            ).write(dict(reading_vals, state='under_review'))
+        else:
+            existing = Reading.search([
+                ('meter_id', '=', meter.id),
+                ('date_range_id', '=', batch.date_range_id.id),
+                ('reading_purpose', '=', 'periodic'),
+                ('active', '=', True),
+            ], limit=1)
+            if existing:
+                return {
+                    'success': False,
+                    'error': _('توجد قراءة دورية لهذا العداد في الفترة الحالية بالفعل.'),
+                }
+            reading = Reading.create(dict(reading_vals, state='under_review'))
         if media_asset and not media_asset.reading_id:
             media_asset.write({'reading_id': reading.id})
 

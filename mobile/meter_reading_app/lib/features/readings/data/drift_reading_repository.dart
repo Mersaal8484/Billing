@@ -26,6 +26,7 @@ class DriftReadingRepository implements ReadingRepository {
     await _db.into(_db.readings).insertOnConflictUpdate(
           ReadingsCompanion(
             id: drift.Value(id),
+            remoteId: drift.Value(reading.remoteId),
             meterRemoteId: drift.Value(reading.meterRemoteId),
             readingValue: drift.Value(reading.readingValue),
             readingDate: drift.Value(reading.readingDate),

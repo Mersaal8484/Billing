@@ -8,6 +8,12 @@ class UtilityReadingBatchLine(models.Model):
 
     batch_id = fields.Many2one('utility.reading.batch', string='الدفعة المرتبطة', required=True, ondelete='cascade', index=True)
     seq = fields.Integer('تسلسل', default=1)
+    meter_id = fields.Many2one('utility.meter', string='العداد', index=True, ondelete='set null')
+    resubmit_reading_id = fields.Many2one(
+        'utility.reading', string='القراءة المعادة للمراجعة', index=True,
+        ondelete='set null',
+        help='لا يُستخدم إلا لتحديث قراءة أعادها المراجع إلى المسودة.',
+    )
     meter_number = fields.Char('رقم العداد', required=True, index=True)
     reading_value = fields.Float('قيمة القراءة', required=True)
     reading_date = fields.Datetime('تاريخ القراءة', default=fields.Datetime.now)

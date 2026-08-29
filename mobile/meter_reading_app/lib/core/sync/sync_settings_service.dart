@@ -19,7 +19,7 @@ class SyncSettingsService {
     if (modeStr == SyncMode.immediate.name) {
       return SyncMode.immediate;
     }
-    return SyncMode.batch; // Default
+    return SyncMode.immediate; // Default: do not leave field readings waiting.
   }
 
   Future<void> setSyncMode(SyncMode mode) async {

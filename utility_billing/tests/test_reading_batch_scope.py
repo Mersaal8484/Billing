@@ -6,6 +6,7 @@ Tests that:
 - Readers restricted to a branch/region cannot import meters outside their organizational scope
 - Global readers can import across all regions
 """
+from odoo import fields
 from odoo.exceptions import AccessError
 from odoo.tests.common import TransactionCase
 from odoo.tests import tagged
@@ -184,6 +185,57 @@ class TestReadingBatchScope(TransactionCase):
         res = self.BatchService._process_single_batch_line(batch, line, {}, {})
         self.assertTrue(res.get('success'), 'السطر يجب أن ينجح لتطابق المنطقة.')
         self.assertTrue(res.get('reading_id'))
+
+    def test_authoritative_meter_id_is_used_for_batch_line(self):
+        """A mobile line may use the Odoo meter id after offline restore."""
+        batch = self.Batch.create({
+            'region_id': self.region_north.id,
+            'date_range_id': self.period_north.id,
+        })
+        line = self.BatchLine.create({
+            'batch_id': batch.id,
+            'meter_id': self.meter_north_a.id,
+            'meter_number': self.meter_north_a.meter_number,
+            'reading_value': 351.0,
+            'state': 'pending',
+        })
+
+        res = self.BatchService._process_single_batch_line(batch, line, {}, {})
+        self.assertTrue(res.get('success'))
+        self.assertTrue(res.get('reading_id'))
+
+    def test_rejected_reading_is_updated_not_duplicated(self):
+        """A returned reading is revised in-place and sent back for review."""
+        batch = self.Batch.create({
+            'region_id': self.region_north.id,
+            'date_range_id': self.period_north.id,
+        })
+        returned = self.env['utility.reading'].create({
+            'meter_id': self.meter_north_a.id,
+            'account_id': self.customer_north_a.id,
+            'date_range_id': self.period_north.id,
+            'reading_value': 350.0,
+            'reading_purpose': 'periodic',
+            'state': 'draft',
+            'rejection_reason': 'الصورة غير واضحة',
+            'rejected_at': fields.Datetime.now(),
+        })
+        line = self.BatchLine.create({
+            'batch_id': batch.id,
+            'meter_id': self.meter_north_a.id,
+            'meter_number': self.meter_north_a.meter_number,
+            'resubmit_reading_id': returned.id,
+            'reading_value': 351.0,
+            'state': 'pending',
+        })
+
+        res = self.BatchService._process_single_batch_line(batch, line, {}, {})
+
+        returned.invalidate_recordset()
+        self.assertTrue(res.get('success'))
+        self.assertEqual(res.get('reading_id'), returned.id)
+        self.assertEqual(returned.state, 'under_review')
+        self.assertEqual(returned.reading_value, 351.0)
 
     def test_closed_period_fails_line(self):
         """Processing a reading line in a closed period must fail."""
