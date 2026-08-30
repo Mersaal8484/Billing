@@ -186,6 +186,41 @@ class TestReadingBatchScope(TransactionCase):
         self.assertTrue(res.get('success'), 'السطر يجب أن ينجح لتطابق المنطقة.')
         self.assertTrue(res.get('reading_id'))
 
+    def test_legacy_biweekly_cadence_matches_semi_monthly_region(self):
+        """Legacy biweekly and canonical semi-monthly codes are equivalent."""
+        biweekly_region = self.Region.create({
+            'name': 'منطقة نصف شهرية متوافقة',
+            'code': 'BIWEEKLY-COMPAT',
+            'type': 'region',
+            'recurring_rule_type': 'biweekly',
+        })
+        biweekly_period = self.env['date.range'].create({
+            'name': 'فترة نصف شهرية متوافقة',
+            'period_code': 'BIWEEKLY-COMPAT-2026-08',
+            'cycle_key': 'BIWEEKLY-COMPAT-2026-08',
+            'period_role': 'reading',
+            'type_id': self.range_type.id,
+            'region_ids': [(6, 0, [biweekly_region.id])],
+            'billing_cadence': 'biweekly',
+            'date_start': '2026-08-01',
+            'date_end': '2026-08-15',
+            'state': 'open',
+        })
+
+        batch = self.Batch.create({
+            'region_id': biweekly_region.id,
+            'date_range_id': biweekly_period.id,
+        })
+        self.assertEqual(batch.region_id, biweekly_region)
+
+    def test_mobile_iso_timestamp_with_milliseconds_is_normalized(self):
+        """Flutter's ISO timestamp must be accepted when batch lines are made."""
+        reading_datetime = self.BatchService._normalize_mobile_reading_datetime(
+            '2026-08-31T00:40:21.000',
+        )
+        self.assertEqual(reading_datetime.strftime('%Y-%m-%d %H:%M:%S'),
+                         '2026-08-31 00:40:21')
+
     def test_authoritative_meter_id_is_used_for_batch_line(self):
         """A mobile line may use the Odoo meter id after offline restore."""
         batch = self.Batch.create({

@@ -13,8 +13,7 @@
                 <field name="substation_id" optional="show"/>
                 <field name="feeder_id" optional="show"/>
                 <field name="transformer_id"/>
-                <field name="user_ids" widget="many2many_tags" optional="show"/>
-                <field name="supervisor_id" optional="show"/>
+                <field name="user_ids" widget="many2many_tags" optional="show" string="طاقم العمل"/>
                 <field name="customer_count" string="مشتركون" optional="show"/>
                 <field name="active"/>
             </tree>
@@ -76,9 +75,21 @@
                             <field name="active"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
-                          <group string="طاقم العمل">
-                              <field name="user_ids" widget="many2many_tags" options="{'no_create': True}" domain="['|', ('groups_id', 'in', %(utility_core.group_utility_meter_reader)d), ('groups_id', 'in', %(utility_core.group_utility_collector)d)]"/>
-                              <field name="supervisor_id" options="{'no_create': True}" domain="[('groups_id', 'in', %(utility_core.group_utility_supervisor)d)]"/>
+                        <group string="طاقم العمل">
+                              <field name="user_ids"
+                                     widget="many2many_tags"
+                                     options="{'no_create': True}"
+                                     colspan="2"
+                                     domain="['|', '|',
+                                         ('groups_id', 'in', %(utility_core.group_utility_meter_reader)d),
+                                         ('groups_id', 'in', %(utility_core.group_utility_collector)d),
+                                         ('groups_id', 'in', %(utility_core.group_utility_supervisor)d)]"
+                                     help="أضف الكاشفين والمحصلين والمشرفين — دور كل مستخدم يُحدَّد تلقائياً من صلاحياته في النظام"
+                              />
+                              <div class="text-muted small" colspan="2">
+                                  <i class="fa fa-info-circle"/>
+                                  دور كل مستخدم (كاشف / محصل / مشرف) يُحدَّد تلقائياً من صلاحياته — لا حاجة لتحديده يدوياً.
+                              </div>
                           </group>
                     </group>
                     <notebook>

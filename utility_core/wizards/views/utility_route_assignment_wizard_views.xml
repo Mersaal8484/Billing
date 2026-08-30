@@ -54,18 +54,15 @@
                                            'required': [('route_id', '=', False)]}"/>
                         </group>
 
-                        <!-- ── القسم 3: طاقم العمل ───────────────────── -->
-                        <group string="③ طاقم العمل والمشرف" colspan="2">
+                        <!-- ── القسم 3: طاقم العمل ─────────────────────── -->
+                        <group string="③ طاقم العمل" colspan="2">
                             <field name="user_ids"
                                    widget="many2many_tags"
-                                   placeholder="اختر الكاشف / المتحصل..."
-                                   colspan="2"/>
-                            <field name="supervisor_id"
-                                   placeholder="اختر المشرف (اختياري)..."
+                                   placeholder="اختر الكاشف / المتحصل / المشرف..."
                                    colspan="2"/>
                             <div class="text-muted small" colspan="2">
                                 <i class="fa fa-info-circle"/>
-                                دور كل مستخدم (كاشف/متحصل/مشرف) يُحدَّد تلقائياً
+                                دور كل مستخدم (كاشف / محصل / مشرف) يُحدَّد تلقائياً
                                 من صلاحياته في Odoo — لا حاجة لتحديده هنا.
                             </div>
                         </group>
@@ -140,7 +137,7 @@
         <field name="inherit_id" ref="utility_core.view_utility_route_form"/>
         <field name="arch" type="xml">
 
-            <!-- إضافة زر الـ Wizard في الأزرار الرئيسية -->
+            <!-- تحديث view المسار: إضافة زر لفتح الـ Wizard -->
             <xpath expr="//sheet/div[@class='oe_button_box']"
                    position="inside">
                 <button type="action"
@@ -150,11 +147,6 @@
                         class="oe_stat_button"
                         context="{'default_route_id': active_id,
                                   'default_transformer_ids': [(6,0,[transformer_id])] if transformer_id else []}"/>
-            </xpath>
-
-            <!-- توحيد حقل المشرف مع طاقم العمل في نفس المجموعة -->
-            <xpath expr="//field[@name='supervisor_id']" position="before">
-                <separator string="طاقم العمل"/>
             </xpath>
 
         </field>

@@ -27,11 +27,17 @@ class UtilityRoute(models.Model):
     user_ids = fields.Many2many(
         'res.users', 'res_users_route_rel',
         'route_id', 'user_id',
-        string='طاقم العمل (كشاف/محصل)',
-        help='المستخدمين المخصصين ككشافين أو محصلين لهذا المسار'
+        string='طاقم العمل (كاشف / محصل / مشرف)',
+        help='جميع المستخدمين المعيّنين لهذا المسار — دور كل مستخدم '
+             '(كاشف / محصل / مشرف) يُحدَّد تلقائياً من صلاحياته في النظام'
     )
+    # Deprecated: حقل المشرف القديم — مُبقى في قاعدة البيانات للتوافق العكسي
+    # لا تستخدمه في منطق جديد؛ أضف المشرف عبر user_ids بدلاً من ذلك.
     supervisor_id = fields.Many2one(
-        'res.users', string='المشرف',
+        'res.users',
+        string='المشرف (حقل قديم - للتوافق)',
+        deprecated=True,
+        help='حقل قديم — أضف المشرف عبر حقل طاقم العمل (user_ids).'
     )
 
     _sql_constraints = [

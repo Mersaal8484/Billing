@@ -5,7 +5,7 @@ import logging
 
 from odoo import fields, http
 from odoo.exceptions import AccessError, UserError, ValidationError
-from odoo.http import request
+from odoo.http import request, Response
 
 _logger = logging.getLogger(__name__)
 
@@ -17,6 +17,15 @@ class UtilityReaderAPI(http.Controller):
     def _error(code, message):
         """Return the stable API error envelope without changing success payloads."""
         return {'success': False, 'code': code, 'error': message}
+
+    @staticmethod
+    def _http_json_response(payload, status=200):
+        """Return a plain JSON response for non-JSON-RPC mobile uploads."""
+        return Response(
+            json.dumps(payload, ensure_ascii=False),
+            status=status,
+            content_type='application/json; charset=utf-8',
+        )
 
     def _resolve_meter_identifiers(self, params):
         """Resolve supplied meter identifiers and reject contradictory values."""
@@ -85,10 +94,29 @@ class UtilityReaderAPI(http.Controller):
                 region_id = int(region_id)
             except (TypeError, ValueError):
                 return self._error('VALIDATION_ERROR', 'region_id must be numeric')
+        # The mobile client works from assigned routes and does not duplicate
+        # the route region in local storage. When all assigned routes belong
+        # to a single region, retain it on the batch for audit and validation.
+        # A multi-region reader has a region-less batch and every line is
+        # still validated against its assigned route while processing.
+        if not region_id:
+            route_region_ids = request.env.user.assigned_route_ids.mapped('region_id').ids
+            if len(route_region_ids) == 1:
+                region_id = route_region_ids[0]
+
+        if region_id:
             region = request.env['utility.region'].browse(region_id)
             if (not region.exists() or region.type != 'region'
                     or (period.region_ids and region not in period.region_ids)):
                 return self._error('INVALID_REGION', 'المنطقة غير صالحة لهذه الفترة')
+
+        if (not request.env.user._is_global_utility_scope()
+                and not request.env.user.assigned_route_ids
+                and not request.env.user._get_effective_region_ids()):
+            return self._error(
+                'READER_SCOPE_NOT_ASSIGNED',
+                'لا يوجد مسار أو نطاق جغرافي مخصّص للمستخدم الحالي.',
+            )
 
         total_readings_raw = params.get('total_readings', 0)
         try:
@@ -105,6 +133,9 @@ class UtilityReaderAPI(http.Controller):
             'date_range_id': date_range_id,
             'region_id': region_id or False,
             'total_readings': total_readings,
+            # Set ownership explicitly so the record rule can safely allow
+            # only the authenticated uploader's route-backed batch.
+            'user_id': request.env.user.id,
         })
         return {
             'success': True,
@@ -230,6 +261,84 @@ class UtilityReaderAPI(http.Controller):
             'attachment_id': media_asset.original_attachment_id.id if media_asset.original_attachment_id else False,
             'filename': filename,
         }
+
+    @http.route('/api/v1/utility/reading/batch/upload_image_multipart', type='http',
+                auth='user', methods=['POST'], csrf=False)
+    def upload_batch_image_multipart(self, **kwargs):
+        """Upload one meter photo sent by the Flutter client as multipart data.
+
+        The reading batch contains the image filename for every reading.  The
+        batch processor uses that filename to attach the stored media asset to
+        the matching reading when the batch is confirmed.
+        """
+        form = request.httprequest.form
+        batch_id = form.get('batch_id') or kwargs.get('batch_id')
+        uploaded_file = request.httprequest.files.get('file')
+        filename = form.get('filename') or (
+            uploaded_file.filename if uploaded_file else False
+        )
+
+        if not batch_id or not filename or not uploaded_file:
+            return self._http_json_response(
+                self._error(
+                    'VALIDATION_ERROR',
+                    'batch_id, filename, and file are required',
+                ),
+                status=400,
+            )
+
+        batch = self._get_owned_batch(batch_id)
+        if not batch.exists():
+            return self._http_json_response(
+                self._error(
+                    'BATCH_NOT_FOUND',
+                    'الدفعة غير موجودة أو غير مملوكة للمستخدم الحالي',
+                ),
+                status=404,
+            )
+        if batch.state != 'uploaded':
+            return self._http_json_response(
+                self._error('BATCH_NOT_EDITABLE', 'لا يمكن تعديل دفعة تمت معالجتها'),
+                status=409,
+            )
+
+        file_data = uploaded_file.read()
+        if not file_data:
+            return self._http_json_response(
+                self._error('EMPTY_IMAGE', 'بيانات الصورة أو الملف فارغة.'),
+                status=400,
+            )
+
+        max_size = int(request.env['ir.config_parameter'].sudo().get_param(
+            'utility.max_image_size_kb', 100))
+        size_kb = len(file_data) / 1024
+        if size_kb > max_size:
+            return self._http_json_response(
+                self._error(
+                    'IMAGE_TOO_LARGE',
+                    f'حجم الصورة ({size_kb:.0f} KB) يتجاوز الحد الأقصى ({max_size} KB)',
+                ),
+                status=413,
+            )
+
+        media_asset = request.env['utility.media.service'].sudo().store_media(
+            file_data=file_data,
+            filename=filename,
+            mimetype=uploaded_file.mimetype or 'image/jpeg',
+            batch_id=batch.id,
+            asset_type='meter_reading',
+        )
+
+        return self._http_json_response({
+            'success': True,
+            'asset_uuid': media_asset.asset_uuid,
+            'attachment_id': (
+                media_asset.original_attachment_id.id
+                if media_asset.original_attachment_id else False
+            ),
+            'filename': filename,
+            'reading_uuid': form.get('reading_uuid') or False,
+        })
 
     # ================================================================
     # الخطوة 4: تأكيد اكتمال الرفع — بدء المعالجة

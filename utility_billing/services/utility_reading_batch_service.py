@@ -1,6 +1,7 @@
 import base64
 import json
 import logging
+from datetime import datetime, timezone
 from psycopg2 import OperationalError
 from odoo import api, fields, models, _
 from odoo.exceptions import AccessError, ValidationError
@@ -11,6 +12,36 @@ _logger = logging.getLogger(__name__)
 class UtilityReadingBatchService(models.AbstractModel):
     _name = 'utility.reading.batch.service'
     _description = 'مخدم معالجة دفعات القراءات (Reading Batch Processing Service)'
+
+    @api.model
+    def _normalize_mobile_reading_datetime(self, value):
+        """Normalize Flutter ISO-8601 timestamps before creating Odoo lines.
+
+        Flutter serializes ``DateTime`` as e.g. ``2026-08-31T00:40:21.000``.
+        Odoo's Datetime field accepts its own database format, but rejects the
+        fractional-second ISO representation when values are created in bulk.
+        """
+        if not value:
+            return fields.Datetime.now()
+        if isinstance(value, datetime):
+            parsed = value
+        elif isinstance(value, str):
+            try:
+                # Python 3.10 accepts fractional seconds and both T / space
+                # separators.  Z is normalized for versions before 3.11.
+                parsed = datetime.fromisoformat(value.strip().replace('Z', '+00:00'))
+            except ValueError as exc:
+                raise ValidationError(_(
+                    'صيغة تاريخ القراءة غير صالحة: %s'
+                ) % value) from exc
+        else:
+            raise ValidationError(_(
+                'صيغة تاريخ القراءة غير صالحة: %s'
+            ) % value)
+
+        if parsed.tzinfo:
+            parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
+        return parsed
 
     @api.model
     def process_batch(self, batch_id, chunk_size=500):
@@ -78,7 +109,9 @@ class UtilityReadingBatchService(models.AbstractModel):
                     'resubmit_reading_id': item.get('resubmit_reading_id') or False,
                     'meter_number': meter_number,
                     'reading_value': item.get('reading_value', 0.0),
-                    'reading_date': item.get('reading_date') or fields.Datetime.now(),
+                    'reading_date': self._normalize_mobile_reading_datetime(
+                        item.get('reading_date')
+                    ),
                     'reading_category': item.get('reading_category', 'customer'),
                     'image_filename': item.get('image_filename'),
                     'state': 'pending',
@@ -209,7 +242,29 @@ class UtilityReadingBatchService(models.AbstractModel):
                 }
 
         # 4. التحقق من صلاحيات القارئ الجغرافية والتنظيمية
-        if batch.user_id and hasattr(batch.user_id, 'check_record_scope'):
+        # Route membership is the reader's precise field-work boundary. It is
+        # checked here (not only in the mobile list endpoint), so a crafted
+        # payload cannot submit a meter from another route.
+        assigned_routes = batch.user_id.assigned_route_ids if batch.user_id else self.env['utility.route']
+        if assigned_routes:
+            customer_route = customer.route_id if customer else False
+            if not customer_route or customer_route not in assigned_routes:
+                return {
+                    'valid': False,
+                    'error': _("العداد %s لا ينتمي إلى مسار مخصّص للكاشف %s.") % (
+                        meter.meter_number, batch.user_id.name,
+                    ),
+                }
+
+        # Region/Branch scope remains an additional constraint whenever it is
+        # explicitly assigned. With no geographic scope, route membership is
+        # still restrictive and never grants broad access.
+        has_geographic_scope = batch.user_id and (
+            batch.user_id._get_effective_branch_ids()
+            or batch.user_id._get_effective_region_ids()
+        )
+        if (batch.user_id and hasattr(batch.user_id, 'check_record_scope')
+                and (has_geographic_scope or not assigned_routes)):
             try:
                 batch.user_id.check_record_scope(meter)
             except AccessError:

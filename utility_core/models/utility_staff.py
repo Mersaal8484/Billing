@@ -76,12 +76,10 @@ class UtilityStaff(models.Model):
     def _compute_route_count(self):
         for record in self:
             assigned_routes = record.user_id.assigned_route_ids if record.user_id else self.env['utility.route']
-            legacy_routes = self.env['utility.route'].search([
-                '|', ('inspector_ids', 'in', record.id),
-                '|', ('cashier_ids', 'in', record.id),
-                ('supervisor_id', '=', record.id)
-            ])
-            record.route_count = len(assigned_routes | legacy_routes)
+            linked_routes = self.env['utility.route'].search([
+                ('user_ids', 'in', record.user_id.ids)
+            ]) if record.user_id else self.env['utility.route']
+            record.route_count = len(assigned_routes | linked_routes)
 
     def action_view_collection_journal(self):
         self.ensure_one()
@@ -100,12 +98,10 @@ class UtilityStaff(models.Model):
     def action_view_assigned_routes(self):
         self.ensure_one()
         assigned_routes = self.user_id.assigned_route_ids if self.user_id else self.env['utility.route']
-        legacy_routes = self.env['utility.route'].search([
-            '|', ('inspector_ids', 'in', self.id),
-            '|', ('cashier_ids', 'in', self.id),
-            ('supervisor_id', '=', self.id)
-        ])
-        routes = assigned_routes | legacy_routes
+        linked_routes = self.env['utility.route'].search([
+            ('user_ids', 'in', self.user_id.ids)
+        ]) if self.user_id else self.env['utility.route']
+        routes = assigned_routes | linked_routes
         return {
             'name': _('المسارات الميدانية للموظف'),
             'type': 'ir.actions.act_window',

@@ -18,7 +18,9 @@ class OdooSessionExpiredException implements Exception {
 /// Thrown for any other Odoo JSON-RPC error (validation, access rights, etc).
 class OdooApiException implements Exception {
   final String message;
-  final int? code;
+  /// JSON-RPC uses a numeric code, while the business API returns stable
+  /// string codes such as `READER_SCOPE_NOT_ASSIGNED`.
+  final Object? code;
   OdooApiException(this.message, {this.code});
   @override
   String toString() => 'OdooApiException($code): $message';
@@ -116,7 +118,7 @@ class OdooApiClient {
 
     if (body.containsKey('error')) {
       final error = body['error'] as Map<String, dynamic>;
-      final code = error['code'] as int?;
+      final code = error['code'];
       final data = error['data'] as Map<String, dynamic>?;
       final message = (data?['message'] as String?) ??
           (error['message'] as String?) ??
@@ -137,7 +139,7 @@ class OdooApiClient {
       if (result['success'] == false) {
         throw OdooApiException(
           (result['error'] as String?) ?? 'The server rejected the request',
-          code: result['code'] as int?,
+          code: result['code'],
         );
       }
       return result;

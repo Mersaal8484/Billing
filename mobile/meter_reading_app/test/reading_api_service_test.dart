@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:meter_reading_app/core/network/odoo_api_client.dart';
 import 'package:meter_reading_app/core/network/reading_api_service.dart';
 
 void main() {
@@ -23,5 +24,15 @@ void main() {
 
     expect(payload.toJson(), containsPair('meter_id', 712));
     expect(payload.toJson().containsKey('meter_number'), isFalse);
+  });
+
+  test('business API errors preserve a string error code', () {
+    final error = OdooApiException(
+      'No route is assigned.',
+      code: 'READER_SCOPE_NOT_ASSIGNED',
+    );
+
+    expect(error.code, 'READER_SCOPE_NOT_ASSIGNED');
+    expect(error.toString(), contains('No route is assigned.'));
   });
 }

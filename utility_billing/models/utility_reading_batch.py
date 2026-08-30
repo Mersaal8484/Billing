@@ -7,6 +7,7 @@ from datetime import timedelta
 
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
+from odoo.addons.utility_core.models.utility_date_range import normalize_billing_cadence
 
 _logger = logging.getLogger(__name__)
 
@@ -124,8 +125,11 @@ class UtilityReadingBatch(models.Model):
                 raise ValidationError(_('دفعة الرفع يجب أن تُربط بفترة قراءة وفوترة.'))
 
             if batch.region_id:
-                cadence = 'semi_monthly' if batch.region_id.recurring_rule_type == 'biweekly' else batch.region_id.recurring_rule_type
-                if period.billing_cadence != cadence:
+                region_cadence = normalize_billing_cadence(
+                    batch.region_id.recurring_rule_type)
+                period_cadence = normalize_billing_cadence(
+                    period.billing_cadence or period.billing_period)
+                if period_cadence != region_cadence:
                     raise ValidationError(_(
                         'دورية المنطقة (%s) لا تطابق دورية الفترة المختارة (%s).'
                     ) % (batch.region_id.recurring_rule_type, period.billing_cadence))

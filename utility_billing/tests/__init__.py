@@ -34,3 +34,4 @@ from . import test_financial_settlement_workflow
 from . import test_reading_batch_scope
 # Phase 8
 from . import test_payment_integrity_regression
+from . import test_utility_reader_api

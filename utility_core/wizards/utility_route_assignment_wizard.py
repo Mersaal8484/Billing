@@ -59,16 +59,11 @@ class UtilityRouteAssignmentWizard(models.TransientModel):
         'res.users',
         'wizard_user_rel',
         'wizard_id', 'user_id',
-        string='طاقم العمل (كاشف / متحصل)',
+        string='طاقم العمل (كاشف / محصل / مشرف)',
         domain="[('share', '=', False)]",
         required=True,
-        help='المستخدمون المخصصون لهذا المسار — دورهم يُحدَّد من صلاحياتهم في Odoo',
-    )
-
-    supervisor_id = fields.Many2one(
-        'res.users',
-        string='المشرف',
-        domain="[('share', '=', False)]",
+        help='جميع المستخدمين المعيَّنين لهذا المسار — '
+             'دور كل مستخدم (كاشف / محصل / مشرف) يُحدَّد تلقائياً من صلاحياته في Odoo',
     )
 
     # ── إعدادات المسار ───────────────────────────────────────────────────────
@@ -94,7 +89,7 @@ class UtilityRouteAssignmentWizard(models.TransientModel):
 
     # ── Computed ──────────────────────────────────────────────────────────────
 
-    @api.depends('transformer_ids')
+    @api.depends('transformer_ids', 'route_id')
     def _compute_available_customers(self):
         for wizard in self:
             if not wizard.transformer_ids:
@@ -107,11 +102,22 @@ class UtilityRouteAssignmentWizard(models.TransientModel):
                 ('transformer_id', 'in', wizard.transformer_ids.ids),
                 ('active', '=', True),
             ])
-            customers = meters.mapped('customer_id').filtered(
+            all_customers = meters.mapped('customer_id').filtered(
                 lambda c: c.active and c.id
             )
-            wizard.available_customer_ids = customers
-            wizard.customer_count = len(customers)
+
+            # استثناء المشتركين المعيّنين في مسارات أخرى
+            # (إذا كان المشترك في مسار آخر غير المسار الحالي → لا يظهر)
+            current_route = wizard.route_id
+            already_assigned = self.env['utility.customer'].search([
+                ('id', 'in', all_customers.ids),
+                ('route_id', '!=', False),
+                ('route_id', '!=', current_route.id if current_route else False),
+            ])
+            available = all_customers - already_assigned
+
+            wizard.available_customer_ids = available
+            wizard.customer_count = len(available)
 
     @api.depends('selected_customer_ids')
     def _compute_selected_count(self):
@@ -130,7 +136,7 @@ class UtilityRouteAssignmentWizard(models.TransientModel):
         """عند تغيير المحولات، حدد جميع المشتركين تلقائياً"""
         self._compute_available_customers()
         # حدد الكل تلقائياً — يمكن للمستخدم إلغاء التحديد
-        self.selected_customer_ids = self.available_customer_ids
+        # المستخدم يحدد المشتركين يدوياً — لا تحديد تلقائي
 
     @api.onchange('route_id')
     def _onchange_route(self):
@@ -139,13 +145,12 @@ class UtilityRouteAssignmentWizard(models.TransientModel):
             if self.route_id.transformer_id:
                 self.transformer_ids = self.route_id.transformer_id
             self.user_ids = self.route_id.user_ids
-            self.supervisor_id = self.route_id.supervisor_id
 
     # ── Actions ───────────────────────────────────────────────────────────────
 
     def action_select_all(self):
         """تحديد جميع المشتركين المتاحين"""
-        self.selected_customer_ids = self.available_customer_ids
+        # المستخدم يحدد المشتركين يدوياً — لا تحديد تلقائي
         return {'type': 'ir.actions.act_window_close'} if False else self._reopen()
 
     def action_deselect_all(self):
@@ -175,10 +180,8 @@ class UtilityRouteAssignmentWizard(models.TransientModel):
         # إيجاد أو إنشاء المسار
         route = self._get_or_create_route()
 
-        # تعيين طاقم العمل والمشرف
+        # تعيين طاقم العمل
         route.user_ids = [(6, 0, self.user_ids.ids)]
-        if self.supervisor_id:
-            route.supervisor_id = self.supervisor_id
 
         # تعيين المشتركين
         if self.assign_mode == 'replace':
@@ -248,5 +251,4 @@ class UtilityRouteAssignmentWizard(models.TransientModel):
             'code': self.new_route_code,
             'transformer_id': transformer.id if transformer else False,
             'user_ids': [(6, 0, self.user_ids.ids)],
-            'supervisor_id': self.supervisor_id.id if self.supervisor_id else False,
         })
