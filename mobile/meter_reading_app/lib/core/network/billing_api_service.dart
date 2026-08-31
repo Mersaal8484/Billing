@@ -8,50 +8,32 @@ class BillingApiService {
 
   // ─── استعلام الرصيد والفاتورة الحالية ────────────────────────────────────
 
-  /// جلب الرصيد الإجمالي وتفاصيل الفواتير للمشترك
-  Future<Map<String, dynamic>> getBillInquiry(int customerId) {
-    return _client.postJson('/api/v1/utility/billing/balance', {
-      'customer_id': customerId,
-    });
-  }
-
-  /// جلب قائمة الفواتير غير المدفوعة للمشترك
-  Future<Map<String, dynamic>> getBills(int customerId) {
-    return _client.postJson('/api/v1/utility/billing/bills', {
-      'customer_id': customerId,
+  /// استعلام المحصل عن حساب واحد ضمن المسارات المصرح بها.
+  Future<Map<String, dynamic>> getCollectorAccount({
+    String? customerNumber,
+    String? qrReference,
+  }) {
+    return _client.postJson('/api/v1/utility/collector/account', {
+      if (customerNumber != null) 'customer_number': customerNumber,
+      if (qrReference != null) 'external_qr_reference': qrReference,
     });
   }
 
   // ─── تسجيل التحصيل ───────────────────────────────────────────────────────
 
-  /// تسجيل عملية تحصيل
-  Future<Map<String, dynamic>> pay({
-    required int customerId,
+  /// يسجل تحصيلاً نقدياً على فاتورة محاسبية محددة.
+  Future<Map<String, dynamic>> collectCash({
+    required int orderId,
+    required int invoiceId,
     required double amount,
-    required double dueAmount,
-    required String paymentMethod,
-    required String transactionId,
-    String? reference,
+    required String idempotencyKey,
   }) {
-    return _client.postJson('/api/v1/utility/billing/pay', {
-      'customer_id': customerId,
+    return _client.postJson('/api/v1/utility/collector/collect_cash', {
+      'order_id': orderId,
+      'invoice_id': invoiceId,
       'amount': amount,
-      'due_amount': dueAmount,
-      'payment_method': paymentMethod,
-      'transaction_id': transactionId,
-      if (reference != null) 'reference': reference,
+      'idempotency_key': idempotencyKey,
     });
   }
 
-  /// جلب تقرير تحصيل اليوم للمحصل الحالي
-  Future<Map<String, dynamic>> getDailyReport() {
-    return _client.postJson('/api/v1/utility/reports/daily', {
-      'date': DateTime.now().toIso8601String().substring(0, 10),
-    });
-  }
-
-  /// جلب سجل عمليات التحصيل للمحصل
-  Future<Map<String, dynamic>> getCollectionHistory() {
-    return _client.postJson('/api/v1/utility/billing/collection_history', {});
-  }
 }

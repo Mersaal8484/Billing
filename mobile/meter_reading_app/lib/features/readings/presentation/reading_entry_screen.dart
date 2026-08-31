@@ -136,7 +136,7 @@ class _ReadingEntryScreenState extends ConsumerState<ReadingEntryScreen> {
 
     // جلب آخر قراءة للعداد
     final lookupResult = await client.postJson(
-        '/api/v1/utility/reading/meter/lookup', {'meter_code': meterNumber});
+        '/api/v1/utility/reading/meter/lookup', {'meter_number': meterNumber});
 
     final lastValue =
         (lookupResult['last_reading_value'] as num?)?.toDouble() ?? 0.0;
@@ -198,24 +198,44 @@ class _ReadingEntryScreenState extends ConsumerState<ReadingEntryScreen> {
     if (original == null) return imageFile;
 
     final now = DateTime.now();
-    final dateStr = DateFormat('yyyy-MM-dd HH:mm:ss').format(now);
-    final meterNum = _assignment?.meter.meterNumber ?? '';
+    // التاريخ بصيغة yyyy-MM-dd — أحمر كبير مثل الصور
+    final dateStr = DateFormat('yyyy-MM-dd').format(now);
 
+    // حجم الخط نسبة لعرض الصورة
+    final fontSize = (original.width * 0.10).round().clamp(40, 200);
+
+    // رسم ظل أبيض/أسود للوضوح على أي خلفية
+    for (final dx in [-2, 0, 2]) {
+      for (final dy in [-2, 0, 2]) {
+        if (dx == 0 && dy == 0) continue;
+        img.drawString(
+          original,
+          dateStr,
+          font: img.arial48,
+          x: (original.width * 0.04).round() + dx,
+          y: (original.height * 0.60).round() + dy,
+          color: img.ColorRgba8(0, 0, 0, 180),
+        );
+      }
+    }
+
+    // النص الأحمر الرئيسي
     img.drawString(
       original,
-      '$dateStr  عداد: $meterNum',
-      font: img.arial14,
-      x: 10,
-      y: original.height - 30,
-      color: img.ColorRgba8(255, 255, 0, 220),
+      dateStr,
+      font: img.arial48,
+      x: (original.width * 0.04).round(),
+      y: (original.height * 0.60).round(),
+      color: img.ColorRgba8(220, 30, 30, 255),
     );
 
     final dir = await getApplicationDocumentsDirectory();
     final path = '${dir.path}/reading_${const Uuid().v4()}.jpg';
     final outFile = File(path);
-    await outFile.writeAsBytes(img.encodeJpg(original, quality: 85));
+    await outFile.writeAsBytes(img.encodeJpg(original, quality: 90));
     return outFile;
   }
+
 
   // ── حفظ القراءة ──────────────────────────────────────────────────────────
 
@@ -582,29 +602,62 @@ class _CameraScreen extends StatefulWidget {
   State<_CameraScreen> createState() => _CameraScreenState();
 }
 
-class _CameraScreenState extends State<_CameraScreen> {
+class _CameraScreenState extends State<_CameraScreen>
+    with WidgetsBindingObserver {
   late CameraController _controller;
   late Future<void> _initFuture;
   bool _taking = false;
+  double _minZoom = 1.0;
+  double _maxZoom = 1.0;
+  double _currentZoom = 1.0;
+  Offset? _focusPoint;
 
   @override
   void initState() {
     super.initState();
-    _controller = CameraController(widget.camera, ResolutionPreset.medium,
-        enableAudio: false);
-    _initFuture = _controller.initialize();
+    WidgetsBinding.instance.addObserver(this);
+    _controller = CameraController(
+      widget.camera,
+      ResolutionPreset.high,
+      enableAudio: false,
+      imageFormatGroup: ImageFormatGroup.jpeg,
+    );
+    _initFuture = _controller.initialize().then((_) async {
+      _minZoom = await _controller.getMinZoomLevel();
+      _maxZoom = await _controller.getMaxZoomLevel();
+      // زوم افتراضي خفيف للتركيز على القراءة
+      _currentZoom = (_maxZoom * 0.25).clamp(_minZoom, _maxZoom);
+      if (mounted) {
+        setState(() {});
+        await _controller.setZoomLevel(_currentZoom);
+      }
+    });
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _controller.dispose();
     super.dispose();
+  }
+
+  Future<void> _onTapFocus(TapUpDetails details, BoxConstraints constraints) async {
+    final offset = Offset(
+      details.localPosition.dx / constraints.maxWidth,
+      details.localPosition.dy / constraints.maxHeight,
+    );
+    setState(() => _focusPoint = details.localPosition);
+    await _controller.setFocusPoint(offset);
+    await _controller.setExposurePoint(offset);
+    await Future.delayed(const Duration(milliseconds: 800));
+    if (mounted) setState(() => _focusPoint = null);
   }
 
   Future<void> _shoot() async {
     if (_taking) return;
     setState(() => _taking = true);
     try {
+      await _controller.setFocusMode(FocusMode.locked);
       final xfile = await _controller.takePicture();
       if (mounted) Navigator.of(context).pop(File(xfile.path));
     } catch (e) {
@@ -621,13 +674,129 @@ class _CameraScreenState extends State<_CameraScreen> {
         builder: (_, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
             return const Center(
-                child:
-                    CircularProgressIndicator(color: Colors.white));
+                child: CircularProgressIndicator(color: Colors.white));
           }
+          final size = MediaQuery.of(context).size;
+
           return Stack(
-            fit: StackFit.expand,
             children: [
-              CameraPreview(_controller),
+              // ── معاينة الكاميرا ──────────────────────────────────────
+              SizedBox.expand(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    return GestureDetector(
+                      onTapUp: (d) => _onTapFocus(d, constraints),
+                      child: CameraPreview(_controller),
+                    );
+                  },
+                ),
+              ),
+
+              // ── تعتيم خارج الإطار ────────────────────────────────────
+              _FrameOverlay(
+                screenSize: size,
+              ),
+
+              // ── نقطة التركيز ─────────────────────────────────────────
+              if (_focusPoint != null)
+                Positioned(
+                  left: _focusPoint!.dx - 24,
+                  top: _focusPoint!.dy - 24,
+                  child: Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.yellow, width: 2),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ),
+
+              // ── AppBar ────────────────────────────────────────────────
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 4),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          icon: const Icon(Icons.close,
+                              color: Colors.white, size: 28),
+                        ),
+                        const Spacer(),
+                        const Text('تصوير العداد',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600)),
+                        const Spacer(),
+                        const SizedBox(width: 48), // مساحة متوازية للرجوع
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+              // ── توجيه نصي ────────────────────────────────────────────
+              Positioned(
+                top: MediaQuery.of(context).padding.top + 64,
+                left: 16,
+                right: 16,
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.black54,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Text(
+                      'ضع أرقام العداد داخل الإطار بوضوح',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ),
+              ),
+
+              // ── شريط الزوم ───────────────────────────────────────────
+              if (_maxZoom > _minZoom + 0.5)
+                Positioned(
+                  bottom: 120,
+                  left: 40,
+                  right: 40,
+                  child: Row(
+                    children: [
+                      const Icon(Icons.zoom_out,
+                          color: Colors.white70, size: 20),
+                      Expanded(
+                        child: Slider(
+                          value: _currentZoom,
+                          min: _minZoom,
+                          max: _maxZoom.clamp(_minZoom, _minZoom + 5),
+                          divisions: 20,
+                          activeColor: Colors.white,
+                          inactiveColor: Colors.white30,
+                          onChanged: (v) async {
+                            setState(() => _currentZoom = v);
+                            await _controller.setZoomLevel(v);
+                          },
+                        ),
+                      ),
+                      const Icon(Icons.zoom_in,
+                          color: Colors.white70, size: 20),
+                    ],
+                  ),
+                ),
+
+              // ── زر التقاط ────────────────────────────────────────────
               Positioned(
                 bottom: 32,
                 left: 0,
@@ -636,32 +805,30 @@ class _CameraScreenState extends State<_CameraScreen> {
                   child: GestureDetector(
                     onTap: _shoot,
                     child: Container(
-                      width: 72,
-                      height: 72,
+                      width: 76,
+                      height: 76,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Colors.white.withOpacity(0.9),
-                        border:
-                            Border.all(color: Colors.white, width: 3),
+                        color: Colors.white,
+                        border: Border.all(
+                            color: Colors.white70, width: 4),
+                        boxShadow: const [
+                          BoxShadow(
+                              color: Colors.black45,
+                              blurRadius: 8,
+                              spreadRadius: 2)
+                        ],
                       ),
                       child: _taking
                           ? const Padding(
-                              padding: EdgeInsets.all(16),
+                              padding: EdgeInsets.all(18),
                               child: CircularProgressIndicator(
-                                  strokeWidth: 2))
+                                  strokeWidth: 2,
+                                  color: Colors.black))
                           : const Icon(Icons.camera_alt,
                               size: 36, color: Colors.black),
                     ),
                   ),
-                ),
-              ),
-              Positioned(
-                top: 48,
-                right: 16,
-                child: IconButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.close,
-                      color: Colors.white, size: 30),
                 ),
               ),
             ],
@@ -671,6 +838,85 @@ class _CameraScreenState extends State<_CameraScreen> {
     );
   }
 }
+
+// ── طبقة التعتيم مع الإطار ────────────────────────────────────────────────────
+class _FrameOverlay extends StatelessWidget {
+  final Size screenSize;
+  const _FrameOverlay({required this.screenSize});
+
+  @override
+  Widget build(BuildContext context) {
+    final w = screenSize.width;
+    final h = screenSize.height;
+
+    // أبعاد الإطار
+    final frameW = w * 0.85;
+    final frameH = h * 0.25; // يأخذ مساحة كافية للعداد والأرقام
+    final frameTop = (h - frameH) / 2;
+    final frameLeft = (w - frameW) / 2;
+
+    return CustomPaint(
+      size: Size(w, h),
+      painter: _OverlayPainter(
+        frameRect: Rect.fromLTWH(frameLeft, frameTop, frameW, frameH),
+      ),
+    );
+  }
+}
+
+class _OverlayPainter extends CustomPainter {
+  final Rect frameRect;
+  _OverlayPainter({required this.frameRect});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final shadow = Paint()..color = Colors.black.withOpacity(0.55);
+    final fullRect = Rect.fromLTWH(0, 0, size.width, size.height);
+
+    // تعتيم خارج الإطار
+    final path = Path()
+      ..addRect(fullRect)
+      ..addRRect(RRect.fromRectAndRadius(frameRect, const Radius.circular(8)))
+      ..fillType = PathFillType.evenOdd;
+    canvas.drawPath(path, shadow);
+
+    // إطار مضيء
+    final borderPaint = Paint()
+      ..color = Colors.white70
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(frameRect, const Radius.circular(8)),
+      borderPaint,
+    );
+
+    // زوايا إطار مميزة
+    final cornerPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4
+      ..strokeCap = StrokeCap.round;
+    const cLen = 22.0;
+    final r = frameRect;
+
+    // زاوية يسار أعلى
+    canvas.drawLine(r.topLeft, r.topLeft + const Offset(cLen, 0), cornerPaint);
+    canvas.drawLine(r.topLeft, r.topLeft + const Offset(0, cLen), cornerPaint);
+    // زاوية يمين أعلى
+    canvas.drawLine(r.topRight, r.topRight + const Offset(-cLen, 0), cornerPaint);
+    canvas.drawLine(r.topRight, r.topRight + const Offset(0, cLen), cornerPaint);
+    // زاوية يسار أسفل
+    canvas.drawLine(r.bottomLeft, r.bottomLeft + const Offset(cLen, 0), cornerPaint);
+    canvas.drawLine(r.bottomLeft, r.bottomLeft + const Offset(0, -cLen), cornerPaint);
+    // زاوية يمين أسفل
+    canvas.drawLine(r.bottomRight, r.bottomRight + const Offset(-cLen, 0), cornerPaint);
+    canvas.drawLine(r.bottomRight, r.bottomRight + const Offset(0, -cLen), cornerPaint);
+  }
+
+  @override
+  bool shouldRepaint(_OverlayPainter old) => old.frameRect != frameRect;
+}
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // خطأ

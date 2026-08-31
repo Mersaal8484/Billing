@@ -46,6 +46,7 @@ class MockCollectionRepository implements CollectionRepository {
   @override
   Future<CollectionReceipt> collect({
     required String accountId,
+    required CollectionInvoice invoice,
     required double amount,
     required PaymentMethod method,
   }) async {
@@ -102,6 +103,8 @@ class MockCollectionRepository implements CollectionRepository {
       );
       final invoices = [
         CollectionInvoice(
+          orderId: 10000 + i,
+          invoiceId: 20000 + i,
           id: 'inv-$i-1',
           invoiceNumber: 'INV-${20260700 + i}',
           dueDate: DateTime.now().subtract(Duration(days: 8 + i)),
@@ -109,6 +112,8 @@ class MockCollectionRepository implements CollectionRepository {
           status: i == 1 ? InvoiceStatus.paid : InvoiceStatus.overdue,
         ),
         CollectionInvoice(
+          orderId: 11000 + i,
+          invoiceId: 21000 + i,
           id: 'inv-$i-2',
           invoiceNumber: 'INV-${20260600 + i}',
           dueDate: DateTime.now().add(Duration(days: 5 + i)),

@@ -70,8 +70,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/collector/payment/:id',
-        builder: (context, state) =>
-            PaymentScreen(accountId: state.pathParameters['id']!),
+        builder: (context, state) => PaymentScreen(
+          accountId: state.pathParameters['id']!,
+          initialInvoice: state.extra is CollectionInvoice
+              ? state.extra as CollectionInvoice
+              : null,
+        ),
       ),
       GoRoute(
         path: '/collector/receipt/:id',

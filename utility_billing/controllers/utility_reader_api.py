@@ -473,6 +473,34 @@ class UtilityReaderAPI(http.Controller):
             return self._error(error_code, 'العداد غير موجود')
 
         customer = meter.customer_id
+
+        # جلب آخر قراءة معتمدة أو مفوترة للعداد
+        last_reading = request.env['utility.reading'].sudo().search([
+            ('meter_id', '=', meter.id),
+            ('state', 'in', ['approved', 'billed']),
+        ], order='reading_date desc, id desc', limit=1)
+
+        last_reading_value = last_reading.reading_value if last_reading else 0.0
+        last_reading_date = (
+            last_reading.reading_date.isoformat()
+            if last_reading and last_reading.reading_date else None
+        )
+
+        # حساب متوسط الاستهلاك من آخر 6 قراءات معتمدة
+        recent_readings = request.env['utility.reading'].sudo().search([
+            ('meter_id', '=', meter.id),
+            ('state', 'in', ['approved', 'billed']),
+        ], order='reading_date desc, id desc', limit=6)
+
+        avg_consumption = 0.0
+        if len(recent_readings) >= 2:
+            readings_list = sorted(recent_readings, key=lambda r: r.reading_date)
+            consumptions = [
+                max(0.0, readings_list[i].reading_value - readings_list[i - 1].reading_value)
+                for i in range(1, len(readings_list))
+            ]
+            avg_consumption = sum(consumptions) / len(consumptions) if consumptions else 0.0
+
         return {
             'success': True,
             'meter': {
@@ -485,7 +513,11 @@ class UtilityReaderAPI(http.Controller):
                 'customer_number': customer.customer_number if customer else None,
                 'address': customer.address if customer and hasattr(customer, 'address') else None,
             },
+            'last_reading_value': last_reading_value,
+            'last_reading_date': last_reading_date,
+            'avg_consumption': avg_consumption,
         }
+
 
     # ================================================================
     # استعلام: دفعات الجابي الحالي

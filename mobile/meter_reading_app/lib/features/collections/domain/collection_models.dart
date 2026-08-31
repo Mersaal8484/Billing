@@ -4,6 +4,8 @@ enum InvoiceStatus { unpaid, overdue, paid }
 enum PaymentMethod { cash, card, wallet, transfer }
 
 class CollectionInvoice {
+  final int orderId;
+  final int invoiceId;
   final String id;
   final String invoiceNumber;
   final DateTime dueDate;
@@ -11,6 +13,8 @@ class CollectionInvoice {
   final double amountResidual;
   final InvoiceStatus status;
   const CollectionInvoice({
+    required this.orderId,
+    required this.invoiceId,
     required this.id,
     required this.invoiceNumber,
     required this.dueDate,
@@ -49,7 +53,7 @@ class CollectionAccount {
       ? dueAmount
       : invoices
           .where((i) => i.status != InvoiceStatus.paid)
-          .fold<double>(0, (t, i) => t + i.amount);
+          .fold<double>(0, (t, i) => t + i.amountResidual);
 }
 
 class CollectionReceipt {
@@ -86,6 +90,7 @@ abstract class CollectionRepository {
   Future<CollectionAccount?> findById(String id);
   Future<CollectionReceipt> collect({
     required String accountId,
+    required CollectionInvoice invoice,
     required double amount,
     required PaymentMethod method,
   });

@@ -9,7 +9,7 @@ import '../core/network/reading_api_service.dart';
 import '../core/printing/thermal_printer_service.dart';
 import '../core/sync/sync_engine.dart';
 import '../core/sync/sync_settings_service.dart';
-import '../features/collections/data/mock_collection_repository.dart';
+import '../features/collections/data/odoo_collection_repository.dart';
 import '../features/collections/domain/collection_models.dart';
 import '../features/customers/data/mock_assignment_repository.dart';
 import '../features/customers/data/odoo_assignment_repository.dart';
@@ -90,7 +90,7 @@ final assignmentRepositoryProvider = Provider<AssignmentRepository>((ref) {
 });
 
 final collectionRepositoryProvider = Provider<CollectionRepository>((ref) {
-  final repo = MockCollectionRepository();
+  final repo = OdooCollectionRepository(ref.watch(billingApiServiceProvider));
   ref.onDispose(repo.dispose);
   return repo;
 });

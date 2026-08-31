@@ -11,6 +11,24 @@ class UtilityReading(models.Model):
     _inherit = ['mail.thread', 'mail.activity.mixin', 'utility.dropdown.mixin']
     _order = 'reading_date desc'
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        records = super().create(vals_list)
+        # تحديث آخر قراءة في العداد تلقائياً
+        meters = records.mapped('meter_id')
+        if meters:
+            meters._update_last_reading()
+        return records
+
+    def write(self, vals):
+        result = super().write(vals)
+        if 'reading_value' in vals or 'reading_date' in vals:
+            meters = self.mapped('meter_id')
+            if meters:
+                meters._update_last_reading()
+        return result
+
+
     active = fields.Boolean('نشط', default=True)
     company_id = fields.Many2one('res.company', 'الشركة', default=lambda self: self.env.company)
     reading_id = fields.Char('رقم القراءة', default=lambda self: _('جديد'), readonly=True)

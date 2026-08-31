@@ -1,4 +1,5 @@
 from odoo import fields, http
+from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.http import request
 import hmac
 import logging
@@ -137,6 +138,239 @@ class UtilityBillingAPI(http.Controller):
             ('customer_id', 'in', authorized_accounts.ids),
         ], limit=1)
         return order
+
+    def _get_current_collector(self):
+        """Return the authenticated field collector, or fail closed.
+
+        The endpoint performs financial writes with a deliberately scoped
+        sudo after this check because a field collector is not an Accounting
+        user.  The selected staff member and the collector cash journal are
+        nevertheless enforced again by ``account.payment`` on creation.
+        """
+        user = request.env.user
+        if not user.has_group('utility_core.group_utility_collector'):
+            return False, self._error(
+                'COLLECTOR_ROLE_REQUIRED',
+                'This operation is restricted to field collectors.',
+            )
+        collector = request.env['utility.staff'].sudo().search([
+            ('user_id', '=', user.id),
+            ('company_id', '=', request.env.company.id),
+            ('role_ids.code', '=', 'collector'),
+        ], limit=1)
+        if not collector:
+            return False, self._error(
+                'COLLECTOR_PROFILE_MISSING',
+                'No active field-collector profile is configured for this user.',
+            )
+        if not collector.collection_journal_id:
+            return False, self._error(
+                'COLLECTOR_CASH_JOURNAL_MISSING',
+                'A dedicated cash journal must be configured for this collector.',
+            )
+        return collector, False
+
+    @staticmethod
+    def _collection_receipt_payload(payment, collection, duplicate=False):
+        return {
+            'success': True,
+            'duplicate': duplicate,
+            'payment_id': payment.id,
+            'collection_id': collection.id,
+            'reference': collection.name or payment.name,
+            'payment_reference': payment.name,
+            'amount': payment.amount,
+            'paid_at': fields.Datetime.to_string(collection.collection_date),
+            'state': collection.state,
+        }
+
+    def _collector_account_payload(self, customer):
+        """Return a live, payable-invoice view for one already-authorized account."""
+        orders = request.env['sale.order'].search([
+            ('customer_id', '=', customer.id),
+            ('state', '!=', 'cancel'),
+        ], order='date_order desc, id desc')
+        bills = []
+        for order in orders:
+            # The customer and sale order were resolved with the caller's
+            # normal ACL/rules.  Invoice data is read only through this exact,
+            # already-authorized bill; no client-supplied invoice is browsed.
+            invoices = order.sudo()._get_posted_utility_moves().filtered(
+                lambda move: move.move_type == 'out_invoice'
+                and move.amount_residual > 0)
+            for invoice in invoices:
+                due_date = order.date_order.date().isoformat() if order.date_order else None
+                bills.append({
+                    'order_id': order.id,
+                    'invoice_id': invoice.id,
+                    'bill_number': order.name,
+                    'invoice_number': invoice.name,
+                    'amount': invoice.amount_total,
+                    'amount_residual': invoice.amount_residual,
+                    'due_date': due_date,
+                    'state': order.bill_state,
+                    'overdue': bool(order.is_overdue),
+                })
+        total_due = sum(bill['amount_residual'] for bill in bills)
+        current_bill = bills[0]['amount_residual'] if bills else 0.0
+        debt_amount = max(total_due - current_bill, 0.0)
+        meter = customer.meter_id
+        return {
+            'success': True,
+            'account': {
+                **self._customer_payload(customer),
+                'account_number': customer.account_number or customer.customer_number,
+                'meter_number': meter.meter_number if meter else None,
+                'meter_id': meter.id if meter else None,
+                'connection_status': meter.connection_status if meter else None,
+                'accounting_balance': customer.accounting_balance,
+                'due_amount': total_due,
+                'current_bill': current_bill,
+                'debt_amount': debt_amount,
+                'allow_partial': True,
+                'bills': bills,
+            },
+        }
+
+    @http.route('/api/v1/utility/collector/account', type='json', auth='user', methods=['POST'])
+    def collector_account(self, **kwargs):
+        """Look up one account and its actual payable invoice targets."""
+        _collector, error = self._get_current_collector()
+        if error:
+            return error
+        customer, error_code = self._resolve_authorized_customer(
+            request.jsonrequest or {})
+        if error_code == 'CUSTOMER_IDENTIFIER_MISMATCH':
+            return self._error(error_code, 'Customer identifiers conflict.')
+        if error_code == 'CUSTOMER_IDENTIFIER_REQUIRED':
+            return self._error(error_code, 'A customer identifier is required.')
+        if not customer:
+            return self._error(error_code or 'CUSTOMER_NOT_FOUND', 'Account not found.')
+        return self._collector_account_payload(customer)
+
+    @http.route('/api/v1/utility/collector/collect_cash', type='json', auth='user', methods=['POST'])
+    def collector_collect_cash(self, **kwargs):
+        """Post one idempotent, exact-invoice field cash collection.
+
+        A successful response exists only after Odoo posted the payment,
+        reconciled it against the selected invoice, and created the collector
+        custody record.  It intentionally does not queue or print an
+        unacknowledged financial transaction on the device.
+        """
+        params = request.jsonrequest or {}
+        collector, error = self._get_current_collector()
+        if error:
+            return error
+        request_key = (params.get('idempotency_key') or '').strip()
+        if len(request_key) < 8 or len(request_key) > 128:
+            return self._error(
+                'INVALID_IDEMPOTENCY_KEY',
+                'idempotency_key must contain 8 to 128 characters.',
+            )
+        try:
+            order_id = int(params.get('order_id'))
+            invoice_id = int(params.get('invoice_id'))
+            amount = float(params.get('amount'))
+        except (TypeError, ValueError):
+            return self._error(
+                'VALIDATION_ERROR',
+                'order_id, invoice_id and a positive numeric amount are required.',
+            )
+        if amount <= 0:
+            return self._error('VALIDATION_ERROR', 'amount must be positive.')
+
+        order = self._authorize_order(order_id)
+        if not order:
+            return self._error('ORDER_NOT_FOUND', 'Bill not found in your assigned scope.')
+        if order.company_id != collector.company_id:
+            return self._error('COMPANY_MISMATCH', 'The bill is not in the collector company.')
+
+        authorized_invoices = order.sudo()._get_posted_utility_moves().filtered(
+            lambda move: move.id == invoice_id and move.move_type == 'out_invoice')
+        if not authorized_invoices:
+            return self._error(
+                'INVALID_INVOICE',
+                'The selected invoice does not belong to this bill or is not posted.',
+            )
+        invoice = authorized_invoices[:1]
+
+        Payment = request.env['account.payment'].sudo().with_company(order.company_id)
+        existing = Payment.search([
+            ('company_id', '=', order.company_id.id),
+            ('collection_request_key', '=', request_key),
+        ], limit=1)
+        if existing:
+            if (existing.collector_id != collector
+                    or existing.utility_sale_order_id != order
+                    or existing.utility_invoice_id != invoice
+                    or existing.amount != amount):
+                return self._error(
+                    'IDEMPOTENCY_KEY_REUSED',
+                    'This idempotency key belongs to a different collection request.',
+                )
+            collection = request.env['utility.collection'].sudo().search(
+                [('payment_id', '=', existing.id)], limit=1)
+            if not collection or existing.state != 'posted':
+                return self._error(
+                    'COLLECTION_IN_PROGRESS',
+                    'The original collection request is still being processed.',
+                )
+            return self._collection_receipt_payload(existing, collection, duplicate=True)
+
+        method_line = collector.collection_journal_id.inbound_payment_method_line_ids[:1]
+        if not method_line:
+            return self._error(
+                'COLLECTOR_PAYMENT_METHOD_MISSING',
+                'No inbound payment method is configured on the collector cash journal.',
+            )
+        if amount > invoice.amount_residual:
+            return self._error(
+                'AMOUNT_EXCEEDS_RESIDUAL',
+                'amount cannot exceed the selected invoice residual.',
+            )
+
+        try:
+            with request.env.cr.savepoint():
+                payment = Payment.create({
+                    'payment_type': 'inbound',
+                    'partner_type': 'customer',
+                    'amount': amount,
+                    'currency_id': invoice.currency_id.id,
+                    'utility_sale_order_id': order.id,
+                    'utility_invoice_id': invoice.id,
+                    'utility_payment_method': 'cash',
+                    'collector_id': collector.id,
+                    'payment_method_line_id': method_line.id,
+                    'collection_request_key': request_key,
+                    'collection_request_user_id': request.env.user.id,
+                    'ref': 'MOBILE-COLLECT:%s' % request_key,
+                })
+        except IntegrityError as exc:
+            if getattr(exc, 'pgcode', None) != '23505':
+                raise
+            payment = Payment.search([
+                ('company_id', '=', order.company_id.id),
+                ('collection_request_key', '=', request_key),
+            ], limit=1)
+            if not payment:
+                raise
+            collection = request.env['utility.collection'].sudo().search(
+                [('payment_id', '=', payment.id)], limit=1)
+            if payment.state == 'posted' and collection:
+                return self._collection_receipt_payload(payment, collection, duplicate=True)
+            return self._error('COLLECTION_IN_PROGRESS', 'The original request is still being processed.')
+
+        try:
+            payment.action_post()
+        except (AccessError, UserError, ValidationError) as exc:
+            return self._error('COLLECTION_REJECTED', str(exc))
+        collection = request.env['utility.collection'].sudo().search(
+            [('payment_id', '=', payment.id)], limit=1)
+        if payment.state != 'posted' or not collection or collection.state != 'posted':
+            # This indicates an unexpected programming/configuration fault.
+            # It must roll back rather than create a receipt for partial work.
+            raise ValidationError('Field collection did not reach a posted custody state.')
+        return self._collection_receipt_payload(payment, collection)
 
     @http.route('/api/v1/utility/billing/balance', type='json', auth='user', methods=['POST'])
     def billing_balance(self, **kwargs):
