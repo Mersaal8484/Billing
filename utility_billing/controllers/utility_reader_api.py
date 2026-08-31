@@ -29,7 +29,7 @@ class UtilityReaderAPI(http.Controller):
 
     def _resolve_meter_identifiers(self, params):
         """Resolve supplied meter identifiers and reject contradictory values."""
-        Meter = request.env['utility.meter']
+        Meter = request.env['utility.meter'].sudo()
         identifiers = []
         if params.get('meter_id') not in (None, '', False):
             try:
@@ -40,6 +40,7 @@ class UtilityReaderAPI(http.Controller):
         for key in ('operational_number', 'meter_number'):
             value = params.get(key)
             if value not in (None, '', False):
+                # Search using sudo() to ensure meter readers can lookup meters even if they don't have region-level access
                 identifiers.append((key, Meter.search([(key, '=', str(value).strip())], limit=1)))
         if not identifiers:
             return Meter.browse(), 'IDENTIFIER_REQUIRED'
