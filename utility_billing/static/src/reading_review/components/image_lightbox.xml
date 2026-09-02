@@ -14,6 +14,17 @@
                             <span t-if="props.reading.has_anomaly" class="badge bg-danger ms-2">
                                 <i class="fa fa-exclamation-triangle me-1"/> تنبيه فني
                             </span>
+                            <!-- Image State Badge -->
+                            <span t-if="isImageClear()" class="badge bg-success ms-2">
+                                <i class="fa fa-check-circle me-1"/> الصورة واضحة
+                            </span>
+                            <span t-elif="props.reading.image_state and props.reading.image_state !== 'none'" class="badge bg-warning text-dark ms-2">
+                                <i class="fa fa-exclamation-circle me-1"/>
+                                <t t-if="props.reading.image_state === 'not_clear'">الصورة غير واضحة</t>
+                                <t t-elif="props.reading.image_state === 'not_same'">صورة غير مطابقة</t>
+                                <t t-elif="props.reading.image_state === 'loss_read'">قراءة ضائعة</t>
+                                <t t-else="">بانتظار مراجعة الصورة</t>
+                            </span>
                         </div>
                         <div class="d-flex align-items-center me-auto">
                             <!-- Image Variant Controls -->
@@ -22,7 +33,7 @@
                                 <button type="button" class="btn" t-att-class="state.variant === 'review' ? 'btn-primary' : 'btn-outline-secondary'" t-on-click="() => this.setVariant('review')">معاينة (1024px)</button>
                                 <button type="button" class="btn" t-att-class="state.variant === 'original' ? 'btn-warning' : 'btn-outline-secondary'" t-on-click="() => this.setVariant('original')">الدليل الأصلي</button>
                             </div>
-                            <button type="button" class="btn-close btn-close-white ms-3" t-on-click="props.onClose" aria-label="Close"></button>
+                            <button type="button" class="btn-close btn-close-white ms-3" t-on-click="props.onClose" aria-label="Close"/>
                         </div>
                     </div>
 
@@ -110,6 +121,27 @@
                                             </t>
                                         </td>
                                     </tr>
+                                    <!-- Image State Row -->
+                                    <tr class="border-top border-secondary">
+                                        <td class="text-muted">حالة الصورة:</td>
+                                        <td>
+                                            <t t-if="isImageClear()">
+                                                <span class="badge bg-success"><i class="fa fa-check me-1"/>واضحة</span>
+                                            </t>
+                                            <t t-elif="props.reading.image_state === 'not_clear'">
+                                                <span class="badge bg-danger">غير واضحة</span>
+                                            </t>
+                                            <t t-elif="props.reading.image_state === 'not_same'">
+                                                <span class="badge bg-warning text-dark">غير مطابقة</span>
+                                            </t>
+                                            <t t-elif="props.reading.image_state === 'loss_read'">
+                                                <span class="badge bg-secondary">قراءة ضائعة</span>
+                                            </t>
+                                            <t t-else="">
+                                                <span class="badge bg-secondary">بانتظار المراجعة</span>
+                                            </t>
+                                        </td>
+                                    </tr>
                                 </tbody>
                             </table>
 
@@ -132,6 +164,39 @@
                                     <t t-esc="props.reading.rejection_reason"/>
                                 </div>
                             </t>
+
+                            <!-- Mark Image Clear Button (in panel) - visible only if image not yet clear -->
+                            <t t-if="!isImageClear()">
+                                <div class="border-top border-secondary pt-3 mt-2">
+                                    <p class="text-muted text-xs mb-2">
+                                        <i class="fa fa-info-circle me-1"/>
+                                        راجع الصورة أعلاه ثم اعتمد وضوحها قبل اعتماد القراءة.
+                                    </p>
+                                    <button
+                                        type="button"
+                                        class="btn btn-outline-info btn-sm w-100"
+                                        t-att-disabled="state.markingClear"
+                                        t-on-click="onMarkImageClear"
+                                        title="اعتماد وضوح الصورة (C)"
+                                    >
+                                        <t t-if="state.markingClear">
+                                            <i class="fa fa-spinner fa-spin me-1"/> جارٍ الاعتماد...
+                                        </t>
+                                        <t t-else="">
+                                            <i class="fa fa-eye me-1"/> الصورة واضحة (C)
+                                        </t>
+                                    </button>
+                                </div>
+                            </t>
+                            <t t-else="">
+                                <div class="border-top border-secondary pt-3 mt-2">
+                                    <div class="alert alert-success p-2 mb-0 text-center" role="alert">
+                                        <i class="fa fa-check-circle me-1"/>
+                                        <strong>تم اعتماد وضوح الصورة</strong><br/>
+                                        <small>يمكنك الآن اعتماد القراءة.</small>
+                                    </div>
+                                </div>
+                            </t>
                         </div>
                     </div>
 
@@ -147,7 +212,30 @@
                         </div>
 
                         <!-- Decision Actions -->
-                        <div class="d-flex align-items-center">
+                        <div class="d-flex align-items-center gap-2">
+                            <!-- Mark Image Clear Button (footer) - visible only if image not yet clear -->
+                            <t t-if="!isImageClear()">
+                                <button
+                                    type="button"
+                                    class="btn btn-outline-info btn-sm px-3"
+                                    t-att-disabled="state.markingClear"
+                                    t-on-click="onMarkImageClear"
+                                    title="اعتماد وضوح الصورة ثم يمكنك الاعتماد (C)"
+                                >
+                                    <t t-if="state.markingClear">
+                                        <i class="fa fa-spinner fa-spin me-1"/>
+                                    </t>
+                                    <t t-else="">
+                                        <i class="fa fa-eye me-1"/>
+                                    </t>
+                                    الصورة واضحة (C)
+                                </button>
+                            </t>
+                            <t t-else="">
+                                <span class="badge bg-success px-3 py-2">
+                                    <i class="fa fa-check-circle me-1"/> صورة معتمدة
+                                </span>
+                            </t>
                             <button type="button" class="btn btn-danger btn-sm me-2 px-3" t-on-click="() => props.onReject(props.reading)">
                                 <i class="fa fa-times me-1"/> رفض (R)
                             </button>

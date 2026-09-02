@@ -408,7 +408,7 @@
                 <ReadingRejectionDialog reading="state.activeRejectionReading" onConfirm="onConfirmRejection.bind(this)" onCancel="onCloseRejectionDialog.bind(this)"/>
             </t>
             <t t-if="state.activeLightboxReading">
-                <ReadingImageLightbox reading="state.activeLightboxReading" items="state.items" currentIndex="state.activeLightboxIndex" onClose="onCloseLightbox.bind(this)" onNext="onNextLightboxReading.bind(this)" onPrevious="onPreviousLightboxReading.bind(this)" onApprove="onApproveRow.bind(this)" onReject="onRejectRow.bind(this)"/>
+                <ReadingImageLightbox reading="state.activeLightboxReading" items="state.items" currentIndex="state.activeLightboxIndex" onClose="onCloseLightbox.bind(this)" onNext="onNextLightboxReading.bind(this)" onPrevious="onPreviousLightboxReading.bind(this)" onApprove="onApproveRow.bind(this)" onReject="onRejectRow.bind(this)" onMarkImageClear="onMarkImageClear.bind(this)"/>
             </t>
         </div>
     </t>

@@ -217,6 +217,24 @@ export class ReadingReviewWorkspaceAction extends Component {
         this.state.activeLightboxIndex = this.state.items.findIndex(r => r.id === reading.id);
     }
 
+    async onMarkImageClear(reading) {
+        try {
+            const res = await this.orm.call("utility.reading.review.service", "action_mark_images_clear", [], {
+                reading_ids: [reading.id],
+            });
+
+            if (res.status === "success") {
+                this.notification.add(_t("تم اعتماد وضوح صورة العداد: ") + reading.meter_number, { type: "success" });
+                // Optimistic local update so UI reflects change immediately
+                reading.image_state = "clear";
+            } else {
+                this.notification.add(res.message || _t("تعذر اعتماد وضوح الصورة"), { type: "warning" });
+            }
+        } catch (e) {
+            this.notification.add(e.message || _t("خطأ أثناء اعتماد وضوح الصورة"), { type: "danger" });
+        }
+    }
+
     onCloseLightbox() {
         this.state.activeLightboxReading = null;
         this.state.activeLightboxIndex = -1;

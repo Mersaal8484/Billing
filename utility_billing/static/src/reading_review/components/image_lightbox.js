@@ -8,6 +8,7 @@ export class ReadingImageLightbox extends Component {
             zoom: 1.0,
             rotation: 0,
             variant: "review",
+            markingClear: false,
         });
 
         this.handleKeyDown = this.handleKeyDown.bind(this);
@@ -38,7 +39,7 @@ export class ReadingImageLightbox extends Component {
             this.props.onNext();
         } else if (ev.key === "ArrowRight") {
             this.props.onPrevious();
-        } else if (ev.key === "+" || ev.key === "=") {
+        } else if (ev.key === "+") {
             this.zoomIn();
         } else if (ev.key === "-") {
             this.zoomOut();
@@ -46,6 +47,9 @@ export class ReadingImageLightbox extends Component {
             this.props.onApprove(this.props.reading);
         } else if (ev.key === "r" || ev.key === "R") {
             this.props.onReject(this.props.reading);
+        } else if (ev.key === "c" || ev.key === "C") {
+            if (this.isImageClear()) return;
+            this.onMarkImageClear();
         }
     }
 
@@ -118,6 +122,27 @@ export class ReadingImageLightbox extends Component {
         }
         return r.review_url || r.thumbnail_url || '';
     }
+
+    /**
+     * Returns true if the current reading's image is already marked as clear.
+     */
+    isImageClear() {
+        return this.props.reading && this.props.reading.image_state === 'clear';
+    }
+
+    /**
+     * Calls action_mark_images_clear via the parent's handler,
+     * then updates image_state locally for immediate UI feedback.
+     */
+    async onMarkImageClear() {
+        if (this.state.markingClear || this.isImageClear()) return;
+        this.state.markingClear = true;
+        try {
+            await this.props.onMarkImageClear(this.props.reading);
+        } finally {
+            this.state.markingClear = false;
+        }
+    }
 }
 
 ReadingImageLightbox.template = "utility_billing.ReadingImageLightbox";
@@ -130,4 +155,5 @@ ReadingImageLightbox.props = {
     onPrevious: Function,
     onApprove: Function,
     onReject: Function,
+    onMarkImageClear: Function,
 };
