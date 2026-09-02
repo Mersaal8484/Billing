@@ -646,7 +646,8 @@ class UtilityReading(models.Model):
             raise ValidationError(_('لا يمكن تغيير حالة القراءة مباشرةً. يجب استخدام أزرار وسير العمل المعتمد.'))
 
         if not (self.env.context.get('_bypass_reading_protection') or self.env.context.get('allow_billing_adjustment')):
-            bypass_fields = {'active', 'remarks', 'rejection_reason', 'rejected_by', 'rejected_at'}
+            # 'state' is included in bypass_fields because its direct mutation is already guarded by the first block above.
+            bypass_fields = {'state', 'active', 'remarks', 'rejection_reason', 'rejected_by', 'rejected_at'}
             for reading in self:
                 editable = self.STATE_EDITABLE.get(reading.state, set())
                 changed = set(vals) - bypass_fields
