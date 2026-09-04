@@ -1,7 +1,7 @@
 import logging
 from psycopg2 import IntegrityError
 from odoo import api, fields, models, _
-from odoo.exceptions import AccessError, ValidationError
+from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.addons.utility_core.models.utility_date_range import normalize_billing_cadence
 
 _logger = logging.getLogger(__name__)
@@ -163,42 +163,36 @@ class UtilityReading(models.Model):
         return super().write(vals)
 
     def _queue_approved_billable_readings(self):
-        """Move newly approved periodic billable readings to the billing queue and generate bills immediately.
+        """Transition eligible approved periodic readings into the queued billing state.
 
-        This is centralized on the inherited reading model so every approval entry
-        point (form buttons, review console, and bulk approval) automatically
-        triggers bill calculation and generation for customer readings. Non-billable
-        readings (such as network feeders and transformers) remain ``approved``
-        as technical/operational records without generating bills.
+        Decouples review/approval from synchronous accounting bill generation.
+        Bill generation is processed asynchronously by the billing cron or explicit action.
         """
-        for reading in self:
-            if (reading.state in ('approved', 'queued')
-                and reading.reading_purpose == 'periodic'
-                and reading.is_billable
-                and (
-                    reading.reading_category == 'customer'
-                    or (
-                        reading.reading_category == 'transformer'
-                        and reading.is_private_transformer
-                    )
-                )):
-                if not reading.date_range_id:
-                    period = reading._resolve_eligible_billing_date_range()
-                    reading.sudo().with_context(_reading_state_transition=True, _bypass_reading_protection=True).write({'date_range_id': period.id})
+        billable_readings = self.filtered(
+            lambda reading: reading.state == 'approved'
+            and reading.reading_purpose == 'periodic'
+            and reading.is_billable
+            and (
+                reading.reading_category == 'customer'
+                or (
+                    reading.reading_category == 'transformer'
+                    and reading.is_private_transformer
+                )
+            )
+        )
+        if not billable_readings:
+            return self
 
-                reading.sudo().with_context(_reading_state_transition=True, _bypass_reading_protection=True).write({
-                    'state': 'queued',
-                    'billing_error': False,
-                })
-                try:
-                    with self.env.cr.savepoint():
-                        reading.sudo().action_generate_bill()
-                except Exception as exc:
-                    _logger.exception('Immediate bill generation failed for reading %s: %s', reading.display_name, exc)
-                    reading.sudo().with_context(_reading_state_transition=True, _bypass_reading_protection=True).write({
-                        'state': 'queued',
-                        'billing_error': str(exc),
-                    })
+        for reading in billable_readings:
+            if not reading.date_range_id:
+                period = reading._resolve_eligible_billing_date_range()
+                reading.sudo().with_context(_reading_state_transition=True, _bypass_reading_protection=True).write({'date_range_id': period.id})
+
+            reading.sudo().with_context(_reading_state_transition=True, _bypass_reading_protection=True).write({
+                'state': 'queued',
+                'billing_error': False,
+            })
+
         return self
 
     def action_approve(self):
@@ -221,6 +215,7 @@ class UtilityReading(models.Model):
         domain = [
             ('is_current_period', '=', True),
             ('work_type', '=', 'readings'),
+            ('state', '=', 'open'),
         ]
         if billing_period:
             domain.append(('billing_period', '=', billing_period))
@@ -232,10 +227,12 @@ class UtilityReading(models.Model):
 
         Replaces broad/arbitrary fallbacks with a strict domain search matching:
         - work_type == 'readings'
-        - state not in ('closed', 'locked')
+        - state == 'open' (strictly open)
         - company_id matches reading's company or env.company
         - date_start <= reading_date <= date_end
         - billing_period matching account's billing period if configured
+        - strict geographic scoping: must belong to the reading's region or be global (region_ids is empty).
+          NEVER falls back to picking another region's period.
         """
         self.ensure_one()
         DateRange = self.env['date.range']
@@ -244,7 +241,7 @@ class UtilityReading(models.Model):
 
         base_domain = [
             ('work_type', '=', 'readings'),
-            ('state', 'not in', ('closed', 'locked')),
+            ('state', '=', 'open'),
             ('company_id', 'in', (False, self.company_id.id or self.env.company.id)),
         ]
         if billing_period:
@@ -258,19 +255,27 @@ class UtilityReading(models.Model):
         # 1. Match region if reading has region
         reading_region = getattr(self, 'region_id', False) or (self.customer_id and getattr(self.customer_id, 'region_id', False)) or (self.account_id and getattr(self.account_id, 'region_id', False))
         if reading_region:
+            # First match period explicitly assigned to this region
             period = DateRange.search(covering_domain + [('region_ids', 'in', reading_region.id)], order='date_start desc', limit=1)
             if period:
                 return period
+            # Fallback only to a truly global period with no regional restriction
+            period = DateRange.search(covering_domain + [('region_ids', '=', False)], order='date_start desc', limit=1)
+            if period:
+                return period
+        else:
+            # If reading has no region, match global period only
+            period = DateRange.search(covering_domain + [('region_ids', '=', False)], order='date_start desc', limit=1)
+            if period:
+                return period
 
-        # 2. Match without region or where region_ids is empty (global periods)
-        period = DateRange.search(covering_domain + [('region_ids', '=', False)], order='date_start desc', limit=1)
-        if not period:
-            period = DateRange.search(covering_domain, order='date_start desc', limit=1)
-        if period:
-            return period
+        # 2. Check current open period if it covers the date and region
+        current_domain = base_domain + [('is_current_period', '=', True)]
+        if reading_region:
+            current_domain += ['|', ('region_ids', '=', False), ('region_ids', 'in', reading_region.id)]
+        else:
+            current_domain += [('region_ids', '=', False)]
 
-        # 3. Check current open period if it covers the date
-        current_domain = base_domain + [('is_current_period', '=', True), ('state', '=', 'open')]
         period = DateRange.search(current_domain, order='date_start desc', limit=1)
         if period and period.date_start and period.date_end and period.date_start <= reading_date <= period.date_end:
             return period
@@ -523,14 +528,15 @@ class UtilityReading(models.Model):
                 with self.env.cr.savepoint():
                     reading.action_generate_bill()
                 success_count += 1
-            except Exception as exc:
-                reading.with_context(_reading_state_transition=True, _bypass_reading_protection=True).write({
+            except (UserError, ValidationError) as exc:
+                reading.sudo().with_context(_reading_state_transition=True, _bypass_reading_protection=True).write({
                     'state': 'error',
                     'billing_error': str(exc),
                 })
-                _logger.exception(
-                    'Bill generation failed for reading %s',
+                _logger.warning(
+                    'Bill generation business failure for reading %s: %s',
                     reading.display_name,
+                    exc,
                 )
                 error_count += 1
         _logger.info(

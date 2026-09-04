@@ -58,11 +58,9 @@ class UtilityReaderAPI(http.Controller):
         if not user:
             return False, ('UNAUTHORIZED', 'يرجى تسجيل الدخول أولاً.')
 
-        # 1. Role verification
-        is_global = getattr(user, '_is_global_utility_scope', lambda: False)()
+        # 1. Role verification (Functional Role)
         has_operational_role = (
             request.env.su
-            or is_global
             or user.has_group('utility_core.group_utility_admin')
             or user.has_group('utility_core.group_utility_billing_manager')
             or user.has_group('utility_core.group_utility_supervisor')
@@ -71,12 +69,14 @@ class UtilityReaderAPI(http.Controller):
         if not has_operational_role:
             return False, ('FORBIDDEN', 'لا تملك صلاحية الوصول إلى بيانات العداد.')
 
-        if request.env.su or is_global:
+        # 2. Superuser / Admin has full system bypass
+        if request.env.su or user.has_group('utility_core.group_utility_admin'):
             return True, None
 
-        # 2. Route assignment check for field readers
+        # 3. Route assignment check for field readers
+        is_reader = user.has_group('utility_core.group_utility_meter_reader')
         assigned_routes = getattr(user, 'assigned_route_ids', False)
-        if assigned_routes:
+        if is_reader and assigned_routes:
             customer = meter.customer_id
             customer_route = customer.route_id if customer else False
             if not customer_route or customer_route not in assigned_routes:
@@ -85,7 +85,11 @@ class UtilityReaderAPI(http.Controller):
                     f'العداد {meter.meter_number} لا ينتمي إلى مسار مخصّص للمستخدم {user.name}.'
                 )
 
-        # 3. Geographic / Branch / Region scope check
+        # 4. Geographic / Branch / Region scope check
+        is_global = getattr(user, '_is_global_utility_scope', lambda: False)()
+        if is_global:
+            return True, None
+
         has_geographic_scope = bool(
             getattr(user, '_get_effective_branch_ids', lambda: [])()
             or getattr(user, '_get_effective_region_ids', lambda: [])()
@@ -515,7 +519,7 @@ class UtilityReaderAPI(http.Controller):
         يجب تمرير:
           - meter_id أو operational_number أو meter_number: أحد معرفات العداد
         """
-        params = dict(getattr(request, 'jsonrequest', None) or {}, **kwargs)
+        params = dict(getattr(request, 'params', None) or getattr(request, 'jsonrequest', None) or {}, **kwargs)
         meter, error_code = self._resolve_meter_identifiers(params)
         if error_code == 'IDENTIFIER_REQUIRED':
             return self._error(

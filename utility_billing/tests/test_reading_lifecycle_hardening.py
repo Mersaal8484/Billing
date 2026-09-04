@@ -210,13 +210,17 @@ class TestReadingLifecycleHardening(TransactionCase):
         })
         reading.action_submit_review()
 
-        # Supervisor approves
+        # Supervisor approves -> transitions to queued
         reading.with_user(self.supervisor_user).action_approve()
-        self.assertEqual(reading.state, 'billed')
-        self.assertTrue(reading.included_sale_order_id)
+        self.assertEqual(reading.state, 'queued')
         self.assertTrue(reading.is_validated)
         self.assertEqual(reading.validator_id.id, self.supervisor_user.id)
         self.assertEqual(reading.consumption, 200.0)
+
+        # Bill generation creates the bill
+        reading.with_user(self.billing_mgr_user).action_generate_bill()
+        self.assertEqual(reading.state, 'billed')
+        self.assertTrue(reading.included_sale_order_id)
 
     def test_03_rejection_audit_and_resubmission(self):
         """Rejecting a reading records audit trail (rejected_by, rejected_at, reason) and requires a non-empty reason."""
@@ -353,6 +357,8 @@ class TestReadingLifecycleHardening(TransactionCase):
         })
         reading.action_submit_review()
         reading.with_user(self.supervisor_user).action_approve()
+        self.assertEqual(reading.state, 'queued')
+        reading.with_user(self.billing_mgr_user).action_generate_bill()
         self.assertEqual(reading.state, 'billed')
 
         # Critical fields cannot be altered in billed state
@@ -391,6 +397,8 @@ class TestReadingLifecycleHardening(TransactionCase):
         })
         reading.action_submit_review()
         reading.with_user(self.supervisor_user).action_approve()
+        self.assertEqual(reading.state, 'queued')
+        reading.with_user(self.billing_mgr_user).action_generate_bill()
         self.assertEqual(reading.state, 'billed')
 
         # First generation (already generated upon approval, returns existing)
@@ -574,4 +582,134 @@ class TestReadingLifecycleHardening(TransactionCase):
         })
         resolved = valid_reading._resolve_eligible_billing_date_range()
         self.assertEqual(resolved, self.date_range)
+
+    def test_15_supervisor_cannot_bypass_approval_workflow_via_context(self):
+        """P0: Supervisor cannot write state='approved' directly, and approval invariants cannot be bypassed via context."""
+        self._create_opening_reading(100.0)
+        reading = self.Reading.create({
+            'meter_id': self.meter.id,
+            'account_id': self.customer.id,
+            'reading_value': 150.0,
+            'reading_date': '2026-08-15 10:00:00',
+            'reading_purpose': 'periodic',
+            'date_range_id': self.date_range.id,
+            'meter_image': SAMPLE_IMAGE,
+        })
+        reading.action_submit_review()
+        self.assertEqual(reading.state, 'under_review')
+
+        # 1. Direct write state='approved' with _reading_state_transition=True fails
+        with self.assertRaises(ValidationError):
+            reading.with_user(self.supervisor_user).with_context(
+                _reading_state_transition=True,
+            ).write({'state': 'approved'})
+
+        # 2. Context spoofing with _internal_approval_action when image is not clear fails
+        with self.assertRaises(ValidationError):
+            reading.with_user(self.supervisor_user).with_context(
+                _reading_state_transition=True,
+                _internal_approval_action=True,
+            ).write({'state': 'approved'})
+
+        # 3. Context spoofing when consumption is negative fails
+        reading.with_user(self.supervisor_user).action_mark_image_clear()
+        self.assertEqual(reading.image_state, 'clear')
+        # Simulate negative consumption reading on a distinct account/meter
+        partner2 = self.Partner.create({'name': 'مشترك سالب', 'region_id': self.region.id})
+        cust2 = self.Customer.create({
+            'name': 'عميل سالب',
+            'partner_id': partner2.id,
+            'contract_status': 'active',
+            'region_id': self.region.id,
+        })
+        meter2 = self.Meter.create({
+            'name': 'عداد سالب',
+            'meter_number': 'MTR-NEG-01',
+            'subscriber_id': self.subscriber.id,
+            'customer_id': cust2.id,
+            'status': 'active',
+        })
+        self.Reading.create({
+            'meter_id': meter2.id,
+            'account_id': cust2.id,
+            'reading_value': 100.0,
+            'reading_date': '2026-08-01 08:00:00',
+            'reading_purpose': 'opening',
+            'is_initial_reading': True,
+            'image_state': 'clear',
+            'state': 'approved',
+        })
+        neg_reading = self.Reading.create({
+            'meter_id': meter2.id,
+            'account_id': cust2.id,
+            'reading_value': 50.0,  # previous was 100 -> consumption = -50
+            'reading_date': '2026-08-16 10:00:00',
+            'reading_purpose': 'periodic',
+            'date_range_id': self.date_range.id,
+            'meter_image': SAMPLE_IMAGE,
+        })
+        neg_reading.action_submit_review()
+        neg_reading.with_user(self.supervisor_user).action_mark_image_clear()
+        with self.assertRaises(ValidationError):
+            neg_reading.with_user(self.supervisor_user).with_context(
+                _reading_state_transition=True,
+                _internal_approval_action=True,
+            ).write({'state': 'approved'})
+
+    def test_16_supervisor_cannot_bypass_frozen_fields_via_context(self):
+        """P0: Supervisor cannot use _bypass_reading_protection to modify frozen fields."""
+        self._create_opening_reading(100.0)
+        reading = self.Reading.create({
+            'meter_id': self.meter.id,
+            'account_id': self.customer.id,
+            'reading_value': 200.0,
+            'reading_date': '2026-08-15 10:00:00',
+            'reading_purpose': 'periodic',
+            'date_range_id': self.date_range.id,
+            'meter_image': SAMPLE_IMAGE,
+        })
+        reading.action_submit_review()
+        self.assertEqual(reading.state, 'under_review')
+
+        # In under_review, reading_value is frozen. Attempting to bypass as supervisor must fail.
+        with self.assertRaises(ValidationError):
+            reading.with_user(self.supervisor_user).with_context(
+                _bypass_reading_protection=True,
+            ).write({'reading_value': 999.0})
+
+    def test_17_cross_region_period_resolution_rejected(self):
+        """P1: A reading in region A must never resolve an open period belonging strictly to region B."""
+        region_b = self.Region.create({
+            'name': 'منطقة أخرى ب',
+            'code': 'READ-REG-B',
+            'type': 'region',
+        })
+        # Deactivate self.date_range so only period_b is open
+        self.date_range.write({'state': 'closed'})
+        range_type_b = self.DateRangeType.create({
+            'name': 'نوع فترة قراءات ب',
+        })
+        # Period strictly for Region B
+        period_b = self.DateRange.create({
+            'name': 'فترة منطقة ب 2026-08',
+            'type_id': range_type_b.id,
+            'date_start': '2026-08-01',
+            'date_end': '2026-08-31',
+            'billing_cadence': 'monthly',
+            'period_role': 'reading',
+            'state': 'open',
+            'region_ids': [(4, region_b.id)],
+        })
+
+        reading_in_region_a = self.Reading.new({
+            'meter_id': self.meter.id,
+            'account_id': self.customer.id,
+            'reading_value': 250.0,
+            'reading_date': '2026-08-15 10:00:00',
+            'reading_purpose': 'periodic',
+        })
+        # Customer is in self.region (Region A). Must fail and NOT cross into period_b!
+        with self.assertRaises(ValidationError):
+            reading_in_region_a._resolve_eligible_billing_date_range()
+
 

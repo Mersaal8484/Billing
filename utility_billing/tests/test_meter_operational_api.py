@@ -112,7 +112,7 @@ class TestMeterOperationalBillingAPI(TransactionCase):
         controller = utility_reader_api.UtilityReaderAPI()
         with patch.object(utility_reader_api, 'request', self._request({
                 'operational_number': meter.operational_number})):
-            result = controller.meter_lookup()
+            result = controller.meter_lookup(operational_number=meter.operational_number)
         self.assertTrue(result['success'])
         self.assertEqual(result['meter']['id'], meter.id)
         self.assertEqual(result['meter']['operational_number'], meter.operational_number)
@@ -124,7 +124,10 @@ class TestMeterOperationalBillingAPI(TransactionCase):
         with patch.object(utility_reader_api, 'request', self._request({
                 'meter_id': first.id,
                 'operational_number': second.operational_number})):
-            result = controller.meter_lookup()
+            result = controller.meter_lookup(
+                meter_id=first.id,
+                operational_number=second.operational_number,
+            )
         self.assertFalse(result['success'])
         self.assertEqual(result['code'], 'METER_IDENTIFIER_MISMATCH')
 
@@ -209,7 +212,7 @@ class TestMeterOperationalBillingAPI(TransactionCase):
         controller = utility_reader_api.UtilityReaderAPI()
         with patch.object(utility_reader_api, 'request', self._request({
                 'meter_number': meter_a.meter_number}, user=reader_user)):
-            result = controller.meter_lookup()
+            result = controller.meter_lookup(meter_number=meter_a.meter_number)
         self.assertTrue(result.get('success'))
         self.assertEqual(result['meter']['id'], meter_a.id)
 
@@ -247,7 +250,7 @@ class TestMeterOperationalBillingAPI(TransactionCase):
         controller = utility_reader_api.UtilityReaderAPI()
         with patch.object(utility_reader_api, 'request', self._request({
                 'meter_number': meter_b.meter_number}, user=reader_user)):
-            result = controller.meter_lookup()
+            result = controller.meter_lookup(meter_number=meter_b.meter_number)
         self.assertFalse(result['success'])
         self.assertEqual(result['code'], 'OUT_OF_SCOPE')
 
@@ -300,6 +303,27 @@ class TestMeterOperationalBillingAPI(TransactionCase):
         controller = utility_reader_api.UtilityReaderAPI()
         with patch.object(utility_reader_api, 'request', self._request({
                 'meter_number': meter.meter_number}, user=unprivileged_user)):
-            result = controller.meter_lookup()
+            result = controller.meter_lookup(meter_number=meter.meter_number)
+        self.assertFalse(result['success'])
+        self.assertEqual(result['code'], 'FORBIDDEN')
+
+    def test_reader_lookup_global_scope_without_operational_role_rejected(self):
+        """P0: A user having is_global scope (e.g. auditor/general user) without an operational role is rejected."""
+        meter, _ = self._meter_and_customer('GLOBAL-NON-OPERATIONAL')
+        global_non_op_user = self.env['res.users'].create({
+            'name': 'مستخدم بنطاق شامل بدون دور عمليات',
+            'login': 'ops_global_non_op_user',
+            'email': 'ops_global_non_op@test.com',
+            'groups_id': [(6, 0, [
+                self.env.ref('base.group_user').id,
+                self.env.ref('utility_core.group_utility_auditor').id,
+            ])],
+            'scope_mode': 'global',
+        })
+        self.assertTrue(global_non_op_user._is_global_utility_scope())
+        controller = utility_reader_api.UtilityReaderAPI()
+        with patch.object(utility_reader_api, 'request', self._request({
+                'meter_number': meter.meter_number}, user=global_non_op_user)):
+            result = controller.meter_lookup(meter_number=meter.meter_number)
         self.assertFalse(result['success'])
         self.assertEqual(result['code'], 'FORBIDDEN')

@@ -565,7 +565,7 @@ class UtilityReading(models.Model):
                     % r.consumption
                 )
 
-            r.with_context(_reading_state_transition=True).write({
+            r.with_context(_reading_state_transition=True, _internal_approval_action=True).write({
                 'state': 'approved',
                 'is_validated': True,
                 'validator_id': self.env.user.id,
@@ -668,9 +668,10 @@ class UtilityReading(models.Model):
         is_revenue_mgr = bool(is_su_or_admin or self.env.user.has_group('utility_core.group_utility_revenue_manager'))
         is_reader = bool(self.env.user.has_group('utility_core.group_utility_meter_reader'))
 
-        # Only authorized roles can bypass reading protection or perform billing adjustments
+        # Only superuser and system administrators can bypass reading protection
+        # Billing managers may bypass only during explicit billing adjustments (allow_billing_adjustment)
         has_bypass = bool(
-            (self.env.context.get('_bypass_reading_protection') and (is_su_or_admin or is_billing_mgr or is_supervisor or is_revenue_mgr))
+            (self.env.context.get('_bypass_reading_protection') and is_su_or_admin)
             or (self.env.context.get('allow_billing_adjustment') and is_billing_mgr)
         )
 
@@ -678,18 +679,35 @@ class UtilityReading(models.Model):
         if 'state' in vals:
             target_state = vals['state']
             has_transition_flag = bool(self.env.context.get('_reading_state_transition'))
-            transition_authorized = False
-            if is_su_or_admin or is_billing_mgr:
-                transition_authorized = has_transition_flag or has_bypass
-            elif is_supervisor or is_revenue_mgr:
-                if has_transition_flag or has_bypass:
-                    transition_authorized = target_state in ('under_review', 'approved', 'queued', 'draft')
-            elif is_reader:
-                if has_transition_flag and target_state == 'under_review':
-                    transition_authorized = True
 
-            if not transition_authorized:
-                raise ValidationError(_('لا يمكن تغيير حالة القراءة مباشرةً. يجب استخدام أزرار وسير العمل المعتمد.'))
+            # Transition to 'approved' can ONLY occur through action_approve()
+            if target_state == 'approved':
+                if not self.env.context.get('_internal_approval_action'):
+                    raise ValidationError(_('لا يمكن اعتماد القراءة مباشرةً عبر تعديل الحالة. يجب استخدام زر وإجراء الاعتماد الرسمي (action_approve).'))
+
+                # Enforce business approval invariants on every transition to approved
+                for r in self:
+                    if r.state not in ('under_review', 'approved', 'queued') and not is_su_or_admin:
+                        raise ValidationError(_('يمكن اعتماد القراءات قيد المراجعة فقط!'))
+                    if r._requires_billing_review():
+                        target_img = vals.get('image_state', r.image_state)
+                        if target_img != 'clear':
+                            raise ValidationError(_('لا يمكن اعتماد القراءة قبل اعتماد الصورة كصورة واضحة (clear).'))
+                        target_consumption = vals.get('consumption', r.consumption)
+                        if target_consumption < 0:
+                            raise ValidationError(_('لا يمكن اعتماد قراءة باستهلاك سالب (%.2f). تحقق من صحة القراءة أو أنشئ تسوية.') % target_consumption)
+            else:
+                transition_authorized = False
+                if has_transition_flag:
+                    if is_su_or_admin or is_billing_mgr:
+                        transition_authorized = True
+                    elif is_supervisor or is_revenue_mgr:
+                        transition_authorized = target_state in ('under_review', 'queued', 'draft')
+                    elif is_reader:
+                        transition_authorized = target_state == 'under_review'
+
+                if not transition_authorized:
+                    raise ValidationError(_('لا يمكن تغيير حالة القراءة مباشرةً. يجب استخدام أزرار وسير العمل المعتمد.'))
 
         # Enforce review access for image_state evaluations (clear, not_clear, not_same, loss_read)
         # Note: 'pending' is the initial state set upon image capture/upload by readers.

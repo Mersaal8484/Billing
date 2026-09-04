@@ -1081,10 +1081,14 @@ class TestUtilityReadingReview(TransactionCase):
         self.assertTrue(reading.is_billable)
         self.assertEqual(reading.consumption, 300.0)
 
-        # Operational supervisor approves reading
+        # Operational supervisor approves reading -> reading transitions to queued
         reading.action_approve()
+        self.assertEqual(reading.state, 'queued')
 
-        # Reading must transition immediately to billed
+        # Bill generation (via cron or action_generate_bill) processes the queued reading
+        reading.action_generate_bill()
+
+        # Reading must transition to billed
         self.assertEqual(reading.state, 'billed')
         self.assertTrue(reading.is_validated)
 
