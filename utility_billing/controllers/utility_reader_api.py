@@ -3,7 +3,7 @@ import binascii
 import json
 import logging
 
-from odoo import fields, http
+from odoo import _, fields, http
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.http import request, Response
 
@@ -73,10 +73,16 @@ class UtilityReaderAPI(http.Controller):
         if request.env.su or user.has_group('utility_core.group_utility_admin'):
             return True, None
 
-        # 3. Route assignment check for field readers
+        # Resolve scope independently from the functional role. A non-reader
+        # with routes only must still be restricted to those routes.
         is_reader = user.has_group('utility_core.group_utility_meter_reader')
         assigned_routes = getattr(user, 'assigned_route_ids', False)
-        if is_reader and assigned_routes:
+        is_global = getattr(user, '_is_global_utility_scope', lambda: False)()
+        has_geographic_scope = bool(
+            getattr(user, '_get_effective_branch_ids', lambda: [])()
+            or getattr(user, '_get_effective_region_ids', lambda: [])()
+        ) if not is_global else False
+        if assigned_routes and (is_reader or (not is_global and not has_geographic_scope)):
             customer = meter.customer_id
             customer_route = customer.route_id if customer else False
             if not customer_route or customer_route not in assigned_routes:
@@ -86,15 +92,12 @@ class UtilityReaderAPI(http.Controller):
                 )
 
         # 4. Geographic / Branch / Region scope check
-        is_global = getattr(user, '_is_global_utility_scope', lambda: False)()
         if is_global:
             return True, None
 
-        has_geographic_scope = bool(
-            getattr(user, '_get_effective_branch_ids', lambda: [])()
-            or getattr(user, '_get_effective_region_ids', lambda: [])()
-        )
-        if hasattr(user, 'check_record_scope') and (has_geographic_scope or not assigned_routes):
+        if has_geographic_scope or not assigned_routes:
+            if not hasattr(user, 'check_record_scope'):
+                return False, ('OUT_OF_SCOPE', _('تعذر التحقق من النطاق التنظيمي للمستخدم.'))
             target = meter
             meter_region = getattr(meter, 'region_id', False) or (meter.customer_id and getattr(meter.customer_id, 'region_id', False))
             meter_area = getattr(meter, 'area_id', False) or (meter.customer_id and getattr(meter.customer_id, 'area_id', False))

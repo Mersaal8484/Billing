@@ -4,6 +4,11 @@ from odoo import api, fields, models, _
 from odoo.exceptions import AccessError, UserError, ValidationError
 
 
+# Object identity cannot be reproduced by a JSON/RPC context value. Only the
+# server-side approval action may authorize its audited transition.
+_APPROVAL_ACTION_TOKEN = object()
+
+
 class UtilityReading(models.Model):
     _name = 'utility.reading'
     _description = 'قراءة عداد'
@@ -540,13 +545,16 @@ class UtilityReading(models.Model):
                 'state': 'under_review',
             })
 
-    def action_approve(self):
+    def _check_approval_access(self):
         if not (self.env.user.has_group('utility_core.group_utility_supervisor')
                 or self.env.user.has_group('utility_core.group_utility_billing_manager')
                 or self.env.user.has_group('utility_core.group_utility_revenue_manager')
                 or self.env.user.has_group('utility_core.group_utility_admin')
                 or self.env.su):
             raise AccessError(_('ليس لديك صلاحية اعتماد قراءات العدادات. يتطلب صلاحية مشرف أو مدير فوترة أو مدير إيرادات.'))
+
+    def action_approve(self):
+        self._check_approval_access()
 
         for r in self:
             if r.state not in ('under_review', 'approved', 'queued'):
@@ -565,7 +573,10 @@ class UtilityReading(models.Model):
                     % r.consumption
                 )
 
-            r.with_context(_reading_state_transition=True, _internal_approval_action=True).write({
+            r.with_context(
+                _reading_state_transition=True,
+                _internal_approval_action=_APPROVAL_ACTION_TOKEN,
+            ).write({
                 'state': 'approved',
                 'is_validated': True,
                 'validator_id': self.env.user.id,
@@ -682,8 +693,9 @@ class UtilityReading(models.Model):
 
             # Transition to 'approved' can ONLY occur through action_approve()
             if target_state == 'approved':
-                if not self.env.context.get('_internal_approval_action'):
+                if self.env.context.get('_internal_approval_action') is not _APPROVAL_ACTION_TOKEN:
                     raise ValidationError(_('لا يمكن اعتماد القراءة مباشرةً عبر تعديل الحالة. يجب استخدام زر وإجراء الاعتماد الرسمي (action_approve).'))
+                self._check_approval_access()
 
                 # Enforce business approval invariants on every transition to approved
                 for r in self:

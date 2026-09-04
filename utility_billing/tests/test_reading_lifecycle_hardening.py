@@ -677,6 +677,61 @@ class TestReadingLifecycleHardening(TransactionCase):
                 _bypass_reading_protection=True,
             ).write({'reading_value': 999.0})
 
+    def test_approval_context_cannot_replace_audited_action(self):
+        """Even valid readings cannot be approved by spoofing RPC context."""
+        self.Reading.create({
+            'meter_id': self.meter.id,
+            'account_id': self.customer.id,
+            'reading_value': 100.0,
+            'reading_date': '2026-08-01 08:00:00',
+            'reading_purpose': 'opening',
+            'is_initial_reading': True,
+            'state': 'approved',
+        })
+        reading = self.Reading.create({
+            'meter_id': self.meter.id,
+            'account_id': self.customer.id,
+            'reading_value': 200.0,
+            'reading_date': '2026-08-15 10:00:00',
+            'reading_purpose': 'periodic',
+            'date_range_id': self.date_range.id,
+            'meter_image': SAMPLE_IMAGE,
+        })
+        reading.action_submit_review()
+        reading.with_user(self.supervisor_user).action_mark_image_clear()
+        self.assertGreater(reading.consumption, 0)
+        self.assertEqual(reading.image_state, 'clear')
+        audit_before = (
+            reading.is_validated, reading.validator_id.id,
+            reading.reviewer_id.id, reading.review_date,
+        )
+        for user in (self.reader_user, self.supervisor_user, self.billing_mgr_user):
+            for forged_token in (True, 1, 'true'):
+                with self.subTest(user=user.login, token=forged_token):
+                    with self.assertRaises(ValidationError):
+                        reading.with_user(user).with_context(
+                            _internal_approval_action=forged_token,
+                            _reading_state_transition=True,
+                            _bypass_reading_protection=True,
+                            allow_billing_adjustment=True,
+                        ).write({'state': 'approved'})
+                    self.assertEqual(reading.state, 'under_review')
+                    self.assertEqual((
+                        reading.is_validated, reading.validator_id.id,
+                        reading.reviewer_id.id, reading.review_date,
+                    ), audit_before)
+                    self.assertFalse(reading.included_sale_order_id)
+
+        with self.assertRaises(AccessError):
+            reading.with_user(self.reader_user).action_approve()
+        reading.with_user(self.supervisor_user).action_approve()
+        self.assertEqual(reading.state, 'queued')
+        self.assertTrue(reading.is_validated)
+        self.assertEqual(reading.validator_id, self.supervisor_user)
+        self.assertEqual(reading.reviewer_id, self.supervisor_user)
+        self.assertTrue(reading.review_date)
+        self.assertFalse(reading.included_sale_order_id)
+
     def test_17_cross_region_period_resolution_rejected(self):
         """P1: A reading in region A must never resolve an open period belonging strictly to region B."""
         region_b = self.Region.create({

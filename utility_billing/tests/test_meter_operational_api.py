@@ -307,6 +307,62 @@ class TestMeterOperationalBillingAPI(TransactionCase):
         self.assertFalse(result['success'])
         self.assertEqual(result['code'], 'FORBIDDEN')
 
+    def test_route_only_supervisor_scope_on_both_meter_endpoints(self):
+        """Route-only non-readers cannot fall through to unrestricted lookup."""
+        region = self.env['utility.region'].create({
+            'name': 'منطقة المشرف المقيد بالمسار',
+            'code': 'OPS-SUP-REG',
+            'type': 'region',
+        })
+        area = self.env['utility.region'].create({
+            'name': 'فرع المشرف المقيد بالمسار',
+            'code': 'OPS-SUP-AREA',
+            'type': 'area',
+            'parent_id': region.id,
+        })
+        route_a, route_b = self.env['utility.route'].create([
+            {'name': 'مسار المشرف أ', 'code': 'OPS-SUP-A', 'area_id': area.id},
+            {'name': 'مسار المشرف ب', 'code': 'OPS-SUP-B', 'area_id': area.id},
+        ])
+        supervisor = self.env['res.users'].create({
+            'name': 'مشرف مقيد بمسار فقط',
+            'login': 'ops_route_only_supervisor',
+            'groups_id': [(6, 0, [
+                self.env.ref('base.group_user').id,
+                self.env.ref('utility_core.group_utility_supervisor').id,
+            ])],
+            'scope_mode': 'restricted',
+            'assigned_route_ids': [(6, 0, route_a.ids)],
+        })
+        self.assertFalse(supervisor.has_group('utility_core.group_utility_meter_reader'))
+        self.assertFalse(supervisor._get_effective_region_ids())
+        self.assertFalse(supervisor._get_effective_branch_ids())
+        meter_a, _ = self._meter_and_customer('SUP-A', route_id=route_a.id)
+        meter_b, _ = self._meter_and_customer('SUP-B', route_id=route_b.id)
+        unassigned_meter, _ = self._meter_and_customer('SUP-NONE')
+        controller = utility_reader_api.UtilityReaderAPI()
+        period_controller = utility_reader_api.UtilityReaderApiPatch()
+
+        with patch.object(utility_reader_api, 'request', self._request({}, user=supervisor)):
+            self.assertTrue(controller.meter_lookup(meter_id=meter_a.id)['success'])
+            allowed = period_controller.check_period_reading(
+                meter_code=meter_a.meter_number, period_id=self.period.id)
+            self.assertNotIn('error', allowed)
+            for meter in (meter_b, unassigned_meter):
+                with self.subTest(meter=meter.meter_number):
+                    rejected = controller.meter_lookup(meter_id=meter.id)
+                    self.assertFalse(rejected['success'])
+                    self.assertEqual(rejected['code'], 'OUT_OF_SCOPE')
+                    rejected_period = period_controller.check_period_reading(
+                        meter_code=meter.meter_number, period_id=self.period.id)
+                    self.assertEqual(rejected_period['code'], 'OUT_OF_SCOPE')
+
+        supervisor.write({'assigned_route_ids': [(5, 0, 0)]})
+        with patch.object(utility_reader_api, 'request', self._request({}, user=supervisor)):
+            self.assertEqual(controller.meter_lookup(meter_id=meter_a.id)['code'], 'OUT_OF_SCOPE')
+            self.assertEqual(period_controller.check_period_reading(
+                meter_code=meter_a.meter_number, period_id=self.period.id)['code'], 'OUT_OF_SCOPE')
+
     def test_reader_lookup_global_scope_without_operational_role_rejected(self):
         """P0: A user having is_global scope (e.g. auditor/general user) without an operational role is rejected."""
         meter, _ = self._meter_and_customer('GLOBAL-NON-OPERATIONAL')
