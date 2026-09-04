@@ -37,19 +37,27 @@
 
                     <!-- Statistics Summary Progress Badges -->
                     <div class="d-flex align-items-center gap-2">
-                        <div class="card card-body py-1 px-3 border-warning bg-warning bg-opacity-10 text-dark">
+                        <div class="card card-body py-1 px-3 border-warning bg-warning bg-opacity-10 text-dark cursor-pointer shadow-sm"
+                             t-att-class="state.filters.status === 'under_review' ? 'border-2 border-warning shadow' : ''"
+                             t-on-click="() => this.onFilterByStatus('under_review')" title="انقر للتصفية حسب قيد المراجعة">
                             <small class="text-muted d-block" style="font-size: 0.75rem;">قيد المراجعة</small>
                             <strong class="h6 mb-0 text-warning"><t t-esc="state.stats.pending"/></strong>
                         </div>
-                        <div class="card card-body py-1 px-3 border-success bg-success bg-opacity-10 text-dark">
+                        <div class="card card-body py-1 px-3 border-success bg-success bg-opacity-10 text-dark cursor-pointer shadow-sm"
+                             t-att-class="state.filters.status === 'approved' ? 'border-2 border-success shadow' : ''"
+                             t-on-click="() => this.onFilterByStatus('approved')" title="انقر للتصفية حسب معتمدة">
                             <small class="text-muted d-block" style="font-size: 0.75rem;">معتمدة</small>
                             <strong class="h6 mb-0 text-success"><t t-esc="state.stats.approved"/></strong>
                         </div>
-                        <div class="card card-body py-1 px-3 border-danger bg-danger bg-opacity-10 text-dark">
+                        <div class="card card-body py-1 px-3 border-danger bg-danger bg-opacity-10 text-dark cursor-pointer shadow-sm"
+                             t-att-class="state.filters.status === 'rejected' ? 'border-2 border-danger shadow' : ''"
+                             t-on-click="() => this.onFilterByStatus('rejected')" title="انقر للتصفية حسب مرفوضة">
                             <small class="text-muted d-block" style="font-size: 0.75rem;">مرفوضة</small>
                             <strong class="h6 mb-0 text-danger"><t t-esc="state.stats.rejected"/></strong>
                         </div>
-                        <div class="card card-body py-1 px-3 border-info bg-info bg-opacity-10 text-dark">
+                        <div class="card card-body py-1 px-3 border-info bg-info bg-opacity-10 text-dark cursor-pointer shadow-sm"
+                             t-att-class="state.filters.status === 'exceptions' ? 'border-2 border-info shadow' : ''"
+                             t-on-click="() => this.onFilterByStatus('exceptions')" title="انقر للتصفية حسب استثناءات">
                             <small class="text-muted d-block" style="font-size: 0.75rem;">استثناءات / تنبيهات</small>
                             <strong class="h6 mb-0 text-info"><t t-esc="state.stats.exceptions"/></strong>
                         </div>
@@ -242,13 +250,14 @@
                                     <th style="width: 140px;">تاريخ القراءة</th>
                                     <th style="width: 180px;" class="text-center">السياق</th>
                                     <th style="width: 160px;">التنبيهات الفنية VEE</th>
+                                    <th style="width: 150px;" class="text-center">حالة الصورة</th>
                                     <th style="width: 130px;" class="text-center">الحالة</th>
                                     <th style="width: 160px;" class="text-center">إجراءات المراجعة</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <t t-foreach="state.items" t-as="item" t-key="item.id">
-                                    <tr style="height: 250px;" t-att-class="item.state === 'approved' ? 'table-success bg-opacity-25' : (item.state === 'draft' and item.rejection_reason ? 'table-danger bg-opacity-25' : '')">
+                                    <tr style="height: 250px;" t-att-class="(item.state === 'approved' or item.state === 'billed') ? 'table-success bg-opacity-25' : (item.state === 'draft' and item.rejection_reason ? 'table-danger bg-opacity-25' : '')">
                                         <!-- Selection Checkbox -->
                                         <td class="text-center">
                                             <input type="checkbox" class="form-check-input" t-att-checked="state.selectedIds.includes(item.id)" t-on-change="() => this.toggleSelectRow(item.id)"/>
@@ -259,21 +268,30 @@
                                             <t t-esc="item_index + 1 + state.pagination.offset"/>
                                         </td>
 
-                                        <!-- Thumbnail Image -->
+                                        <!-- Thumbnail Image & Image State Caption -->
                                         <td class="text-center p-1 position-relative" style="width: 210px;">
                                             <t t-if="item.thumbnail_url">
                                                 <div class="meter-image-container position-relative d-inline-block">
-                                                    <img t-att-src="item.thumbnail_url" loading="lazy" alt="صورة العداد" class="rounded border shadow-sm cursor-pointer meter-thumb-img" style="width: 200px; height: 200px; object-fit: cover;" t-on-click="() => this.onOpenLightbox(item)"/>
+                                                    <img t-att-src="item.thumbnail_url" loading="lazy" alt="صورة العداد" class="rounded border shadow-sm cursor-pointer meter-thumb-img" style="width: 190px; height: 180px; object-fit: cover;" t-on-click="() => this.onOpenLightbox(item)"/>
                                                     <div class="hover-preview-hint">
                                                         <i class="fa fa-search-plus me-1"/> انقر للمعاينة المكبرة
                                                     </div>
                                                 </div>
                                             </t>
                                             <t t-else="">
-                                                <div class="rounded border bg-light text-muted d-flex align-items-center justify-content-center mx-auto" style="width: 200px; height: 200px;">
+                                                <div class="rounded border bg-light text-muted d-flex align-items-center justify-content-center mx-auto" style="width: 190px; height: 180px;">
                                                     <i class="fa fa-camera-retro fa-2x opacity-50"/>
                                                 </div>
                                             </t>
+                                            <!-- Mini Image Status Badge Under Thumbnail -->
+                                            <div class="mt-1">
+                                                <span t-if="item.image_state === 'clear'" class="badge bg-success px-2 py-1 shadow-sm"><i class="fa fa-check-circle me-1"/>واضحة ✓</span>
+                                                <span t-elif="item.image_state === 'not_clear'" class="badge bg-danger px-2 py-1 shadow-sm"><i class="fa fa-times-circle me-1"/>غير واضحة</span>
+                                                <span t-elif="item.image_state === 'not_same'" class="badge bg-warning text-dark px-2 py-1 shadow-sm"><i class="fa fa-exclamation-triangle me-1"/>غير مطابقة</span>
+                                                <span t-elif="item.image_state === 'loss_read'" class="badge bg-secondary px-2 py-1 shadow-sm"><i class="fa fa-question-circle me-1"/>قراءة مفقودة</span>
+                                                <span t-elif="item.image_state === 'pending'" class="badge bg-info text-white px-2 py-1 shadow-sm"><i class="fa fa-clock-o me-1"/>بانتظار الفحص</span>
+                                                <span t-else="" class="badge bg-light text-muted border px-2 py-1">بدون صورة</span>
+                                            </div>
                                         </td>
 
                                         <!-- Meter Number -->
@@ -346,12 +364,67 @@
                                             </t>
                                         </td>
 
+                                        <!-- Image State Badge & In-Row Actions -->
+                                        <td class="text-center">
+                                            <div class="d-flex flex-column align-items-center justify-content-center gap-1">
+                                                <span t-if="item.image_state === 'clear'" class="badge bg-success px-2.5 py-1.5 shadow-sm fw-bold" style="font-size: 0.85rem;">
+                                                    <i class="fa fa-check-circle me-1"/> واضحة
+                                                </span>
+                                                <span t-elif="item.image_state === 'not_clear'" class="badge bg-danger px-2.5 py-1.5 shadow-sm fw-bold" style="font-size: 0.85rem;">
+                                                    <i class="fa fa-times-circle me-1"/> غير واضحة
+                                                </span>
+                                                <span t-elif="item.image_state === 'not_same'" class="badge bg-warning text-dark px-2.5 py-1.5 shadow-sm fw-bold" style="font-size: 0.85rem;">
+                                                    <i class="fa fa-exclamation-triangle me-1"/> لا تطابق
+                                                </span>
+                                                <span t-elif="item.image_state === 'loss_read'" class="badge bg-secondary px-2.5 py-1.5 shadow-sm fw-bold" style="font-size: 0.85rem;">
+                                                    <i class="fa fa-question-circle me-1"/> مفقودة
+                                                </span>
+                                                <span t-elif="item.image_state === 'pending'" class="badge bg-info text-white px-2.5 py-1.5 shadow-sm fw-bold" style="font-size: 0.85rem;">
+                                                    <i class="fa fa-clock-o me-1"/> بانتظار الفحص
+                                                </span>
+                                                <span t-else="" class="badge bg-light text-muted border px-2.5 py-1.5 shadow-sm" style="font-size: 0.85rem;">
+                                                    <i class="fa fa-camera-retro me-1"/> بدون صورة
+                                                </span>
+
+                                                <!-- Quick Actions within Row -->
+                                                <div t-if="item.state === 'under_review'" class="btn-group btn-group-sm mt-1" role="group">
+                                                    <button type="button" class="btn btn-sm"
+                                                            t-att-class="item.image_state === 'clear' ? 'btn-success text-white' : 'btn-outline-success'"
+                                                            t-on-click="() => this.onSetImageState(item, 'clear')" title="تحديد كصورة واضحة">
+                                                        <i class="fa fa-check me-1"/>واضحة
+                                                    </button>
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle dropdown-toggle-split"
+                                                            data-bs-toggle="dropdown" aria-expanded="false" title="خيارات أخرى">
+                                                        <span class="visually-hidden">خيارات</span>
+                                                    </button>
+                                                    <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="font-size: 0.82rem;">
+                                                        <li>
+                                                            <a class="dropdown-item text-danger py-1" href="#" t-on-click.prevent="() => this.onSetImageState(item, 'not_clear')">
+                                                                <i class="fa fa-times-circle text-danger me-1"/> غير واضحة
+                                                            </a>
+                                                        </li>
+                                                        <li>
+                                                            <a class="dropdown-item text-warning py-1" href="#" t-on-click.prevent="() => this.onSetImageState(item, 'not_same')">
+                                                                <i class="fa fa-exclamation-triangle text-warning me-1"/> لا تطابق العداد
+                                                            </a>
+                                                        </li>
+                                                        <li>
+                                                            <a class="dropdown-item text-secondary py-1" href="#" t-on-click.prevent="() => this.onSetImageState(item, 'loss_read')">
+                                                                <i class="fa fa-question-circle text-secondary me-1"/> قراءة مفقودة / تعذر
+                                                            </a>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        </td>
+
                                         <!-- State Badge -->
                                         <td class="text-center">
                                             <span t-if="item.state === 'under_review'" class="badge badge-soft-warning px-3 py-2 shadow-sm d-inline-block fw-bold" style="font-size: 0.9rem;"><i class="fa fa-clock-o me-1"/> قيد المراجعة</span>
-                                            <span t-if="item.state === 'approved'" class="badge badge-soft-success px-3 py-2 shadow-sm d-inline-block fw-bold" style="font-size: 0.9rem;"><i class="fa fa-check-circle me-1"/> معتمدة</span>
-                                            <span t-if="item.state === 'draft' and item.rejection_reason" class="badge badge-soft-danger px-3 py-2 shadow-sm d-inline-block fw-bold" style="font-size: 0.9rem;" t-att-title="item.rejection_reason"><i class="fa fa-times-circle me-1"/> مرفوضة</span>
-                                            <span t-if="item.state === 'billed'" class="badge badge-soft-info px-3 py-2 shadow-sm d-inline-block fw-bold" style="font-size: 0.9rem;"><i class="fa fa-file-text-o me-1"/> مفوترة</span>
+                                            <span t-elif="item.state === 'approved' or item.state === 'queued'" class="badge badge-soft-success px-3 py-2 shadow-sm d-inline-block fw-bold" style="font-size: 0.9rem;"><i class="fa fa-check-circle me-1"/> معتمدة</span>
+                                            <span t-elif="item.state === 'billed'" class="badge badge-soft-success px-3 py-2 shadow-sm d-inline-block fw-bold" style="font-size: 0.9rem;"><i class="fa fa-check-circle me-1"/> معتمدة (مفوترة)</span>
+                                            <span t-elif="item.state === 'draft' and item.rejection_reason" class="badge badge-soft-danger px-3 py-2 shadow-sm d-inline-block fw-bold" style="font-size: 0.9rem;" t-att-title="item.rejection_reason"><i class="fa fa-times-circle me-1"/> مرفوضة</span>
+                                            <span t-else="" class="badge badge-soft-secondary px-3 py-2 shadow-sm d-inline-block fw-bold" style="font-size: 0.9rem;"><t t-esc="item.state"/></span>
                                         </td>
 
                                         <!-- Action Buttons -->
@@ -363,7 +436,7 @@
                                                 </button>
 
                                                 <!-- Approve Button -->
-                                                <button type="button" class="btn btn-success" t-att-disabled="item.state === 'approved'" t-on-click="() => this.onApproveRow(item)" title="اعتماد القراءة (A)">
+                                                <button type="button" class="btn btn-success" t-att-disabled="item.state === 'approved' || item.state === 'billed' || item.state === 'queued'" t-on-click="() => this.onApproveRow(item)" title="اعتماد القراءة (A)">
                                                     <i class="fa fa-check"/>
                                                 </button>
 
@@ -408,7 +481,7 @@
                 <ReadingRejectionDialog reading="state.activeRejectionReading" onConfirm="onConfirmRejection.bind(this)" onCancel="onCloseRejectionDialog.bind(this)"/>
             </t>
             <t t-if="state.activeLightboxReading">
-                <ReadingImageLightbox reading="state.activeLightboxReading" items="state.items" currentIndex="state.activeLightboxIndex" onClose="onCloseLightbox.bind(this)" onNext="onNextLightboxReading.bind(this)" onPrevious="onPreviousLightboxReading.bind(this)" onApprove="onApproveRow.bind(this)" onReject="onRejectRow.bind(this)" onMarkImageClear="onMarkImageClear.bind(this)"/>
+                <ReadingImageLightbox reading="state.activeLightboxReading" items="state.items" currentIndex="state.activeLightboxIndex" onClose="onCloseLightbox.bind(this)" onNext="onNextLightboxReading.bind(this)" onPrevious="onPreviousLightboxReading.bind(this)" onApprove="onApproveRow.bind(this)" onReject="onRejectRow.bind(this)" onMarkImageClear="onMarkImageClear.bind(this)" onSetImageState="onSetImageState.bind(this)"/>
             </t>
         </div>
     </t>

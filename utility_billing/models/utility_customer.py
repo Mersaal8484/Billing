@@ -53,8 +53,7 @@ class UtilityCustomer(models.Model):
             return existing
         product = self.env.ref('utility_core.utility_product_service_charge', raise_if_not_found=False)
         if not product or product.lst_price <= 0:
-            raise UserError(_(
-                'يجب إعداد منتج رسم إدخال الخدمة بسعر أكبر من صفر قبل تفعيل المشترك.'))
+            return self.env['utility.service.charge']
         charges = self.env['utility.service.charge'].create([{
             'account_id': customer.id,
             'activation_type': activation_type,

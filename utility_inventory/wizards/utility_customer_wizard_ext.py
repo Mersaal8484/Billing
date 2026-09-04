@@ -51,18 +51,17 @@ class UtilityCustomerWizardInventory(models.TransientModel):
             # it stays separate from the logical operational identifier and
             # can be completed later when the physical meter is assigned.
             return vals
-        if not self.meter_product_id:
-            raise ValidationError(_('يجب اختيار منتج العداد عند ربط الرقم المادي.'))
-        if self.meter_product_id.tracking != 'serial':
-            raise ValidationError(_('منتج العداد يجب أن يستخدم التتبع التسلسلي.'))
-        if not self.lot_id:
-            raise ValidationError(_('يجب اختيار Lot/Serial للعداد عند ربط الرقم المادي.'))
-        if self.lot_id.product_id != self.meter_product_id:
-            raise ValidationError(_('Lot/Serial المختار لا يطابق منتج العداد.'))
-        if self.lot_id.company_id and self.lot_id.company_id != self.env.company:
-            raise ValidationError(_('Lot/Serial المختار تابع لشركة أخرى.'))
-        vals.update({
-            'product_id': self.meter_product_id.id,
-            'lot_id': self.lot_id.id,
-        })
+        if self.meter_product_id:
+            if self.meter_product_id.tracking != 'serial':
+                raise ValidationError(_('منتج العداد يجب أن يستخدم التتبع التسلسلي.'))
+            vals['product_id'] = self.meter_product_id.id
+        if self.lot_id:
+            if self.meter_product_id and self.lot_id.product_id != self.meter_product_id:
+                raise ValidationError(_('Lot/Serial المختار لا يطابق منتج العداد.'))
+            if self.lot_id.company_id and self.lot_id.company_id != self.env.company:
+                raise ValidationError(_('Lot/Serial المختار تابع لشركة أخرى.'))
+            vals.update({
+                'product_id': (self.meter_product_id or self.lot_id.product_id).id,
+                'lot_id': self.lot_id.id,
+            })
         return vals

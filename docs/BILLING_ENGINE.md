@@ -114,24 +114,27 @@ ONE Accounting Invoice
 
 ---
 
-## 5. Billing Algorithm
+## 5. Billing Algorithm & Automated Approval Pipeline
 
-1. Validate periodic reading is approved/queued and billable.
-2. Validate account/period.
-3. Lock target billing identity.
-4. Reject existing active bill for account+period.
-5. Resolve last billed periodic boundary.
-6. Lock pending replacement-closing readings.
-7. Build component snapshots in chronological sequence.
-8. Sum segment consumption.
-9. Resolve tariff snapshot.
-10. Calculate order lines.
-11. Create Sale Order.
-12. Persist components.
-13. Mark included closing readings.
-14. Create/post Accounting Invoice per policy.
-15. Mark anchor billed.
-16. Commit.
+1. **Image Review Gate:** Before approval, verify that `image_state == 'clear'`. Approvals without a verified clear image are blocked with a `ValidationError`.
+2. **Reading Classification (`is_billable`):**
+   - **Commercial / Subscriber & Private Transformer:** Periodic readings with `is_billable = True` immediately enter the billing queue (`state = 'queued'`) upon supervisor approval.
+   - **Technical Network Readings (Feeders & Public Transformers):** `is_billable = False`. Upon approval, they remain in `state = 'approved'` as physical operational records and NEVER generate bills or invoices.
+3. **Automated Invoice Generation Pipeline:**
+   - On transition to `queued`, `_queue_approved_billable_readings` triggers `action_generate_bill()` with a database savepoint guard.
+   - If `date_range_id` is missing on the reading, the billing queue auto-resolves and links the active current reading period (`date.range`).
+   - The engine validates account/period and locks the target billing identity with `SELECT ... FOR UPDATE`.
+   - Rejects existing active bill for account+period (enforcing idempotency and single bill per cycle).
+   - Locks pending replacement-closing readings and persists `utility.bill.reading.component` snapshots.
+   - Calculates order lines according to active contract version snapshot (flat, tier, block, service fees, local fees).
+   - Creates `sale.order`, confirms it to `state = 'sale'`, creates and posts the customer invoice (`account.move` to `state = 'posted'`).
+   - Sets reading `state = 'billed'` and clears any `billing_error`.
+   - Fault-isolation: If automated billing fails (e.g., missing contract template or accounting setup), the transaction rolls back to the savepoint, logs a warning, records the error in `billing_error`, and safely retains the reading in `state = 'queued'`.
+
+### 5.1 Review Console Scope & Visibility
+- In the Reading Review Console (`utility.reading.review.service`), the "معتمدة" (Approved) queue tab and KPI statistics query `['approved', 'queued', 'billed']`.
+- This ensures approved technical network readings (`approved`), queued readings (`queued`), and fully invoiced readings (`billed`) remain continuously visible in the operational workspace without disappearing after approval.
+- In-row action controls allow operators to inspect meter images, evaluate image states (`action_mark_image_clear`, `action_mark_image_not_clear`, `action_set_image_state`), and execute single or bulk approvals safely.
 
 ---
 
@@ -315,10 +318,14 @@ Settlement
 - Posted accounting document links back to Utility Bill.
 - Historical tariff interpretation survives future configuration changes.
 
-## V3.2 Current Implementation Synchronization
+## V3.3 Current Implementation Synchronization
 
 **CURRENT V1:** `utility_core.models.utility_reading` is operational truth. The Billing extension inherits `utility.reading` and owns commercial fields/behavior: `is_billable`, `billing_anchor_id`, `billing_component_ids`, `included_sale_order_id`, `carried_consumption`, `billing_consumption`, and `billing_error`. Core exposes hooks such as `_requires_billing_review()` and does not dynamically detect Billing installation.
 
+- **Automated Approval-to-Invoice Pipeline:** Supervisor approval of billable readings (`is_billable = True`) immediately transitions the reading from `under_review` → `queued` → `billed`, auto-resolving the active reading period `date.range`, creating and confirming the `sale.order` bill (`state = 'sale'`), and creating and posting the customer invoice (`account.move` with `state = 'posted'`).
+- **Network Readings (Feeders & Transformers):** Public network readings are non-billable (`is_billable = False`) and remain in `state = 'approved'` without generating invoices.
+- **Image Review Gate:** Approvals require `image_state == 'clear'`. Dedicated review services and OWL console components provide in-row evaluation actions (`clear`, `not_clear`, `not_same`, `loss_read`) and lightbox inspection.
+- **Approved Workspace Scope:** The review console "معتمدة" workspace and KPI cards aggregate `['approved', 'queued', 'billed']`, ensuring all approved technical and billed commercial readings remain visible to supervisors and auditors.
 - **Contract Template Versioning & Blocks:** `utility.contract.template.version` provides immutable contract versioning. Modification of billed templates automatically triggers version increments (V1 → V2). Dynamic block replacement supports `skip_tier_validation` context guard to prevent false boundary errors during reconfiguration.
 - **Pricing Snapshot Evidence:** Each confirmed `sale.order` bill generates an immutable `utility.bill.pricing.snapshot` and associated `utility.bill.pricing.block` records, locking calculated components (energy, service fees, discounts, local fees) against future tariff changes.
 

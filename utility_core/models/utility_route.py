@@ -36,7 +36,6 @@ class UtilityRoute(models.Model):
     supervisor_id = fields.Many2one(
         'res.users',
         string='المشرف (حقل قديم - للتوافق)',
-        deprecated=True,
         help='حقل قديم — أضف المشرف عبر حقل طاقم العمل (user_ids).'
     )
 

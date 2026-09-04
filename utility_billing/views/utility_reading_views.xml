@@ -74,6 +74,26 @@
                             string="إرسال للمراجعة" class="oe_highlight"
                             attrs="{'invisible': [('state', '!=', 'draft')]}"
                             groups="utility_core.group_utility_meter_reader,utility_core.group_utility_technician,utility_core.group_utility_supervisor,utility_core.group_utility_billing_manager,utility_core.group_utility_admin"/>
+                    <button name="action_mark_image_clear" type="object"
+                            string="الصورة واضحة" class="btn-outline-success"
+                            icon="fa-check"
+                            attrs="{'invisible': ['|', ('image_state', '=', 'clear'), ('state', 'not in', ('draft', 'under_review'))]}"
+                            groups="utility_core.group_utility_supervisor,utility_core.group_utility_billing_manager,utility_core.group_utility_revenue_manager,utility_core.group_utility_admin,utility_core.group_utility_auditor"/>
+                    <button name="action_mark_image_not_clear" type="object"
+                            string="الصورة غير واضحة" class="btn-outline-warning"
+                            icon="fa-times"
+                            attrs="{'invisible': ['|', ('image_state', '=', 'not_clear'), ('state', 'not in', ('draft', 'under_review'))]}"
+                            groups="utility_core.group_utility_supervisor,utility_core.group_utility_billing_manager,utility_core.group_utility_revenue_manager,utility_core.group_utility_admin,utility_core.group_utility_auditor"/>
+                    <button name="action_mark_image_not_same" type="object"
+                            string="عداد غير مطابق" class="btn-outline-danger"
+                            icon="fa-exclamation-triangle"
+                            attrs="{'invisible': ['|', ('image_state', '=', 'not_same'), ('state', 'not in', ('draft', 'under_review'))]}"
+                            groups="utility_core.group_utility_supervisor,utility_core.group_utility_billing_manager,utility_core.group_utility_revenue_manager,utility_core.group_utility_admin,utility_core.group_utility_auditor"/>
+                    <button name="action_mark_image_loss_read" type="object"
+                            string="فاقد قراءة" class="btn-outline-secondary"
+                            icon="fa-eye-slash"
+                            attrs="{'invisible': ['|', ('image_state', '=', 'loss_read'), ('state', 'not in', ('draft', 'under_review'))]}"
+                            groups="utility_core.group_utility_supervisor,utility_core.group_utility_billing_manager,utility_core.group_utility_revenue_manager,utility_core.group_utility_admin,utility_core.group_utility_auditor"/>
                     <button name="action_approve" type="object"
                             string="اعتماد القراءة" class="oe_highlight"
                             attrs="{'invisible': [('state', '!=', 'under_review')]}"
@@ -84,8 +104,8 @@
                             groups="utility_core.group_utility_supervisor,utility_core.group_utility_billing_manager,utility_core.group_utility_revenue_manager,utility_core.group_utility_admin"/>
                     <button name="action_generate_bill" type="object"
                             string="إنشاء فاتورة" class="oe_highlight"
-                            attrs="{'invisible': ['|', ('state', '!=', 'approved'), ('reading_purpose', '!=', 'periodic')]}"
-                            groups="utility_core.group_utility_billing_manager,utility_core.group_utility_admin"/>
+                            attrs="{'invisible': ['|', ('state', 'not in', ('approved', 'queued')), ('reading_purpose', '!=', 'periodic')]}"
+                            groups="utility_core.group_utility_supervisor,utility_core.group_utility_billing_manager,utility_core.group_utility_revenue_manager,utility_core.group_utility_admin"/>
                     <button name="action_requeue" type="object"
                             string="إعادة للطابور" class="oe_highlight"
                             attrs="{'invisible': [('state', '!=', 'error')]}"

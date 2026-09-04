@@ -912,3 +912,195 @@ class TestUtilityReadingReview(TransactionCase):
         self.assertTrue(all(c.account_id == customer for c in components))
         self.assertEqual(components.filtered(lambda c: c.reading_id == r_closing).consumption, 300.0)
         self.assertEqual(components.filtered(lambda c: c.reading_id == r_periodic).consumption, 100.0)
+
+    def test_18_image_state_actions_and_approval_gate(self):
+        """18. Verify image state actions and image review gate before approval."""
+        customer, meter = self._create_unique_customer_meter('IMG-GATE-01')
+        reading = self.Reading.create({
+            'meter_id': meter.id,
+            'account_id': customer.id,
+            'reading_date': self._reading_now(),
+            'reading_value': 250.0,
+            'previous_reading': 0.0,
+            'reading_category': 'customer',
+            'reading_purpose': 'periodic',
+            'reading_event': 'normal',
+            'date_range_id': self.test_period.id,
+            'state': 'under_review',
+            'image_state': 'none',
+        })
+
+        # Gate: attempting to approve without clear image raises ValidationError
+        with self.assertRaises(ValidationError):
+            reading.action_approve()
+
+        # Test action_mark_image_not_clear
+        reading.action_mark_image_not_clear()
+        self.assertEqual(reading.image_state, 'not_clear')
+
+        # Test action_mark_image_not_same
+        reading.action_mark_image_not_same()
+        self.assertEqual(reading.image_state, 'not_same')
+
+        # Test action_mark_image_loss_read
+        reading.action_mark_image_loss_read()
+        self.assertEqual(reading.image_state, 'loss_read')
+
+        # Test RPC action_set_image_state
+        res = self.ReadingReviewService.action_set_image_state([reading.id], 'not_same')
+        self.assertEqual(res['status'], 'success')
+        self.assertEqual(reading.image_state, 'not_same')
+
+        res = self.ReadingReviewService.action_set_image_state([reading.id], 'loss_read')
+        self.assertEqual(res['status'], 'success')
+        self.assertEqual(reading.image_state, 'loss_read')
+
+        # Marking clear enables approval
+        reading.action_mark_image_clear()
+        self.assertEqual(reading.image_state, 'clear')
+
+        # Approval succeeds now
+        reading.action_approve()
+        self.assertIn(reading.state, ('approved', 'queued', 'billed'))
+
+    def test_19_review_queue_approved_counts_and_items(self):
+        """19. get_review_queue: approved filter and stats include approved, queued, and billed readings."""
+        customer, meter = self._create_unique_customer_meter('REV-STAT-01')
+        reading = self.Reading.create({
+            'meter_id': meter.id,
+            'account_id': customer.id,
+            'reading_date': self._reading_now(),
+            'reading_value': 400.0,
+            'previous_reading': 100.0,
+            'reading_category': 'customer',
+            'reading_purpose': 'periodic',
+            'reading_event': 'normal',
+            'date_range_id': self.test_period.id,
+            'state': 'under_review',
+            'image_state': 'clear',
+        })
+
+        # Initial queue check in under_review
+        queue_pending = self.ReadingReviewService.get_review_queue(status='under_review')
+        pending_ids = [it['id'] for it in queue_pending.get('items', [])]
+        self.assertIn(reading.id, pending_ids)
+
+        # Approve reading
+        self.ReadingReviewService.action_approve_review([reading.id])
+
+        # Approved queue check
+        queue_approved = self.ReadingReviewService.get_review_queue(status='approved')
+        approved_ids = [it['id'] for it in queue_approved.get('items', [])]
+        self.assertIn(reading.id, approved_ids)
+        self.assertGreaterEqual(queue_approved.get('stats', {}).get('approved', 0), 1)
+
+    def test_20_network_reading_stays_approved_without_bill(self):
+        """20. Network transformer/feeder reading is non-billable and remains approved without billing."""
+        transformer = self.env['utility.transformer'].create({
+            'name': 'محول اختبار المراجعة',
+            'code': 'TR-REV-01',
+            'is_private': False,
+        })
+        net_meter = self.Meter.create({
+            'meter_number': 'MTR-NET-TR-01',
+            'linked_transformer_id': transformer.id,
+        })
+
+        net_reading = self.Reading.create({
+            'meter_id': net_meter.id,
+            'transformer_id': transformer.id,
+            'reading_date': self._reading_now(),
+            'reading_value': 12000.0,
+            'previous_reading': 10000.0,
+            'reading_category': 'transformer',
+            'reading_purpose': 'periodic',
+            'reading_event': 'normal',
+            'date_range_id': self.test_period.id,
+            'state': 'under_review',
+            'image_state': 'clear',
+        })
+
+        self.assertFalse(net_reading.is_billable)
+        net_reading.action_approve()
+
+        # Must remain approved, not queued or billed, and no sale order created
+        self.assertEqual(net_reading.state, 'approved')
+        self.assertFalse(net_reading.included_sale_order_id)
+
+    def test_21_billable_reading_auto_generates_posted_invoice_when_template_present(self):
+        """21. End-to-end: Approved billable reading auto-generates sale.order, confirms to 'sale', and posts invoice to 'posted'."""
+        product = self.env['product.product'].create({
+            'name': 'خدمة كهرباء اختبار الفوترة الفورية',
+            'type': 'service',
+            'invoice_policy': 'order',
+        })
+        template = self.env['utility.contract.template'].create({
+            'name': 'قالب فوترة فورية عند الاعتماد',
+            'code': 'TPL-REV-AUTO-BILL',
+            'pricing_mode': 'flat',
+            'price_per_kwh': 25.0,
+            'service_charge': 150.0,
+            'subscriber_category_ids': [(6, 0, [self.test_category.id])],
+            'subscriber_ids': [(6, 0, [self.test_subscriber.id])],
+            'scope': 'global',
+        })
+        self.env['utility.contract.template.line'].create({
+            'template_id': template.id,
+            'product_id': product.id,
+            'name': 'استهلاك طاقة',
+            'meter_line_type': 'consumption',
+        })
+
+        customer, meter = self._create_unique_customer_meter('AUTO-BILL-01')
+        customer.write({'contract_template_id': template.id})
+
+        self.Reading.create({
+            'meter_id': meter.id,
+            'account_id': customer.id,
+            'reading_date': fields.Datetime.now() - timedelta(days=30),
+            'reading_value': 200.0,
+            'reading_purpose': 'opening',
+            'is_initial_reading': True,
+            'image_state': 'clear',
+            'state': 'approved',
+        })
+
+        reading = self.Reading.create({
+            'meter_id': meter.id,
+            'account_id': customer.id,
+            'reading_date': self._reading_now(),
+            'reading_value': 500.0,
+            'reading_category': 'customer',
+            'reading_purpose': 'periodic',
+            'reading_event': 'normal',
+            'date_range_id': self.test_period.id,
+            'state': 'under_review',
+            'image_state': 'clear',
+        })
+
+        self.assertTrue(reading.is_billable)
+        self.assertEqual(reading.consumption, 300.0)
+
+        # Operational supervisor approves reading
+        reading.action_approve()
+
+        # Reading must transition immediately to billed
+        self.assertEqual(reading.state, 'billed')
+        self.assertTrue(reading.is_validated)
+
+        # Sale order must be created and confirmed
+        order = reading.included_sale_order_id
+        self.assertTrue(order)
+        self.assertEqual(order.state, 'sale')
+        self.assertEqual(order.consumption, 300.0)
+
+        # Invoice must be created and posted
+        invoices = order.invoice_ids
+        self.assertTrue(invoices)
+        self.assertEqual(invoices[:1].state, 'posted')
+        self.assertGreater(order.amount_total, 0.0)
+
+        # Review queue approved tab must include the reading
+        approved_queue = self.ReadingReviewService.get_review_queue(status='approved')
+        item_ids = [it['id'] for it in approved_queue.get('items', [])]
+        self.assertIn(reading.id, item_ids)

@@ -380,7 +380,7 @@ class UtilityCustomerWizard(models.TransientModel):
             status_active = self.env['utility.meter.status'].search([('code', '=', 'ACTIVE')], limit=1)
             meter_vals = {
                 'status_id': status_active.id if status_active else False,
-                'meter_number': self.meter_number if self.meter_number != _('جديد') else False,
+                'meter_number': self.meter_number if self.meter_number and self.meter_number not in (_('جديد'), 'جديد', 'New') else _('جديد'),
                 'operational_number': self.operational_number or False,
                 'transformer_id': transformer.id if transformer else False,
                 'feeder_id': transformer.feeder_id.id if transformer and transformer.feeder_id else False,
@@ -406,7 +406,13 @@ class UtilityCustomerWizard(models.TransientModel):
         
         if meter:
             customer.with_context(lifecycle_operation=True).write({'meter_id': meter.id})
-            meter.write({'customer_id': customer.id})
+            meter_write_vals = {
+                'customer_id': customer.id,
+                'connection_type': 'subscriber',
+            }
+            if transformer and transformer.is_private:
+                meter_write_vals['is_coupling_meter'] = True
+            meter.write(meter_write_vals)
 
         customer.action_activate()
 

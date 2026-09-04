@@ -184,7 +184,7 @@ class UtilityCustomerLifecycle(models.Model):
             self.env.cr.execute(
                 'SELECT id FROM utility_customer WHERE id IN %s ORDER BY id FOR UPDATE',
                 [tuple(self.ids)])
-        self.invalidate_cache()
+        self.invalidate_recordset()
 
     def _log_lifecycle_event(self, event_type, old_state=False, reason=False,
                              notes=False, service_order=False, old_meter=False,

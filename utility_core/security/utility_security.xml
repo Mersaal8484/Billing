@@ -184,7 +184,7 @@
         <record id="utility_meter_org_scope_rule" model="ir.rule">
             <field name="name">Meter Unified Organizational Scope Rule</field>
             <field name="model_id" ref="utility_core.model_utility_meter"/>
-            <field name="domain_force">[(1, '=', 1)] if user._is_global_utility_scope() else (['|', ('area_id', 'in', user._get_effective_branch_ids()), ('region_id', 'in', user._get_effective_region_ids())] if (user._get_effective_branch_ids() or user._get_effective_region_ids()) else [('id', '=', False)])</field>
+            <field name="domain_force">[(1, '=', 1)] if user._is_global_utility_scope() else (['|', ('connection_type', '=', 'not_connected'), '|', ('area_id', 'in', user._get_effective_branch_ids()), ('region_id', 'in', user._get_effective_region_ids())] if (user._get_effective_branch_ids() or user._get_effective_region_ids()) else [('connection_type', '=', 'not_connected')])</field>
             <field name="global" eval="True"/>
         </record>
 

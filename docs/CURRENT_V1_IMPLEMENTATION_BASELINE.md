@@ -38,7 +38,7 @@ utility_billing
 
 ## 3. Current workflows
 
-### Reading
+### Reading and Reading Review Console
 
 The compatible V1 state set is:
 
@@ -48,6 +48,12 @@ draft → under_review → approved → queued → billed
 ```
 
 `billing_state` is not a current implementation field; any separation is TARGET / FUTURE OPTIONAL DESIGN.
+
+- **Approval-to-Invoice Automation:** When an operational supervisor approves a commercial billable periodic reading (`is_billable = True`), it transitions through `queued` and immediately triggers automated bill generation (`action_generate_bill` guarded by savepoint). The system auto-resolves the active reading period `date.range`, confirms the `sale.order` bill (`state = 'sale'`), creates and posts the customer invoice (`account.move` with `state = 'posted'`), and marks the reading `state = 'billed'`. If billing configuration is missing, the reading safely remains in `queued` with error logged in `billing_error`.
+- **Network Readings Isolation:** Network readings for public transformers (`transformer_id` with `not is_private`) and feeders (`feeder_id`) have `is_billable = False`. Upon approval, they remain in `state = 'approved'` as physical/technical records and never enter the billing queue or generate sale orders.
+- **Image Review Gate:** Approving a reading strictly requires `image_state == 'clear'`. Attempting to approve an unverified or blurry image raises a `ValidationError`.
+- **Review Console Workspace Scope:** The Reading Review Console (`utility.reading.review.service`) features dedicated tabs (Commercial, Transformers, Feeders, Replacements) and status filters. The "معتمدة" (Approved) filter tab and KPI cards aggregate `['approved', 'queued', 'billed']`, ensuring approved technical and billed commercial readings remain continuously visible in the workspace. In-row controls allow operators to mark image status (`clear`, `not_clear`, `not_same`, `loss_read`) and inspect images via lightbox.
+
 
 ### Reading Batch
 

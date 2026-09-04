@@ -156,7 +156,7 @@ class UtilityContractTemplateVersion(models.Model):
         if self.is_used_in_billing:
             return True  # مُعيَّن بشكل دائم، موثوق
         # Fallback: تحقق مباشر إذا لم يُعيَّن بعد (حالة عرضية للنسخ القديمة)
-        if 'sale.order' not in self.env:
+        if 'sale.order' not in self.env or 'contract_template_version_id' not in self.env['sale.order']._fields:
             return False
         return bool(
             self.env['sale.order'].sudo().search_count(

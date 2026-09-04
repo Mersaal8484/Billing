@@ -164,7 +164,7 @@ class UtilityCustomer(models.Model):
             if 'external_qr_reference' in vals:
                 vals['external_qr_reference'] = (
                     vals['external_qr_reference'] or '').strip() or False
-            if vals.get('customer_number', _('جديد')) == _('جديد'):
+            if not vals.get('customer_number') or vals.get('customer_number') in (_('جديد'), 'جديد', 'New'):
                 vals['customer_number'] = self.env['ir.sequence'].next_by_code('utility.customer') or _('جديد')
 
             partner = self.env['res.partner'].browse(vals.get('partner_id')).exists()

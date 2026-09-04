@@ -136,6 +136,11 @@ export class ReadingReviewWorkspaceAction extends Component {
         this.loadQueue(0, true);
     }
 
+    onFilterByStatus(status) {
+        this.state.filters.status = status;
+        this.loadQueue(0, true);
+    }
+
     onSearchInput(ev) {
         this.state.filters.search = ev.target.value;
         if (this.debounceSearchTimeout) {
@@ -217,22 +222,33 @@ export class ReadingReviewWorkspaceAction extends Component {
         this.state.activeLightboxIndex = this.state.items.findIndex(r => r.id === reading.id);
     }
 
-    async onMarkImageClear(reading) {
+    async onSetImageState(reading, imageState) {
         try {
-            const res = await this.orm.call("utility.reading.review.service", "action_mark_images_clear", [], {
+            const res = await this.orm.call("utility.reading.review.service", "action_set_image_state", [], {
                 reading_ids: [reading.id],
+                image_state: imageState,
             });
 
             if (res.status === "success") {
-                this.notification.add(_t("تم اعتماد وضوح صورة العداد: ") + reading.meter_number, { type: "success" });
-                // Optimistic local update so UI reflects change immediately
-                reading.image_state = "clear";
+                const labels = {
+                    clear: _t("واضحة"),
+                    not_clear: _t("غير واضحة"),
+                    not_same: _t("غير مطابقة للعداد"),
+                    loss_read: _t("قراءة ضائعة / تعذر القراءة"),
+                    pending: _t("بانتظار المراجعة"),
+                };
+                this.notification.add(_t("تم تحديث حالة الصورة: ") + (labels[imageState] || imageState), { type: "success" });
+                reading.image_state = imageState;
             } else {
-                this.notification.add(res.message || _t("تعذر اعتماد وضوح الصورة"), { type: "warning" });
+                this.notification.add(res.message || _t("تعذر تحديث حالة الصورة"), { type: "warning" });
             }
         } catch (e) {
-            this.notification.add(e.message || _t("خطأ أثناء اعتماد وضوح الصورة"), { type: "danger" });
+            this.notification.add(e.message || _t("خطأ أثناء تحديث حالة الصورة"), { type: "danger" });
         }
+    }
+
+    async onMarkImageClear(reading) {
+        return this.onSetImageState(reading, "clear");
     }
 
     onCloseLightbox() {

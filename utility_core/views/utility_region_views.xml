@@ -44,8 +44,8 @@
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
                         <group string="المالية" attrs="{'invisible': [('type', '!=', 'region')]}">
-                            <field name="cash_journal_id" attrs="{'required': [('type', '=', 'region')]}"/>
-                            <field name="financial_manager_id" attrs="{'required': [('type', '=', 'region')]}" widget="many2one_avatar_user"/>
+                            <field name="cash_journal_id"/>
+                            <field name="financial_manager_id" widget="many2one_avatar_user"/>
                         </group>
                     </group>
                     <notebook>

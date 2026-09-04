@@ -165,38 +165,54 @@
                                 </div>
                             </t>
 
-                            <!-- Mark Image Clear Button (in panel) - visible only if image not yet clear -->
-                            <t t-if="!isImageClear()">
-                                <div class="border-top border-secondary pt-3 mt-2">
-                                    <p class="text-muted text-xs mb-2">
-                                        <i class="fa fa-info-circle me-1"/>
-                                        راجع الصورة أعلاه ثم اعتمد وضوحها قبل اعتماد القراءة.
-                                    </p>
+                            <!-- Image State Action Buttons -->
+                            <div class="border-top border-secondary pt-3 mt-2">
+                                <h6 class="text-warning small font-weight-bold mb-2">
+                                    <i class="fa fa-camera me-1"/> تقييم حالة الصورة:
+                                </h6>
+                                <div class="d-grid gap-1 mb-2">
                                     <button
                                         type="button"
-                                        class="btn btn-outline-info btn-sm w-100"
+                                        class="btn btn-sm text-start"
+                                        t-att-class="props.reading.image_state === 'clear' ? 'btn-success text-white fw-bold' : 'btn-outline-success'"
                                         t-att-disabled="state.markingClear"
-                                        t-on-click="onMarkImageClear"
-                                        title="اعتماد وضوح الصورة (C)"
+                                        t-on-click="() => this.onSetImageState('clear')"
+                                        title="الصورة واضحة وقابلة للقراءة والاعتماد (C)"
                                     >
-                                        <t t-if="state.markingClear">
-                                            <i class="fa fa-spinner fa-spin me-1"/> جارٍ الاعتماد...
-                                        </t>
-                                        <t t-else="">
-                                            <i class="fa fa-eye me-1"/> الصورة واضحة (C)
-                                        </t>
+                                        <i class="fa fa-check-circle me-1"/> الصورة واضحة (Clear)
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="btn btn-sm text-start"
+                                        t-att-class="props.reading.image_state === 'not_clear' ? 'btn-danger text-white fw-bold' : 'btn-outline-danger'"
+                                        t-att-disabled="state.markingClear"
+                                        t-on-click="() => this.onSetImageState('not_clear')"
+                                        title="الصورة مشوشة أو غير واضحة"
+                                    >
+                                        <i class="fa fa-times-circle me-1"/> غير واضحة (Not Clear)
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="btn btn-sm text-start"
+                                        t-att-class="props.reading.image_state === 'not_same' ? 'btn-warning text-dark fw-bold' : 'btn-outline-warning'"
+                                        t-att-disabled="state.markingClear"
+                                        t-on-click="() => this.onSetImageState('not_same')"
+                                        title="صورة عداد آخر مختلف عن بيانات المشترك"
+                                    >
+                                        <i class="fa fa-exclamation-triangle me-1"/> غير مطابقة للعداد (Mismatch)
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="btn btn-sm text-start"
+                                        t-att-class="props.reading.image_state === 'loss_read' ? 'btn-secondary text-white fw-bold' : 'btn-outline-secondary'"
+                                        t-att-disabled="state.markingClear"
+                                        t-on-click="() => this.onSetImageState('loss_read')"
+                                        title="تعذر القراءة أو شاشة العداد تالفة"
+                                    >
+                                        <i class="fa fa-question-circle me-1"/> قراءة ضائعة / تعذر القراءة
                                     </button>
                                 </div>
-                            </t>
-                            <t t-else="">
-                                <div class="border-top border-secondary pt-3 mt-2">
-                                    <div class="alert alert-success p-2 mb-0 text-center" role="alert">
-                                        <i class="fa fa-check-circle me-1"/>
-                                        <strong>تم اعتماد وضوح الصورة</strong><br/>
-                                        <small>يمكنك الآن اعتماد القراءة.</small>
-                                    </div>
-                                </div>
-                            </t>
+                            </div>
                         </div>
                     </div>
 

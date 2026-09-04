@@ -163,31 +163,46 @@ class UtilityReading(models.Model):
         return super().write(vals)
 
     def _queue_approved_billable_readings(self):
-        """Move newly approved periodic billable readings to the billing queue.
+        """Move newly approved periodic billable readings to the billing queue and generate bills immediately.
 
-        This is deliberately centralized on the inherited reading model so every
-        approval entry point (form buttons, review console, and bulk approval)
-        follows the same workflow. Non-billable readings remain ``approved``.
+        This is centralized on the inherited reading model so every approval entry
+        point (form buttons, review console, and bulk approval) automatically
+        triggers bill calculation and generation for customer readings. Non-billable
+        readings (such as network feeders and transformers) remain ``approved``
+        as technical/operational records without generating bills.
         """
-        readings = self.filtered(
-            lambda reading: reading.state == 'approved'
-            and reading.reading_purpose == 'periodic'
-            and reading.date_range_id
-            and reading.is_billable
-            and (
-                reading.reading_category == 'customer'
-                or (
-                    reading.reading_category == 'transformer'
-                    and reading.is_private_transformer
-                )
-            )
-        )
-        if readings:
-            readings.with_context(_reading_state_transition=True, _bypass_reading_protection=True).write({
-                'state': 'queued',
-                'billing_error': False,
-            })
-        return readings
+        for reading in self:
+            if (reading.state in ('approved', 'queued')
+                and reading.reading_purpose == 'periodic'
+                and reading.is_billable
+                and (
+                    reading.reading_category == 'customer'
+                    or (
+                        reading.reading_category == 'transformer'
+                        and reading.is_private_transformer
+                    )
+                )):
+                if not reading.date_range_id:
+                    period = reading._get_current_billing_date_range()
+                    if not period:
+                        period = self.env['date.range'].search([('work_type', '=', 'readings')], order='date_start desc', limit=1) or self.env['date.range'].search([], order='date_start desc', limit=1)
+                    if period:
+                        reading.with_context(_reading_state_transition=True, _bypass_reading_protection=True).write({'date_range_id': period.id})
+
+                reading.with_context(_reading_state_transition=True, _bypass_reading_protection=True).write({
+                    'state': 'queued',
+                    'billing_error': False,
+                })
+                try:
+                    with self.env.cr.savepoint():
+                        reading.sudo().action_generate_bill()
+                except Exception as exc:
+                    _logger.exception('Immediate bill generation failed for reading %s: %s', reading.display_name, exc)
+                    reading.with_context(_reading_state_transition=True, _bypass_reading_protection=True).write({
+                        'state': 'queued',
+                        'billing_error': str(exc),
+                    })
+        return self
 
     def action_approve(self):
         """Approve readings and immediately enqueue billable periodic readings."""
@@ -256,11 +271,10 @@ class UtilityReading(models.Model):
     def _prepare_component_vals(self, order, readings):
         self.ensure_one()
         return [{
-            'order_id': order.id,
+            'sale_order_id': order.id,
             'reading_id': reading.id,
-            'customer_id': self.account_id.id,
+            'account_id': self.account_id.id,
             'meter_id': reading.meter_id.id,
-            'reading_purpose': self._canonical_reading_purpose(),
             'period_start': self.date_range_id.date_start or (
                 self.previous_reading_date.date() if self.previous_reading_date else fields.Date.today()),
             'period_end': self.date_range_id.date_end or (
@@ -275,9 +289,11 @@ class UtilityReading(models.Model):
     def _action_generate_periodic_bill(self):
         """Create one bill from a periodic reading and pending closing segments."""
         if not (self.env.user.has_group('utility_core.group_utility_billing_manager')
+                or self.env.user.has_group('utility_core.group_utility_revenue_manager')
+                or self.env.user.has_group('utility_core.group_utility_supervisor')
                 or self.env.user.has_group('utility_core.group_utility_admin')
                 or self.env.su):
-            raise AccessError(_('ليس لديك صلاحية إصدار فواتير الكهرباء. يتطلب صلاحية مدير الفوترة أو مدير النظام.'))
+            raise AccessError(_('ليس لديك صلاحية إصدار فواتير الكهرباء. يتطلب صلاحية مشرف أو مدير فوترة أو مدير النظام.'))
 
         self.ensure_one()
         if self.state == 'billed' or self.included_sale_order_id:
@@ -297,6 +313,8 @@ class UtilityReading(models.Model):
         if not self.date_range_id:
             period = self._get_current_billing_date_range()
             if not period:
+                period = self.env['date.range'].search([('work_type', '=', 'readings')], order='date_start desc', limit=1) or self.env['date.range'].search([], order='date_start desc', limit=1)
+            if not period:
                 raise ValidationError(_('يجب تحديد فترة القراءة الدورية قبل الفوترة.'))
             self.with_context(_reading_state_transition=True, _bypass_reading_protection=True).write({'date_range_id': period.id})
         
@@ -310,7 +328,7 @@ class UtilityReading(models.Model):
             'SELECT id FROM utility_reading WHERE id = %s FOR UPDATE',
             [self.id],
         )
-        self.invalidate_cache(['state', 'included_sale_order_id'])
+        self.invalidate_recordset(['state', 'included_sale_order_id'])
         existing = self.env['sale.order'].search([
             ('reading_id', '=', self.id), ('state', '!=', 'cancel')], limit=1)
         if existing:

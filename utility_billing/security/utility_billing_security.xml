@@ -10,7 +10,7 @@
         <record id="utility_sale_order_org_scope_rule" model="ir.rule">
             <field name="name">Utility Sale Order Organizational Scope Rule</field>
             <field name="model_id" ref="sale.model_sale_order"/>
-            <field name="domain_force">[(1, '=', 1)] if user._is_global_utility_scope() else (['|', ('account_id', '=', False), '|', ('account_id.area_id', 'in', user._get_effective_branch_ids()), ('account_id.region_id', 'in', user._get_effective_region_ids())] if (user._get_effective_branch_ids() or user._get_effective_region_ids()) else [('account_id', '=', False)])</field>
+            <field name="domain_force">[(1, '=', 1)] if user._is_global_utility_scope() else (['|', ('customer_id', '=', False), '|', ('customer_id.area_id', 'in', user._get_effective_branch_ids()), ('customer_id.region_id', 'in', user._get_effective_region_ids())] if (user._get_effective_branch_ids() or user._get_effective_region_ids()) else [('customer_id', '=', False)])</field>
             <field name="global" eval="True"/>
         </record>
 
@@ -24,7 +24,7 @@
         <record id="utility_writeoff_org_scope_rule" model="ir.rule">
             <field name="name">Write-off Organizational Scope Rule</field>
             <field name="model_id" ref="model_utility_writeoff"/>
-            <field name="domain_force">[(1, '=', 1)] if user._is_global_utility_scope() else (['|', ('sale_order_id.account_id.area_id', 'in', user._get_effective_branch_ids()), ('sale_order_id.account_id.region_id', 'in', user._get_effective_region_ids())] if (user._get_effective_branch_ids() or user._get_effective_region_ids()) else [('id', '=', False)])</field>
+            <field name="domain_force">[(1, '=', 1)] if user._is_global_utility_scope() else (['|', ('sale_order_id.customer_id.area_id', 'in', user._get_effective_branch_ids()), ('sale_order_id.customer_id.region_id', 'in', user._get_effective_region_ids())] if (user._get_effective_branch_ids() or user._get_effective_region_ids()) else [('id', '=', False)])</field>
             <field name="global" eval="True"/>
         </record>
 

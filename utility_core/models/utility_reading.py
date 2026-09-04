@@ -549,7 +549,7 @@ class UtilityReading(models.Model):
             raise AccessError(_('ليس لديك صلاحية اعتماد قراءات العدادات. يتطلب صلاحية مشرف أو مدير فوترة أو مدير إيرادات.'))
 
         for r in self:
-            if r.state != 'under_review':
+            if r.state not in ('under_review', 'approved', 'queued'):
                 raise ValidationError('يمكن الموافقة على القراءات قيد المراجعة فقط!')
 
             if r._requires_billing_review() and r.image_state != 'clear':
@@ -618,12 +618,35 @@ class UtilityReading(models.Model):
                 'reviewer_id': False,
                 'review_date': False,
             })
-            r.message_post(
-                body=_('تم رفض القراءة ونقلها إلى مسودة بواسطة %s. سبب الرفض: %s') % (
-                    self.env.user.name,
-                    reason.strip()
-                )
-            )
+
+    def _check_review_access(self):
+        if not (self.env.user.has_group('utility_core.group_utility_supervisor')
+                or self.env.user.has_group('utility_core.group_utility_billing_manager')
+                or self.env.user.has_group('utility_core.group_utility_revenue_manager')
+                or self.env.user.has_group('utility_core.group_utility_admin')
+                or self.env.user.has_group('utility_core.group_utility_auditor')
+                or self.env.su):
+            raise AccessError(_('ليس لديك صلاحية مراجعة صور وقراءات العدادات.'))
+
+    def action_mark_image_clear(self):
+        self._check_review_access()
+        for r in self:
+            r.with_context(_bypass_reading_protection=True).write({'image_state': 'clear'})
+
+    def action_mark_image_not_clear(self):
+        self._check_review_access()
+        for r in self:
+            r.with_context(_bypass_reading_protection=True).write({'image_state': 'not_clear'})
+
+    def action_mark_image_not_same(self):
+        self._check_review_access()
+        for r in self:
+            r.with_context(_bypass_reading_protection=True).write({'image_state': 'not_same'})
+
+    def action_mark_image_loss_read(self):
+        self._check_review_access()
+        for r in self:
+            r.with_context(_bypass_reading_protection=True).write({'image_state': 'loss_read'})
 
     def action_approve_batch(self):
         readings = self.filtered(lambda r: r.state == 'under_review')

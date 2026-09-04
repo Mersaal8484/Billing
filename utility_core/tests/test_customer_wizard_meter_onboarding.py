@@ -56,6 +56,9 @@ class TestUtilityCustomerWizardMeterOnboarding(TransactionCase):
         meter = customer.meter_id
         self.assertTrue(meter)
         self.assertEqual(meter.operational_number, 'OP-458721')
+        self.assertEqual(meter.connection_type, 'subscriber')
+        self.assertEqual(meter.customer_id, customer)
+        self.assertEqual(meter.region_id, self.region)
 
     def test_core_wizard_has_no_serial_input(self):
         fields = self.env['utility.customer.wizard']._fields
@@ -74,3 +77,21 @@ class TestUtilityCustomerWizardMeterOnboarding(TransactionCase):
         self.assertIn('create_meter', self.env['utility.customer.wizard']._fields)
         self.assertIn('meter_number', self.env['utility.customer.wizard']._fields)
         self.assertIn('operational_number', self.env['utility.customer.wizard']._fields)
+
+    def test_meter_connection_type_inference_and_onchange(self):
+        """Meters auto-infer subscriber connection_type when customer is written and clear on not_connected."""
+        wizard = self._new_wizard(operational_number='OP-INFER-01')
+        res = wizard.action_create_customer()
+        customer = self.env['utility.customer'].browse(res['res_id'])
+        meter = customer.meter_id
+        self.assertEqual(meter.connection_type, 'subscriber')
+
+        # Unlink via connection_type = 'not_connected' clears customer_id
+        meter.write({'connection_type': 'not_connected'})
+        self.assertEqual(meter.connection_type, 'not_connected')
+        self.assertFalse(meter.customer_id)
+
+        # Write customer_id again -> auto-infers connection_type = 'subscriber'
+        meter.write({'customer_id': customer.id})
+        self.assertEqual(meter.connection_type, 'subscriber')
+        self.assertEqual(meter.customer_id, customer)

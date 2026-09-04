@@ -5,6 +5,8 @@ from odoo.exceptions import AccessError, ValidationError, UserError
 from odoo import fields
 from datetime import timedelta
 
+SAMPLE_IMAGE = b"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=="
+
 
 class TestReadingLifecycleHardening(TransactionCase):
 
@@ -38,16 +40,12 @@ class TestReadingLifecycleHardening(TransactionCase):
         })
         self.range_type = self.DateRangeType.create({
             'name': 'نوع فترة قراءات',
-            'work_type': 'readings',
-            'billing_period': 'monthly',
         })
         self.date_range = self.DateRange.create({
             'name': 'فترة قراءات 2026-08',
             'type_id': self.range_type.id,
             'date_start': '2026-08-01',
             'date_end': '2026-08-31',
-            'work_type': 'readings',
-            'billing_period': 'monthly',
             'billing_cadence': 'monthly',
             'period_role': 'reading',
             'is_current_period': True,
@@ -59,31 +57,51 @@ class TestReadingLifecycleHardening(TransactionCase):
         self.category = self.Category.create({'name': 'سكني', 'code': 'RES-01'})
         self.subscriber = self.Subscriber.create({'name': 'عادي', 'code': 'NORM-01', 'category_id': self.category.id})
         self.partner = self.Partner.create({'name': 'مشترك اختبار القراءات', 'region_id': self.region.id})
+        self.route = self.env['utility.route'].create({
+            'name': 'خط سير قراءات تجريبي',
+            'code': 'READ-RT-01',
+            'region_id': self.region.id,
+            'area_id': self.area.id,
+        })
+        self.template = self.env['utility.contract.template'].create({
+            'name': 'قالب فوترة اختبار دورة الحياة',
+            'code': 'TPL-TEST-LC',
+            'pricing_mode': 'flat',
+            'price_per_kwh': 10.0,
+            'service_charge': 100.0,
+            'subscriber_category_ids': [(6, 0, self.category.ids)],
+            'subscriber_ids': [(6, 0, self.subscriber.ids)],
+            'scope': 'global',
+        })
         self.customer = self.Customer.create({
             'customer_number': 'CUST-RD-001',
             'partner_id': self.partner.id,
             'category_id': self.category.id,
             'subscriber_id': self.subscriber.id,
+            'contract_template_id': self.template.id,
             'region_id': self.region.id,
             'area_id': self.area.id,
+            'route_id': self.route.id,
         })
         self.meter = self.Meter.create({
             'meter_number': 'MTR-RD-001',
             'customer_id': self.customer.id,
+            'connection_type': 'subscriber',
             'multiplier': 1.0,
         })
 
         # Setup users: Reader, Supervisor, Billing Manager, Auditor
         self.role_reader = self.env.ref('utility_core.role_meter_reader')
         self.role_supervisor = self.env.ref('utility_core.role_supervisor')
-        self.role_billing_mgr = self.env.ref('utility_core.role_billing_manager')
-        self.role_auditor = self.env.ref('utility_core.role_auditor')
+        self.role_manager = self.env.ref('utility_core.role_manager')
 
         self.reader_user = self.User.create({
             'name': 'مستخدم قارئ العداد',
             'login': 'reader_user_lifecycle_test',
             'email': 'reader_lifecycle@test.com',
             'groups_id': [(6, 0, [self.env.ref('base.group_user').id, self.env.ref('utility_core.group_utility_meter_reader').id])],
+            'assigned_region_ids': [(6, 0, [self.region.id, self.area.id])],
+            'assigned_route_ids': [(6, 0, [self.route.id])],
         })
         self.Staff.create({
             'name': 'قارئ ميداني',
@@ -99,6 +117,7 @@ class TestReadingLifecycleHardening(TransactionCase):
             'login': 'supervisor_user_lifecycle_test',
             'email': 'supervisor_lifecycle@test.com',
             'groups_id': [(6, 0, [self.env.ref('base.group_user').id, self.env.ref('utility_core.group_utility_supervisor').id])],
+            'assigned_region_ids': [(6, 0, [self.region.id, self.area.id])],
         })
         self.Staff.create({
             'name': 'مشرف قراءات',
@@ -114,12 +133,13 @@ class TestReadingLifecycleHardening(TransactionCase):
             'login': 'billing_mgr_lifecycle_test',
             'email': 'billing_mgr_lifecycle@test.com',
             'groups_id': [(6, 0, [self.env.ref('base.group_user').id, self.env.ref('utility_core.group_utility_billing_manager').id])],
+            'assigned_region_ids': [(6, 0, [self.region.id, self.area.id])],
         })
         self.Staff.create({
             'name': 'مدير فوترة',
             'employee_code': 'BM-001',
             'user_id': self.billing_mgr_user.id,
-            'role_ids': [(4, self.role_billing_mgr.id)],
+            'role_ids': [(4, self.role_manager.id)],
             'region_id': self.region.id,
             'area_id': self.area.id,
         })
@@ -129,12 +149,12 @@ class TestReadingLifecycleHardening(TransactionCase):
             'login': 'auditor_lifecycle_test',
             'email': 'auditor_lifecycle@test.com',
             'groups_id': [(6, 0, [self.env.ref('base.group_user').id, self.env.ref('utility_core.group_utility_auditor').id])],
+            'assigned_region_ids': [(6, 0, [self.region.id, self.area.id])],
         })
         self.Staff.create({
             'name': 'مراجع رقابي',
             'employee_code': 'AUD-001',
             'user_id': self.auditor_user.id,
-            'role_ids': [(4, self.role_auditor.id)],
             'region_id': self.region.id,
             'area_id': self.area.id,
         })
@@ -148,7 +168,8 @@ class TestReadingLifecycleHardening(TransactionCase):
             'reading_purpose': 'opening',
             'is_initial_reading': True,
             'image_state': 'clear',
-            'meter_image': b'fake_image_data',
+            'meter_image': SAMPLE_IMAGE,
+            'state': 'approved',
         })
 
     def test_01_meter_reader_cannot_approve_or_reject(self):
@@ -162,7 +183,7 @@ class TestReadingLifecycleHardening(TransactionCase):
             'reading_purpose': 'periodic',
             'date_range_id': self.date_range.id,
             'image_state': 'clear',
-            'meter_image': b'fake_image_data',
+            'meter_image': SAMPLE_IMAGE,
         })
         reading.action_submit_review()
         self.assertEqual(reading.state, 'under_review')
@@ -186,13 +207,14 @@ class TestReadingLifecycleHardening(TransactionCase):
             'reading_purpose': 'periodic',
             'date_range_id': self.date_range.id,
             'image_state': 'clear',
-            'meter_image': b'fake_image_data',
+            'meter_image': SAMPLE_IMAGE,
         })
         reading.action_submit_review()
 
         # Supervisor approves
         reading.with_user(self.supervisor_user).action_approve()
-        self.assertEqual(reading.state, 'queued')
+        self.assertEqual(reading.state, 'billed')
+        self.assertTrue(reading.included_sale_order_id)
         self.assertTrue(reading.is_validated)
         self.assertEqual(reading.validator_id.id, self.supervisor_user.id)
         self.assertEqual(reading.consumption, 200.0)
@@ -208,7 +230,7 @@ class TestReadingLifecycleHardening(TransactionCase):
             'reading_purpose': 'periodic',
             'date_range_id': self.date_range.id,
             'image_state': 'clear',
-            'meter_image': b'fake_image_data',
+            'meter_image': SAMPLE_IMAGE,
         })
         reading.action_submit_review()
 
@@ -246,7 +268,7 @@ class TestReadingLifecycleHardening(TransactionCase):
             'reading_purpose': 'periodic',
             'date_range_id': self.date_range.id,
             'image_state': 'clear',
-            'meter_image': b'fake_image_data',
+            'meter_image': SAMPLE_IMAGE,
         })
         reading.action_submit_review()
         self.assertEqual(reading.consumption, -100.0)
@@ -269,7 +291,7 @@ class TestReadingLifecycleHardening(TransactionCase):
             'reading_purpose': 'periodic',
             'date_range_id': self.date_range.id,
             'image_state': 'clear',
-            'meter_image': b'fake_image_data',
+            'meter_image': SAMPLE_IMAGE,
         })
         self.assertEqual(reading.raw_consumption, 250.0)
         self.assertEqual(reading.consumption, 250.0)
@@ -301,7 +323,7 @@ class TestReadingLifecycleHardening(TransactionCase):
             'reading_purpose': 'periodic',
             'date_range_id': self.date_range.id,
             'image_state': 'clear',
-            'meter_image': b'fake_image_data',
+            'meter_image': SAMPLE_IMAGE,
         })
 
         # 1. ORM level duplicate prevention in single transaction
@@ -310,11 +332,11 @@ class TestReadingLifecycleHardening(TransactionCase):
                 'meter_id': self.meter.id,
                 'account_id': self.customer.id,
                 'reading_value': 250.0,
-                'reading_date': fields.Datetime.now(),
+                'reading_date': fields.Datetime.now() + timedelta(minutes=5),
                 'reading_purpose': 'periodic',
                 'date_range_id': self.date_range.id,
                 'image_state': 'clear',
-                'meter_image': b'fake_image_data',
+                'meter_image': SAMPLE_IMAGE,
             })
 
     def test_07_immutability_and_allowed_metadata_across_lifecycle(self):
@@ -328,13 +350,13 @@ class TestReadingLifecycleHardening(TransactionCase):
             'reading_purpose': 'periodic',
             'date_range_id': self.date_range.id,
             'image_state': 'clear',
-            'meter_image': b'fake_image_data',
+            'meter_image': SAMPLE_IMAGE,
         })
         reading.action_submit_review()
         reading.with_user(self.supervisor_user).action_approve()
-        self.assertEqual(reading.state, 'queued')
+        self.assertEqual(reading.state, 'billed')
 
-        # Critical fields cannot be altered in queued state
+        # Critical fields cannot be altered in billed state
         with self.assertRaises(ValidationError):
             reading.write({'reading_value': 350.0})
         with self.assertRaises(ValidationError):
@@ -344,8 +366,9 @@ class TestReadingLifecycleHardening(TransactionCase):
         reading.write({'remarks': 'ملاحظة إدارية مقبولة'})
         self.assertEqual(reading.remarks, 'ملاحظة إدارية مقبولة')
 
-        # Bill generation
-        reading.with_user(self.billing_mgr_user).action_generate_bill()
+        # Bill generation returns existing order
+        res = reading.with_user(self.billing_mgr_user).action_generate_bill()
+        self.assertEqual(res.get('res_id'), reading.included_sale_order_id.id)
         self.assertEqual(reading.state, 'billed')
 
         # Billed reading blocks critical mutations and cannot be rejected directly
@@ -365,16 +388,17 @@ class TestReadingLifecycleHardening(TransactionCase):
             'reading_purpose': 'periodic',
             'date_range_id': self.date_range.id,
             'image_state': 'clear',
-            'meter_image': b'fake_image_data',
+            'meter_image': SAMPLE_IMAGE,
         })
         reading.action_submit_review()
         reading.with_user(self.supervisor_user).action_approve()
+        self.assertEqual(reading.state, 'billed')
 
-        # First generation
+        # First generation (already generated upon approval, returns existing)
         res1 = reading.with_user(self.billing_mgr_user).action_generate_bill()
         order_id = res1.get('res_id')
         self.assertTrue(order_id)
-        self.assertEqual(reading.state, 'billed')
+        self.assertEqual(order_id, reading.included_sale_order_id.id)
 
         # Second generation: returns existing order without creating duplicate
         res2 = reading.with_user(self.billing_mgr_user).action_generate_bill()
@@ -390,7 +414,7 @@ class TestReadingLifecycleHardening(TransactionCase):
             'reading_purpose': 'opening',
             'reading_type': 'estimated',
             'image_state': 'clear',
-            'meter_image': b'fake_image_data',
+            'meter_image': SAMPLE_IMAGE,
         })
         self.assertTrue(reading.is_estimated)
 
@@ -411,7 +435,7 @@ class TestReadingLifecycleHardening(TransactionCase):
             'reading_purpose': 'periodic',
             'date_range_id': self.date_range.id,
             'image_state': 'clear',
-            'meter_image': b'fake_image_data',
+            'meter_image': SAMPLE_IMAGE,
         })
         self.assertEqual(reading.state, 'draft')
 
@@ -438,7 +462,7 @@ class TestReadingLifecycleHardening(TransactionCase):
             'reading_purpose': 'periodic',
             'date_range_id': self.date_range.id,
             'image_state': 'clear',
-            'meter_image': b'fake_image_data',
+            'meter_image': SAMPLE_IMAGE,
         })
         reading.action_submit_review()
         self.assertEqual(reading.state, 'under_review')

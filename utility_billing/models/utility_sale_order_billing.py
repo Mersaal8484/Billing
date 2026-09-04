@@ -154,6 +154,19 @@ class UtilitySaleOrderBilling(models.Model):
                 self._accumulate_amount(line.meter_line_type, amount)
 
             if pricing_mode == 'flat' and consumption > 0:
+                has_consumption_line = any(cmd[2].get('meter_line_type') == 'consumption' for cmd in lines)
+                if not has_consumption_line and (price_per_kwh or 0.0) >= 0:
+                    energy_amount = consumption * (price_per_kwh or 0.0)
+                    lines.append((0, 0, {
+                        'product_id': kwh_product.id if kwh_product else False,
+                        'name': _('استهلاك طاقة كهربائية - سعر موحد'),
+                        'product_uom_qty': consumption,
+                        'price_unit': price_per_kwh or 0.0,
+                        'meter_line_type': 'consumption',
+                        'tax_id': [(5, 0, 0)],
+                    }))
+                    self._accumulate_amount('consumption', energy_amount)
+
                 applied_pricing_blocks.append({
                     'source_block_id': False,
                     'block_name': _('سعر موحد'),
@@ -164,6 +177,18 @@ class UtilitySaleOrderBilling(models.Model):
                     'amount': consumption * (price_per_kwh or 0.0),
                     'is_discount': False,
                 })
+
+            has_service_line = any(cmd[2].get('meter_line_type') in ('service_charge', 'fixed_fee') for cmd in lines)
+            if not has_service_line and (service_charge or 0.0) > 0:
+                lines.append((0, 0, {
+                    'product_id': service_product.id if service_product else False,
+                    'name': _('رسم خدمة الكهرباء'),
+                    'product_uom_qty': 1.0,
+                    'price_unit': service_charge,
+                    'meter_line_type': 'service_charge',
+                    'tax_id': [(5, 0, 0)],
+                }))
+                self._accumulate_amount('service_charge', service_charge)
 
             if pricing_mode in ('block', 'tier') and consumption > 0:
                 if pricing_mode == 'block':

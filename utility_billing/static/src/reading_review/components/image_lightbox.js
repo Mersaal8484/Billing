@@ -135,10 +135,18 @@ export class ReadingImageLightbox extends Component {
      * then updates image_state locally for immediate UI feedback.
      */
     async onMarkImageClear() {
-        if (this.state.markingClear || this.isImageClear()) return;
+        return this.onSetImageState('clear');
+    }
+
+    async onSetImageState(imageState) {
+        if (this.state.markingClear) return;
         this.state.markingClear = true;
         try {
-            await this.props.onMarkImageClear(this.props.reading);
+            if (this.props.onSetImageState) {
+                await this.props.onSetImageState(this.props.reading, imageState);
+            } else if (this.props.onMarkImageClear && imageState === 'clear') {
+                await this.props.onMarkImageClear(this.props.reading);
+            }
         } finally {
             this.state.markingClear = false;
         }
@@ -155,5 +163,6 @@ ReadingImageLightbox.props = {
     onPrevious: Function,
     onApprove: Function,
     onReject: Function,
-    onMarkImageClear: Function,
+    onMarkImageClear: { type: Function, optional: true },
+    onSetImageState: { type: Function, optional: true },
 };

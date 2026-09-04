@@ -38,9 +38,24 @@ Transformer → Route Assignment Wizard → Route → Meter Reader & Assigned Cu
 
 Bill, Accounting Invoice, and Payment are distinct concepts and records.
 
-## 5. Reading UX
+## 5. Reading & Reading Review Console UX
 
-Reading state is visible and compatible with V1: `draft`, `under_review`, `approved`, `queued`, `billed`, `error`. Billing-owned commercial fields remain in the Billing extension. Review/rejection and correction paths must preserve historical evidence.
+Reading state is visible and compatible with V1: `draft`, `under_review`, `approved`, `queued`, `billed`, `error`. Billing-owned commercial fields remain in the Billing extension. Review/rejection and correction paths preserve historical evidence.
+
+### Reading Review Console UX (`utility.reading.review.service` & OWL Component)
+- **Review Tabs:** Dedicated tabs for Commercial (`commercial`), Transformers (`transformers`), Feeders (`feeders`), and Replacements (`replacements`).
+- **In-Row Image Review Controls:**
+  - Thumbnail preview and status badge showing image state: واضحة (`clear`), غير واضحة (`not_clear`), عداد غير مطابق (`not_same`), فاقد قراءة (`loss_read`).
+  - Quick action buttons directly inside each row allow supervisors to evaluate and mark image state with one click (`action_mark_image_clear`, `action_mark_image_not_clear`).
+  - Click-to-enlarge Lightbox modal supports high-resolution image inspection, rotation, and detailed verification.
+- **Approval Gate & Automation:**
+  - Approving a reading (`action_approve`, `action_approve_review`, `action_bulk_approve_safe`) strictly requires `image_state == 'clear'`. Unclear or uninspected images cannot be approved.
+  - Approving a commercial periodic reading automatically transitions it to `queued` → `billed`, generating and confirming the `sale.order` and posting the customer `account.move` invoice.
+  - Network readings (public transformers and feeders) remain in `approved` state without billing.
+- **Approved Workspace Scope & KPI Cards:**
+  - The "معتمدة" (Approved) filter tab and KPI statistics query `['approved', 'queued', 'billed']`, ensuring approved technical and billed commercial readings remain visible in the workspace without disappearing after approval.
+  - KPI cards provide instant count and direct filtering for pending review (`under_review`), approved (`approved`), rejected (`rejected`), and total readings.
+
 
 ## 6. Reading Batch UX
 

@@ -90,6 +90,18 @@
                         <group string="معلومات أساسية">
                             <field name="payment_type"/>
                             <field name="connection_type" widget="radio"/>
+                            <field name="customer_id"
+                                   attrs="{'required': [('connection_type', '=', 'subscriber')],
+                                           'invisible': [('connection_type', '!=', 'subscriber')]}"/>
+                            <field name="linked_transformer_id"
+                                   attrs="{'required': [('connection_type', '=', 'transformer')],
+                                           'invisible': [('connection_type', '!=', 'transformer')]}"/>
+                            <field name="linked_private_transformer_id"
+                                   attrs="{'required': [('connection_type', '=', 'private_transformer')],
+                                           'invisible': [('connection_type', '!=', 'private_transformer')]}"/>
+                            <field name="linked_feeder_id"
+                                   attrs="{'required': [('connection_type', '=', 'feeder')],
+                                           'invisible': [('connection_type', '!=', 'feeder')]}"/>
                             <field name="meter_type_id" options="{'no_create': True, 'no_open': True}"/>
                             <field name="operational_number" placeholder="OP-XXXXX"/>
                             <field name="manufacturer"/>
@@ -145,21 +157,6 @@
                         </page>
                         <page name="assignment" string="التعيين والموقع">
                             <group>
-                                <group string="بيانات الربط">
-                                    <field name="customer_id"
-                                           attrs="{'required': [('connection_type', '=', 'subscriber')],
-                                                   'invisible': [('connection_type', '!=', 'subscriber')]}"/>
-                                    <field name="linked_transformer_id"
-                                           attrs="{'required': [('connection_type', '=', 'transformer')],
-                                                   'invisible': [('connection_type', '!=', 'transformer')]}"/>
-                                    <field name="linked_private_transformer_id"
-                                           attrs="{'required': [('connection_type', '=', 'private_transformer')],
-                                                   'invisible': [('connection_type', '!=', 'private_transformer')]}"/>
-                                    <field name="linked_feeder_id"
-                                           attrs="{'required': [('connection_type', '=', 'feeder')],
-                                                   'invisible': [('connection_type', '!=', 'feeder')]}"/>
-                                    <field name="is_coupling_meter"/>
-                                </group>
                                 <group string="الموقع الجغرافي">
                                     <field name="region_id"/>
                                     <field name="area_id"/>
@@ -168,6 +165,7 @@
                                     <field name="feeder_id"/>
                                     <field name="transformer_id"/>
                                     <field name="route_id"/>
+                                    <field name="is_coupling_meter"/>
                                 </group>
                             </group>
                         </page>

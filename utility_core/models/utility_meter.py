@@ -115,12 +115,56 @@ class UtilityMeter(models.Model):
         if not self.meter_type_id:
             self.meter_type_id = model.meter_type_id
 
+    @api.onchange('connection_type')
+    def _onchange_connection_type(self):
+        if self.connection_type == 'not_connected':
+            self.customer_id = False
+            self.linked_transformer_id = False
+            self.linked_private_transformer_id = False
+            self.linked_feeder_id = False
+        elif self.connection_type == 'subscriber':
+            self.linked_transformer_id = False
+            self.linked_private_transformer_id = False
+            self.linked_feeder_id = False
+        elif self.connection_type == 'transformer':
+            self.customer_id = False
+            self.linked_private_transformer_id = False
+            self.linked_feeder_id = False
+        elif self.connection_type == 'private_transformer':
+            self.customer_id = False
+            self.linked_transformer_id = False
+            self.linked_feeder_id = False
+        elif self.connection_type == 'feeder':
+            self.customer_id = False
+            self.linked_transformer_id = False
+            self.linked_private_transformer_id = False
+
+    @api.onchange('customer_id')
+    def _onchange_customer_id(self):
+        if self.customer_id and self.connection_type != 'subscriber':
+            self.connection_type = 'subscriber'
+
+    @api.onchange('linked_transformer_id')
+    def _onchange_linked_transformer_id(self):
+        if self.linked_transformer_id and self.connection_type != 'transformer':
+            self.connection_type = 'transformer'
+
+    @api.onchange('linked_private_transformer_id')
+    def _onchange_linked_private_transformer_id(self):
+        if self.linked_private_transformer_id and self.connection_type != 'private_transformer':
+            self.connection_type = 'private_transformer'
+
+    @api.onchange('linked_feeder_id')
+    def _onchange_linked_feeder_id(self):
+        if self.linked_feeder_id and self.connection_type != 'feeder':
+            self.connection_type = 'feeder'
+
     def _update_last_reading(self):
         for m in self:
             last = self.env['utility.reading'].search(
                 [('meter_id', '=', m.id)], order='reading_date desc, id desc', limit=1)
             if last:
-                m.write({
+                m.sudo().write({
                     'last_reading_value': last.reading_value,
                     'last_read_date': last.reading_date,
                 })
@@ -386,6 +430,15 @@ class UtilityMeter(models.Model):
                 vals['operational_number'] = (vals['operational_number'] or '').strip() or False
             if vals.get('meter_number', _('جديد')) == _('جديد'):
                 vals['meter_number'] = self.env['ir.sequence'].next_by_code('utility.meter') or _('جديد')
+            if vals.get('connection_type', 'not_connected') == 'not_connected':
+                if vals.get('customer_id'):
+                    vals['connection_type'] = 'subscriber'
+                elif vals.get('linked_private_transformer_id'):
+                    vals['connection_type'] = 'private_transformer'
+                elif vals.get('linked_transformer_id'):
+                    vals['connection_type'] = 'transformer'
+                elif vals.get('linked_feeder_id'):
+                    vals['connection_type'] = 'feeder'
         # Validate canonical ownership scope before creating meters.
         # SECURITY: bypass gated to superuser / Utility Admin only.
         _bypass_allowed = (
@@ -545,6 +598,27 @@ class UtilityMeter(models.Model):
         vals = dict(vals)
         if 'operational_number' in vals:
             vals['operational_number'] = (vals['operational_number'] or '').strip() or False
+        # Auto-infer connection_type when linking an entity without explicit connection_type
+        if vals.get('connection_type') == 'not_connected':
+            vals['customer_id'] = False
+            vals['linked_transformer_id'] = False
+            vals['linked_private_transformer_id'] = False
+            vals['linked_feeder_id'] = False
+        elif 'connection_type' not in vals:
+            if vals.get('customer_id'):
+                vals['connection_type'] = 'subscriber'
+            elif vals.get('linked_private_transformer_id'):
+                vals['connection_type'] = 'private_transformer'
+            elif vals.get('linked_transformer_id'):
+                vals['connection_type'] = 'transformer'
+            elif vals.get('linked_feeder_id'):
+                vals['connection_type'] = 'feeder'
+
+        if 'customer_id' in vals and not vals['customer_id'] and 'connection_type' not in vals:
+            for meter in self:
+                if meter.connection_type == 'subscriber':
+                    vals['connection_type'] = 'not_connected'
+
         # Canonical mutation integrity: validate ownership before any DB write.
         self._check_mutation_scope(vals)
         for meter in self:

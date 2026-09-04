@@ -97,13 +97,13 @@ class UtilityReadingReviewService(models.AbstractModel):
         if status == 'under_review':
             return [('state', '=', 'under_review')]
         if status == 'approved':
-            return [('state', '=', 'approved')]
+            return [('state', 'in', ['approved', 'queued', 'billed'])]
         if status == 'rejected':
             return [('state', '=', 'draft'), ('rejection_reason', '!=', False)]
         if status == 'exceptions':
             return ['|', ('state', '=', 'error'), ('image_state', 'in', ['not_clear', 'not_same', 'none', 'loss_read'])]
         if status == 'all':
-            return [('state', 'in', ['under_review', 'approved', 'draft', 'error'])]
+            return [('state', 'in', ['under_review', 'approved', 'queued', 'billed', 'draft', 'error'])]
         return [('state', '=', status)]
 
     def _build_review_anomaly_domain(self, anomaly_filter='all'):
@@ -143,7 +143,7 @@ class UtilityReadingReviewService(models.AbstractModel):
             return sum(row['__count'] for row in grouped)
 
         pending_count = _count([('state', '=', 'under_review')])
-        approved_count = _count([('state', '=', 'approved')])
+        approved_count = _count([('state', 'in', ['approved', 'queued', 'billed'])])
         rejected_count = _count([('state', '=', 'draft'), ('rejection_reason', '!=', False)])
         exceptions_count = _count(['|', ('state', '=', 'error'), ('image_state', 'in', ['not_clear', 'not_same', 'none', 'loss_read'])])
         return {
@@ -539,3 +539,47 @@ class UtilityReadingReviewService(models.AbstractModel):
         if res.get('status') == 'success':
             repl.write({'state': 'done'})
         return res
+
+    @api.model
+    def action_mark_images_clear(self, reading_ids):
+        """اعتماد الصورة كصورة واضحة للقراءات المحددة"""
+        if not reading_ids:
+            return {'status': 'error', 'message': _('لم يتم تحديد أي قراءة.')}
+
+        readings = self.env['utility.reading'].search([('id', 'in', reading_ids)])
+        if not readings:
+            raise ValidationError(_("القراءات المحددة غير موجودة."))
+
+        user = self.env.user
+        self._check_geographic_access(readings, user)
+
+        readings.action_mark_image_clear()
+        return {
+            'status': 'success',
+            'cleared_ids': readings.ids,
+            'count': len(readings),
+        }
+
+    @api.model
+    def action_set_image_state(self, reading_ids, image_state):
+        """تحديث حالة الصورة لقراءة أو مجموعة قراءات"""
+        if not reading_ids:
+            return {'status': 'error', 'message': _('لم يتم تحديد أي قراءة.')}
+
+        if image_state not in ['none', 'pending', 'clear', 'not_clear', 'not_same', 'loss_read']:
+            raise ValidationError(_('حالة الصورة المحددة غير صالحة.'))
+
+        readings = self.env['utility.reading'].search([('id', 'in', reading_ids)])
+        if not readings:
+            raise ValidationError(_("القراءات المحددة غير موجودة."))
+
+        user = self.env.user
+        self._check_geographic_access(readings, user)
+
+        readings.with_context(_bypass_reading_protection=True).write({'image_state': image_state})
+        return {
+            'status': 'success',
+            'updated_ids': readings.ids,
+            'image_state': image_state,
+            'count': len(readings),
+        }

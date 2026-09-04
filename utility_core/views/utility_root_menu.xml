@@ -2,6 +2,8 @@
 <odoo>
     <menuitem id="menu_utility_root" name="الكهرباء" sequence="90" web_icon="utility_core,static/description/icon.png" />
     <menuitem id="menu_utility_customer_management" name="العملاء" sequence="10" parent="menu_utility_root" />
+    <menuitem id="menu_utility_meters" name="العدادات" sequence="15" parent="menu_utility_root" />
+    <menuitem id="menu_utility_network" name="الشبكة" sequence="20" parent="menu_utility_root" />
     <menuitem id="menu_utility_master_data" name="البيانات الأساسية" sequence="85" parent="menu_utility_root" groups="group_utility_admin" />
     <menuitem id="menu_utility_config" name="إعدادات النظام" sequence="90" parent="menu_utility_root" groups="group_utility_admin" />
 </odoo>
