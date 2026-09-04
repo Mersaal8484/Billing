@@ -575,6 +575,7 @@ class UtilityReadingReviewService(models.AbstractModel):
 
         user = self.env.user
         self._check_geographic_access(readings, user)
+        readings._check_review_access()
 
         readings.with_context(_bypass_reading_protection=True).write({'image_state': image_state})
         return {

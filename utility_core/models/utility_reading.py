@@ -662,17 +662,47 @@ class UtilityReading(models.Model):
             vals['is_estimated'] = False
 
         # P0 Guard: state cannot be directly mutated outside controlled transitions
-        if 'state' in vals and not (
-                self.env.context.get('_reading_state_transition')
-                or self.env.context.get('_bypass_reading_protection')
-                or self.env.context.get('allow_billing_adjustment')):
-            raise ValidationError(_('لا يمكن تغيير حالة القراءة مباشرةً. يجب استخدام أزرار وسير العمل المعتمد.'))
+        is_su_or_admin = bool(self.env.su or self.env.user.has_group('utility_core.group_utility_admin'))
+        is_billing_mgr = bool(is_su_or_admin or self.env.user.has_group('utility_core.group_utility_billing_manager'))
+        is_supervisor = bool(is_su_or_admin or self.env.user.has_group('utility_core.group_utility_supervisor'))
+        is_revenue_mgr = bool(is_su_or_admin or self.env.user.has_group('utility_core.group_utility_revenue_manager'))
+        is_reader = bool(self.env.user.has_group('utility_core.group_utility_meter_reader'))
 
-        if not (self.env.context.get('_bypass_reading_protection') or self.env.context.get('allow_billing_adjustment')):
+        # Only authorized roles can bypass reading protection or perform billing adjustments
+        has_bypass = bool(
+            (self.env.context.get('_bypass_reading_protection') and (is_su_or_admin or is_billing_mgr or is_supervisor or is_revenue_mgr))
+            or (self.env.context.get('allow_billing_adjustment') and is_billing_mgr)
+        )
+
+        # Guard direct state mutations
+        if 'state' in vals:
+            target_state = vals['state']
+            has_transition_flag = bool(self.env.context.get('_reading_state_transition'))
+            transition_authorized = False
+            if is_su_or_admin or is_billing_mgr:
+                transition_authorized = has_transition_flag or has_bypass
+            elif is_supervisor or is_revenue_mgr:
+                if has_transition_flag or has_bypass:
+                    transition_authorized = target_state in ('under_review', 'approved', 'queued', 'draft')
+            elif is_reader:
+                if has_transition_flag and target_state == 'under_review':
+                    transition_authorized = True
+
+            if not transition_authorized:
+                raise ValidationError(_('لا يمكن تغيير حالة القراءة مباشرةً. يجب استخدام أزرار وسير العمل المعتمد.'))
+
+        # Enforce review access for image_state evaluations (clear, not_clear, not_same, loss_read)
+        # Note: 'pending' is the initial state set upon image capture/upload by readers.
+        if 'image_state' in vals and vals.get('image_state') != 'pending' and not self.env.su:
+            self._check_review_access()
+
+        if not has_bypass:
             # 'state' is included in bypass_fields because its direct mutation is already guarded by the first block above.
             bypass_fields = {'state', 'active', 'remarks', 'rejection_reason', 'rejected_by', 'rejected_at'}
             for reading in self:
-                editable = self.STATE_EDITABLE.get(reading.state, set())
+                editable = set(self.STATE_EDITABLE.get(reading.state, set()))
+                if 'image_state' in vals:
+                    editable.add('image_state')
                 changed = set(vals) - bypass_fields
                 if changed and not changed.issubset(editable):
                     forbidden = changed - editable
@@ -723,10 +753,14 @@ class UtilityReading(models.Model):
                 billing_period = account._get_effective_billing_period() if account else False
                 period_domain = self._get_open_period_domain(
                     work_type='readings', billing_period=billing_period)
+                raw_rdate = vals.get('reading_date')
+                if raw_rdate:
+                    rdate = fields.Date.to_date(raw_rdate)
+                    period_domain += [('date_start', '<=', rdate), ('date_end', '>=', rdate)]
                 open_period = self.env['date.range'].search(period_domain, limit=1)
                 if not open_period:
                     raise ValidationError(_(
-                        'لا توجد فترة قراءة مفعلة تطابق دورية المشترك.'))
+                        'لا توجد فترة قراءة مفعلة ومطابقة لتاريخ ودورية المشترك.'))
                 vals['date_range_id'] = open_period.id
         records = super().create(vals_list)
         for r in records:

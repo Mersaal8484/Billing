@@ -182,7 +182,6 @@ class TestReadingLifecycleHardening(TransactionCase):
             'reading_date': fields.Datetime.now(),
             'reading_purpose': 'periodic',
             'date_range_id': self.date_range.id,
-            'image_state': 'clear',
             'meter_image': SAMPLE_IMAGE,
         })
         reading.action_submit_review()
@@ -474,3 +473,105 @@ class TestReadingLifecycleHardening(TransactionCase):
         # Auditor attempts to reject -> AccessError
         with self.assertRaises(AccessError):
             reading.with_user(self.auditor_user).action_reject()
+
+    def test_12_context_bypass_spoofing_blocked_for_unauthorized_user(self):
+        """P0: Unauthorized user passing _bypass_reading_protection or _reading_state_transition over RPC is blocked."""
+        self._create_opening_reading(100.0)
+        reading = self.Reading.create({
+            'meter_id': self.meter.id,
+            'account_id': self.customer.id,
+            'reading_value': 250.0,
+            'reading_date': fields.Datetime.now(),
+            'reading_purpose': 'periodic',
+            'date_range_id': self.date_range.id,
+            'image_state': 'clear',
+            'meter_image': SAMPLE_IMAGE,
+        })
+        reading.action_submit_review()
+        self.assertEqual(reading.state, 'under_review')
+
+        # Reader attempts to modify frozen reading_value using _bypass_reading_protection -> ValidationError
+        with self.assertRaises(ValidationError):
+            reading.with_user(self.reader_user).with_context(
+                _bypass_reading_protection=True
+            ).write({'reading_value': 999.0})
+
+        # Reader attempts direct state jump to approved using _reading_state_transition -> ValidationError
+        with self.assertRaises(ValidationError):
+            reading.with_user(self.reader_user).with_context(
+                _reading_state_transition=True
+            ).write({'state': 'approved'})
+
+        # Reader attempts to bypass using allow_billing_adjustment -> ValidationError
+        with self.assertRaises(ValidationError):
+            reading.with_user(self.reader_user).with_context(
+                allow_billing_adjustment=True
+            ).write({'reading_value': 999.0})
+
+    def test_13_image_state_requires_review_access(self):
+        """P1: Changing image_state requires reviewer role across all interfaces."""
+        self._create_opening_reading(100.0)
+        reading = self.Reading.create({
+            'meter_id': self.meter.id,
+            'account_id': self.customer.id,
+            'reading_value': 250.0,
+            'reading_date': fields.Datetime.now(),
+            'reading_purpose': 'periodic',
+            'date_range_id': self.date_range.id,
+            'image_state': 'pending',
+            'meter_image': SAMPLE_IMAGE,
+        })
+        reading.action_submit_review()
+
+        # Reader has NO review access -> AccessError
+        with self.assertRaises(AccessError):
+            reading.with_user(self.reader_user).write({'image_state': 'clear'})
+
+        # Review service action_set_image_state with reader -> AccessError
+        review_service = self.env['utility.reading.review.service']
+        with self.assertRaises(AccessError):
+            review_service.with_user(self.reader_user).action_set_image_state([reading.id], 'clear')
+
+        # Supervisor has review access -> succeeds
+        review_service.with_user(self.supervisor_user).action_set_image_state([reading.id], 'clear')
+        self.assertEqual(reading.image_state, 'clear')
+
+        # Billing manager has review access -> succeeds
+        reading.with_user(self.billing_mgr_user).write({'image_state': 'not_clear'})
+        self.assertEqual(reading.image_state, 'not_clear')
+
+    def test_14_billing_without_eligible_date_range_fails(self):
+        """P1: Attempting to create or resolve a period without an eligible covering open period raises ValidationError."""
+        # 1. Creating a periodic reading without date_range_id for an out-of-period date raises ValidationError
+        with self.assertRaises(ValidationError):
+            self.Reading.create({
+                'meter_id': self.meter.id,
+                'account_id': self.customer.id,
+                'reading_value': 250.0,
+                'reading_date': '2020-01-15 10:00:00',
+                'reading_purpose': 'periodic',
+                'meter_image': SAMPLE_IMAGE,
+            })
+
+        # 2. Directly resolving an eligible date range on a reading record with an out-of-period date raises ValidationError
+        out_of_period_reading = self.Reading.new({
+            'meter_id': self.meter.id,
+            'account_id': self.customer.id,
+            'reading_value': 250.0,
+            'reading_date': '2020-01-15 10:00:00',
+            'reading_purpose': 'periodic',
+        })
+        with self.assertRaises(ValidationError):
+            out_of_period_reading._resolve_eligible_billing_date_range()
+
+        # 3. For a reading with current date covering self.date_range, resolution succeeds and returns self.date_range
+        valid_reading = self.Reading.new({
+            'meter_id': self.meter.id,
+            'account_id': self.customer.id,
+            'reading_value': 250.0,
+            'reading_date': fields.Datetime.now(),
+            'reading_purpose': 'periodic',
+        })
+        resolved = valid_reading._resolve_eligible_billing_date_range()
+        self.assertEqual(resolved, self.date_range)
+

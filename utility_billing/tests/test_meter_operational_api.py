@@ -47,7 +47,7 @@ class TestMeterOperationalBillingAPI(TransactionCase):
             'state': 'open',
         })
 
-    def _meter_and_customer(self, suffix='001', external_qr_reference=False):
+    def _meter_and_customer(self, suffix='001', external_qr_reference=False, route_id=False):
         partner = self.env['res.partner'].create({
             'name': 'عميل API بدون جوال %s' % suffix,
             'mobile': False,
@@ -64,6 +64,7 @@ class TestMeterOperationalBillingAPI(TransactionCase):
             'category_id': self.category.id,
             'subscriber_id': self.subscriber.id,
             'meter_id': meter.id,
+            'route_id': route_id,
         })
         meter.write({
             'customer_id': customer.id,
@@ -71,8 +72,9 @@ class TestMeterOperationalBillingAPI(TransactionCase):
         })
         return meter, customer
 
-    def _request(self, params):
-        return SimpleNamespace(env=self.env, jsonrequest=params)
+    def _request(self, params, user=None):
+        env = self.env if user is None else self.env(user=user)
+        return SimpleNamespace(env=env, jsonrequest=params)
 
     def test_billing_invoice_works_without_mobile(self):
         if not self.income or not self.journal:
@@ -175,3 +177,109 @@ class TestMeterOperationalBillingAPI(TransactionCase):
             result = controller.update_customer_qr_reference()
         self.assertFalse(result['success'])
         self.assertEqual(result['code'], 'QR_REFERENCE_ALREADY_ASSIGNED')
+
+    def test_reader_lookup_in_assigned_route_succeeds(self):
+        region = self.env['utility.region'].create({
+            'name': 'منطقة API مسار',
+            'code': 'OPS-REG-RT-01',
+            'type': 'region',
+        })
+        route_a = self.env['utility.route'].create({
+            'name': 'مسار قارئ أ',
+            'code': 'OPS-RT-A',
+            'region_id': region.id,
+        })
+        reader_user = self.env['res.users'].create({
+            'name': 'قارئ اختبار API',
+            'login': 'ops_reader_test_user',
+            'email': 'ops_reader@test.com',
+            'groups_id': [(6, 0, [self.env.ref('base.group_user').id, self.env.ref('utility_core.group_utility_meter_reader').id])],
+            'assigned_region_ids': [(6, 0, [region.id])],
+            'assigned_route_ids': [(6, 0, [route_a.id])],
+        })
+        meter_a, _ = self._meter_and_customer('ROUTE-A', route_id=route_a.id)
+        controller = utility_reader_api.UtilityReaderAPI()
+        with patch.object(utility_reader_api, 'request', self._request({
+                'meter_number': meter_a.meter_number}, user=reader_user)):
+            result = controller.meter_lookup()
+        self.assertTrue(result['success'])
+        self.assertEqual(result['meter']['id'], meter_a.id)
+
+    def test_reader_lookup_outside_assigned_route_rejected(self):
+        region = self.env['utility.region'].create({
+            'name': 'منطقة API مسار 2',
+            'code': 'OPS-REG-RT-02',
+            'type': 'region',
+        })
+        route_a = self.env['utility.route'].create({
+            'name': 'مسار قارئ أ 2',
+            'code': 'OPS-RT-A2',
+            'region_id': region.id,
+        })
+        route_b = self.env['utility.route'].create({
+            'name': 'مسار قارئ ب 2',
+            'code': 'OPS-RT-B2',
+            'region_id': region.id,
+        })
+        reader_user = self.env['res.users'].create({
+            'name': 'قارئ اختبار API 2',
+            'login': 'ops_reader_test_user_2',
+            'email': 'ops_reader2@test.com',
+            'groups_id': [(6, 0, [self.env.ref('base.group_user').id, self.env.ref('utility_core.group_utility_meter_reader').id])],
+            'assigned_region_ids': [(6, 0, [region.id])],
+            'assigned_route_ids': [(6, 0, [route_a.id])],
+        })
+        meter_b, _ = self._meter_and_customer('ROUTE-B', route_id=route_b.id)
+        controller = utility_reader_api.UtilityReaderAPI()
+        with patch.object(utility_reader_api, 'request', self._request({
+                'meter_number': meter_b.meter_number}, user=reader_user)):
+            result = controller.meter_lookup()
+        self.assertFalse(result['success'])
+        self.assertEqual(result['code'], 'OUT_OF_SCOPE')
+
+    def test_check_period_reading_outside_assigned_route_rejected(self):
+        region = self.env['utility.region'].create({
+            'name': 'منطقة API مسار 3',
+            'code': 'OPS-REG-RT-03',
+            'type': 'region',
+        })
+        route_a = self.env['utility.route'].create({
+            'name': 'مسار قارئ أ 3',
+            'code': 'OPS-RT-A3',
+            'region_id': region.id,
+        })
+        route_b = self.env['utility.route'].create({
+            'name': 'مسار قارئ ب 3',
+            'code': 'OPS-RT-B3',
+            'region_id': region.id,
+        })
+        reader_user = self.env['res.users'].create({
+            'name': 'قارئ اختبار API 3',
+            'login': 'ops_reader_test_user_3',
+            'email': 'ops_reader3@test.com',
+            'groups_id': [(6, 0, [self.env.ref('base.group_user').id, self.env.ref('utility_core.group_utility_meter_reader').id])],
+            'assigned_region_ids': [(6, 0, [region.id])],
+            'assigned_route_ids': [(6, 0, [route_a.id])],
+        })
+        meter_b, _ = self._meter_and_customer('ROUTE-B3', route_id=route_b.id)
+        patch_controller = utility_reader_api.UtilityReaderApiPatch()
+        with patch.object(utility_reader_api, 'request', self._request({
+                'meter_code': meter_b.meter_number, 'period_id': self.period.id}, user=reader_user)):
+            result = patch_controller.check_period_reading(meter_code=meter_b.meter_number, period_id=self.period.id)
+        self.assertFalse(result['has_reading'])
+        self.assertEqual(result.get('code'), 'OUT_OF_SCOPE')
+
+    def test_reader_lookup_unauthorized_role_rejected(self):
+        meter, _ = self._meter_and_customer('UNAUTH-METER')
+        unprivileged_user = self.env['res.users'].create({
+            'name': 'مستخدم بدون أدوار عمليات',
+            'login': 'ops_unauth_test_user',
+            'email': 'ops_unauth@test.com',
+            'groups_id': [(6, 0, [self.env.ref('base.group_portal').id])],
+        })
+        controller = utility_reader_api.UtilityReaderAPI()
+        with patch.object(utility_reader_api, 'request', self._request({
+                'meter_number': meter.meter_number}, user=unprivileged_user)):
+            result = controller.meter_lookup()
+        self.assertFalse(result['success'])
+        self.assertEqual(result['code'], 'FORBIDDEN')

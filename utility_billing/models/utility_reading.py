@@ -183,13 +183,10 @@ class UtilityReading(models.Model):
                     )
                 )):
                 if not reading.date_range_id:
-                    period = reading._get_current_billing_date_range()
-                    if not period:
-                        period = self.env['date.range'].search([('work_type', '=', 'readings')], order='date_start desc', limit=1) or self.env['date.range'].search([], order='date_start desc', limit=1)
-                    if period:
-                        reading.with_context(_reading_state_transition=True, _bypass_reading_protection=True).write({'date_range_id': period.id})
+                    period = reading._resolve_eligible_billing_date_range()
+                    reading.sudo().with_context(_reading_state_transition=True, _bypass_reading_protection=True).write({'date_range_id': period.id})
 
-                reading.with_context(_reading_state_transition=True, _bypass_reading_protection=True).write({
+                reading.sudo().with_context(_reading_state_transition=True, _bypass_reading_protection=True).write({
                     'state': 'queued',
                     'billing_error': False,
                 })
@@ -198,7 +195,7 @@ class UtilityReading(models.Model):
                         reading.sudo().action_generate_bill()
                 except Exception as exc:
                     _logger.exception('Immediate bill generation failed for reading %s: %s', reading.display_name, exc)
-                    reading.with_context(_reading_state_transition=True, _bypass_reading_protection=True).write({
+                    reading.sudo().with_context(_reading_state_transition=True, _bypass_reading_protection=True).write({
                         'state': 'queued',
                         'billing_error': str(exc),
                     })
@@ -229,6 +226,62 @@ class UtilityReading(models.Model):
             domain.append(('billing_period', '=', billing_period))
         period = self.env['date.range'].search(domain, limit=1)
         return period
+
+    def _resolve_eligible_billing_date_range(self):
+        """Find the exact matching open date range for this reading's date and scope.
+
+        Replaces broad/arbitrary fallbacks with a strict domain search matching:
+        - work_type == 'readings'
+        - state not in ('closed', 'locked')
+        - company_id matches reading's company or env.company
+        - date_start <= reading_date <= date_end
+        - billing_period matching account's billing period if configured
+        """
+        self.ensure_one()
+        DateRange = self.env['date.range']
+        reading_date = self.reading_date.date() if self.reading_date else fields.Date.today()
+        billing_period = self._get_billing_period_type()
+
+        base_domain = [
+            ('work_type', '=', 'readings'),
+            ('state', 'not in', ('closed', 'locked')),
+            ('company_id', 'in', (False, self.company_id.id or self.env.company.id)),
+        ]
+        if billing_period:
+            base_domain.append(('billing_period', '=', billing_period))
+
+        covering_domain = base_domain + [
+            ('date_start', '<=', reading_date),
+            ('date_end', '>=', reading_date),
+        ]
+
+        # 1. Match region if reading has region
+        reading_region = self.region_id or (self.customer_id and self.customer_id.region_id) or (self.account_id and self.account_id.region_id)
+        if reading_region:
+            period = DateRange.search(covering_domain + [('region_ids', 'in', reading_region.id)], order='date_start desc', limit=1)
+            if period:
+                return period
+
+        # 2. Match without region or where region_ids is empty (global periods)
+        period = DateRange.search(covering_domain + [('region_ids', '=', False)], order='date_start desc', limit=1)
+        if not period:
+            period = DateRange.search(covering_domain, order='date_start desc', limit=1)
+        if period:
+            return period
+
+        # 3. Check current open period if it covers the date
+        current_domain = base_domain + [('is_current_period', '=', True), ('state', '=', 'open')]
+        period = DateRange.search(current_domain, order='date_start desc', limit=1)
+        if period and period.date_start and period.date_end and period.date_start <= reading_date <= period.date_end:
+            return period
+
+        raise ValidationError(_(
+            'لا توجد فترة قراءات مفتوحة ومؤهلة تغطي تاريخ القراءة (%(date)s) للعميل (%(customer)s). '
+            'يرجى فتح أو تهيئة فترة قراءات مناسبة قبل إنشاء الفاتورة.'
+        ) % {
+            'date': reading_date,
+            'customer': self.account_id.display_name if self.account_id else (self.customer_id.display_name if self.customer_id else self.display_name),
+        })
 
     def _get_unbilled_closing_components(self):
         """Return approved replacement closings eligible for this periodic bill."""
@@ -311,11 +364,7 @@ class UtilityReading(models.Model):
         if self.state not in ('approved', 'queued'):
             raise ValidationError(_('يجب اعتماد القراءة الدورية قبل إنشاء الفاتورة.'))
         if not self.date_range_id:
-            period = self._get_current_billing_date_range()
-            if not period:
-                period = self.env['date.range'].search([('work_type', '=', 'readings')], order='date_start desc', limit=1) or self.env['date.range'].search([], order='date_start desc', limit=1)
-            if not period:
-                raise ValidationError(_('يجب تحديد فترة القراءة الدورية قبل الفوترة.'))
+            period = self._resolve_eligible_billing_date_range()
             self.with_context(_reading_state_transition=True, _bypass_reading_protection=True).write({'date_range_id': period.id})
         
         if self.date_range_id.state in ('closed', 'locked'):

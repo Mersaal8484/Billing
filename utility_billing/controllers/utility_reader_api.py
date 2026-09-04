@@ -51,6 +51,53 @@ class UtilityReaderAPI(http.Controller):
             return Meter.browse(), 'METER_IDENTIFIER_MISMATCH'
         return identifiers[0][1], False
 
+    @staticmethod
+    def _check_meter_access_scope(meter):
+        """Verify that the current user is authorized to lookup/query this meter."""
+        user = request.env.user
+        if not user:
+            return False, ('UNAUTHORIZED', 'يرجى تسجيل الدخول أولاً.')
+
+        # 1. Role verification
+        is_global = getattr(user, '_is_global_utility_scope', lambda: False)()
+        has_operational_role = (
+            request.env.su
+            or is_global
+            or user.has_group('utility_core.group_utility_admin')
+            or user.has_group('utility_core.group_utility_billing_manager')
+            or user.has_group('utility_core.group_utility_supervisor')
+            or user.has_group('utility_core.group_utility_meter_reader')
+        )
+        if not has_operational_role:
+            return False, ('FORBIDDEN', 'لا تملك صلاحية الوصول إلى بيانات العداد.')
+
+        if request.env.su or is_global:
+            return True, None
+
+        # 2. Route assignment check for field readers
+        assigned_routes = getattr(user, 'assigned_route_ids', False)
+        if assigned_routes:
+            customer = meter.customer_id
+            customer_route = customer.route_id if customer else False
+            if not customer_route or customer_route not in assigned_routes:
+                return False, (
+                    'OUT_OF_SCOPE',
+                    f'العداد {meter.meter_number} لا ينتمي إلى مسار مخصّص للمستخدم {user.name}.'
+                )
+
+        # 3. Geographic / Branch / Region scope check
+        has_geographic_scope = bool(
+            getattr(user, '_get_effective_branch_ids', lambda: [])()
+            or getattr(user, '_get_effective_region_ids', lambda: [])()
+        )
+        if hasattr(user, 'check_record_scope') and (has_geographic_scope or not assigned_routes):
+            try:
+                user.check_record_scope(meter)
+            except AccessError as e:
+                return False, ('OUT_OF_SCOPE', str(e))
+
+        return True, None
+
     def _get_owned_batch(self, batch_id):
         try:
             batch_id = int(batch_id)
@@ -473,6 +520,11 @@ class UtilityReaderAPI(http.Controller):
         if error_code:
             return self._error(error_code, 'العداد غير موجود')
 
+        valid, error_info = self._check_meter_access_scope(meter)
+        if not valid:
+            code, msg = error_info
+            return self._error(code, msg)
+
         customer = meter.customer_id
 
         # جلب آخر قراءة معتمدة أو مفوترة للعداد
@@ -805,6 +857,11 @@ class UtilityReaderApiPatch(http.Controller):
         )
         if not meter:
             return {'has_reading': False, 'error': f'Meter {meter_code} not found'}
+
+        valid, error_info = UtilityReaderAPI._check_meter_access_scope(meter)
+        if not valid:
+            code, msg = error_info
+            return {'has_reading': False, 'error': msg, 'code': code}
 
         # البحث عن الفترة
         period = request.env['date.range'].sudo().browse(period_id)
