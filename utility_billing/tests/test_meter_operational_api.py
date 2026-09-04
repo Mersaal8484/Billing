@@ -48,9 +48,11 @@ class TestMeterOperationalBillingAPI(TransactionCase):
         })
 
     def _meter_and_customer(self, suffix='001', external_qr_reference=False, route_id=False):
+        route = self.env['utility.route'].browse(route_id.id if hasattr(route_id, 'id') else route_id) if route_id else False
         partner = self.env['res.partner'].create({
             'name': 'عميل API بدون جوال %s' % suffix,
             'mobile': False,
+            'region_id': route.region_id.id if route and route.region_id else False,
         })
         meter = self.env['utility.meter'].create({
             'meter_number': 'OPS-API-METER-%s' % suffix,
@@ -184,10 +186,16 @@ class TestMeterOperationalBillingAPI(TransactionCase):
             'code': 'OPS-REG-RT-01',
             'type': 'region',
         })
+        area = self.env['utility.region'].create({
+            'name': 'فرع API مسار',
+            'code': 'OPS-AREA-RT-01',
+            'type': 'area',
+            'parent_id': region.id,
+        })
         route_a = self.env['utility.route'].create({
             'name': 'مسار قارئ أ',
             'code': 'OPS-RT-A',
-            'region_id': region.id,
+            'area_id': area.id,
         })
         reader_user = self.env['res.users'].create({
             'name': 'قارئ اختبار API',
@@ -202,7 +210,7 @@ class TestMeterOperationalBillingAPI(TransactionCase):
         with patch.object(utility_reader_api, 'request', self._request({
                 'meter_number': meter_a.meter_number}, user=reader_user)):
             result = controller.meter_lookup()
-        self.assertTrue(result['success'])
+        self.assertTrue(result.get('success'))
         self.assertEqual(result['meter']['id'], meter_a.id)
 
     def test_reader_lookup_outside_assigned_route_rejected(self):
@@ -211,15 +219,21 @@ class TestMeterOperationalBillingAPI(TransactionCase):
             'code': 'OPS-REG-RT-02',
             'type': 'region',
         })
+        area = self.env['utility.region'].create({
+            'name': 'فرع API مسار 2',
+            'code': 'OPS-AREA-RT-02',
+            'type': 'area',
+            'parent_id': region.id,
+        })
         route_a = self.env['utility.route'].create({
             'name': 'مسار قارئ أ 2',
             'code': 'OPS-RT-A2',
-            'region_id': region.id,
+            'area_id': area.id,
         })
         route_b = self.env['utility.route'].create({
             'name': 'مسار قارئ ب 2',
             'code': 'OPS-RT-B2',
-            'region_id': region.id,
+            'area_id': area.id,
         })
         reader_user = self.env['res.users'].create({
             'name': 'قارئ اختبار API 2',
@@ -243,15 +257,21 @@ class TestMeterOperationalBillingAPI(TransactionCase):
             'code': 'OPS-REG-RT-03',
             'type': 'region',
         })
+        area = self.env['utility.region'].create({
+            'name': 'فرع API مسار 3',
+            'code': 'OPS-AREA-RT-03',
+            'type': 'area',
+            'parent_id': region.id,
+        })
         route_a = self.env['utility.route'].create({
             'name': 'مسار قارئ أ 3',
             'code': 'OPS-RT-A3',
-            'region_id': region.id,
+            'area_id': area.id,
         })
         route_b = self.env['utility.route'].create({
             'name': 'مسار قارئ ب 3',
             'code': 'OPS-RT-B3',
-            'region_id': region.id,
+            'area_id': area.id,
         })
         reader_user = self.env['res.users'].create({
             'name': 'قارئ اختبار API 3',

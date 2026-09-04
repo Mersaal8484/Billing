@@ -91,8 +91,15 @@ class UtilityReaderAPI(http.Controller):
             or getattr(user, '_get_effective_region_ids', lambda: [])()
         )
         if hasattr(user, 'check_record_scope') and (has_geographic_scope or not assigned_routes):
+            target = meter
+            meter_region = getattr(meter, 'region_id', False) or (meter.customer_id and getattr(meter.customer_id, 'region_id', False))
+            meter_area = getattr(meter, 'area_id', False) or (meter.customer_id and getattr(meter.customer_id, 'area_id', False))
+            if not meter_region and not meter_area:
+                route = getattr(meter, 'route_id', False) or (meter.customer_id and getattr(meter.customer_id, 'route_id', False))
+                if route:
+                    target = route
             try:
-                user.check_record_scope(meter)
+                user.check_record_scope(target)
             except AccessError as e:
                 return False, ('OUT_OF_SCOPE', str(e))
 
@@ -508,7 +515,7 @@ class UtilityReaderAPI(http.Controller):
         يجب تمرير:
           - meter_id أو operational_number أو meter_number: أحد معرفات العداد
         """
-        params = kwargs
+        params = dict(getattr(request, 'jsonrequest', None) or {}, **kwargs)
         meter, error_code = self._resolve_meter_identifiers(params)
         if error_code == 'IDENTIFIER_REQUIRED':
             return self._error(
@@ -848,6 +855,9 @@ class UtilityReaderApiPatch(http.Controller):
                 "reading_date": "2026-08-01", # إذا has_reading == true
             }
         """
+        json_params = getattr(request, 'jsonrequest', None) or {}
+        meter_code = meter_code or kwargs.get('meter_code') or json_params.get('meter_code')
+        period_id = period_id or kwargs.get('period_id') or json_params.get('period_id')
         if not meter_code or not period_id:
             return {'has_reading': False, 'error': 'meter_code and period_id are required'}
 

@@ -569,7 +569,7 @@ class TestReadingLifecycleHardening(TransactionCase):
             'meter_id': self.meter.id,
             'account_id': self.customer.id,
             'reading_value': 250.0,
-            'reading_date': fields.Datetime.now(),
+            'reading_date': '2026-08-15 10:00:00',
             'reading_purpose': 'periodic',
         })
         resolved = valid_reading._resolve_eligible_billing_date_range()

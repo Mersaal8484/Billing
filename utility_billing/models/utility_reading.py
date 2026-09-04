@@ -256,7 +256,7 @@ class UtilityReading(models.Model):
         ]
 
         # 1. Match region if reading has region
-        reading_region = self.region_id or (self.customer_id and self.customer_id.region_id) or (self.account_id and self.account_id.region_id)
+        reading_region = getattr(self, 'region_id', False) or (self.customer_id and getattr(self.customer_id, 'region_id', False)) or (self.account_id and getattr(self.account_id, 'region_id', False))
         if reading_region:
             period = DateRange.search(covering_domain + [('region_ids', 'in', reading_region.id)], order='date_start desc', limit=1)
             if period:
