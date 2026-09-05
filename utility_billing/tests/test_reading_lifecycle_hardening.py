@@ -195,8 +195,8 @@ class TestReadingLifecycleHardening(TransactionCase):
         with self.assertRaises(AccessError):
             reading.with_user(self.reader_user).action_reject()
 
-    def test_02_supervisor_approve_and_queue(self):
-        """Supervisor approves reading; billable reading immediately transitions to queued."""
+    def test_02_supervisor_approve_and_generate_bill_immediately(self):
+        """Supervisor approves reading; billable reading is billed immediately without a separate action."""
         self._create_opening_reading(100.0)
         reading = self.Reading.create({
             'meter_id': self.meter.id,
@@ -210,17 +210,14 @@ class TestReadingLifecycleHardening(TransactionCase):
         })
         reading.action_submit_review()
 
-        # Supervisor approves -> transitions to queued
+        # Supervisor approves -> bill generated immediately, no separate action needed
         reading.with_user(self.supervisor_user).action_approve()
-        self.assertEqual(reading.state, 'queued')
+        self.assertEqual(reading.state, 'billed')
         self.assertTrue(reading.is_validated)
         self.assertEqual(reading.validator_id.id, self.supervisor_user.id)
         self.assertEqual(reading.consumption, 200.0)
-
-        # Bill generation creates the bill
-        reading.with_user(self.billing_mgr_user).action_generate_bill()
-        self.assertEqual(reading.state, 'billed')
         self.assertTrue(reading.included_sale_order_id)
+        self.assertTrue(reading.included_sale_order_id.invoice_ids)
 
     def test_03_rejection_audit_and_resubmission(self):
         """Rejecting a reading records audit trail (rejected_by, rejected_at, reason) and requires a non-empty reason."""
@@ -343,7 +340,7 @@ class TestReadingLifecycleHardening(TransactionCase):
             })
 
     def test_07_immutability_and_allowed_metadata_across_lifecycle(self):
-        """Approved, queued, and billed readings block critical field mutations while allowing metadata."""
+        """Billed readings block critical field mutations while allowing metadata."""
         self._create_opening_reading(100.0)
         reading = self.Reading.create({
             'meter_id': self.meter.id,
@@ -357,8 +354,6 @@ class TestReadingLifecycleHardening(TransactionCase):
         })
         reading.action_submit_review()
         reading.with_user(self.supervisor_user).action_approve()
-        self.assertEqual(reading.state, 'queued')
-        reading.with_user(self.billing_mgr_user).action_generate_bill()
         self.assertEqual(reading.state, 'billed')
 
         # Critical fields cannot be altered in billed state
@@ -397,17 +392,14 @@ class TestReadingLifecycleHardening(TransactionCase):
         })
         reading.action_submit_review()
         reading.with_user(self.supervisor_user).action_approve()
-        self.assertEqual(reading.state, 'queued')
-        reading.with_user(self.billing_mgr_user).action_generate_bill()
         self.assertEqual(reading.state, 'billed')
 
-        # First generation (already generated upon approval, returns existing)
+        # Idempotent: returns existing order without creating duplicate
         res1 = reading.with_user(self.billing_mgr_user).action_generate_bill()
         order_id = res1.get('res_id')
         self.assertTrue(order_id)
         self.assertEqual(order_id, reading.included_sale_order_id.id)
 
-        # Second generation: returns existing order without creating duplicate
         res2 = reading.with_user(self.billing_mgr_user).action_generate_bill()
         self.assertEqual(res2.get('res_id'), order_id)
 
@@ -725,12 +717,12 @@ class TestReadingLifecycleHardening(TransactionCase):
         with self.assertRaises(AccessError):
             reading.with_user(self.reader_user).action_approve()
         reading.with_user(self.supervisor_user).action_approve()
-        self.assertEqual(reading.state, 'queued')
+        self.assertEqual(reading.state, 'billed')
         self.assertTrue(reading.is_validated)
         self.assertEqual(reading.validator_id, self.supervisor_user)
         self.assertEqual(reading.reviewer_id, self.supervisor_user)
         self.assertTrue(reading.review_date)
-        self.assertFalse(reading.included_sale_order_id)
+        self.assertTrue(reading.included_sale_order_id)
 
     def test_17_cross_region_period_resolution_rejected(self):
         """P1: A reading in region A must never resolve an open period belonging strictly to region B."""
@@ -767,4 +759,231 @@ class TestReadingLifecycleHardening(TransactionCase):
         with self.assertRaises(ValidationError):
             reading_in_region_a._resolve_eligible_billing_date_range()
 
+    def test_18_immediate_bill_generation_on_approval(self):
+        """Approval of a billable reading generates the bill immediately without a separate action."""
+        self._create_opening_reading(100.0)
+        reading = self.Reading.create({
+            'meter_id': self.meter.id,
+            'account_id': self.customer.id,
+            'reading_value': 350.0,
+            'reading_date': fields.Datetime.now(),
+            'reading_purpose': 'periodic',
+            'date_range_id': self.date_range.id,
+            'image_state': 'clear',
+            'meter_image': SAMPLE_IMAGE,
+        })
+        reading.action_submit_review()
+        self.assertEqual(reading.state, 'under_review')
+
+        # Approve -> bill generated immediately
+        reading.with_user(self.supervisor_user).action_approve()
+
+        self.assertEqual(reading.state, 'billed')
+        self.assertTrue(reading.included_sale_order_id, 'Sale order must be created on approval')
+        self.assertEqual(reading.included_sale_order_id.state, 'sale')
+        self.assertTrue(reading.included_sale_order_id.invoice_ids, 'Invoice must be created on approval')
+        self.assertEqual(reading.included_sale_order_id.invoice_ids.state, 'posted')
+        self.assertEqual(reading.billing_error, False)
+
+    def test_19_bill_generation_error_sets_error_state(self):
+        """When bill generation fails during approval, reading transitions to error state with billing_error."""
+        self._create_opening_reading(100.0)
+        reading = self.Reading.create({
+            'meter_id': self.meter.id,
+            'account_id': self.customer.id,
+            'reading_value': 300.0,
+            'reading_date': fields.Datetime.now(),
+            'reading_purpose': 'periodic',
+            'date_range_id': self.date_range.id,
+            'image_state': 'clear',
+            'meter_image': SAMPLE_IMAGE,
+        })
+        reading.action_submit_review()
+
+        # Close the billing period to force a ValidationError during bill generation
+        self.date_range.write({'state': 'closed'})
+
+        reading.with_user(self.supervisor_user).action_approve()
+
+        self.assertEqual(reading.state, 'error')
+        self.assertTrue(reading.billing_error, 'billing_error must be populated on failure')
+        self.assertNotIn('sale', reading.billing_error.lower())
+
+    def test_20_action_requeue_moves_error_to_queued(self):
+        """action_requeue moves an error-state reading back to queued for retry."""
+        self._create_opening_reading(100.0)
+        reading = self.Reading.create({
+            'meter_id': self.meter.id,
+            'account_id': self.customer.id,
+            'reading_value': 300.0,
+            'reading_date': fields.Datetime.now(),
+            'reading_purpose': 'periodic',
+            'date_range_id': self.date_range.id,
+            'image_state': 'clear',
+            'meter_image': SAMPLE_IMAGE,
+        })
+        reading.action_submit_review()
+
+        # Force error state by closing the period
+        self.date_range.write({'state': 'closed'})
+        reading.with_user(self.supervisor_user).action_approve()
+        self.assertEqual(reading.state, 'error')
+        self.assertTrue(reading.billing_error)
+
+        # Reopen period and requeue
+        self.date_range.write({'state': 'open'})
+        reading.action_requeue()
+        self.assertEqual(reading.state, 'queued')
+        self.assertFalse(reading.billing_error)
+
+    def test_21_action_requeue_rejects_non_error_readings(self):
+        """action_requeue raises ValidationError for readings not in error state."""
+        self._create_opening_reading(100.0)
+        reading = self.Reading.create({
+            'meter_id': self.meter.id,
+            'account_id': self.customer.id,
+            'reading_value': 300.0,
+            'reading_date': fields.Datetime.now(),
+            'reading_purpose': 'periodic',
+            'date_range_id': self.date_range.id,
+            'image_state': 'clear',
+            'meter_image': SAMPLE_IMAGE,
+        })
+        reading.action_submit_review()
+        reading.with_user(self.supervisor_user).action_approve()
+        self.assertEqual(reading.state, 'billed')
+
+        with self.assertRaises(ValidationError):
+            reading.action_requeue()
+
+    def test_22_non_billable_reading_stays_approved_after_approval(self):
+        """Non-billable network transformer reading stays in approved state, no bill generated."""
+        # Create a separate meter for network transformer reading
+        partner2 = self.Partner.create({'name': 'ممح transformer', 'region_id': self.region.id})
+        cust2 = self.Customer.create({
+            'name': 'عميل محول شبكي',
+            'partner_id': partner2.id,
+            'contract_status': 'active',
+            'region_id': self.region.id,
+        })
+        meter2 = self.Meter.create({
+            'name': 'عداد محول شبكي',
+            'meter_number': 'MTR-NET-01',
+            'subscriber_id': self.subscriber.id,
+            'customer_id': cust2.id,
+            'connection_type': 'subscriber',
+            'multiplier': 1.0,
+        })
+
+        # Create a non-billable network transformer reading (is_billable=False)
+        reading = self.Reading.create({
+            'meter_id': meter2.id,
+            'account_id': cust2.id,
+            'reading_value': 500.0,
+            'reading_date': fields.Datetime.now(),
+            'reading_purpose': 'periodic',
+            'date_range_id': self.date_range.id,
+            'reading_category': 'transformer',
+            'is_billable': False,
+            'image_state': 'clear',
+            'meter_image': SAMPLE_IMAGE,
+        })
+        reading.action_submit_review()
+        reading.with_user(self.supervisor_user).action_approve()
+
+        # Non-billable: stays approved, no sale order
+        self.assertEqual(reading.state, 'approved')
+        self.assertFalse(reading.included_sale_order_id)
+
+    def test_23_cron_fallback_picks_up_queued_readings(self):
+        """_cron_generate_bills processes any leftover queued readings as fallback."""
+        self._create_opening_reading(100.0)
+        reading = self.Reading.create({
+            'meter_id': self.meter.id,
+            'account_id': self.customer.id,
+            'reading_value': 250.0,
+            'reading_date': fields.Datetime.now(),
+            'reading_purpose': 'periodic',
+            'date_range_id': self.date_range.id,
+            'image_state': 'clear',
+            'meter_image': SAMPLE_IMAGE,
+        })
+        reading.action_submit_review()
+        reading.with_user(self.supervisor_user).action_approve()
+        self.assertEqual(reading.state, 'billed')
+
+        # Create a reading manually set to queued (simulating a leftover from before the change)
+        reading2 = self.Reading.create({
+            'meter_id': self.meter.id,
+            'account_id': self.customer.id,
+            'reading_value': 400.0,
+            'reading_date': fields.Datetime.now() + timedelta(minutes=1),
+            'reading_purpose': 'periodic',
+            'date_range_id': self.date_range.id,
+            'image_state': 'clear',
+            'meter_image': SAMPLE_IMAGE,
+        })
+        reading2.action_submit_review()
+        reading2.with_user(self.supervisor_user).action_approve()
+        # Should already be billed from immediate generation
+        self.assertEqual(reading2.state, 'billed')
+
+        # Cron should not fail on already-billed readings
+        self.Reading._cron_generate_bills()
+        self.assertEqual(reading2.state, 'billed')
+
+    def test_24_multiple_readings_partial_failure(self):
+        """When approving multiple readings, one failing does not block others."""
+        self._create_opening_reading(100.0)
+
+        # Create two readings for different customers
+        partner2 = self.Partner.create({'name': 'مشترك ثاني', 'region_id': self.region.id})
+        cust2 = self.Customer.create({
+            'name': 'عميل ثاني',
+            'partner_id': partner2.id,
+            'contract_status': 'active',
+            'region_id': self.region.id,
+        })
+        meter2 = self.Meter.create({
+            'name': 'عداد ثاني',
+            'meter_number': 'MTR-02',
+            'subscriber_id': self.subscriber.id,
+            'customer_id': cust2.id,
+            'connection_type': 'subscriber',
+            'multiplier': 1.0,
+        })
+
+        r1 = self.Reading.create({
+            'meter_id': self.meter.id,
+            'account_id': self.customer.id,
+            'reading_value': 250.0,
+            'reading_date': fields.Datetime.now(),
+            'reading_purpose': 'periodic',
+            'date_range_id': self.date_range.id,
+            'image_state': 'clear',
+            'meter_image': SAMPLE_IMAGE,
+        })
+        r1.action_submit_review()
+
+        r2 = self.Reading.create({
+            'meter_id': meter2.id,
+            'account_id': cust2.id,
+            'reading_value': 300.0,
+            'reading_date': fields.Datetime.now(),
+            'reading_purpose': 'periodic',
+            'date_range_id': self.date_range.id,
+            'image_state': 'clear',
+            'meter_image': SAMPLE_IMAGE,
+        })
+        r2.action_submit_review()
+
+        # Approve both at once
+        (r1 | r2).with_user(self.supervisor_user).action_approve()
+
+        # Both should be billed (no failure scenario here, but confirms batch works)
+        self.assertEqual(r1.state, 'billed')
+        self.assertEqual(r2.state, 'billed')
+        self.assertTrue(r1.included_sale_order_id)
+        self.assertTrue(r2.included_sale_order_id)
+        self.assertNotEqual(r1.included_sale_order_id, r2.included_sale_order_id)
 

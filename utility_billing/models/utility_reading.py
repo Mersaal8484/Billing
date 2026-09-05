@@ -163,10 +163,11 @@ class UtilityReading(models.Model):
         return super().write(vals)
 
     def _queue_approved_billable_readings(self):
-        """Transition eligible approved periodic readings into the queued billing state.
+        """Transition eligible approved periodic readings into the queued billing state
+        and immediately generate bills for each reading.
 
-        Decouples review/approval from synchronous accounting bill generation.
-        Bill generation is processed asynchronously by the billing cron or explicit action.
+        Bill generation is performed synchronously so the customer receives
+        their bill without waiting for the next cron cycle.
         """
         billable_readings = self.filtered(
             lambda reading: reading.state == 'approved'
@@ -192,6 +193,20 @@ class UtilityReading(models.Model):
                 'state': 'queued',
                 'billing_error': False,
             })
+
+            try:
+                with self.env.cr.savepoint():
+                    reading.sudo().action_generate_bill()
+            except (UserError, ValidationError, AccessError) as exc:
+                reading.sudo().with_context(_reading_state_transition=True, _bypass_reading_protection=True).write({
+                    'state': 'error',
+                    'billing_error': str(exc),
+                })
+                _logger.warning(
+                    'Immediate bill generation failed for reading %s: %s',
+                    reading.display_name,
+                    exc,
+                )
 
         return self
 
@@ -526,9 +541,9 @@ class UtilityReading(models.Model):
         for reading in readings:
             try:
                 with self.env.cr.savepoint():
-                    reading.action_generate_bill()
+                    reading.sudo().action_generate_bill()
                 success_count += 1
-            except (UserError, ValidationError) as exc:
+            except (UserError, ValidationError, AccessError) as exc:
                 reading.sudo().with_context(_reading_state_transition=True, _bypass_reading_protection=True).write({
                     'state': 'error',
                     'billing_error': str(exc),

@@ -220,7 +220,7 @@ class TestUtilityReadingReview(TransactionCase):
             period_id=self.test_period.id, status='all', offset=0, limit=40, include_stats=True)['items']])
 
     def test_02_action_approve_review(self):
-        """2. Approve a reading via Review Service."""
+        """2. Approve a reading via Review Service; bill generated immediately."""
         reading = self.Reading.create({
             'meter_id': self.test_meter.id,
             'account_id': self.test_customer.id,
@@ -232,9 +232,10 @@ class TestUtilityReadingReview(TransactionCase):
         })
         res = self.ReadingReviewService.action_approve_review([reading.id])
         self.assertEqual(res['status'], 'success')
-        self.assertEqual(reading.state, 'queued')
+        self.assertEqual(reading.state, 'billed')
         self.assertEqual(reading.reviewer_id, self.env.user)
         self.assertTrue(reading.review_date)
+        self.assertTrue(reading.included_sale_order_id)
 
     def test_03_action_reject_review(self):
         """3. Reject a reading via Review Service."""
@@ -272,7 +273,7 @@ class TestUtilityReadingReview(TransactionCase):
         })
         res = self.ReadingReviewService.action_bulk_approve_safe([r1.id, r2.id])
         self.assertEqual(res['status'], 'success')
-        self.assertEqual(r1.state, 'queued')
+        self.assertEqual(r1.state, 'billed')
         self.assertEqual(r2.state, 'under_review')
 
     def test_05_reading_semantics_and_is_billable(self):
@@ -961,7 +962,7 @@ class TestUtilityReadingReview(TransactionCase):
 
         # Approval succeeds now
         reading.action_approve()
-        self.assertIn(reading.state, ('approved', 'queued', 'billed'))
+        self.assertEqual(reading.state, 'billed')
 
     def test_19_review_queue_approved_counts_and_items(self):
         """19. get_review_queue: approved filter and stats include approved, queued, and billed readings."""
@@ -1081,12 +1082,9 @@ class TestUtilityReadingReview(TransactionCase):
         self.assertTrue(reading.is_billable)
         self.assertEqual(reading.consumption, 300.0)
 
-        # Operational supervisor approves reading -> reading transitions to queued
+        # Operational supervisor approves reading -> bill generated immediately
         reading.action_approve()
-        self.assertEqual(reading.state, 'queued')
-
-        # Bill generation (via cron or action_generate_bill) processes the queued reading
-        reading.action_generate_bill()
+        self.assertEqual(reading.state, 'billed')
 
         # Reading must transition to billed
         self.assertEqual(reading.state, 'billed')
