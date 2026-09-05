@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
@@ -229,10 +230,32 @@ class _ReadingEntryScreenState extends ConsumerState<ReadingEntryScreen> {
       color: img.ColorRgba8(220, 30, 30, 255),
     );
 
+    // ── Adaptive compression: must stay ≤ 95 KB to satisfy the 100 KB API limit ──
+    const int maxBytes = 95 * 1024; // 95 KB — leaves 5 KB headroom
+
+    // Probe at quality=75 first
+    Uint8List compressed = Uint8List.fromList(img.encodeJpg(original, quality: 75));
+
+    if (compressed.lengthInBytes > maxBytes) {
+      // Estimate quality needed: newQ ≈ 75 × (maxBytes / probeSize), clamped [30, 70]
+      final ratio = maxBytes / compressed.lengthInBytes;
+      final estQ = (75 * ratio).clamp(30.0, 70.0).toInt();
+      compressed = Uint8List.fromList(img.encodeJpg(original, quality: estQ));
+
+      if (compressed.lengthInBytes > maxBytes) {
+        // Still over — shrink to 70% width and try again
+        final narrowed = img.copyResize(original, width: (original.width * 0.7).toInt());
+        final attempt3 = Uint8List.fromList(img.encodeJpg(narrowed, quality: estQ));
+        if (attempt3.lengthInBytes < compressed.lengthInBytes) {
+          compressed = attempt3;
+        }
+      }
+    }
+
     final dir = await getApplicationDocumentsDirectory();
     final path = '${dir.path}/reading_${const Uuid().v4()}.jpg';
     final outFile = File(path);
-    await outFile.writeAsBytes(img.encodeJpg(original, quality: 90));
+    await outFile.writeAsBytes(compressed);
     return outFile;
   }
 
