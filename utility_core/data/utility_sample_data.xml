@@ -360,7 +360,7 @@ if products:
             <field name="name">تعرفة عامة - نصف شهري (شرائح استهلاكية)</field>
             <field name="code">TMPL_GENERAL_BI</field>
             <field name="pricing_mode">tier</field>
-            <field name="recurring_rule_type">bi_monthly</field>
+            <field name="recurring_rule_type">semi_monthly</field>
             <field name="recurring_invoicing_type">postpaid</field>
             <field name="recurring_interval">1</field>
             <field name="service_charge">1000</field>

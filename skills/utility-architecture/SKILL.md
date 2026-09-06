@@ -25,6 +25,8 @@ Apply this skill when a request could change module ownership, model boundaries,
 ## Hard boundaries
 
 - `utility_core` owns master data and the base unified `utility.reading` model.
+- Keep the geographic Zone and the technical Transformer as separate Core master-data entities, linked bidirectionally one-to-one. Do not merge their responsibilities: the Zone remains the geographic hierarchy node and the Transformer remains the electrical asset.
+- The contract template's cadence is a Core configuration invariant that must remain compatible with the customer's geographic cadence and the reading/payment periods used to bill it. `utility_billing` enforces this when generating bills; do not create a separate billing-period ledger.
 - `utility_billing` owns billing extensions and payment APIs; it must not create a parallel bill or payment ledger.
 - `utility_inventory` bridges meters to stock and lots; it must not replace stock valuation or custody.
 - Do not introduce prepaid vending into the V1 postpaid architecture.

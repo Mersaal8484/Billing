@@ -16,6 +16,55 @@
         </field>
     </record>
 
+    <record id="view_utility_contract_template_search" model="ir.ui.view">
+        <field name="name">utility.contract.template.search</field>
+        <field name="model">utility.contract.template</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="code"/>
+                <field name="subscriber_category_ids"/>
+                <field name="subscriber_ids"/>
+                <field name="region_ids"/>
+                <field name="area_ids"/>
+                <field name="recurring_rule_type"/>
+                <field name="pricing_mode"/>
+                <field name="scope"/>
+                <field name="sponsor_id"/>
+                <field name="effective_date"/>
+                <field name="end_date"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <filter name="active" string="نشط" domain="[('active', '=', True)]"/>
+                <filter name="archived" string="مؤرشف" domain="[('active', '=', False)]"/>
+                <separator/>
+                <filter name="monthly" string="شهري" domain="[('recurring_rule_type', '=', 'monthly')]"/>
+                <filter name="semi_monthly" string="نصف شهري" domain="[('recurring_rule_type', '=', 'semi_monthly')]"/>
+                <filter name="quarterly" string="ربع سنوي" domain="[('recurring_rule_type', '=', 'quarterly')]"/>
+                <filter name="yearly" string="سنوي" domain="[('recurring_rule_type', '=', 'yearly')]"/>
+                <separator/>
+                <filter name="pricing_flat" string="سعر موحّد" domain="[('pricing_mode', '=', 'flat')]"/>
+                <filter name="pricing_tier" string="شريحة واحدة" domain="[('pricing_mode', '=', 'tier')]"/>
+                <filter name="pricing_block" string="شرائح تصاعدية" domain="[('pricing_mode', '=', 'block')]"/>
+                <separator/>
+                <filter name="currently_effective" string="ساري حاليًا" domain="[('is_active', '=', True)]"/>
+                <filter name="not_currently_effective" string="خارج السريان" domain="[('is_active', '=', False)]"/>
+                <filter name="restricted" string="نطاق جغرافي مخصص" domain="[('scope', '=', 'restricted')]"/>
+                <filter name="global" string="نطاق عام" domain="[('scope', '=', 'global')]"/>
+                <filter name="sponsored" string="يتضمن دعمًا" domain="[('sponsor_id', '!=', False)]"/>
+                <filter name="postpaid" string="آجل" domain="[('recurring_invoicing_type', '=', 'postpaid')]"/>
+                <group expand="0" string="تجميع حسب">
+                    <filter name="group_cadence" string="دورية الفوترة" context="{'group_by': 'recurring_rule_type'}"/>
+                    <filter name="group_pricing" string="نمط التسعير" context="{'group_by': 'pricing_mode'}"/>
+                    <filter name="group_scope" string="النطاق الجغرافي" context="{'group_by': 'scope'}"/>
+                    <filter name="group_sponsor" string="الجهة الداعمة" context="{'group_by': 'sponsor_id'}"/>
+                    <filter name="group_effective" string="تاريخ السريان" context="{'group_by': 'effective_date:month'}"/>
+                    <filter name="group_invoicing" string="نوع الفوترة" context="{'group_by': 'recurring_invoicing_type'}"/>
+                    <filter name="group_company" string="الشركة" context="{'group_by': 'company_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
     <record id="view_utility_contract_template_form" model="ir.ui.view">
         <field name="name">utility.contract.template.form</field>
         <field name="model">utility.contract.template</field>
@@ -45,10 +94,10 @@
                         <group string="التهيئة الأساسية">
                             <field name="code"/>
                             <field name="subscriber_category_ids" widget="many2many_tags" placeholder="فئات المشتركين الرئيسية..." required="1"/>
-                            <field name="subscriber_ids" widget="many2many_tags" placeholder="انواع المشتركين..." required="1" domain="[('category_id', 'not in', [False]), ('category_id', 'in', subscriber_category_ids or [False])]"/>
+                            <field name="subscriber_ids" widget="many2many_tags" placeholder="انواع المشتركين..." required="1" domain="[('category_id', 'in', subscriber_category_ids)]"/>
                             <field name="scope" widget="radio" options="{'horizontal': true}"/>
-                            <field name="region_ids" widget="many2many_tags" placeholder="اختر المناطق الرئيسية المسموح بها..." attrs="{'invisible': [('scope', '!=', 'restricted')], 'required': [('scope', '=', 'restricted')]}"/>
-                            <field name="area_ids" widget="many2many_tags" placeholder="اختر المناطق الفرعية المسموح بها..." attrs="{'invisible': [('scope', '!=', 'restricted')], 'required': [('scope', '=', 'restricted')]}"/>
+                            <field name="region_ids" widget="many2many_tags" placeholder="اختر المناطق الرئيسية المسموح بها..." domain="[('type', '=', 'region'), ('recurring_rule_type', '=', recurring_rule_type)]" attrs="{'invisible': [('scope', '!=', 'restricted')], 'required': [('scope', '=', 'restricted')]}"/>
+                            <field name="area_ids" widget="many2many_tags" placeholder="اختر المناطق الفرعية المسموح بها..." domain="[('type', '=', 'area'), ('parent_id', 'in', region_ids), ('recurring_rule_type', '=', recurring_rule_type)]" attrs="{'invisible': [('scope', '!=', 'restricted')], 'required': [('scope', '=', 'restricted')]}"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                             <field name="active"/>
                         </group>
@@ -197,6 +246,7 @@
         <field name="name">قوالب العقود</field>
         <field name="res_model">utility.contract.template</field>
         <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_utility_contract_template_search"/>
     </record>
 
     <menuitem id="menu_utility_contract_template" name="قوالب العقود" parent="utility_core.menu_utility_customer_management" action="action_utility_contract_template" sequence="50"/>

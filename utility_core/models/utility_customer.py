@@ -1,5 +1,6 @@
 from odoo import api, fields, models, _
 from odoo.exceptions import AccessError, ValidationError
+from .utility_date_range import normalize_billing_cadence
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -229,17 +230,23 @@ class UtilityCustomer(models.Model):
                     ))
         return customers
 
-    def _get_effective_billing_period(self):
-        """Return the mandatory billing cadence using geographic precedence."""
+    def _get_geographic_billing_period(self):
+        """Return the billing cadence imposed by the customer's geography."""
         self.ensure_one()
         recurring_type = False
         if self.area_id and self.area_id.recurring_rule_type:
             recurring_type = self.area_id.recurring_rule_type
         elif self.region_id and self.region_id.recurring_rule_type:
             recurring_type = self.region_id.recurring_rule_type
-        elif self.contract_template_id and self.contract_template_id.recurring_rule_type:
+        return normalize_billing_cadence(recurring_type)
+
+    def _get_effective_billing_period(self):
+        """Return the mandatory billing cadence using geography then the contract template."""
+        self.ensure_one()
+        recurring_type = self._get_geographic_billing_period()
+        if not recurring_type and self.contract_template_id and self.contract_template_id.recurring_rule_type:
             recurring_type = self.contract_template_id.recurring_rule_type
-        return {'bi_monthly': 'biweekly'}.get(recurring_type, recurring_type)
+        return normalize_billing_cadence(recurring_type)
     def write(self, vals):
         vals = dict(vals)
         if 'external_qr_reference' in vals:
@@ -355,6 +362,7 @@ class UtilityCustomer(models.Model):
                 subscriber_id=rec.subscriber_id.id if rec.subscriber_id else False,
                 region_id=rec.region_id.id if rec.region_id else False,
                 area_id=rec.area_id.id if rec.area_id else False,
+                billing_cadence=rec._get_geographic_billing_period(),
             )
             rec.available_contract_template_ids = self.env['utility.contract.template'].search(domain)
 
@@ -403,6 +411,15 @@ class UtilityCustomer(models.Model):
                     raise ValidationError(
                         _("قالب العقد '%s' لا يدعم نوع المشترك '%s'.")
                         % (template.name, subscriber.name)
+                    )
+                geographic_cadence = rec._get_geographic_billing_period()
+                if (
+                    geographic_cadence
+                    and normalize_billing_cadence(template.recurring_rule_type) != geographic_cadence
+                ):
+                    raise ValidationError(
+                        _("دورية قالب العقد '%s' لا تطابق دورية منطقة الحساب '%s'.")
+                        % (template.name, geographic_cadence)
                     )
                 if template.scope == 'restricted':
                     allowed_region_ids = template.region_ids.ids

@@ -6,13 +6,27 @@
         <field name="model">utility.reading</field>
         <field name="arch" type="xml">
             <form string="صور العداد">
+                <field name="state" invisible="1"/>
                 <sheet>
-                    <group>
-                        <field name="meter_image_url" widget="utility_media_image" nolabel="1" readonly="1"/>
-                        <field name="meter_image" widget="binary" string="رفع/استبدال الصورة"/>
-                        <field name="meter_image_secondary" widget="image" class="oe_avatar"
-                               options="{'size': [400, 300]}"/>
-                    </group>
+                    <div class="o_utility_image_section p-4">
+                        <div class="row g-4 align-items-stretch">
+                            <div class="col-12 col-lg-8 o_utility_image_preview">
+                                <div class="o_utility_image_container h-100 border-2 border rounded overflow-hidden bg-white text-center"
+                                     style="min-height: 380px; border-color: #dee2e6 !important;">
+                                    <field name="meter_image_url" widget="utility_media_image" nolabel="1" readonly="1"/>
+                                </div>
+                            </div>
+                            <div class="col-12 col-lg-4 o_utility_image_upload d-flex flex-column">
+                                <div class="o_utility_upload_container h-100 border-2 border-dashed rounded p-4 d-flex align-items-center justify-content-center"
+                                     style="border-color: #4f86c6 !important; background-color: #f0f5ff; min-height: 220px;">
+                                    <field name="meter_image_upload" widget="binary"
+                                           filename="meter_image_filename"
+                                           attrs="{'readonly': [('state', 'not in', ('draft', 'under_review', 'error'))]}"
+                                           class="o_utility_binary_upload"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </sheet>
                 <footer>
                     <button string="إغلاق" class="btn-secondary" special="cancel"/>
@@ -170,14 +184,26 @@
                             <field name="consumption_alert" widget="badge" readonly="1"/>
                         </group>
                     </group>
-                    <group string="صور العداد">
-                        <field name="meter_image_url" widget="utility_media_image" nolabel="1" readonly="1"/>
-                        <field name="meter_image" widget="binary" string="رفع/استبدال الصورة"
-                               attrs="{'readonly': [('state', 'not in', ('draft', 'under_review', 'error'))]}"/>
-                        <field name="meter_image_secondary" widget="image"
-                               class="oe_avatar" options="{'size': [200, 150]}"
-                               attrs="{'readonly': [('state', 'not in', ('draft', 'under_review', 'error'))]}"/>
-                    </group>
+                    <div class="o_form_label mb-2 fw-bold">صور العداد</div>
+                    <div class="o_utility_image_section border rounded p-4 mb-3">
+                        <div class="row g-4 align-items-stretch">
+                            <div class="col-12 col-lg-8 o_utility_image_preview">
+                                <div class="o_utility_image_container h-100 border-2 border rounded overflow-hidden bg-white text-center"
+                                     style="min-height: 320px; border-color: #dee2e6 !important;">
+                                    <field name="meter_image_url" widget="utility_media_image" nolabel="1" readonly="1"/>
+                                </div>
+                            </div>
+                            <div class="col-12 col-lg-4 o_utility_image_upload d-flex flex-column">
+                                <div class="o_utility_upload_container h-100 border-2 border-dashed rounded p-4 d-flex align-items-center justify-content-center"
+                                     style="border-color: #4f86c6 !important; background-color: #f0f5ff; min-height: 180px;">
+                                    <field name="meter_image_upload" widget="binary"
+                                           filename="meter_image_filename"
+                                           attrs="{'readonly': [('state', 'not in', ('draft', 'under_review', 'error'))]}"
+                                           class="o_utility_binary_upload"/>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     <group string="المراجعة" groups="utility_core.group_utility_supervisor">
                         <field name="image_state" attrs="{'readonly': [('state', 'not in', ('draft', 'under_review', 'error'))]}"/>
                         <field name="reviewer_id" readonly="1"/>
@@ -308,7 +334,7 @@
     <record id="action_utility_reading" model="ir.actions.act_window">
         <field name="name">قراءات العدادات</field>
         <field name="res_model">utility.reading</field>
-        <field name="view_mode">kanban,tree,form</field>
+        <field name="view_mode">tree,form</field>
         <field name="search_view_id" ref="view_utility_reading_search"/>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
@@ -317,8 +343,15 @@
         </field>
     </record>
 
+    <record id="action_utility_reading_tree_view" model="ir.actions.act_window.view">
+        <field name="sequence" eval="1"/>
+        <field name="view_mode">tree</field>
+        <field name="view_id" ref="view_utility_reading_tree"/>
+        <field name="act_window_id" ref="action_utility_reading"/>
+    </record>
+
     <record id="action_utility_reading_form_view" model="ir.actions.act_window.view">
-        <field name="sequence" eval="3"/>
+        <field name="sequence" eval="2"/>
         <field name="view_mode">form</field>
         <field name="view_id" ref="view_utility_reading_form"/>
         <field name="act_window_id" ref="action_utility_reading"/>

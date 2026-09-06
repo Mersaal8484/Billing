@@ -23,4 +23,10 @@ Apply this skill to field workflows, operational state machines, buttons, status
 4. Confirm any action that creates real stock or financial effects and explain the effect in user language.
 5. Test valid transitions, invalid transitions, role restrictions, duplicate clicks, and terminal-state visibility.
 
+## Dependent geographic selection
+
+For operational configuration forms, keep related selectors cascading according to the actual model relation: `recurring_rule_type → region → area → zone → route`, `region → area → zone → substation`, and `substation → feeder → transformer → route`; use `utility.subscriber.category → utility.subscriber` where subscriber classification is present. The dropdown domain must filter live choices, an onchange must clear invalid existing children, and a model constraint must reject an incompatible hierarchy or cadence mismatch. This UX rule does not replace authorization checks.
+
+The geographic `utility.region(type='zone')` and `utility.transformer` are distinct representations of the same operational location and must be linked one-to-one through `zone_region_id` and `transformer_origin_id`. Keep the link reciprocal, prevent duplicate use of either record, and preserve both records during migration or deletion workflows.
+
 Avoid changing architecture or adding a new operational model for a view-only usability issue.

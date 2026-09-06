@@ -52,6 +52,17 @@ This skill defines technical engineering guardrails, ORM performance patterns, s
 
 ---
 
+### Dependent Form Domains
+
+- In this project, use the applicable existing chain: `recurring_rule_type → region → area → zone → route`, `region → area → zone → substation`, `substation → feeder → transformer → route`, or `utility.subscriber.category → utility.subscriber`. Do not fabricate missing model relationships.
+- Where a selector depends on several parents, use a combined eligibility domain rather than choosing one parent as authoritative; for example, a contract template must be compatible with subscriber category, subscriber type, geographic scope, and applicable billing cadence.
+- Model one-to-one relations as two reciprocal `Many2one` fields with database uniqueness on both links and server-side reciprocal validation; do not rely on a readonly UI field to maintain the invariant.
+- For parent/child business selectors, define a dynamic XML `domain` using the parent field(s), so the opening dropdown is already filtered.
+- Use `@api.onchange` to remove stale child values after a parent changes, and pair it with `@api.constrains` validation for create/write, imports, and RPC.
+- Keep domains indexed and narrow. A dependent domain is configuration validation and must not be used as the only security control.
+
+---
+
 ## 4. Exception Contracts & Logging
 
 - **Business Errors vs Systems Failures**:

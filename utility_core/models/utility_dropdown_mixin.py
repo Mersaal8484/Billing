@@ -1,5 +1,7 @@
 from odoo import models, api
 
+from .utility_date_range import normalize_billing_cadence
+
 class UtilityDropdownMixin(models.AbstractModel):
     _name = 'utility.dropdown.mixin'
     _description = 'Utility Dropdown Domain Mixin'
@@ -12,12 +14,17 @@ class UtilityDropdownMixin(models.AbstractModel):
         return domain
 
     @api.model
-    def _get_contract_template_domain(self, category_id=False, subscriber_id=False, region_id=False, area_id=False):
+    def _get_contract_template_domain(
+            self, category_id=False, subscriber_id=False, region_id=False, area_id=False,
+            billing_cadence=False):
         domain = []
         if category_id:
             domain.append(('subscriber_category_ids', 'in', [category_id]))
         if subscriber_id:
             domain.append(('subscriber_ids', 'in', [subscriber_id]))
+        cadence = normalize_billing_cadence(billing_cadence)
+        if cadence:
+            domain.append(('recurring_rule_type', '=', cadence))
             
         location_domain = [('scope', '=', 'global')]
         if region_id:

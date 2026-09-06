@@ -23,6 +23,9 @@ Apply this skill to postpaid reading-to-bill-to-payment workflows and their oper
 - The utility Bill is an inherited `sale.order`; the posted Invoice is `account.move`; payments are `account.payment`.
 - Preserve the Core/Billing ownership boundary and do not revive deleted legacy models.
 - Payment, invoice, and settlement navigation must follow actual links, not inferred partner-wide searches.
+- For billing configuration forms with dependent selectors, enforce the business hierarchy in both the view and model. Apply the relevant chain—`recurring_rule_type → region → area → zone → route`, `substation → feeder → transformer → route`, or `utility.subscriber.category → utility.subscriber`—using the model's actual relations. Show only compatible choices, clear stale choices on parent changes, and reject incompatible RPC/import values server-side.
+- Contract-template eligibility is multi-factor rather than a simple chain: `utility.subscriber.category + utility.subscriber + region/area → utility.contract.template`. Filter by all supplied factors, clear a stale template, and verify the template cadence is compatible with the selected geographic cadence.
+- Treat the billing cadence as an end-to-end compatibility chain: `utility.contract.template.recurring_rule_type → utility.customer effective cadence → date.range(billing_cadence, reading role) → utility.reading → sale.order bill → linked payment period`. Filter candidates at each selector and enforce the same cadence in server-side constraints; a payment period must inherit the linked reading period's cadence.
 
 ## Workflow
 

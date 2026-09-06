@@ -248,9 +248,6 @@ class UtilitySaleOrder(models.Model):
     def _check_billing_period_matches_customer(self):
         for order in self.filtered(lambda item: item.customer_id and item.date_range_id):
             expected = order.customer_id._get_effective_billing_period()
-            if expected == 'biweekly':
-                expected = 'semi_monthly'
-
             period = order.date_range_id
             if period.period_role != 'reading':
                 raise ValidationError(_('فترة الفاتورة يجب أن تكون من نوع قراءات، وليست فترة تحصيل.'))

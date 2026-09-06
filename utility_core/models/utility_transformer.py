@@ -16,9 +16,11 @@ class UtilityTransformer(models.Model):
     substation_id = fields.Many2one('utility.substation', 'المحطة')
     feeder_id = fields.Many2one('utility.feeder', 'الفيدر / الخلية', index=True)
     zone_region_id = fields.Many2one(
-        'utility.region', 'المنطقة (zone)',
+        'utility.region', 'المنطقة التفصيلية المرتبطة (Zone 1:1)',
         domain="[('type', '=', 'zone')]",
-        help='سجل المنطقة (zone) المنشأ تلقائياً في التدرج الهرمي للمناطق'
+        ondelete='restrict',
+        index=True,
+        help='التمثيل الجغرافي الواحد-لواحد للمحول في تدرج المناطق.'
     )
     area_id = fields.Many2one('utility.region', 'المنطقة الفرعية', related='zone_region_id.parent_id', store=True, readonly=False)
     region_id = fields.Many2one('utility.region', 'المنطقة', related='zone_region_id.parent_id.parent_id', store=True, readonly=False)
@@ -75,7 +77,23 @@ class UtilityTransformer(models.Model):
     _sql_constraints = [
         ('unique_transformer_code_company', 'unique(code, company_id)',
          'رمز المحول يجب أن يكون فريداً!'),
+        ('unique_transformer_zone_region', 'unique(zone_region_id)',
+         'لا يمكن ربط أكثر من محول واحد بنفس المنطقة التفصيلية (Zone).'),
     ]
+
+    @api.constrains('zone_region_id', 'company_id')
+    def _check_zone_region_link(self):
+        for transformer in self.filtered('zone_region_id'):
+            zone = transformer.zone_region_id
+            if zone.type != 'zone':
+                raise ValidationError(_('يجب أن يكون الرابط الجغرافي للمحول من نوع Zone فقط.'))
+            if zone.company_id != transformer.company_id:
+                raise ValidationError(_('شركة الـZone المرتبط يجب أن تطابق شركة المحول.'))
+            if zone.transformer_origin_id and zone.transformer_origin_id != transformer:
+                raise ValidationError(
+                    _('الـZone "%s" مرتبط مسبقًا بالمحول "%s".')
+                    % (zone.display_name, zone.transformer_origin_id.display_name)
+                )
 
     @api.constrains('is_private', 'private_customer_id', 'customer_ids')
     def _check_private_transformer_owner(self):
@@ -153,6 +171,16 @@ class UtilityTransformer(models.Model):
                 self.env['ir.sequence'].next_by_code(sequence_code) or _('جديد')
             )
 
+        requested_zone_ids = [vals.get('zone_region_id') for vals in vals_list if vals.get('zone_region_id')]
+        if len(requested_zone_ids) != len(set(requested_zone_ids)):
+            raise ValidationError(_('لا يمكن ربط أكثر من محول واحد بنفس الـZone في نفس العملية.'))
+        linked_zones = self.env['utility.region'].browse(requested_zone_ids)
+        occupied_zones = linked_zones.filtered('transformer_origin_id')
+        if occupied_zones:
+            raise ValidationError(
+                _('الـZone "%s" مرتبط مسبقًا بمحول آخر.') % occupied_zones[0].display_name
+            )
+
         # Extract initial area_id or region_id passed in vals
         passed_parents = []
         for vals in vals_list:
@@ -172,7 +200,6 @@ class UtilityTransformer(models.Model):
                     'type': 'zone',
                     'parent_id': parent_id if parent_id else False,
                     'company_id': rec.company_id.id,
-                    'transformer_origin_id': rec.id,
                 }
                 # A transformer-created zone belongs to the selected area/region.
                 # It must inherit the parent's billing cadence; otherwise the
@@ -181,10 +208,27 @@ class UtilityTransformer(models.Model):
                     zone_vals['recurring_rule_type'] = parent.recurring_rule_type
                 zone = self.env['utility.region'].create(zone_vals)
                 rec.zone_region_id = zone.id
+            rec.zone_region_id.write({'transformer_origin_id': rec.id})
         return records
 
     def write(self, vals):
+        previous_zones = {record.id: record.zone_region_id for record in self}
+        if 'zone_region_id' in vals and vals['zone_region_id']:
+            target_zone = self.env['utility.region'].browse(vals['zone_region_id'])
+            if target_zone.transformer_origin_id and target_zone.transformer_origin_id not in self:
+                raise ValidationError(
+                    _('الـZone "%s" مرتبط مسبقًا بمحول آخر.') % target_zone.display_name
+                )
+            if len(self) > 1:
+                raise ValidationError(_('غيّر الـZone لمحول واحد في كل مرة للحفاظ على الربط واحد-لواحد.'))
         res = super().write(vals)
+        if 'zone_region_id' in vals:
+            for rec in self:
+                previous_zone = previous_zones[rec.id]
+                if previous_zone and previous_zone != rec.zone_region_id and previous_zone.transformer_origin_id == rec:
+                    previous_zone.write({'transformer_origin_id': False})
+                if rec.zone_region_id:
+                    rec.zone_region_id.write({'transformer_origin_id': rec.id})
         if 'name' in vals or 'code' in vals or 'area_id' in vals or 'region_id' in vals:
             for rec in self:
                 if rec.zone_region_id:
@@ -205,6 +249,9 @@ class UtilityTransformer(models.Model):
         for rec in self:
             if rec.zone_region_id:
                 zones |= rec.zone_region_id
+        zones.filtered(lambda zone: zone.transformer_origin_id in self).write({
+            'transformer_origin_id': False,
+        })
         res = super().unlink()
         if zones:
             zones.unlink()

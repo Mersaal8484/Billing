@@ -222,7 +222,7 @@ class UtilityReading(models.Model):
             self.account_id._get_effective_billing_period()
             if self.account_id else False
         )
-        return {'bi_monthly': 'biweekly'}.get(recurring_type, recurring_type)
+        return normalize_billing_cadence(recurring_type)
 
     def _get_current_billing_date_range(self):
         self.ensure_one()

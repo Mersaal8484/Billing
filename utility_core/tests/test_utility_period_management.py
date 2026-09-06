@@ -2,6 +2,7 @@ from datetime import date, datetime, timedelta
 from odoo.tests.common import TransactionCase
 from odoo.exceptions import ValidationError
 from odoo import fields
+from odoo.addons.utility_core.models.utility_date_range import normalize_billing_cadence
 import logging
 
 _logger = logging.getLogger(__name__)
@@ -42,6 +43,20 @@ class TestUtilityPeriodManagement(TransactionCase):
             'type': 'region',
             'recurring_rule_type': 'semi_monthly',
         })
+        self.area_monthly = self.Region.create({
+            'name': 'فرع صنعاء (شهري)',
+            'code': 'SANAA_A_M',
+            'type': 'area',
+            'parent_id': self.region_monthly.id,
+            'recurring_rule_type': 'monthly',
+        })
+        self.area_semi = self.Region.create({
+            'name': 'فرع تعز (نصف شهري)',
+            'code': 'TAIZ_A_S',
+            'type': 'area',
+            'parent_id': self.region_semi.id,
+            'recurring_rule_type': 'semi_monthly',
+        })
 
         # إنشاء فئات وقوالب مشاطرة
         self.category = self.env['utility.subscriber.category'].create({
@@ -52,6 +67,15 @@ class TestUtilityPeriodManagement(TransactionCase):
             'name': 'منزلي عادي',
             'code': 'DOM_NORM',
             'category_id': self.category.id,
+        })
+        self.other_category = self.env['utility.subscriber.category'].create({
+            'name': 'تجاري اختبار',
+            'code': 'COM_TEST',
+        })
+        self.other_subscriber_type = self.env['utility.subscriber'].create({
+            'name': 'تجاري عادي',
+            'code': 'COM_NORM',
+            'category_id': self.other_category.id,
         })
         self.template_monthly = self.env['utility.contract.template'].create({
             'name': 'عقد شهري',
@@ -64,7 +88,7 @@ class TestUtilityPeriodManagement(TransactionCase):
         self.template_semi = self.env['utility.contract.template'].create({
             'name': 'عقد نصف شهري',
             'code': 'TMP_S',
-            'recurring_rule_type': 'bi_monthly',
+            'recurring_rule_type': 'semi_monthly',
             'subscriber_category_ids': [(6, 0, [self.category.id])],
             'subscriber_ids': [(6, 0, [self.subscriber_type.id])],
             'scope': 'global',
@@ -105,6 +129,61 @@ class TestUtilityPeriodManagement(TransactionCase):
         """2. المنطقة نصف الشهرية تختار فترات H1/H2 فقط"""
         domain_s = self.Reading._get_open_period_domain(work_type='readings', billing_period='semi_monthly', region_id=self.region_semi.id)
         self.assertIn(('billing_cadence', '=', 'semi_monthly'), domain_s)
+
+    def test_02a_contract_template_uses_canonical_semi_monthly_cadence(self):
+        """قالب العقد والحساب يعيدان قيمة دورية موحدة لفترات القراءة."""
+        self.assertEqual(self.template_semi.recurring_rule_type, 'semi_monthly')
+        self.assertEqual(self.customer_s._get_effective_billing_period(), 'semi_monthly')
+        self.assertEqual(normalize_billing_cadence('bi_monthly'), 'semi_monthly')
+
+    def test_02aa_template_filters_subscriber_types_by_category(self):
+        """Changing a category keeps only its compatible subscriber types."""
+        template = self.env['utility.contract.template'].new()
+        template.subscriber_category_ids = self.category
+        template.subscriber_ids = self.subscriber_type | self.other_subscriber_type
+
+        result = template._onchange_subscriber_category_ids()
+
+        self.assertEqual(template.subscriber_ids, self.subscriber_type)
+        self.assertEqual(
+            result['domain']['subscriber_ids'],
+            [('category_id', 'in', [self.category.id])],
+        )
+
+    def test_02aaa_customer_rejects_template_with_different_geographic_cadence(self):
+        """A monthly region cannot use a semi-monthly contract template."""
+        partner = self.env['res.partner'].create({
+            'name': 'مشترك دورية غير متوافقة',
+            'region_id': self.region_monthly.id,
+        })
+
+        with self.assertRaises(ValidationError):
+            self.Customer.create({
+                'partner_id': partner.id,
+                'category_id': self.category.id,
+                'subscriber_id': self.subscriber_type.id,
+                'contract_template_id': self.template_semi.id,
+            })
+
+    def test_02ab_template_filters_geography_by_cadence_and_parent_region(self):
+        """A monthly template only retains its monthly region and child branch."""
+        template = self.env['utility.contract.template'].new()
+        template.recurring_rule_type = 'monthly'
+        template.region_ids = self.region_monthly | self.region_semi
+        template.area_ids = self.area_monthly | self.area_semi
+
+        result = template._onchange_recurring_rule_type_scope()
+
+        self.assertEqual(template.region_ids, self.region_monthly)
+        self.assertEqual(template.area_ids, self.area_monthly)
+        self.assertEqual(
+            result['domain']['area_ids'],
+            [
+                ('type', '=', 'area'),
+                ('parent_id', 'in', [self.region_monthly.id]),
+                ('recurring_rule_type', '=', 'monthly'),
+            ],
+        )
 
     def test_02b_open_semi_monthly_period_remains_selectable(self):
         """2b. الفترة نصف الشهرية المفتوحة تبقى متاحة للقراءات إذا طابقت الدورية"""

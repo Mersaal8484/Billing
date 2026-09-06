@@ -37,6 +37,27 @@ class TestGeographicRouteAndNetwork(TransactionCase):
         with self.assertRaises(ValidationError):
             other_zone.write({'private_transformer_id': transformer.id})
 
+    def test_transformer_and_zone_have_a_bidirectional_one_to_one_link(self):
+        region = self.Region.create({'name': 'منطقة 1:1', 'code': 'ONE-R', 'type': 'region'})
+        area = self.Region.create({'name': 'فرع 1:1', 'code': 'ONE-A', 'type': 'area', 'parent_id': region.id})
+        zone = self.Region.create({'name': 'Zone 1:1', 'code': 'ONE-Z', 'type': 'zone', 'parent_id': area.id})
+        other_zone = self.Region.create({'name': 'Zone 1:1 آخر', 'code': 'ONE-Z2', 'type': 'zone', 'parent_id': area.id})
+
+        transformer = self.Transformer.create({
+            'name': 'محول 1:1', 'code': 'ONE-T', 'zone_region_id': zone.id,
+        })
+
+        self.assertEqual(transformer.zone_region_id, zone)
+        self.assertEqual(zone.transformer_origin_id, transformer)
+        with self.assertRaises(ValidationError):
+            self.Transformer.create({
+                'name': 'محول مكرر', 'code': 'ONE-T2', 'zone_region_id': zone.id,
+            })
+
+        transformer.write({'zone_region_id': other_zone.id})
+        self.assertFalse(zone.transformer_origin_id)
+        self.assertEqual(other_zone.transformer_origin_id, transformer)
+
     def test_feeder_type_is_backward_compatible_and_searchable(self):
         default_feeder = self.Feeder.create({'name': 'فيدر توزيع', 'code': 'GEO-F1'})
         production = self.Feeder.create({

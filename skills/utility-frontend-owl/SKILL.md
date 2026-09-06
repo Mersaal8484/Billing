@@ -35,6 +35,24 @@ Use Odoo 16 frontend conventions for the existing Utility ERP components. Keep U
 - Keep asset order deterministic and update manifest/template registration together. Avoid inline scripts, global variables, direct DOM mutation, and unbounded event listeners.
 - Confirm destructive or financial/stock-affecting actions and reflect server responses, not optimistic assumptions. Refresh stale records after mutations where necessary.
 
+## Cascading configuration filters
+
+When a form contains dependent business selections, show only values compatible with the already selected parent values. Apply the relevant existing chain when its fields coexist in the form:
+
+- `recurring_rule_type → region → area → zone → route`
+- `region → area → zone → substation`; for a network-linked route, continue with `substation → feeder → transformer → route`
+- `substation → feeder → transformer → route`
+- `utility.subscriber.category → utility.subscriber`
+- `utility.subscriber.category + utility.subscriber + region/area → utility.contract.template`
+
+- Put the live domain on the XML field itself so the dropdown is correct when it opens; do not rely only on an `onchange` domain response.
+- On a parent change, clear already selected children that are no longer valid. Require the parent before allowing a child where the child has no valid standalone meaning.
+- Keep equivalent server-side constraints so imports, RPC calls, and stale browser state cannot save an incompatible combination.
+- Treat this as configuration validity, not a substitute for ACLs or record rules.
+- Do not invent a relation merely to complete a chain; use the model's actual parent/ownership fields.
+- A contract-template selector is a multi-factor eligibility filter: retain only templates that support both the subscriber classification and the geographic scope; also reject a template whose billing cadence conflicts with the selected geography when cadence is available.
+- A Zone and its Transformer are separate records with a one-to-one link. In a selector, expose only unlinked Zones plus the current Transformer's Zone; rely on the server-side unique constraint for integrity.
+
 ## Responsive layout and scrolling
 
 - Design mobile-first with Bootstrap/Odoo utility classes and module SCSS; use breakpoints for toolbar wrapping, card grids, tables, dialogs, and side panels instead of fixed desktop widths.

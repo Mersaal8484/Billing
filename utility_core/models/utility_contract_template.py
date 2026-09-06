@@ -5,6 +5,8 @@ import logging
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError, UserError
 
+from .utility_date_range import normalize_billing_cadence
+
 _logger = logging.getLogger(__name__)
 
 
@@ -28,7 +30,7 @@ class UtilityContractTemplate(models.Model):
     # تكوين التكرار والفوترة
     recurring_rule_type = fields.Selection([
         ('monthly', 'شهري'),
-        ('bi_monthly', 'نصف شهري'),
+        ('semi_monthly', 'نصف شهري'),
         ('quarterly', 'ربع سنوي'),
         ('yearly', 'سنوي'),
     ], default='monthly', required=True)
@@ -298,11 +300,93 @@ class UtilityContractTemplate(models.Model):
                         % sub.name
                     )
 
+    @api.onchange('subscriber_category_ids')
+    def _onchange_subscriber_category_ids(self):
+        """Keep subscriber types limited to the selected main categories."""
+        self.ensure_one()
+        allowed_subscribers = self.subscriber_ids.filtered(
+            lambda subscriber: subscriber.category_id in self.subscriber_category_ids
+        )
+        if allowed_subscribers != self.subscriber_ids:
+            self.subscriber_ids = allowed_subscribers
+
+        return {
+            'domain': {
+                'subscriber_ids': [('category_id', 'in', self.subscriber_category_ids.ids)],
+            },
+        }
+
     @api.constrains('scope', 'region_ids', 'area_ids')
     def _check_scope_regions(self):
         for rec in self:
             if rec.scope == 'restricted' and not rec.region_ids and not rec.area_ids:
                 raise ValidationError(_("يجب اختيار منطقة رئيسية أو منطقة فرعية واحدة على الأقل عند تحديد نطاق التغطية كمخصص!"))
+            if rec.scope == 'restricted' and rec.area_ids and not rec.region_ids:
+                raise ValidationError(
+                    _("يجب اختيار المنطقة الرئيسية قبل اختيار الفروع في قالب العقد.")
+                )
+            invalid_cadence_regions = rec.region_ids.filtered(
+                lambda region: normalize_billing_cadence(region.recurring_rule_type)
+                != normalize_billing_cadence(rec.recurring_rule_type)
+            )
+            invalid_cadence_areas = rec.area_ids.filtered(
+                lambda area: normalize_billing_cadence(area.recurring_rule_type)
+                != normalize_billing_cadence(rec.recurring_rule_type)
+            )
+            if invalid_cadence_regions or invalid_cadence_areas:
+                raise ValidationError(
+                    _("يجب أن تطابق دورية فواتير المناطق والفروع دورية قالب العقد.")
+                )
+            invalid_areas = rec.area_ids.filtered(
+                lambda area: rec.region_ids and area.parent_id not in rec.region_ids
+            )
+            if invalid_areas:
+                raise ValidationError(
+                    _("الفروع المحددة يجب أن تتبع المناطق الرئيسية المختارة في قالب العقد.")
+                )
+
+    @api.onchange('region_ids')
+    def _onchange_region_ids(self):
+        """Limit branches to the selected regions and discard stale selections."""
+        self.ensure_one()
+        allowed_areas = self.area_ids.filtered(
+            lambda area: area.parent_id in self.region_ids
+        )
+        if allowed_areas != self.area_ids:
+            self.area_ids = allowed_areas
+
+        domain = [('type', '=', 'area')]
+        if self.region_ids:
+            domain.append(('parent_id', 'in', self.region_ids.ids))
+        return {'domain': {'area_ids': domain}}
+
+    @api.onchange('recurring_rule_type')
+    def _onchange_recurring_rule_type_scope(self):
+        """Keep the geographic scope compatible with the template cadence."""
+        self.ensure_one()
+        cadence = normalize_billing_cadence(self.recurring_rule_type)
+        self.region_ids = self.region_ids.filtered(
+            lambda region: normalize_billing_cadence(region.recurring_rule_type) == cadence
+        )
+        self.area_ids = self.area_ids.filtered(
+            lambda area: (
+                normalize_billing_cadence(area.recurring_rule_type) == cadence
+                and area.parent_id in self.region_ids
+            )
+        )
+        return {
+            'domain': {
+                'region_ids': [
+                    ('type', '=', 'region'),
+                    ('recurring_rule_type', '=', cadence),
+                ],
+                'area_ids': [
+                    ('type', '=', 'area'),
+                    ('parent_id', 'in', self.region_ids.ids),
+                    ('recurring_rule_type', '=', cadence),
+                ],
+            },
+        }
 
     # ── إدارة وتوليد الإصدارات التجارية (Version Management) ──────────────────
     def _generate_version_snapshot_data(self):
@@ -348,6 +432,7 @@ class UtilityContractTemplate(models.Model):
             'template_id': self.id,
             'template_code': self.code,
             'template_name': self.name,
+            'recurring_rule_type': self.recurring_rule_type,
             'pricing_mode': self.pricing_mode,
             'price_per_kwh': self.price_per_kwh or 0.0,
             'service_charge': self.service_charge or 0.0,
@@ -461,7 +546,7 @@ class UtilityContractTemplate(models.Model):
     def write(self, vals):
         """عند تغيير الأسعار أو التكوين التجاري، نسجل التاريخ ونحدث الإصدار التجاري."""
         commercial_fields = {
-            'pricing_mode', 'price_per_kwh', 'service_charge', 'min_charge', 'max_charge',
+            'recurring_rule_type', 'pricing_mode', 'price_per_kwh', 'service_charge', 'min_charge', 'max_charge',
             'local_fee_per_kwh', 'local_fee_mu_allim', 'local_fee_cleaning',
             'sponsor_id', 'discount_formula_id', 'block_ids', 'discount_block_ids', 'line_ids'
         }

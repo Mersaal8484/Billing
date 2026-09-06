@@ -90,14 +90,19 @@
                 <field name="name"/>
                 <field name="code"/>
                 <field name="parent_id"/>
+                <field name="recurring_rule_type"/>
                 <filter name="active" string="Active" domain="[('active','=',True)]"/>
                 <filter name="inactive" string="Inactive" domain="[('active','=',False)]"/>
                 <filter name="type_region" string="Regions" domain="[('type','=','region')]"/>
                 <filter name="type_area" string="Areas" domain="[('type','=','area')]"/>
                 <filter name="type_zone" string="Zones" domain="[('type','=','zone')]"/>
+                <separator/>
+                <filter name="cadence_monthly" string="شهري" domain="[('recurring_rule_type','=','monthly')]"/>
+                <filter name="cadence_semi_monthly" string="نصف شهري" domain="[('recurring_rule_type','=','semi_monthly')]"/>
                 <group expand="0" string="Group By">
                     <filter name="group_type" string="Type" context="{'group_by':'type'}"/>
                     <filter name="group_parent" string="Parent" context="{'group_by':'parent_id'}"/>
+                    <filter name="group_cadence" string="دورية الفوترة" context="{'group_by':'recurring_rule_type'}"/>
                     <filter name="group_company" string="Company" context="{'group_by':'company_id'}"/>
                 </group>
             </search>

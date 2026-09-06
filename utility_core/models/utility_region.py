@@ -46,9 +46,11 @@ class UtilityRegion(models.Model):
     )
     financial_manager_id = fields.Many2one('res.users', string='المدير المالي للمنطقة', help='المسؤول المالي عن هذه المنطقة')
 
-    transformer_origin_id = fields.Many2one('utility.transformer', 'منشأ من محول',
-        readonly=True, copy=False,
-        help='إذا كان هذا الـ zone منشأً تلقائياً من محول، لا يمكن تعديله يدوياً')
+    transformer_origin_id = fields.Many2one(
+        'utility.transformer', 'المحول المرتبط (1:1)',
+        readonly=True, copy=False, ondelete='restrict', index=True,
+        help='التمثيل الفني الواحد-لواحد للـZone. يُدار من سجل المحول.'
+    )
     private_transformer_id = fields.Many2one(
         'utility.transformer', 'المحول الخاص',
         domain="[('is_private', '=', True), ('company_id', '=', company_id)]",
@@ -57,6 +59,8 @@ class UtilityRegion(models.Model):
 
     _sql_constraints = [
         ('unique_code_parent_company', 'unique(code, parent_id, company_id)', 'الرمز يجب أن يكون فريداً لكل عنصر أب/شركة!'),
+        ('unique_zone_transformer_origin', 'unique(transformer_origin_id)',
+         'لا يمكن ربط أكثر من Zone واحد بنفس المحول.'),
     ]
 
     @api.depends('area_ids')
@@ -98,6 +102,19 @@ class UtilityRegion(models.Model):
                 raise ValidationError(_('شركة المحول الخاص يجب أن تطابق شركة الناحية.'))
             if transformer.zone_region_id and transformer.zone_region_id != region:
                 raise ValidationError(_('المحول الخاص لا ينتمي إلى الناحية المحددة.'))
+
+    @api.constrains('type', 'transformer_origin_id', 'company_id')
+    def _check_transformer_origin_link(self):
+        for region in self.filtered('transformer_origin_id'):
+            transformer = region.transformer_origin_id
+            if region.type != 'zone':
+                raise ValidationError(_('يمكن ربط المحول بكيان جغرافي من نوع Zone فقط.'))
+            if transformer.company_id != region.company_id:
+                raise ValidationError(_('شركة المحول المرتبط يجب أن تطابق شركة الـZone.'))
+            if transformer.zone_region_id != region:
+                raise ValidationError(
+                    _('يجب أن يشير المحول المرتبط إلى الـZone نفسه لضمان العلاقة واحد-لواحد.')
+                )
 
     def action_migrate_biweekly_to_semi_monthly(self):
         """ميجريشن تصحيحي لجميع المناطق الفرعية والرئيسية لتحويل biweekly إلى semi_monthly"""

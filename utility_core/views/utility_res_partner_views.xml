@@ -10,7 +10,9 @@
                 <button name="action_open_utility_customer_registration" type="object"
                         class="oe_stat_button" icon="fa-bolt"
                         attrs="{'invisible': [('has_utility_customer', '=', False)]}">
-                    <field name="has_utility_customer" widget="statinfo" string="حساب كهرباء"/>
+                    <div class="o_stat_info">
+                        <span class="o_stat_text">فتح حساب الكهرباء</span>
+                    </div>
                 </button>
             </xpath>
             <xpath expr="//sheet" position="before">

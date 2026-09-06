@@ -89,6 +89,8 @@ class UtilityReading(models.Model):
     meter_image = fields.Binary('صورة العداد (توافقي)', compute='_compute_meter_image', inverse='_inverse_meter_image', store=False,
                                 help='حقل توافقي غير مخزن — التخزين الأصيل ممركز في image_asset_id')
     meter_image_url = fields.Char('رابط صورة العداد', compute='_compute_meter_image_url', store=False, compute_sudo=True)
+    meter_image_upload = fields.Binary('رفع صورة العداد', attachment=True)
+    meter_image_filename = fields.Char('اسم ملف الصورة', compute='_compute_meter_image_filename', store=False)
     meter_image_secondary = fields.Binary('صورة إضافية', attachment=True)
     image_state = fields.Selection([
         ('clear', 'واضحة'),
@@ -149,6 +151,41 @@ class UtilityReading(models.Model):
         elif not self.is_estimated and self.reading_type == 'estimated':
             self.reading_type = 'manual'
 
+    @api.onchange('meter_image_upload')
+    def _onchange_meter_image_upload(self):
+        if not self.meter_image_upload:
+            return
+        raw = self.meter_image_upload
+        if isinstance(raw, str):
+            try:
+                raw = base64.b64decode(raw, validate=True)
+            except Exception:
+                return
+        if isinstance(raw, bytes) and raw[:4] in (b'\xff\xd8\xff\xe0', b'\xff\xd8\xff\xe1', b'\xff\xd8\xff\xdb', b'\x89PNG', b'RIFF'):
+            pass
+        else:
+            try:
+                raw_decoded = base64.b64decode(raw, validate=True)
+                if raw_decoded[:4] in (b'\xff\xd8\xff\xe0', b'\xff\xd8\xff\xe1', b'\xff\xd8\xff\xdb', b'\x89PNG', b'RIFF'):
+                    raw = raw_decoded
+            except Exception:
+                pass
+        old_asset = self.image_asset_id
+        new_asset = self.env['utility.media.service'].sudo().store_media(
+            file_data=raw,
+            filename=f"reading_{self.id or 'legacy'}.jpg",
+            mimetype='image/jpeg',
+            reading_id=self.id if isinstance(self.id, int) else False,
+            asset_type='meter_reading'
+        )
+        if old_asset and old_asset != new_asset:
+            new_asset.sudo().write({'revision': (old_asset.revision or 1) + 1})
+        self.with_context(_bypass_reading_protection=True).write({
+            'image_asset_id': new_asset.id,
+            'meter_image_upload': False,
+            'image_state': 'pending' if self.image_state == 'none' else self.image_state,
+        })
+
     @api.depends('image_asset_id', 'image_asset_id.state', 'attachment_id')
     def _compute_meter_image(self):
         MediaService = self.env['utility.media.service']
@@ -173,6 +210,10 @@ class UtilityReading(models.Model):
                 r.meter_image_url = f"/web/image/{attachment.id}"
             else:
                 r.meter_image_url = ''
+
+    def _compute_meter_image_filename(self):
+        for r in self:
+            r.meter_image_filename = f"reading_{r.id or 'new'}.jpg"
 
     def _inverse_meter_image(self):
         for r in self:
@@ -310,6 +351,19 @@ class UtilityReading(models.Model):
             self.feeder_id = False
         elif self.reading_category == 'feeder':
             self.transformer_id = False
+        self.meter_id = False
+        return self._get_meter_domain()
+
+    def _get_meter_domain(self):
+        category_to_connection = {
+            'customer': ['subscriber', 'private_transformer'],
+            'transformer': ['transformer'],
+            'feeder': ['feeder'],
+        }
+        connection_types = category_to_connection.get(self.reading_category, [])
+        if connection_types:
+            return {'domain': {'meter_id': [('connection_type', 'in', connection_types)]}}
+        return {'domain': {'meter_id': []}}
 
     reading_history_count = fields.Integer('عدد القراءات السابقة', compute='_compute_reading_history_count')
 

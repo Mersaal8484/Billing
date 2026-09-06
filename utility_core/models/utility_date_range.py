@@ -17,10 +17,10 @@ BILLING_PERIOD_TYPES = [
 ]
 
 def normalize_billing_cadence(value):
-    """تحويل قيم دورية الفوترة المتقادمة (مثل biweekly) إلى الدورية القياسية (semi_monthly)"""
+    """تحويل قيم دورية الفوترة المتقادمة إلى القيمة القياسية ``semi_monthly``."""
     if not value:
         return value
-    if value == 'biweekly':
+    if value in ('biweekly', 'bi_monthly'):
         return 'semi_monthly'
     return value
 
@@ -375,7 +375,7 @@ class DateRange(models.Model):
             if rec.reading_window_start and rec.reading_window_end and rec.reading_window_start > rec.reading_window_end:
                 raise ValidationError(_("تاريخ بداية نافذة القراءة يجب أن يكون قبل تاريخ النهاية."))
 
-    @api.constrains('period_role', 'reading_period_id')
+    @api.constrains('period_role', 'reading_period_id', 'billing_cadence')
     def _check_payment_reading_link(self):
         for rec in self:
             if rec.period_role == 'payment':
@@ -383,6 +383,13 @@ class DateRange(models.Model):
                     raise ValidationError(_("يجب ربط فترة السداد والتحصيل بفترة قراءة واستهلاك صريحة."))
                 if rec.reading_period_id.period_role != 'reading':
                     raise ValidationError(_("فترة القراءة المرتبطة يجب أن تكون من دور 'دورة قراءة وفوترة'."))
+                if (
+                    normalize_billing_cadence(rec.billing_cadence)
+                    != normalize_billing_cadence(rec.reading_period_id.billing_cadence)
+                ):
+                    raise ValidationError(
+                        _("دورية فترة السداد يجب أن تطابق دورية فترة القراءة المرتبطة.")
+                    )
 
     @api.model
     def _normalize_cadence(self, cadence):

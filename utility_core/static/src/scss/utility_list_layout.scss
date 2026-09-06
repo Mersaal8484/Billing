@@ -1,0 +1,16 @@
+// Keep Odoo list/tree columns readable when Arabic labels or identifiers are long.
+// The list renderer becomes horizontally scrollable instead of compressing columns
+// until their headers and cell content collide.
+.o_list_view .o_list_renderer {
+    overflow-x: auto;
+}
+
+.o_list_view .o_list_renderer .o_list_table {
+    min-width: 100%;
+    table-layout: auto;
+}
+
+.o_list_view .o_list_renderer .o_list_table > thead > tr > th,
+.o_list_view .o_list_renderer .o_list_table > tbody > tr > td {
+    white-space: nowrap;
+}

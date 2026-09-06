@@ -787,6 +787,7 @@ class TestReadingLifecycleHardening(TransactionCase):
 
     def test_19_bill_generation_error_sets_error_state(self):
         """When bill generation fails during approval, reading transitions to error state with billing_error."""
+        from unittest.mock import patch
         self._create_opening_reading(100.0)
         reading = self.Reading.create({
             'meter_id': self.meter.id,
@@ -800,17 +801,20 @@ class TestReadingLifecycleHardening(TransactionCase):
         })
         reading.action_submit_review()
 
-        # Close the billing period to force a ValidationError during bill generation
-        self.date_range.write({'state': 'closed'})
+        # Mock action_generate_bill to raise a ValidationError
+        def fake_generate_bill(self_arg):
+            raise ValidationError('خطأ محاكي في توليد الفاتورة')
 
-        reading.with_user(self.supervisor_user).action_approve()
+        with patch.object(type(reading), 'action_generate_bill', fake_generate_bill):
+            reading.with_user(self.supervisor_user).action_approve()
 
         self.assertEqual(reading.state, 'error')
         self.assertTrue(reading.billing_error, 'billing_error must be populated on failure')
-        self.assertNotIn('sale', reading.billing_error.lower())
+        self.assertIn('خطأ محاكي', reading.billing_error)
 
     def test_20_action_requeue_moves_error_to_queued(self):
         """action_requeue moves an error-state reading back to queued for retry."""
+        from unittest.mock import patch
         self._create_opening_reading(100.0)
         reading = self.Reading.create({
             'meter_id': self.meter.id,
@@ -824,14 +828,16 @@ class TestReadingLifecycleHardening(TransactionCase):
         })
         reading.action_submit_review()
 
-        # Force error state by closing the period
-        self.date_range.write({'state': 'closed'})
-        reading.with_user(self.supervisor_user).action_approve()
+        # Force error state by mocking bill generation
+        def fake_generate_bill(self_arg):
+            raise ValidationError('خطأ محاكي')
+
+        with patch.object(type(reading), 'action_generate_bill', fake_generate_bill):
+            reading.with_user(self.supervisor_user).action_approve()
         self.assertEqual(reading.state, 'error')
         self.assertTrue(reading.billing_error)
 
-        # Reopen period and requeue
-        self.date_range.write({'state': 'open'})
+        # Requeue
         reading.action_requeue()
         self.assertEqual(reading.state, 'queued')
         self.assertFalse(reading.billing_error)
@@ -858,20 +864,18 @@ class TestReadingLifecycleHardening(TransactionCase):
 
     def test_22_non_billable_reading_stays_approved_after_approval(self):
         """Non-billable network transformer reading stays in approved state, no bill generated."""
-        # Create a separate meter for network transformer reading
         partner2 = self.Partner.create({'name': 'ممح transformer', 'region_id': self.region.id})
         cust2 = self.Customer.create({
-            'name': 'عميل محول شبكي',
             'partner_id': partner2.id,
-            'contract_status': 'active',
+            'category_id': self.category.id,
+            'subscriber_id': self.subscriber.id,
+            'contract_template_id': self.template.id,
             'region_id': self.region.id,
         })
         meter2 = self.Meter.create({
-            'name': 'عداد محول شبكي',
             'meter_number': 'MTR-NET-01',
-            'subscriber_id': self.subscriber.id,
             'customer_id': cust2.id,
-            'connection_type': 'subscriber',
+            'connection_type': 'transformer',
             'multiplier': 1.0,
         })
 
@@ -912,10 +916,24 @@ class TestReadingLifecycleHardening(TransactionCase):
         reading.with_user(self.supervisor_user).action_approve()
         self.assertEqual(reading.state, 'billed')
 
-        # Create a reading manually set to queued (simulating a leftover from before the change)
+        # Create a second customer+meter to avoid unique constraint
+        partner2 = self.Partner.create({'name': 'مشترك طابور', 'region_id': self.region.id})
+        cust2 = self.Customer.create({
+            'partner_id': partner2.id,
+            'category_id': self.category.id,
+            'subscriber_id': self.subscriber.id,
+            'contract_template_id': self.template.id,
+            'region_id': self.region.id,
+        })
+        meter2 = self.Meter.create({
+            'meter_number': 'MTR-CRON-FB',
+            'customer_id': cust2.id,
+            'connection_type': 'subscriber',
+            'multiplier': 1.0,
+        })
         reading2 = self.Reading.create({
-            'meter_id': self.meter.id,
-            'account_id': self.customer.id,
+            'meter_id': meter2.id,
+            'account_id': cust2.id,
             'reading_value': 400.0,
             'reading_date': fields.Datetime.now() + timedelta(minutes=1),
             'reading_purpose': 'periodic',
@@ -934,20 +952,20 @@ class TestReadingLifecycleHardening(TransactionCase):
 
     def test_24_multiple_readings_partial_failure(self):
         """When approving multiple readings, one failing does not block others."""
+        from unittest.mock import patch
         self._create_opening_reading(100.0)
 
-        # Create two readings for different customers
+        # Create second customer+meter
         partner2 = self.Partner.create({'name': 'مشترك ثاني', 'region_id': self.region.id})
         cust2 = self.Customer.create({
-            'name': 'عميل ثاني',
             'partner_id': partner2.id,
-            'contract_status': 'active',
+            'category_id': self.category.id,
+            'subscriber_id': self.subscriber.id,
+            'contract_template_id': self.template.id,
             'region_id': self.region.id,
         })
         meter2 = self.Meter.create({
-            'name': 'عداد ثاني',
             'meter_number': 'MTR-02',
-            'subscriber_id': self.subscriber.id,
             'customer_id': cust2.id,
             'connection_type': 'subscriber',
             'multiplier': 1.0,

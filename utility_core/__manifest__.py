@@ -1,6 +1,6 @@
 {
     'name': 'Utility Core',
-    'version': '16.0.1.5.1',
+    'version': '16.0.1.5.3',
     'category': 'Utility ERP',
     'summary': 'Core Master Data for Utility ERP Platform',
     'description': """
@@ -111,6 +111,7 @@ User Role.
     'post_init_hook': 'post_init_hook',
     'assets': {
         'web.assets_backend': [
+            'utility_core/static/src/scss/utility_list_layout.scss',
             'utility_core/static/src/js/lib/html5-qrcode.min.js',
             'utility_core/static/src/js/barcode_camera_widget.js',
             'utility_core/static/src/xml/barcode_camera_widget.xml',
