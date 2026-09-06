@@ -68,6 +68,7 @@
                         </group>
                         <group string="المواصفات الكهربائية">
                             <field name="voltage_level"/>
+                            <field name="phase"/>
                             <field name="rated_capacity"/>
                             <field name="current_load"/>
                             <field name="load_percentage" widget="progressbar"/>

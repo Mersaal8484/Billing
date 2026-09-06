@@ -45,6 +45,7 @@ class UtilityMeter(models.Model):
     status_id = fields.Many2one('utility.meter.status', 'الحالة')
     phase = fields.Selection(
         related='model_id.phase', string='الطور', store=True, readonly=True,
+        index=True,
         help='مواصفة الطور الفنية؛ تُجلب من موديل العداد'
     )
     voltage = fields.Float(
@@ -99,6 +100,57 @@ class UtilityMeter(models.Model):
         domain="[('is_private', '=', True)]")
     linked_feeder_id = fields.Many2one(
         'utility.feeder', 'Linked Feeder', index=True)
+    available_meter_model_ids = fields.Many2many(
+        'utility.meter.model', compute='_compute_available_meter_catalogs',
+        string='موديلات العدادات المتوافقة')
+    available_meter_type_ids = fields.Many2many(
+        'utility.meter.type', compute='_compute_available_meter_catalogs',
+        string='أنواع العدادات المتوافقة')
+
+    def _get_required_network_phase(self):
+        """Return the phase imposed by the connected network asset, if any."""
+        self.ensure_one()
+        if self.connection_type == 'transformer':
+            return self.linked_transformer_id.phase
+        if self.connection_type == 'private_transformer':
+            return self.linked_private_transformer_id.phase
+        if self.connection_type == 'feeder':
+            return self.linked_feeder_id.phase
+        return False
+
+    @api.depends(
+        'connection_type', 'model_id.phase',
+        'linked_transformer_id.phase', 'linked_private_transformer_id.phase',
+        'linked_feeder_id.phase',
+    )
+    def _compute_available_meter_catalogs(self):
+        MeterModel = self.env['utility.meter.model']
+        MeterType = self.env['utility.meter.type']
+        all_models = MeterModel.search([])
+        all_types = MeterType.search([])
+        models_by_phase = {
+            'single': all_models.filtered(lambda model: model.phase == 'single'),
+            'three': all_models.filtered(lambda model: model.phase == 'three'),
+        }
+        types_by_phase = {
+            'single': all_types.filtered(lambda meter_type: meter_type.phase == 'single'),
+            'three': all_types.filtered(lambda meter_type: meter_type.phase == 'three'),
+        }
+        for meter in self:
+            phase = meter._get_required_network_phase() or meter.phase
+            meter.available_meter_model_ids = models_by_phase.get(phase, all_models)
+            meter.available_meter_type_ids = types_by_phase.get(phase, all_types)
+
+    def _clear_incompatible_catalog_values(self):
+        """Keep the form coherent when its connected asset changes phase."""
+        self.ensure_one()
+        required_phase = self._get_required_network_phase()
+        if required_phase and self.model_id and self.phase and self.phase != required_phase:
+            self.model_id = False
+        effective_phase = self._get_required_network_phase() or self.phase
+        if (effective_phase and self.meter_type_id.phase
+                and self.meter_type_id.phase != effective_phase):
+            self.meter_type_id = False
 
     @api.depends('reading_ids')
     def _compute_reading_count(self):
@@ -114,6 +166,7 @@ class UtilityMeter(models.Model):
             self.phase = model.phase
         if not self.meter_type_id:
             self.meter_type_id = model.meter_type_id
+        self._clear_incompatible_catalog_values()
 
     @api.onchange('connection_type')
     def _onchange_connection_type(self):
@@ -148,16 +201,39 @@ class UtilityMeter(models.Model):
     def _onchange_linked_transformer_id(self):
         if self.linked_transformer_id and self.connection_type != 'transformer':
             self.connection_type = 'transformer'
+        self._clear_incompatible_catalog_values()
 
     @api.onchange('linked_private_transformer_id')
     def _onchange_linked_private_transformer_id(self):
         if self.linked_private_transformer_id and self.connection_type != 'private_transformer':
             self.connection_type = 'private_transformer'
+        self._clear_incompatible_catalog_values()
 
     @api.onchange('linked_feeder_id')
     def _onchange_linked_feeder_id(self):
         if self.linked_feeder_id and self.connection_type != 'feeder':
             self.connection_type = 'feeder'
+        self._clear_incompatible_catalog_values()
+
+    @api.constrains(
+        'connection_type', 'linked_transformer_id',
+        'linked_private_transformer_id', 'linked_feeder_id', 'model_id',
+        'meter_type_id', 'phase',
+    )
+    def _check_phase_matches_connected_asset(self):
+        """Protect phase compatibility for UI, imports, and RPC writes."""
+        for meter in self:
+            required_phase = meter._get_required_network_phase()
+            if required_phase and meter.phase and meter.phase != required_phase:
+                raise ValidationError(_(
+                    'طور العداد يجب أن يطابق طور العنصر المرتبط (%s).'
+                ) % dict(meter._fields['phase'].selection).get(required_phase))
+            effective_phase = required_phase or meter.phase
+            if (effective_phase and meter.meter_type_id.phase
+                    and meter.meter_type_id.phase != effective_phase):
+                raise ValidationError(_(
+                    'نوع العداد المختار لا يطابق طور العداد أو العنصر المرتبط.'
+                ))
 
     def _update_last_reading(self):
         for m in self:

@@ -29,5 +29,6 @@ Apply this skill when a request could change module ownership, model boundaries,
 - The contract template's cadence is a Core configuration invariant that must remain compatible with the customer's geographic cadence and the reading/payment periods used to bill it. `utility_billing` enforces this when generating bills; do not create a separate billing-period ledger.
 - `utility_billing` owns billing extensions and payment APIs; it must not create a parallel bill or payment ledger.
 - `utility_inventory` bridges meters to stock and lots; it must not replace stock valuation or custody.
+- Phase is a technical compatibility invariant, not a second network hierarchy: `utility.meter.model` defines the meter phase; a connected meter must match its subscriber connection type, transformer, or feeder phase. Keep the feeder phase explicit rather than assuming three-phase service.
 - Do not introduce prepaid vending into the V1 postpaid architecture.
 - Treat `CURRENT` facts as code-verified; label proposals as `TARGET` and do not present them as implemented.

@@ -29,4 +29,6 @@ For operational configuration forms, keep related selectors cascading according 
 
 The geographic `utility.region(type='zone')` and `utility.transformer` are distinct representations of the same operational location and must be linked one-to-one through `zone_region_id` and `transformer_origin_id`. Keep the link reciprocal, prevent duplicate use of either record, and preserve both records during migration or deletion workflows.
 
+For an installation or connection, apply the phase compatibility chain: `utility.meter.model.phase → utility.meter`, then `utility.connection.type.phase → subscriber meter`, `utility.transformer.phase → transformer meter`, or `utility.feeder.phase → feeder meter`. Use live domains, onchange cleanup, and server constraints together; a feeder needs an explicit phase and must not be treated as inherently three-phase.
+
 Avoid changing architecture or adding a new operational model for a view-only usability issue.

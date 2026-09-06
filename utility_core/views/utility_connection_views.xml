@@ -21,6 +21,7 @@
         <field name="model">utility.connection</field>
         <field name="arch" type="xml">
             <form>
+                <field name="available_meter_ids" invisible="1"/>
                 <sheet>
                     <div class="oe_title">
                         <h1><field name="name"/></h1>
@@ -30,7 +31,7 @@
                             <field name="customer_id"/>
                             <field name="account_id"/>
                             <field name="connection_type"/>
-                            <field name="meter_id"/>
+                            <field name="meter_id" domain="[('id', 'in', available_meter_ids)]"/>
                             <field name="connection_date"/>
                             <field name="status"/>
                             <field name="active"/>

@@ -11,6 +11,10 @@ class TestGeographicRouteAndNetwork(TransactionCase):
         self.Region = self.env['utility.region']
         self.Transformer = self.env['utility.transformer']
         self.Feeder = self.env['utility.feeder']
+        self.Meter = self.env['utility.meter']
+        self.MeterModel = self.env['utility.meter.model']
+        self.Connection = self.env['utility.connection']
+        self.ConnectionType = self.env['utility.connection.type']
 
     def test_route_domain_specificity(self):
         self.assertEqual(
@@ -66,3 +70,48 @@ class TestGeographicRouteAndNetwork(TransactionCase):
         self.assertEqual(default_feeder.feeder_type, 'distribution')
         self.assertEqual(production.feeder_type, 'production_area')
         self.assertIn(production, self.Feeder.search([('feeder_type', '=', 'production_area')]))
+
+    def test_meter_phase_must_match_transformer_or_feeder(self):
+        single_model = self.MeterModel.create({
+            'name': 'موديل أحادي', 'code': 'PH-1', 'phase': 'single',
+        })
+        three_model = self.MeterModel.create({
+            'name': 'موديل ثلاثي', 'code': 'PH-3', 'phase': 'three',
+        })
+        region = self.Region.create({'name': 'منطقة طور', 'code': 'PH-R', 'type': 'region'})
+        area = self.Region.create({'name': 'فرع طور', 'code': 'PH-A', 'type': 'area', 'parent_id': region.id})
+        zone = self.Region.create({'name': 'Zone طور', 'code': 'PH-Z', 'type': 'zone', 'parent_id': area.id})
+        transformer = self.Transformer.create({
+            'name': 'محول ثلاثي', 'code': 'PH-T', 'zone_region_id': zone.id, 'phase': 'three',
+        })
+        feeder = self.Feeder.create({
+            'name': 'فيدر أحادي', 'code': 'PH-F', 'phase': 'single',
+        })
+
+        with self.assertRaises(ValidationError):
+            self.Meter.create({
+                'meter_number': 'PH-M-T', 'model_id': single_model.id,
+                'connection_type': 'transformer', 'linked_transformer_id': transformer.id,
+            })
+        with self.assertRaises(ValidationError):
+            self.Meter.create({
+                'meter_number': 'PH-M-F', 'model_id': three_model.id,
+                'connection_type': 'feeder', 'linked_feeder_id': feeder.id,
+            })
+
+    def test_connection_type_phase_must_match_subscriber_meter(self):
+        single_model = self.MeterModel.create({
+            'name': 'موديل وصلة أحادي', 'code': 'CON-PH-1', 'phase': 'single',
+        })
+        three_type = self.ConnectionType.create({
+            'name': 'توصيلة ثلاثية اختبار', 'code': 'CON-PH-3', 'phase': 'three',
+        })
+        meter = self.Meter.create({'meter_number': 'CON-PH-M', 'model_id': single_model.id})
+        partner = self.env['res.partner'].create({'name': 'مشترك اختبار الطور'})
+        customer = self.Customer.create({
+            'customer_number': 'CON-PH-C', 'partner_id': partner.id,
+        })
+        with self.assertRaises(ValidationError):
+            self.Connection.create({
+                'customer_id': customer.id, 'connection_type': three_type.id, 'meter_id': meter.id,
+            })

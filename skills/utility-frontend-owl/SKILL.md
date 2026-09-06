@@ -44,6 +44,7 @@ When a form contains dependent business selections, show only values compatible 
 - `substation → feeder → transformer → route`
 - `utility.subscriber.category → utility.subscriber`
 - `utility.subscriber.category + utility.subscriber + region/area → utility.contract.template`
+- `utility.meter.model.phase → utility.meter`; for the selected endpoint, require the same phase from `utility.connection.type` (subscriber), `utility.transformer`, or `utility.feeder`
 
 - Put the live domain on the XML field itself so the dropdown is correct when it opens; do not rely only on an `onchange` domain response.
 - On a parent change, clear already selected children that are no longer valid. Require the parent before allowing a child where the child has no valid standalone meaning.
@@ -52,6 +53,7 @@ When a form contains dependent business selections, show only values compatible 
 - Do not invent a relation merely to complete a chain; use the model's actual parent/ownership fields.
 - A contract-template selector is a multi-factor eligibility filter: retain only templates that support both the subscriber classification and the geographic scope; also reject a template whose billing cadence conflicts with the selected geography when cadence is available.
 - A Zone and its Transformer are separate records with a one-to-one link. In a selector, expose only unlinked Zones plus the current Transformer's Zone; rely on the server-side unique constraint for integrity.
+- A feeder's phase is explicit; do not filter or default it as if all feeders were three-phase. When the phase parent changes, clear an incompatible meter, model, or meter type before save.
 
 ## Responsive layout and scrolling
 

@@ -55,6 +55,7 @@ This skill defines technical engineering guardrails, ORM performance patterns, s
 ### Dependent Form Domains
 
 - In this project, use the applicable existing chain: `recurring_rule_type → region → area → zone → route`, `region → area → zone → substation`, `substation → feeder → transformer → route`, or `utility.subscriber.category → utility.subscriber`. Do not fabricate missing model relationships.
+- For meter assignments, the compatible phase chain is `utility.meter.model.phase → utility.meter`, then the selected endpoint: `utility.connection.type.phase` for a subscriber, `utility.transformer.phase` for a transformer, or explicit `utility.feeder.phase` for a feeder. Do not assume an implicit feeder phase.
 - Where a selector depends on several parents, use a combined eligibility domain rather than choosing one parent as authoritative; for example, a contract template must be compatible with subscriber category, subscriber type, geographic scope, and applicable billing cadence.
 - Model one-to-one relations as two reciprocal `Many2one` fields with database uniqueness on both links and server-side reciprocal validation; do not rely on a readonly UI field to maintain the invariant.
 - For parent/child business selectors, define a dynamic XML `domain` using the parent field(s), so the opening dropdown is already filtered.

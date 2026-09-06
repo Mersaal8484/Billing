@@ -29,6 +29,11 @@ class UtilityFeeder(models.Model):
         ('mv', 'جهد متوسط (MV)'),
         ('hv', 'جهد عالي (HV)'),
     ], string='مستوى الجهد')
+    phase = fields.Selection([
+        ('single', 'طور واحد'),
+        ('three', 'ثلاثة أطوار'),
+    ], string='الطور', tracking=True,
+       help='الطور التشغيلي للفيدر. لا يمكن ربطه بعداد بطور مختلف.')
     rated_capacity = fields.Float('الطاقة الاسمية (kVA)')
     current_load = fields.Float('الحمل الحالي (kVA)')
     load_percentage = fields.Float('نسبة التحميل %', compute='_compute_load_percentage', store=True)
