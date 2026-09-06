@@ -1,5 +1,5 @@
 from odoo import api, fields, models, _
-from odoo.exceptions import AccessError
+from odoo.exceptions import AccessError, ValidationError
 
 
 class UtilityRoute(models.Model):
@@ -52,6 +52,36 @@ class UtilityRoute(models.Model):
                     rec.area_id = rec.transformer_id.zone_region_id.parent_id.id
                     if rec.transformer_id.zone_region_id.parent_id:
                         rec.region_id = rec.transformer_id.zone_region_id.parent_id.parent_id.id
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            transformer_id = vals.get('transformer_id')
+            if transformer_id:
+                transformer = self.env['utility.transformer'].browse(transformer_id)
+                vals.setdefault('zone_id', transformer.zone_region_id.id)
+                vals.setdefault('area_id', transformer.area_id.id)
+        return super().create(vals_list)
+
+    def write(self, vals):
+        vals = dict(vals)
+        if vals.get('transformer_id') and 'zone_id' not in vals and 'area_id' not in vals:
+            transformer = self.env['utility.transformer'].browse(vals['transformer_id'])
+            vals['zone_id'] = transformer.zone_region_id.id
+            vals['area_id'] = transformer.area_id.id
+        return super().write(vals)
+
+    @api.constrains('area_id', 'zone_id', 'transformer_id')
+    def _check_route_hierarchy(self):
+        for route in self:
+            if route.zone_id and route.area_id and route.zone_id.parent_id != route.area_id:
+                raise ValidationError(_('المنطقة التفصيلية للمسار يجب أن تتبع الفرع المحدد.'))
+            transformer = route.transformer_id
+            if transformer:
+                if route.zone_id and transformer.zone_region_id != route.zone_id:
+                    raise ValidationError(_('محول المسار يجب أن يطابق المنطقة التفصيلية للمسار.'))
+                if route.area_id and transformer.area_id != route.area_id:
+                    raise ValidationError(_('محول المسار يجب أن يطابق فرع المسار.'))
 
     @api.depends('customer_ids')
     def _compute_customer_count(self):

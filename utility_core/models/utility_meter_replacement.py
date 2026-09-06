@@ -62,11 +62,10 @@ class UtilityMeterReplacement(models.Model):
     new_meter_serial_scan = fields.Char(string="مسح العداد الجديد (باركود)", store=False, help="استخدم الكاميرا للبحث عن العداد الجديد")
     new_meter_id = fields.Many2one('utility.meter', string="العداد الجديد (موجود بالنظام)", domain="[('connection_type', '=', 'not_connected')]", tracking=True, check_company=True)
     new_meter_number = fields.Char(string="رقم العداد الجديد (لإنشاء جديد)", tracking=True)
+    new_meter_model_id = fields.Many2one('utility.meter.model', string="موديل العداد الجديد")
     new_meter_type_id = fields.Many2one('utility.meter.type', string="نوع العداد الجديد")
-    new_phase = fields.Selection([
-        ('single', 'طور واحد'),
-        ('three', 'ثلاثة أطوار'),
-    ], string="طور العداد الجديد", default='single')
+    new_phase = fields.Selection(
+        related='new_meter_model_id.phase', string="طور العداد الجديد", readonly=True)
     new_opening_reading = fields.Float(string="القراءة الافتتاحية", digits=(12, 3), required=True, tracking=True)
     new_meter_val = fields.Float(string="معامل الضرب", default=1.0, tracking=True)
 
@@ -154,6 +153,43 @@ class UtilityMeterReplacement(models.Model):
         
         val = meter.multiplier if meter else 1.0
         self.old_uninvoiced_consumption = max((self.old_closing_reading - self.old_last_invo_reading) * val, 0.0)
+
+    def _get_target_phase(self):
+        self.ensure_one()
+        if self.target_type == 'feeder':
+            return self.feeder_id.phase
+        if self.target_type == 'transformer':
+            return self.transformer_id.phase
+        return self.old_meter_id.phase or self.utility_account_id.meter_id.phase
+
+    @api.constrains('target_type', 'utility_account_id', 'feeder_id', 'transformer_id',
+                    'old_meter_id', 'new_meter_id', 'new_meter_model_id', 'new_meter_type_id')
+    def _check_target_and_meter_compatibility(self):
+        for rec in self:
+            target = {
+                'subscriber': rec.utility_account_id,
+                'feeder': rec.feeder_id,
+                'transformer': rec.transformer_id,
+            }.get(rec.target_type)
+            if target and target.company_id != rec.company_id:
+                raise ValidationError(_('العنصر المستهدف وعملية الاستبدال يجب أن ينتميا إلى الشركة نفسها.'))
+            phase = rec._get_target_phase()
+            if rec.new_meter_id:
+                if rec.new_meter_id.connection_type != 'not_connected':
+                    raise ValidationError(_('العداد الجديد المختار يجب أن يكون غير مرتبط.'))
+                if phase and not rec.new_meter_id.phase:
+                    raise ValidationError(_('يجب أن يكون للعداد الجديد طور محدد من موديل العداد.'))
+                if phase and rec.new_meter_id.phase and rec.new_meter_id.phase != phase:
+                    raise ValidationError(_('طور العداد الجديد لا يطابق طور العنصر المستهدف.'))
+            if rec.new_meter_model_id:
+                if not rec.new_meter_model_id.phase:
+                    raise ValidationError(_('موديل العداد الجديد يجب أن يحتوي طورًا فنيًا محددًا.'))
+                if phase and rec.new_meter_model_id.phase and rec.new_meter_model_id.phase != phase:
+                    raise ValidationError(_('موديل العداد الجديد لا يطابق طور العنصر المستهدف.'))
+                if (rec.new_meter_type_id and rec.new_meter_type_id.phase
+                        and rec.new_meter_model_id.phase
+                        and rec.new_meter_type_id.phase != rec.new_meter_model_id.phase):
+                    raise ValidationError(_('نوع العداد الجديد لا يطابق موديل العداد المختار.'))
 
     @api.onchange('old_meter_serial_scan')
     def _onchange_old_meter_serial_scan(self):
@@ -267,10 +303,12 @@ class UtilityMeterReplacement(models.Model):
 
             new_meter = rec.new_meter_id
             if not new_meter and rec.new_meter_number:
+                if not rec.new_meter_model_id:
+                    raise UserError(_('يجب تحديد موديل العداد الجديد حتى يكون طوره مصدرًا فنيًا موثوقًا.'))
                 meter_vals = {
                     'meter_number': rec.new_meter_number,
+                    'model_id': rec.new_meter_model_id.id,
                     'meter_type_id': rec.new_meter_type_id.id if rec.new_meter_type_id else False,
-                    'phase': rec.new_phase,
                     'installation_date': rec.replace_date.date(),
                     'company_id': rec.company_id.id,
                     'multiplier': rec.new_meter_val or 1.0,

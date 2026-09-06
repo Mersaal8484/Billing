@@ -15,6 +15,10 @@ class TestGeographicRouteAndNetwork(TransactionCase):
         self.MeterModel = self.env['utility.meter.model']
         self.Connection = self.env['utility.connection']
         self.ConnectionType = self.env['utility.connection.type']
+        self.Substation = self.env['utility.substation']
+        self.Route = self.env['utility.route']
+        self.Reading = self.env['utility.reading']
+        self.Replacement = self.env['utility.meter.replacement']
 
     def test_route_domain_specificity(self):
         self.assertEqual(
@@ -115,3 +119,60 @@ class TestGeographicRouteAndNetwork(TransactionCase):
             self.Connection.create({
                 'customer_id': customer.id, 'connection_type': three_type.id, 'meter_id': meter.id,
             })
+
+    def test_network_and_route_hierarchy_cannot_be_mixed(self):
+        region = self.Region.create({'name': 'منطقة شبكة', 'code': 'NET-R', 'type': 'region'})
+        area = self.Region.create({'name': 'فرع شبكة', 'code': 'NET-A', 'type': 'area', 'parent_id': region.id})
+        zone = self.Region.create({'name': 'Zone شبكة', 'code': 'NET-Z', 'type': 'zone', 'parent_id': area.id})
+        other_zone = self.Region.create({'name': 'Zone شبكة أخرى', 'code': 'NET-Z2', 'type': 'zone', 'parent_id': area.id})
+        station = self.Substation.create({'name': 'محطة شبكة', 'code': 'NET-S', 'zone_id': zone.id})
+        feeder = self.Feeder.create({
+            'name': 'فيدر شبكة', 'code': 'NET-F', 'substation_id': station.id,
+        })
+        transformer = self.Transformer.create({
+            'name': 'محول شبكة', 'code': 'NET-T', 'zone_region_id': zone.id,
+            'substation_id': station.id, 'feeder_id': feeder.id,
+        })
+        self.assertEqual(feeder.area_id, area)
+        with self.assertRaises(ValidationError):
+            self.Route.create({
+                'name': 'مسار غير متطابق', 'code': 'NET-RT', 'area_id': area.id,
+                'zone_id': other_zone.id, 'transformer_id': transformer.id,
+            })
+
+    def test_reading_category_and_replacement_phase_are_enforced(self):
+        single_model = self.MeterModel.create({
+            'name': 'موديل اختبار أحادي', 'code': 'RULE-PH-1', 'phase': 'single',
+        })
+        three_model = self.MeterModel.create({
+            'name': 'موديل اختبار ثلاثي', 'code': 'RULE-PH-3', 'phase': 'three',
+        })
+        partner = self.env['res.partner'].create({'name': 'مشترك قواعد القراءة'})
+        customer = self.Customer.create({'customer_number': 'RULE-READ-C', 'partner_id': partner.id})
+        meter = self.Meter.create({
+            'meter_number': 'RULE-READ-M', 'model_id': single_model.id,
+            'connection_type': 'subscriber', 'customer_id': customer.id,
+        })
+        with self.assertRaises(ValidationError):
+            self.Reading.create({
+                'meter_id': meter.id, 'account_id': customer.id,
+                'reading_value': 10.0, 'reading_category': 'feeder',
+            })
+
+        feeder = self.Feeder.create({'name': 'فيدر قواعد', 'code': 'RULE-F', 'phase': 'three'})
+        new_meter = self.Meter.create({
+            'meter_number': 'RULE-NEW-M', 'model_id': single_model.id,
+        })
+        with self.assertRaises(ValidationError):
+            self.Replacement.create({
+                'target_type': 'feeder', 'feeder_id': feeder.id,
+                'new_meter_id': new_meter.id, 'new_opening_reading': 0.0,
+            })
+        valid_meter = self.Meter.create({
+            'meter_number': 'RULE-NEW-M3', 'model_id': three_model.id,
+        })
+        replacement = self.Replacement.create({
+            'target_type': 'feeder', 'feeder_id': feeder.id,
+            'new_meter_id': valid_meter.id, 'new_opening_reading': 0.0,
+        })
+        self.assertEqual(replacement.new_meter_id, valid_meter)

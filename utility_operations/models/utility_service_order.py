@@ -92,6 +92,20 @@ class UtilityServiceOrder(models.Model):
          'رقم الأمر يجب أن يكون فريداً لكل شركة!'),
     ]
 
+    @api.constrains('customer_id', 'meter_id', 'old_meter_id', 'new_meter_id', 'zone_id', 'service_type')
+    def _check_subject_and_meter_consistency(self):
+        for order in self:
+            customer = order.customer_id
+            if customer and order.zone_id and customer.zone_id and order.zone_id != customer.zone_id:
+                raise ValidationError(_('موقع أمر الخدمة يجب أن يطابق المنطقة التفصيلية للمشترك.'))
+            if customer:
+                for meter in (order.meter_id, order.old_meter_id):
+                    if meter and meter.customer_id and meter.customer_id != customer:
+                        raise ValidationError(_('العداد المحدد لا يتبع المشترك في أمر الخدمة.'))
+            if order.service_type == 'meter_replacement' and order.new_meter_id:
+                if order.new_meter_id.connection_type != 'not_connected':
+                    raise ValidationError(_('عداد الاستبدال الجديد يجب أن يكون غير مرتبط قبل التنفيذ.'))
+
     def _check_state_transition(self, allowed_states):
         for order in self:
             self.env.user.check_record_scope(order)

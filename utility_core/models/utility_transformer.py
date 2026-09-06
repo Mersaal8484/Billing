@@ -109,6 +109,22 @@ class UtilityTransformer(models.Model):
                     _('الحساب المحدد كمُالك للمحول الخاص غير مرتبط به فعليًا.')
                 )
 
+    @api.constrains('feeder_id', 'substation_id', 'company_id', 'coupling_meter_id')
+    def _check_network_chain_consistency(self):
+        for transformer in self:
+            feeder = transformer.feeder_id
+            station = transformer.substation_id
+            if feeder:
+                if feeder.company_id != transformer.company_id:
+                    raise ValidationError(_('شركة المحول يجب أن تطابق شركة الفيدر.'))
+                if station and feeder.substation_id and feeder.substation_id != station:
+                    raise ValidationError(_('الفيدر المحدد لا يتبع المحطة المحددة للمحول.'))
+            if station and station.company_id != transformer.company_id:
+                raise ValidationError(_('شركة المحول يجب أن تطابق شركة المحطة.'))
+            meter = transformer.coupling_meter_id
+            if meter and (meter.connection_type != 'transformer' or meter.linked_transformer_id != transformer):
+                raise ValidationError(_('عداد الربط يجب أن يكون عداد محول مرتبطًا بهذا المحول نفسه.'))
+
     # ===== Compute =====
     @api.depends('customer_ids')
     def _compute_customer_count(self):
@@ -160,6 +176,9 @@ class UtilityTransformer(models.Model):
         # private transformers (محول خاص) use utility.transformer.private
         # (PRV/...), regular transformers use utility.transformer (TRF/...).
         for vals in vals_list:
+            feeder_id = vals.get('feeder_id')
+            if feeder_id and not vals.get('substation_id'):
+                vals['substation_id'] = self.env['utility.feeder'].browse(feeder_id).substation_id.id
             if vals.get('code'):
                 continue
             sequence_code = (
@@ -212,6 +231,10 @@ class UtilityTransformer(models.Model):
         return records
 
     def write(self, vals):
+        vals = dict(vals)
+        if vals.get('feeder_id') and 'substation_id' not in vals:
+            vals['substation_id'] = self.env['utility.feeder'].browse(
+                vals['feeder_id']).substation_id.id
         previous_zones = {record.id: record.zone_region_id for record in self}
         if 'zone_region_id' in vals and vals['zone_region_id']:
             target_zone = self.env['utility.region'].browse(vals['zone_region_id'])

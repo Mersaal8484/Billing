@@ -27,6 +27,8 @@ Apply this skill to meter custody, replacement, stock movement, lot or serial tr
 
 For meter assignment, the technical phase comes from `utility.meter.model.phase`. A meter attached to a transformer or private transformer must match `utility.transformer.phase`; a meter attached to a feeder must match the explicit `utility.feeder.phase`. For a subscriber, validate the meter against `utility.connection.type.phase` on the subscriber connection. Filter compatible meter models and meter types in the form, clear stale choices after a parent phase changes, and enforce the same compatibility in model constraints so imports and RPC cannot bypass it. Do not silently assume every feeder is three-phase.
 
+For a replacement, never collect a separate editable phase. A newly created meter must select `utility.meter.model`, and its phase comes solely from that model; an existing replacement meter must be unassigned and compatible with the replaced subscriber, transformer, or feeder.
+
 ## Workflow
 
 1. Trace product, lot, serial, picking, and meter links before changing fields.

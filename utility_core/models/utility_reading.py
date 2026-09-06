@@ -133,6 +133,9 @@ class UtilityReading(models.Model):
         ('error', 'خطأ'),
     ], string='الحالة', default='draft', tracking=True, index=True)
     available_open_reading_period_ids = fields.Many2many('date.range', compute='_compute_available_open_reading_period_ids')
+    available_meter_ids = fields.Many2many(
+        'utility.meter', compute='_compute_available_meter_ids',
+        string='العدادات المتوافقة')
     date_range_id = fields.Many2one('date.range', string="الفترة", index=True)
     remarks = fields.Text('ملاحظات')
     reading_source = fields.Char('مصدر القراءة')
@@ -330,7 +333,10 @@ class UtilityReading(models.Model):
     def _onchange_meter_account(self):
         """Snapshot the account and multiplier selected with the meter."""
         if self.meter_id:
-            self.account_id = self.meter_id.customer_id
+            self.account_id = (
+                self.meter_id.customer_id
+                or self.meter_id.linked_private_transformer_id.private_customer_id
+            )
             self.meter_multiplier = self.meter_id.multiplier or 1.0
 
     @api.onchange('reading_purpose')
@@ -364,6 +370,55 @@ class UtilityReading(models.Model):
         if connection_types:
             return {'domain': {'meter_id': [('connection_type', 'in', connection_types)]}}
         return {'domain': {'meter_id': []}}
+
+    @api.depends('reading_category', 'account_id')
+    def _compute_available_meter_ids(self):
+        Meter = self.env['utility.meter']
+        meters_by_category = {
+            'customer': Meter.search([('connection_type', 'in', ['subscriber', 'private_transformer'])]),
+            'transformer': Meter.search([('connection_type', '=', 'transformer')]),
+            'feeder': Meter.search([('connection_type', '=', 'feeder')]),
+        }
+        for reading in self:
+            meters = meters_by_category.get(reading.reading_category, Meter.browse())
+            if reading.reading_category == 'customer' and reading.account_id:
+                meters = meters.filtered(
+                    lambda meter: meter.customer_id == reading.account_id
+                    or meter.linked_private_transformer_id.private_customer_id == reading.account_id)
+            reading.available_meter_ids = meters
+
+    @api.constrains('meter_id', 'account_id', 'reading_category')
+    def _check_meter_subject_consistency(self):
+        """A reading subject is derived from its meter, never entered independently."""
+        expected_connections = {
+            'customer': ('subscriber', 'private_transformer'),
+            'transformer': ('transformer',),
+            'feeder': ('feeder',),
+        }
+        for reading in self:
+            meter = reading.meter_id
+            if not meter:
+                continue
+            if meter.connection_type not in expected_connections.get(
+                    reading.reading_category, ()):
+                raise ValidationError(_(
+                    'تصنيف القراءة لا يطابق نوع ربط العداد المختار.'
+                ))
+            if meter.connection_type == 'subscriber':
+                if meter.customer_id and reading.account_id != meter.customer_id:
+                    raise ValidationError(_(
+                        'حساب القراءة يجب أن يطابق المشترك المرتبط بالعداد.'
+                    ))
+            elif meter.connection_type == 'private_transformer':
+                owner = meter.linked_private_transformer_id.private_customer_id
+                if owner and reading.account_id != owner:
+                    raise ValidationError(_(
+                        'حساب قراءة المحول الخاص يجب أن يطابق مالك المحول.'
+                    ))
+            elif reading.account_id:
+                raise ValidationError(_(
+                    'قراءات المحولات والفيدرات العامة لا ترتبط بحساب مشترك.'
+                ))
 
     reading_history_count = fields.Integer('عدد القراءات السابقة', compute='_compute_reading_history_count')
 

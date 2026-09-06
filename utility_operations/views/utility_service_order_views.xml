@@ -69,7 +69,7 @@
                             <group string="العميل">
                                 <field name="customer_id"/>
                                 <field name="account_id"/>
-                                <field name="meter_id"/>
+                                <field name="meter_id" domain="[('customer_id', '=', customer_id)]"/>
                             </group>
                             <group string="الموقع">
                                 <field name="region_id"/>
@@ -85,12 +85,12 @@
                             <page string="بيانات العداد">
                                 <group>
                                     <group string="العداد القديم">
-                                        <field name="old_meter_id"/>
+                                        <field name="old_meter_id" domain="[('customer_id', '=', customer_id)]"/>
                                         <field name="meter_reading_before"/>
                                         <field name="seal_number_old"/>
                                     </group>
                                     <group string="العداد الجديد">
-                                        <field name="new_meter_id"/>
+                                        <field name="new_meter_id" domain="[('connection_type', '=', 'not_connected')]"/>
                                         <field name="meter_reading_after"/>
                                         <field name="seal_number_new"/>
                                     </group>

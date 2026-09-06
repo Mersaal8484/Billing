@@ -31,7 +31,7 @@
                             <field name="customer_id"/>
                             <field name="account_id"/>
                             <field name="connection_type"/>
-                            <field name="meter_id" domain="[('id', 'in', available_meter_ids)]"/>
+                            <field name="meter_id" domain="[('id', 'in', available_meter_ids), ('customer_id', '=', customer_id)]"/>
                             <field name="connection_date"/>
                             <field name="status"/>
                             <field name="active"/>

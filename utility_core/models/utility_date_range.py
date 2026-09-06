@@ -390,6 +390,10 @@ class DateRange(models.Model):
                     raise ValidationError(
                         _("دورية فترة السداد يجب أن تطابق دورية فترة القراءة المرتبطة.")
                     )
+                if rec.region_ids != rec.reading_period_id.region_ids:
+                    raise ValidationError(
+                        _("نطاق مناطق فترة السداد يجب أن يطابق نطاق فترة القراءة المرتبطة.")
+                    )
 
     @api.model
     def _normalize_cadence(self, cadence):

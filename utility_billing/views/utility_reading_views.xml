@@ -81,6 +81,7 @@
         <field name="model">utility.reading</field>
         <field name="arch" type="xml">
             <form>
+                <field name="available_meter_ids" invisible="1"/>
                 <field name="company_id" invisible="1"/>
                 <header>
                     <!-- أزرار حسب الحالة -->
@@ -155,7 +156,7 @@
                             <field name="reading_purpose" attrs="{'readonly': [('state', '!=', 'draft')]}"/>
                             <field name="reading_event" attrs="{'readonly': [('state', '!=', 'draft')]}"/>
                             <field name="meter_serial_scan" widget="barcode_camera" attrs="{'invisible': [('state', '!=', 'draft')]}"/>
-                            <field name="meter_id" options="{'no_create': True}" attrs="{'readonly': [('state', '!=', 'draft')]}"/>
+                            <field name="meter_id" domain="[('id', 'in', available_meter_ids)]" options="{'no_create': True}" attrs="{'readonly': [('state', '!=', 'draft')]}"/>
                             <field name="account_id" options="{'no_create': True}" attrs="{'readonly': [('state', '!=', 'draft')]}"/>
                             <field name="reading_history_count" string="سجل القراءات" widget="statinfo"/>
                             <field name="transformer_id" attrs="{'invisible': [('reading_category', '!=', 'transformer')]}"/>

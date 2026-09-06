@@ -31,4 +31,6 @@ The geographic `utility.region(type='zone')` and `utility.transformer` are disti
 
 For an installation or connection, apply the phase compatibility chain: `utility.meter.model.phase → utility.meter`, then `utility.connection.type.phase → subscriber meter`, `utility.transformer.phase → transformer meter`, or `utility.feeder.phase → feeder meter`. Use live domains, onchange cleanup, and server constraints together; a feeder needs an explicit phase and must not be treated as inherently three-phase.
 
+For network master data, enforce `substation → feeder → transformer → route` at save time: a feeder inherits its station geography, a transformer cannot pair a feeder with a different station, and a route derived from a transformer must use that transformer's geographic Zone and Area. Coupling meters must be linked to the exact feeder or transformer that names them.
+
 Avoid changing architecture or adding a new operational model for a view-only usability issue.

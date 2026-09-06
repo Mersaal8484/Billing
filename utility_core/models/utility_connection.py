@@ -34,8 +34,9 @@ class UtilityConnection(models.Model):
             'three': Meter.search([('phase', '=', 'three')]),
         }
         for connection in self:
-            connection.available_meter_ids = meters_by_phase.get(
-                connection.connection_type.phase, Meter.browse())
+            meters = meters_by_phase.get(connection.connection_type.phase, Meter.browse())
+            connection.available_meter_ids = meters.filtered(
+                lambda meter: meter.customer_id == connection.customer_id)
 
     @api.onchange('connection_type', 'meter_id')
     def _onchange_connection_phase(self):
@@ -50,6 +51,11 @@ class UtilityConnection(models.Model):
                     and connection.connection_type.phase != connection.meter_id.phase):
                 raise ValidationError(_(
                     'طور العداد يجب أن يطابق طور نوع التوصيلة للمشترك.'
+                ))
+            if (connection.meter_id.connection_type == 'subscriber'
+                    and connection.meter_id.customer_id != connection.customer_id):
+                raise ValidationError(_(
+                    'عداد التوصيلة يجب أن يكون مرتبطًا بالمشترك نفسه.'
                 ))
 
     @api.model_create_multi

@@ -61,11 +61,11 @@
                         <group string="التسلسل التجاري: region → area → zone → route">
                             <field name="code"/>
                             <field name="region_id"/>
-                            <field name="area_id"/>
-                            <field name="zone_id"/>
+                            <field name="area_id" domain="[('type', '=', 'area'), ('parent_id', '=', region_id)]"/>
+                            <field name="zone_id" domain="[('type', '=', 'zone'), ('parent_id', '=', area_id)]"/>
                         </group>
                         <group string="تسلسل التوزيع: substation → feeder → transformer → route">
-                            <field name="transformer_id" options="{'no_create': True}"/>
+                            <field name="transformer_id" domain="[('zone_region_id', '=', zone_id)]" options="{'no_create': True}"/>
                             <field name="feeder_id"/>
                             <field name="substation_id"/>
                         </group>

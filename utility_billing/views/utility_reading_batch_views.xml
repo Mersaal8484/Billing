@@ -33,6 +33,7 @@
         <field name="model">utility.reading.batch</field>
         <field name="arch" type="xml">
             <form>
+                <field name="available_open_reading_period_ids" invisible="1"/>
                 <header>
                     <button name="action_confirm" type="object"
                             string="تأكيد وبدء المعالجة" class="oe_highlight"
@@ -62,7 +63,7 @@
                         <group string="معلومات الدفعة">
                             <field name="user_id"/>
                             <field name="upload_date"/>
-                            <field name="date_range_id"/>
+                            <field name="date_range_id" domain="[('id', 'in', available_open_reading_period_ids)]"/>
                             <field name="region_id"/>
                         </group>
                         <group string="الإحصائيات">

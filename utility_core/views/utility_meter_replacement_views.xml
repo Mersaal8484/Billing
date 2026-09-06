@@ -103,7 +103,8 @@
                             <field name="new_meter_number" attrs="{'readonly': [('state', '=', 'done')], 'invisible': [('new_meter_id', '!=', False)]}"/>
                         </group>
                         <group>
-                            <field name="new_meter_type_id" attrs="{'readonly': [('state', '=', 'done')], 'required': [('new_meter_id', '=', False)], 'invisible': [('new_meter_id', '!=', False)]}"/>
+                            <field name="new_meter_model_id" options="{'no_create': True}" attrs="{'readonly': [('state', '=', 'done')], 'required': [('new_meter_id', '=', False)], 'invisible': [('new_meter_id', '!=', False)]}"/>
+                            <field name="new_meter_type_id" attrs="{'readonly': [('state', '=', 'done')], 'invisible': [('new_meter_id', '!=', False)]}"/>
                             <field name="new_phase" attrs="{'readonly': [('state', '=', 'done')], 'invisible': [('new_meter_id', '!=', False)]}"/>
                             <field name="new_opening_reading" attrs="{'readonly': [('state', '=', 'done')]}"/>
                             <field name="new_meter_val" attrs="{'readonly': [('state', '=', 'done')]}"/>
