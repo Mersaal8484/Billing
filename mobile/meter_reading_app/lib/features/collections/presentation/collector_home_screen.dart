@@ -43,7 +43,7 @@ class _CollectorHomeScreenState extends ConsumerState<CollectorHomeScreen> {
                 Expanded(
                   child: _SummaryTile(
                     icon: Icons.payments_outlined,
-                    label: 'محصل اليوم',
+                    label: 'هذه الجلسة',
                     value: '${summary.collectedAmount.toStringAsFixed(0)} ﷼',
                   ),
                 ),

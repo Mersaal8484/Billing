@@ -1,14 +1,17 @@
 import '../../../core/network/billing_api_service.dart';
 import '../../customers/domain/entities.dart';
 import '../domain/collection_models.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 /// Source of truth for field collections.  It never fabricates an account,
 /// payment or receipt: a receipt is kept locally only after Odoo confirms the
 /// posted payment, exact allocation and collector custody record.
 class OdooCollectionRepository implements CollectionRepository {
-  OdooCollectionRepository(this._billing);
+  OdooCollectionRepository(this._billing, {FlutterSecureStorage? storage})
+      : _storage = storage ?? const FlutterSecureStorage();
 
   final BillingApiService _billing;
+  final FlutterSecureStorage _storage;
   final List<CollectionReceipt> _receipts = [];
   final Map<String, CollectionAccount> _accounts = {};
 
@@ -53,13 +56,24 @@ class OdooCollectionRepository implements CollectionRepository {
     final account = _accounts[accountId] ?? await findById(accountId);
     if (account == null) throw StateError('الحساب غير موجود أو خارج مسارك.');
 
-    final requestKey = 'MC-${DateTime.now().microsecondsSinceEpoch}-$accountId';
+    final pendingKey = _pendingKey(
+      accountId: accountId,
+      invoiceId: invoice.invoiceId,
+      amount: amount,
+    );
+    // Persist before sending. If the connection times out after the server
+    // posts the payment, the next attempt reuses this exact key and receives
+    // the original receipt instead of creating a second collection.
+    final requestKey = await _storage.read(key: pendingKey) ??
+        'MC-${DateTime.now().microsecondsSinceEpoch}-$accountId';
+    await _storage.write(key: pendingKey, value: requestKey);
     final result = await _billing.collectCash(
       orderId: invoice.orderId,
       invoiceId: invoice.invoiceId,
       amount: amount,
       idempotencyKey: requestKey,
     );
+    await _storage.delete(key: pendingKey);
     final receipt = CollectionReceipt(
       reference: result['reference'] as String? ?? requestKey,
       displayName: result['payment_reference'] as String? ?? '',
@@ -72,6 +86,12 @@ class OdooCollectionRepository implements CollectionRepository {
     _receipts.insert(0, receipt);
     return receipt;
   }
+
+  String _pendingKey({
+    required String accountId,
+    required int invoiceId,
+    required double amount,
+  }) => 'collection.pending.$accountId.$invoiceId.${amount.toStringAsFixed(2)}';
 
   CollectionAccount? _mapAccount(Map<String, dynamic> result) {
     final raw = result['account'];

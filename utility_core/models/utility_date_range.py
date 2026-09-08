@@ -413,6 +413,42 @@ class DateRange(models.Model):
                         "دورية المناطق التابعة (%s) لا تطابق دورية الفترة (%s)."
                     ) % (names, rec.billing_cadence))
 
+    @api.constrains('period_code', 'billing_cadence')
+    def _check_period_code_cadence_consistency(self):
+        """يمنع حفظ سجل يكون فيه period_code يدل على دورية معينة
+        لكن billing_cadence يحمل قيمة مغايرة.
+
+        القواعد المعرّفة:
+          SE*, READ-SEMI-*, PAY-SEMI-*  →  semi_monthly
+          READ-MONTHLY-*, PAY-MONTHLY-*, MONTHLY-*  →  monthly
+
+        إذا كانت البادئة غير معروفة لا يُطبَّق أي قيد (مرونة للمستقبل).
+        يستخدم normalize_billing_cadence لمعالجة المرادفات القديمة.
+        """
+        CODE_CADENCE_MAP = [
+            (('SE',), 'semi_monthly'),
+            (('READ-SEMI-', 'PAY-SEMI-'), 'semi_monthly'),
+            (('READ-MONTHLY-', 'PAY-MONTHLY-', 'MONTHLY-'), 'monthly'),
+        ]
+        for rec in self:
+            if not rec.period_code:
+                continue
+            code = rec.period_code.upper()
+            expected_cadence = None
+            for prefixes, cadence in CODE_CADENCE_MAP:
+                if any(code.startswith(p) for p in prefixes):
+                    expected_cadence = cadence
+                    break
+            if expected_cadence is None:
+                continue  # بادئة غير معروفة — لا قيد ينطبق
+            actual = normalize_billing_cadence(rec.billing_cadence)
+            if actual != expected_cadence:
+                raise ValidationError(_(
+                    "رمز الفترة '%s' يدل على دورية '%s' "
+                    "لكن دورية الفوترة المحفوظة هي '%s'.\n"
+                    "تأكد من ضبط دورية الفوترة الصحيحة قبل الحفظ."
+                ) % (rec.period_code, expected_cadence, rec.billing_cadence))
+
     # ===== Region Scope Auto-Population =====
 
     @api.model

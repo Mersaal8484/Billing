@@ -13,7 +13,7 @@ class CollectionHistoryScreen extends ConsumerWidget {
     final receipts = repo.receipts();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('سجل تحصيلات اليوم')),
+      appBar: AppBar(title: const Text('سجل التحصيل في الجلسة')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -31,7 +31,7 @@ class CollectionHistoryScreen extends ConsumerWidget {
               const SizedBox(width: 8),
               Expanded(
                   child: _MetricCard(
-                      label: 'قيد التحصيل',
+                      label: 'حسابات معلقة',
                       value: '${summary.pendingAccounts}')),
             ],
           ),
@@ -39,7 +39,7 @@ class CollectionHistoryScreen extends ConsumerWidget {
           FilledButton.tonalIcon(
             onPressed: () {},
             icon: const Icon(Icons.sync_rounded),
-            label: const Text('مزامنة / تصدير'),
+            label: const Text('السندات المرحّلة في الجلسة'),
           ),
           const SizedBox(height: 16),
           Text('آخر العمليات', style: Theme.of(context).textTheme.titleMedium),
@@ -49,7 +49,7 @@ class CollectionHistoryScreen extends ConsumerWidget {
               child: ListTile(
                 leading: Icon(Icons.info_outline),
                 title: Text('لا توجد عمليات جديدة في هذه الجلسة'),
-                subtitle: Text('تظهر هنا الإيصالات التي تسجلها أثناء التجربة.'),
+                subtitle: Text('تظهر هنا السندات التي أكد النظام ترحيلها في هذه الجلسة.'),
               ),
             )
           else

@@ -60,7 +60,7 @@ class UtilityBillingAPI(http.Controller):
     @http.route('/api/v1/utility/customer/lookup', type='json', auth='user', methods=['POST'])
     def customer_lookup(self, **kwargs):
         """Resolve an authorized customer by exact business identifier."""
-        customer, error_code = self._resolve_authorized_customer(request.jsonrequest or {})
+        customer, error_code = self._resolve_authorized_customer(getattr(request, 'jsonrequest', None) or {})
         if error_code == 'CUSTOMER_IDENTIFIER_MISMATCH':
             return self._error(error_code, 'معرفات الحساب متعارضة')
         if error_code == 'CUSTOMER_IDENTIFIER_REQUIRED':
@@ -75,7 +75,7 @@ class UtilityBillingAPI(http.Controller):
     @http.route('/api/v1/utility/customer/qr_reference', type='json', auth='user', methods=['POST'])
     def update_customer_qr_reference(self, **kwargs):
         """Assign or change the current external QR reference idempotently."""
-        params = request.jsonrequest or {}
+        params = getattr(request, 'jsonrequest', None) or {}
         customer, error_code = self._resolve_authorized_customer(params)
         if error_code == 'CUSTOMER_IDENTIFIER_MISMATCH':
             return self._error(error_code, 'معرفات الحساب متعارضة')
@@ -219,10 +219,13 @@ class UtilityBillingAPI(http.Controller):
             'success': True,
             'account': {
                 **self._customer_payload(customer),
-                'account_number': customer.account_number or customer.customer_number,
+                'account_number': customer.customer_number,
                 'meter_number': meter.meter_number if meter else None,
                 'meter_id': meter.id if meter else None,
-                'connection_status': meter.connection_status if meter else None,
+                # The account state is the supported operational connection
+                # status in V1; utility.meter has no independent
+                # ``connection_status`` field.
+                'connection_status': customer.state,
                 'accounting_balance': customer.accounting_balance,
                 'due_amount': total_due,
                 'current_bill': current_bill,
@@ -239,7 +242,7 @@ class UtilityBillingAPI(http.Controller):
         if error:
             return error
         customer, error_code = self._resolve_authorized_customer(
-            request.jsonrequest or {})
+            getattr(request, 'jsonrequest', None) or {})
         if error_code == 'CUSTOMER_IDENTIFIER_MISMATCH':
             return self._error(error_code, 'Customer identifiers conflict.')
         if error_code == 'CUSTOMER_IDENTIFIER_REQUIRED':
@@ -257,7 +260,7 @@ class UtilityBillingAPI(http.Controller):
         custody record.  It intentionally does not queue or print an
         unacknowledged financial transaction on the device.
         """
-        params = request.jsonrequest or {}
+        params = getattr(request, 'jsonrequest', None) or {}
         collector, error = self._get_current_collector()
         if error:
             return error
@@ -374,7 +377,7 @@ class UtilityBillingAPI(http.Controller):
 
     @http.route('/api/v1/utility/billing/balance', type='json', auth='user', methods=['POST'])
     def billing_balance(self, **kwargs):
-        params = request.jsonrequest
+        params = getattr(request, 'jsonrequest', None) or {}
         customer_number = params.get('customer_number')
         if not customer_number:
             return self._error('VALIDATION_ERROR', 'customer_number is required')
@@ -395,7 +398,7 @@ class UtilityBillingAPI(http.Controller):
 
     @http.route('/api/v1/utility/billing/bills', type='json', auth='user', methods=['POST'])
     def billing_bills(self, **kwargs):
-        params = request.jsonrequest
+        params = getattr(request, 'jsonrequest', None) or {}
         customer_number = params.get('customer_number')
         limit = params.get('limit', 12)
         if not customer_number:
@@ -432,7 +435,7 @@ class UtilityBillingAPI(http.Controller):
 
     @http.route('/api/v1/utility/billing/payment_intent', type='json', auth='user', methods=['POST'])
     def billing_payment_intent(self, **kwargs):
-        params = request.jsonrequest
+        params = getattr(request, 'jsonrequest', None) or {}
         order_id = params.get('order_id')
         amount = params.get('amount')
         provider_id = params.get('provider_id')
@@ -534,7 +537,7 @@ class UtilityBillingAPI(http.Controller):
 
     @http.route('/api/v1/utility/payment_gateway/webhook/<string:reference>', type='json', auth='public', methods=['POST'], csrf=False)
     def payment_gateway_webhook(self, reference, **kwargs):
-        params = request.jsonrequest or {}
+        params = getattr(request, 'jsonrequest', None) or {}
         # 1. Search transaction by reference WITHOUT locking first
         tx = request.env['utility.payment.gateway.transaction'].sudo().search([
             ('name', '=', reference),
@@ -599,7 +602,7 @@ class UtilityBillingAPI(http.Controller):
         - نبحث ضمن تلك الحسابات فقط — لا sudo().browse() قبل التفويض.
         - بعد التحقق من الهوية والملكية، يُنشأ أمر الخدمة.
         """
-        params = request.jsonrequest
+        params = getattr(request, 'jsonrequest', None) or {}
         customer_id = params.get('customer_id')
         service_type = params.get('service_type')
         description = params.get('description')
@@ -631,7 +634,7 @@ class UtilityBillingAPI(http.Controller):
     @http.route('/api/v1/utility/reports/daily', type='json', auth='user', methods=['POST'])
     def reports_daily(self, **kwargs):
         from datetime import date
-        params = request.jsonrequest
+        params = getattr(request, 'jsonrequest', None) or {}
         report_date = params.get('date', date.today().isoformat())
         region_id = params.get('region_id')
         area_id = params.get('area_id')

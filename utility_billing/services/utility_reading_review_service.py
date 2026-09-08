@@ -438,6 +438,78 @@ class UtilityReadingReviewService(models.AbstractModel):
                 % ", ".join(sorted(region_names))
             )
 
+    def _check_review_authority(self, user):
+        """Keep image-review authority aligned with reading approval authority."""
+        if not (
+            user.has_group('utility_core.group_utility_supervisor')
+            or user.has_group('utility_core.group_utility_billing_manager')
+            or user.has_group('utility_core.group_utility_revenue_manager')
+            or user.has_group('utility_core.group_utility_admin')
+            or self.env.su
+        ):
+            raise AccessError(_(
+                'ليس لديك صلاحية اعتماد حالة صورة العداد. '
+                'يتطلب ذلك صلاحية مشرف أو مدير فوترة أو مدير إيرادات.'
+            ))
+
+
+    @api.model
+    def action_mark_images_clear(self, reading_ids):
+        """Record the review decision that the supplied meter evidence is clear.
+
+        A reading remains under review after this action.  The separate
+        ``action_approve_review`` transition is deliberately retained so a
+        reviewer cannot accidentally approve a commercial reading merely by
+        inspecting its image.
+        """
+        if not reading_ids:
+            return {
+                'status': 'error',
+                'code': 'NO_READINGS_SELECTED',
+                'message': _('لم يتم تحديد أي قراءة لاعتماد صورة العداد.'),
+            }
+
+        readings = self.env['utility.reading'].search([('id', 'in', reading_ids)])
+        if not readings:
+            return {
+                'status': 'error',
+                'code': 'READINGS_NOT_FOUND',
+                'message': _('القراءات المحددة غير موجودة.'),
+            }
+
+        user = self.env.user
+        self._check_review_authority(user)
+        self._check_geographic_access(readings, user)
+
+        eligible = readings.filtered(lambda reading: reading.state == 'under_review')
+        if not eligible:
+            return {
+                'status': 'error',
+                'code': 'IMAGE_REVIEW_STATE_INVALID',
+                'message': _('يمكن اعتماد حالة الصورة للقراءات قيد المراجعة فقط.'),
+            }
+
+        without_image = eligible.filtered(
+            lambda reading: not reading.image_asset_id and not reading.attachment_id
+        )
+        if without_image:
+            return {
+                'status': 'error',
+                'code': 'IMAGE_EVIDENCE_MISSING',
+                'message': _('لا يمكن اعتماد الصورة كواضحة لأن ملف صورة العداد غير موجود.'),
+            }
+
+        eligible.write({'image_state': 'clear'})
+        _logger.info(
+            'Meter image evidence marked clear for readings %s by user %s.',
+            eligible.ids,
+            user.id,
+        )
+        return {
+            'status': 'success',
+            'marked_ids': eligible.ids,
+            'count': len(eligible),
+        }
 
     @api.model
     def action_approve_review(self, reading_ids):
@@ -455,6 +527,19 @@ class UtilityReadingReviewService(models.AbstractModel):
         valid_readings = readings.filtered(lambda r: r.state in ['under_review', 'draft'])
         if not valid_readings:
             return {'status': 'error', 'message': _('القراءات المحددة تم اعتمادها أو فوترتها سابقاً.')}
+
+        images_pending_review = valid_readings.filtered(
+            lambda reading: reading._requires_billing_review()
+            and reading.image_state != 'clear'
+        )
+        if images_pending_review:
+            return {
+                'status': 'error',
+                'code': 'IMAGE_REVIEW_REQUIRED',
+                'message': _(
+                    'اعتمد صورة العداد كـ«واضحة» أولاً، ثم اعتمد القراءة.'
+                ),
+            }
 
         # Delegate to the authoritative model method (single source of truth)
         valid_readings.action_approve()

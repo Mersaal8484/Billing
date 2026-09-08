@@ -23,9 +23,9 @@ class ResConfigSettings(models.TransientModel):
     require_open_cashier_shift = fields.Boolean(related='company_id.require_open_cashier_shift',
         readonly=False, string='إلزام وجود وردية مفتوحة')
 
-    default_sts_provider_id = fields.Many2one('utility.sts.provider',
+    sts_default_provider_id = fields.Many2one('utility.sts.provider',
         related='company_id.default_sts_provider_id', readonly=False,
-        string='مزود STS الافتراضي', default_model='utility.sts.provider')
+        string='مزود STS الافتراضي')
     sts_request_timeout = fields.Integer(related='company_id.sts_request_timeout',
         readonly=False, string='مهلة طلب STS (ثانية)')
     sts_max_retry_count = fields.Integer(related='company_id.sts_max_retry_count',
