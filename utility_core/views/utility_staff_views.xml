@@ -7,7 +7,6 @@
             <tree decoration-success="active == True" decoration-muted="active == False">
                 <field name="employee_code"/>
                 <field name="name"/>
-                <field name="role_ids" widget="many2many_tags" optional="show"/>
                 <field name="region_id" optional="show"/>
                 <field name="area_id" optional="show"/>
                 <field name="team_id" optional="show"/>
@@ -57,13 +56,11 @@
                         </h1>
                         <h3>
                             <field name="employee_code" placeholder="رمز الموظف (مثال: EMP001)" class="oe_inline me-2"/>
-                            <field name="role_ids" widget="many2many_tags" options="{'no_create': True}" class="oe_inline"/>
                         </h3>
                     </div>
 
                     <group>
-                        <group name="identity" string="بيانات الهوية والأدوار التشغيلية">
-                            <field name="role_ids" widget="many2many_tags" options="{'no_create': True}"/>
+                        <group name="identity" string="بيانات الهوية والتشغيل">
                             <field name="region_id" options="{'no_create': True}"/>
                             <field name="area_id" options="{'no_create': True}" domain="[('type', '=', 'area')]"/>
                             <field name="team_id" options="{'no_create': True}"/>
@@ -106,7 +103,6 @@
             <search string="بحث الموظفين">
                 <field name="name" string="اسم الموظف"/>
                 <field name="employee_code"/>
-                <field name="role_ids"/>
                 <field name="region_id"/>
                 <field name="area_id"/>
                 <field name="team_id"/>

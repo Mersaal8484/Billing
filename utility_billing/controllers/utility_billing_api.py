@@ -44,6 +44,10 @@ class UtilityBillingAPI(http.Controller):
             customer_id=params.get('customer_id'),
             customer_number=params.get('customer_number'),
             external_qr_reference=params.get('external_qr_reference'),
+            meter_id=params.get('meter_id'),
+            meter_number=params.get('meter_number'),
+            operational_number=params.get('operational_number'),
+            lookup_value=params.get('lookup_value'),
             scope_ids=accounts.ids,
         )
         return customer, error_code
@@ -66,8 +70,10 @@ class UtilityBillingAPI(http.Controller):
         if error_code == 'CUSTOMER_IDENTIFIER_REQUIRED':
             return self._error(
                 error_code,
-                'customer_id, customer_number or external_qr_reference is required',
+                'A customer, meter, QR, or lookup identifier is required',
             )
+        if error_code == 'CUSTOMER_IDENTIFIER_AMBIGUOUS':
+            return self._error(error_code, 'المعرف المدخل يطابق أكثر من حساب.')
         if not customer:
             return self._error(error_code or 'CUSTOMER_NOT_FOUND', 'الحساب غير موجود')
         return {'success': True, 'customer': self._customer_payload(customer)}
@@ -153,10 +159,13 @@ class UtilityBillingAPI(http.Controller):
                 'COLLECTOR_ROLE_REQUIRED',
                 'This operation is restricted to field collectors.',
             )
+        # Odoo groups on res.users are the sole functional-authorization
+        # source.  utility.staff remains a linked custody/operational profile,
+        # never a second role authority.
         collector = request.env['utility.staff'].sudo().search([
             ('user_id', '=', user.id),
             ('company_id', '=', request.env.company.id),
-            ('role_ids.code', '=', 'collector'),
+            ('active', '=', True),
         ], limit=1)
         if not collector:
             return False, self._error(
@@ -247,6 +256,8 @@ class UtilityBillingAPI(http.Controller):
             return self._error(error_code, 'Customer identifiers conflict.')
         if error_code == 'CUSTOMER_IDENTIFIER_REQUIRED':
             return self._error(error_code, 'A customer identifier is required.')
+        if error_code == 'CUSTOMER_IDENTIFIER_AMBIGUOUS':
+            return self._error(error_code, 'The supplied identifier matches more than one account.')
         if not customer:
             return self._error(error_code or 'CUSTOMER_NOT_FOUND', 'Account not found.')
         return self._collector_account_payload(customer)

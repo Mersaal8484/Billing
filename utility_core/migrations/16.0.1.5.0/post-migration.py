@@ -33,7 +33,6 @@ def migrate(cr, version):
     """)
 
     # 3. Synchronize user groups
-    Staff = env['utility.staff'].with_context(active_test=False)
-    all_staff = Staff.search([('user_id', '!=', False)])
-    if all_staff:
-        all_staff._sync_user_groups()
+    # Staff roles are legacy compatibility metadata only.  Do not derive or
+    # mutate res.users groups during upgrade: Odoo groups on users are the
+    # single functional-authorization source of truth.

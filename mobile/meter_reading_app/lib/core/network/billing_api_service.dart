@@ -9,12 +9,19 @@ class BillingApiService {
   // ─── استعلام الرصيد والفاتورة الحالية ────────────────────────────────────
 
   /// استعلام المحصل عن حساب واحد ضمن المسارات المصرح بها.
+  ///
+  /// Use [customerNumber] when the caller has a known account number.  Use
+  /// [lookupValue] for the manual search box, which can also resolve a meter
+  /// or operational number.  Supplying both is intentionally supported by
+  /// the API only when they identify the same customer.
   Future<Map<String, dynamic>> getCollectorAccount({
     String? customerNumber,
+    String? lookupValue,
     String? qrReference,
   }) {
     return _client.postJson('/api/v1/utility/collector/account', {
       if (customerNumber != null) 'customer_number': customerNumber,
+      if (lookupValue != null) 'lookup_value': lookupValue,
       if (qrReference != null) 'external_qr_reference': qrReference,
     });
   }

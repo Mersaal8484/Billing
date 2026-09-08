@@ -31,10 +31,16 @@ class UtilitySaleOrderPayment(models.Model):
           - The configured journal is not a valid cash journal
         """
         self.ensure_one()
+        if not (self.env.user.has_group('utility_core.group_utility_collector')
+                or self.env.user._is_admin()
+                or self.env.user.has_group('base.group_account_manager')):
+            raise ValidationError(_(
+                'هذه العملية مقصورة على المستخدمين ذوي صلاحية المتحصل.'
+            ))
         staff = self.env['utility.staff'].search([
             ('user_id', '=', self.env.user.id),
             ('company_id', '=', self.company_id.id),
-            ('role_ids.code', '=', 'collector'),
+            ('active', '=', True),
         ], limit=1)
         if not staff or not staff.collection_journal_id:
             raise ValidationError(_(

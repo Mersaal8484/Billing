@@ -34,7 +34,7 @@ class OdooCollectionRepository implements CollectionRepository {
   @override
   Future<CollectionAccount?> findById(String id) async {
     final account = _mapAccount(
-      await _billing.getCollectorAccount(customerNumber: id),
+      await _billing.getCollectorAccount(lookupValue: id),
     );
     if (account != null) {
       _accounts[id] = account;

@@ -1,5 +1,5 @@
 from odoo import api, fields, models, _
-from odoo.exceptions import ValidationError
+from odoo.exceptions import ValidationError, AccessError
 
 import re
 
@@ -26,13 +26,13 @@ class UtilityStaff(models.Model):
         'role_id',
         string='الأدوار التشغيلية',
         tracking=True,
-        help='الأدوار التشغيلية المعتمدة للموظف (مثل محصل، قارئ عدادات، فني).'
+        help='حقل توافق للبيانات القديمة فقط. صلاحيات التشغيل المعتمدة تُدار من مجموعات المستخدم في المستخدمين.'
     )
     user_role_id = fields.Many2one(
         'utility.user.role',
         string='الدور (حقل قديم - للتوافق)',
         tracking=True,
-        help='حقل قديم للتوافق - المصدر الحقيقي لصلاحيات وأدوار الموظف هو role_ids'
+        help='حقل قديم للتوافق. المصدر الحقيقي للصلاحيات هو مجموعات المستخدم المرتبط.'
     )
     region_id = fields.Many2one(
         'utility.region', string='المنطقة',
@@ -241,13 +241,13 @@ class UtilityStaff(models.Model):
                 'target': 'current',
             }
         # ── Provision a new journal — explicit admin path only ────────────────
-        if not self.has_utility_role('collector'):
+        if not self.user_id or not self.user_id.has_group('utility_core.group_utility_collector'):
             return {
                 'type': 'ir.actions.client',
                 'tag': 'display_notification',
                 'params': {
                     'title': _('تنبيه'),
-                    'message': _('الموظف لا يملك دور المتحصل. لا يمكن إنشاء يومية تحصيل.'),
+                    'message': _('المستخدم المرتبط لا يملك صلاحية المتحصل. عيّن الصلاحية من المستخدمين أولاً.'),
                     'type': 'warning',
                     'sticky': False,
                 },
@@ -300,52 +300,6 @@ class UtilityStaff(models.Model):
                 }
             }
 
-    @api.model
-    def _get_implied_group_closure(self, groups):
-        """Recursively compute all implied groups down the hierarchy without relying on unstandardized fields."""
-        if not groups:
-            return self.env['res.groups']
-        result = groups
-        pending = groups
-        while pending:
-            implied = pending.mapped('implied_ids') - result
-            if not implied:
-                break
-            result |= implied
-            pending = implied
-        return result
-
-    def _sync_user_groups(self, old_users=None):
-        """Synchronize Utility role root groups to linked users cleanly respecting recursive implied_ids."""
-        Role = self.env['utility.user.role']
-        all_role_groups = Role.search([]).mapped('group_ids')
-        if not all_role_groups:
-            return
-
-        affected_users = self.mapped('user_id')
-        if old_users:
-            affected_users |= old_users
-
-        for user in affected_users.filtered(lambda u: u.exists()):
-            staff_records = self.search([('user_id', '=', user.id), ('active', '=', True)])
-            target_root_groups = staff_records.mapped('role_ids.group_ids')
-
-            # Calculate recursive closure of all groups implied by the target root groups
-            implied_closure = self._get_implied_group_closure(target_root_groups)
-
-            # Revoke role root groups only if not in target root groups AND not implied by any target role
-            groups_to_revoke = (all_role_groups - target_root_groups) - implied_closure
-
-            vals = []
-            for g in groups_to_revoke:
-                if g in user.groups_id:
-                    vals.append((3, g.id))
-            for g in target_root_groups:
-                if g not in user.groups_id:
-                    vals.append((4, g.id))
-            if vals:
-                user.sudo().write({'groups_id': vals})
-
     def write(self, vals):
         if vals.get('collection_journal_id'):
             journal = self.env['account.journal'].browse(
@@ -359,29 +313,9 @@ class UtilityStaff(models.Model):
                     'اليومية النقدية مستخدمة مسبقًا للمتحصل %s.'
                 ) % duplicate.display_name)
 
-        if 'role_ids' in vals:
-            role_cmd = vals['role_ids']
-            if role_cmd and isinstance(role_cmd, list):
-                for record in self:
-                    new_role_ids = self._simulate_m2m_ids(record.role_ids.ids, role_cmd)
-                    record._check_collector_role_removal(new_role_ids)
-
-        old_users = self.mapped('user_id') if 'user_id' in vals else self.env['res.users']
         res = super(UtilityStaff, self).write(vals)
-
-        # Note: _auto_create_collector_journal() removed from write() path (Phase 5 P0).
-        # Journal provisioning is now explicit-only via action_create_cash_journal().
-        if any(f in vals for f in ('role_ids', 'user_role_id', 'user_id', 'active')):
-            self._sync_user_groups(old_users=old_users)
         return res
 
     @api.model_create_multi
     def create(self, vals_list):
-        for vals in vals_list:
-            if vals.get('user_role_id') and not vals.get('role_ids'):
-                vals['role_ids'] = [(4, vals['user_role_id'])]
-        records = super(UtilityStaff, self).create(vals_list)
-        # Note: _auto_create_collector_journal() removed from create() path (Phase 5 P0).
-        # Journal provisioning is now explicit-only via action_create_cash_journal().
-        records._sync_user_groups()
-        return records
+        return super(UtilityStaff, self).create(vals_list)

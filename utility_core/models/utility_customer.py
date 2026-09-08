@@ -456,7 +456,9 @@ class UtilityCustomer(models.Model):
 
     @api.model
     def _resolve_identifiers(self, customer_id=None, customer_number=None,
-                             external_qr_reference=None, scope_ids=None):
+                             external_qr_reference=None, meter_id=None,
+                             meter_number=None, operational_number=None,
+                             lookup_value=None, scope_ids=None):
         """Resolve exact customer identifiers within this recordset scope.
 
         ``scope_ids`` optionally limits resolution to an authorized customer
@@ -465,19 +467,42 @@ class UtilityCustomer(models.Model):
         """
         scope = [('id', 'in', scope_ids)] if scope_ids is not None else []
         identifiers = []
+
+        def add_exact(domain):
+            identifiers.append(self.search(scope + domain, limit=1))
         if customer_id not in (None, '', False):
             try:
                 customer_id = int(customer_id)
             except (TypeError, ValueError):
                 return self.browse(), 'CUSTOMER_NOT_FOUND'
-            identifiers.append(self.search(scope + [('id', '=', customer_id)], limit=1))
+            add_exact([('id', '=', customer_id)])
         if customer_number not in (None, '', False):
-            identifiers.append(self.search(
-                scope + [('customer_number', '=', str(customer_number).strip())], limit=1))
+            add_exact([('customer_number', '=', str(customer_number).strip())])
         if external_qr_reference not in (None, '', False):
-            identifiers.append(self.search(scope + [
-                ('external_qr_reference', '=', str(external_qr_reference).strip())
-            ], limit=1))
+            add_exact([('external_qr_reference', '=', str(external_qr_reference).strip())])
+        if meter_id not in (None, '', False):
+            try:
+                meter_id = int(meter_id)
+            except (TypeError, ValueError):
+                return self.browse(), 'CUSTOMER_NOT_FOUND'
+            add_exact([('meter_id', '=', meter_id)])
+        if meter_number not in (None, '', False):
+            add_exact([('meter_id.meter_number', '=', str(meter_number).strip())])
+        if operational_number not in (None, '', False):
+            add_exact([('meter_id.operational_number', '=', str(operational_number).strip())])
+        if lookup_value not in (None, '', False):
+            value = str(lookup_value).strip()
+            lookup_domain = ['|', '|', '|',
+                             ('customer_number', '=', value),
+                             ('external_qr_reference', '=', value),
+                             ('meter_id.meter_number', '=', value),
+                             ('meter_id.operational_number', '=', value)]
+            if value.isdigit():
+                lookup_domain = ['|', ('id', '=', int(value))] + lookup_domain
+            matches = self.search(scope + lookup_domain, limit=2)
+            if len(matches) > 1:
+                return self.browse(), 'CUSTOMER_IDENTIFIER_AMBIGUOUS'
+            identifiers.append(matches)
         if not identifiers:
             return self.browse(), 'CUSTOMER_IDENTIFIER_REQUIRED'
         if any(not customer for customer in identifiers):

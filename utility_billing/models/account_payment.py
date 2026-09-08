@@ -7,6 +7,24 @@ from odoo.exceptions import ValidationError
 class AccountPayment(models.Model):
     _inherit = 'account.payment'
 
+    def _current_collector_profile(self, company):
+        """Return the current user's active custody profile, not a role source.
+
+        Functional authorization belongs exclusively to ``res.users`` groups.
+        The staff record is retained only because collections and settlements
+        need a stable custody identity.
+        """
+        user = self.env.user
+        if not (user.has_group('utility_core.group_utility_collector')
+                or user._is_admin()
+                or user.has_group('base.group_account_manager')):
+            return self.env['utility.staff']
+        return self.env['utility.staff'].search([
+            ('user_id', '=', user.id),
+            ('company_id', '=', company.id),
+            ('active', '=', True),
+        ], limit=1)
+
     utility_sale_order_id = fields.Many2one('sale.order', string='فاتورة الكهرباء', index=True)
     opening_customer_id = fields.Many2one(
         'utility.customer', string='حساب افتتاحي للتسوية', index=True,
@@ -98,11 +116,7 @@ class AccountPayment(models.Model):
     @api.onchange('utility_payment_method')
     def _onchange_utility_payment_method(self):
         if self.utility_payment_method == 'cash':
-            collector = self.collector_id or self.env['utility.staff'].search([
-                ('user_id', '=', self.env.user.id),
-                ('company_id', '=', self.company_id.id),
-                ('role_ids.code', '=', 'collector'),
-            ], limit=1)
+            collector = self.collector_id or self._current_collector_profile(self.company_id)
             if collector:
                 self.collector_id = collector
                 self.journal_id = collector.collection_journal_id
@@ -182,11 +196,7 @@ class AccountPayment(models.Model):
         if not self.utility_sale_order_id:
             return
         if self.utility_payment_method == 'cash':
-            collector = self.collector_id or self.env['utility.staff'].search([
-                ('user_id', '=', self.env.user.id),
-                ('company_id', '=', self.company_id.id),
-                ('role_ids.code', '=', 'collector'),
-            ], limit=1)
+            collector = self.collector_id or self._current_collector_profile(self.company_id)
             if not collector or not collector.collection_journal_id:
                 raise ValidationError(_(
                     'يجب تجهيز اليومية النقدية المستقلة للمتحصل قبل ترحيل التحصيل.'
@@ -234,11 +244,7 @@ class AccountPayment(models.Model):
         if vals.get('utility_payment_method', 'cash') != 'cash':
             return
         collector = self.env['utility.staff'].browse(
-            vals.get('collector_id')).exists() if vals.get('collector_id') else self.env['utility.staff'].search([
-                ('user_id', '=', self.env.user.id),
-                ('company_id', '=', order.company_id.id),
-                ('role_ids.code', '=', 'collector'),
-            ], limit=1)
+            vals.get('collector_id')).exists() if vals.get('collector_id') else self._current_collector_profile(order.company_id)
         if not collector or not collector.collection_journal_id:
             raise ValidationError(_(
                 'لا توجد يومية نقدية مستقلة مهيأة للمتحصل الحالي.'
@@ -347,11 +353,7 @@ class AccountPayment(models.Model):
 
         if order_id and 'collector_id' in fields_list:
             order = self.env['sale.order'].browse(order_id).exists()
-            collector = self.env['utility.staff'].search([
-                ('user_id', '=', self.env.user.id),
-                ('company_id', '=', order.company_id.id),
-                ('role_ids.code', '=', 'collector'),
-            ], limit=1) if order else self.env['utility.staff']
+            collector = self._current_collector_profile(order.company_id) if order else self.env['utility.staff']
             if collector:
                 res['collector_id'] = collector.id
                 if 'journal_id' in fields_list and collector.collection_journal_id:
