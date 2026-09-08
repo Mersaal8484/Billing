@@ -13,7 +13,8 @@
                 <field name="substation_id" optional="show"/>
                 <field name="feeder_id" optional="show"/>
                 <field name="transformer_id"/>
-                <field name="user_ids" widget="many2many_tags" optional="show" string="طاقم العمل"/>
+                <field name="meter_reader_user_ids" widget="many2many_tags" optional="show"/>
+                <field name="collector_user_ids" widget="many2many_tags" optional="show"/>
                 <field name="customer_count" string="مشتركون" optional="show"/>
                 <field name="active"/>
             </tree>
@@ -75,20 +76,31 @@
                             <field name="active"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                         </group>
-                        <group string="طاقم العمل">
-                              <field name="user_ids"
+                        <group string="تعيين فرق المسار">
+                              <field name="meter_reader_user_ids"
                                      widget="many2many_tags"
                                      options="{'no_create': True}"
                                      colspan="2"
-                                     domain="['|', '|',
-                                         ('groups_id', 'in', %(utility_core.group_utility_meter_reader)d),
-                                         ('groups_id', 'in', %(utility_core.group_utility_collector)d),
-                                         ('groups_id', 'in', %(utility_core.group_utility_supervisor)d)]"
-                                     help="أضف الكاشفين والمحصلين والمشرفين — دور كل مستخدم يُحدَّد تلقائياً من صلاحياته في النظام"
+                                     domain="[('groups_id', 'in', %(utility_core.group_utility_meter_reader)d)]"
+                                     help="قارئو العدادات فقط؛ الصلاحية تُدار من المستخدمين."
+                              />
+                              <field name="collector_user_ids"
+                                     widget="many2many_tags"
+                                     options="{'no_create': True}"
+                                     colspan="2"
+                                     domain="[('groups_id', 'in', %(utility_core.group_utility_collector)d)]"
+                                     help="المتحصلون فقط؛ الصلاحية تُدار من المستخدمين."
+                              />
+                              <field name="supervisor_user_ids"
+                                     widget="many2many_tags"
+                                     options="{'no_create': True}"
+                                     colspan="2"
+                                     domain="[('groups_id', 'in', %(utility_core.group_utility_supervisor)d)]"
+                                     help="مشرفو المسار فقط؛ الصلاحية تُدار من المستخدمين."
                               />
                               <div class="text-muted small" colspan="2">
                                   <i class="fa fa-info-circle"/>
-                                  دور كل مستخدم (كاشف / محصل / مشرف) يُحدَّد تلقائياً من صلاحياته — لا حاجة لتحديده يدوياً.
+                                  كل قائمة مستقلة، بينما يبقى نطاق المسار محفوظاً في المستخدم نفسه.
                               </div>
                           </group>
                     </group>

@@ -164,6 +164,38 @@ class TestMultiRoleSecurityHardening(TransactionCase):
         self.assertNotIn(self.customer_a2, visible_customers)
         self.assertNotIn(self.customer_b1, visible_customers)
 
+    def test_05a_route_keeps_readers_and_collectors_in_separate_lists(self):
+        """Route form role lists share one scope relation without mixing roles."""
+        reader = self.env['res.users'].create({
+            'name': 'MR Reader Only',
+            'login': 'mr_reader_only@test.local',
+            'groups_id': [(6, 0, [
+                self.env.ref('base.group_user').id,
+                self.env.ref('utility_core.group_utility_meter_reader').id,
+            ])],
+        })
+        collector = self.env['res.users'].create({
+            'name': 'MR Collector Only',
+            'login': 'mr_collector_only@test.local',
+            'groups_id': [(6, 0, [
+                self.env.ref('base.group_user').id,
+                self.env.ref('utility_core.group_utility_collector').id,
+            ])],
+        })
+        route = self.route_a1
+        route.write({'meter_reader_user_ids': [(6, 0, [reader.id])]})
+        self.assertEqual(route.meter_reader_user_ids, reader)
+        self.assertFalse(route.collector_user_ids)
+        self.assertIn(route, reader.assigned_route_ids)
+
+        route.write({'collector_user_ids': [(6, 0, [collector.id])]})
+        self.assertEqual(route.meter_reader_user_ids, reader)
+        self.assertEqual(route.collector_user_ids, collector)
+        self.assertIn(route, collector.assigned_route_ids)
+
+        with self.assertRaises(ValidationError):
+            route.write({'meter_reader_user_ids': [(6, 0, [collector.id])]})
+
     def test_06_organizational_scoped_roles_access_whole_region(self):
         """Billing Manager restricted to Region A can see both Route A1 and Route A2 without explicit route assignment."""
         user_mgr = self.env['res.users'].create({

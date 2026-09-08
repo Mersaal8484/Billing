@@ -27,12 +27,12 @@
                                    options="{'no_create': True}"
                                    placeholder="ابحث عن محول..."
                                    colspan="2"/>
-                            <div class="alert alert-info" colspan="2"
+                            <div class="alert alert-info" role="status" colspan="2"
                                  attrs="{'invisible': [('customer_count', '=', 0)]}">
                                 <i class="fa fa-info-circle"/> 
                                 تم العثور على <strong><field name="customer_count" nolabel="1"/></strong> مشترك مرتبط بالمحولات المختارة.
                             </div>
-                            <div class="alert alert-warning" colspan="2"
+                            <div class="alert alert-warning" role="alert" colspan="2"
                                  attrs="{'invisible': [('customer_count', '!=', 0)]}">
                                 <i class="fa fa-exclamation-triangle"/> 
                                 لا يوجد مشتركون مرتبطون بالمحولات المختارة.
@@ -138,7 +138,7 @@
         <field name="arch" type="xml">
 
             <!-- تحديث view المسار: إضافة زر لفتح الـ Wizard -->
-            <xpath expr="//sheet/div[@class='oe_button_box']"
+            <xpath expr="//sheet/div[hasclass('oe_button_box')]"
                    position="inside">
                 <button type="action"
                         name="%(action_route_assignment_wizard)d"

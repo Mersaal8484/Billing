@@ -31,6 +31,21 @@ class UtilityRoute(models.Model):
         help='جميع المستخدمين المعيّنين لهذا المسار — دور كل مستخدم '
              '(كاشف / محصل / مشرف) يُحدَّد تلقائياً من صلاحياته في النظام'
     )
+    meter_reader_user_ids = fields.Many2many(
+        'res.users', string='كاشفو العدادات',
+        compute='_compute_role_user_ids', inverse='_inverse_meter_reader_user_ids',
+        help='قارئو العدادات المعينون للمسار. الصلاحية نفسها تُدار من المستخدمين.'
+    )
+    collector_user_ids = fields.Many2many(
+        'res.users', string='المتحصلون',
+        compute='_compute_role_user_ids', inverse='_inverse_collector_user_ids',
+        help='متحصلو النقد المعينون للمسار. الصلاحية نفسها تُدار من المستخدمين.'
+    )
+    supervisor_user_ids = fields.Many2many(
+        'res.users', string='مشرفو المسار',
+        compute='_compute_role_user_ids', inverse='_inverse_supervisor_user_ids',
+        help='مشرفو المسار. الصلاحية نفسها تُدار من المستخدمين.'
+    )
     # Deprecated: حقل المشرف القديم — مُبقى في قاعدة البيانات للتوافق العكسي
     # لا تستخدمه في منطق جديد؛ أضف المشرف عبر user_ids بدلاً من ذلك.
     supervisor_id = fields.Many2one(
@@ -87,6 +102,63 @@ class UtilityRoute(models.Model):
     def _compute_customer_count(self):
         for rec in self:
             rec.customer_count = len(rec.customer_ids)
+
+    @api.depends('user_ids', 'user_ids.groups_id')
+    def _compute_role_user_ids(self):
+        """Present route members in role-specific lists without duplicating scope.
+
+        ``user_ids`` remains the single stored relation and is the inverse of
+        ``res.users.assigned_route_ids``.  The three form fields deliberately
+        split that one relation for operators; group membership on users, not
+        a staff profile, remains the authorization source.
+        """
+        for route in self:
+            users = route.user_ids
+            route.meter_reader_user_ids = users.filtered(
+                lambda user: user.has_group('utility_core.group_utility_meter_reader'))
+            route.collector_user_ids = users.filtered(
+                lambda user: user.has_group('utility_core.group_utility_collector'))
+            route.supervisor_user_ids = users.filtered(
+                lambda user: user.has_group('utility_core.group_utility_supervisor'))
+
+    def _inverse_role_user_ids(self, field_name, group_xmlid, other_group_xmlids):
+        for route in self:
+            desired_users = route[field_name]
+            invalid_users = desired_users.filtered(
+                lambda user: not user.has_group(group_xmlid))
+            if invalid_users:
+                raise ValidationError(_(
+                    'لا يمكن تعيين مستخدمين بلا صلاحية مناسبة لهذا الدور: %s'
+                ) % ', '.join(invalid_users.mapped('name')))
+            current_role_users = route.user_ids.filtered(
+                lambda user: user.has_group(group_xmlid))
+            # A user who legitimately has multiple roles must remain assigned
+            # when removed from only one of the role-specific lists.
+            other_role_users = route.user_ids.filtered(
+                lambda user: any(user.has_group(xmlid) for xmlid in other_group_xmlids))
+            route.user_ids = ((route.user_ids - current_role_users)
+                              | other_role_users | desired_users)
+
+    def _inverse_meter_reader_user_ids(self):
+        self._inverse_role_user_ids(
+            'meter_reader_user_ids',
+            'utility_core.group_utility_meter_reader',
+            ('utility_core.group_utility_collector', 'utility_core.group_utility_supervisor'),
+        )
+
+    def _inverse_collector_user_ids(self):
+        self._inverse_role_user_ids(
+            'collector_user_ids',
+            'utility_core.group_utility_collector',
+            ('utility_core.group_utility_meter_reader', 'utility_core.group_utility_supervisor'),
+        )
+
+    def _inverse_supervisor_user_ids(self):
+        self._inverse_role_user_ids(
+            'supervisor_user_ids',
+            'utility_core.group_utility_supervisor',
+            ('utility_core.group_utility_meter_reader', 'utility_core.group_utility_collector'),
+        )
 
     def action_add_customers_wizard(self):
         self.ensure_one()
