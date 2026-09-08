@@ -16,6 +16,24 @@ class UtilityBillingAPI(http.Controller):
         """Return the stable API error envelope for all billing endpoints."""
         return {'success': False, 'code': code, 'error': message}
 
+    @staticmethod
+    def _request_params(kwargs=None):
+        """Return endpoint parameters for live JSON-RPC and direct test calls.
+
+        Odoo 16 stores the raw JSON-RPC envelope in ``request.jsonrequest``;
+        the endpoint values live below its ``params`` key.  The dispatcher
+        passes those values as ``kwargs`` in normal controller execution.
+        Reading the raw envelope as if it were parameters silently loses every
+        supplied identifier and produces false validation errors.
+        """
+        if kwargs:
+            return kwargs
+        payload = getattr(request, 'jsonrequest', None) or {}
+        if not isinstance(payload, dict):
+            return {}
+        params = payload.get('params')
+        return params if isinstance(params, dict) else payload
+
     def _get_authorized_accounts(self):
         """إرجاع recordset لحسابات الكهرباء المسموح للمستخدم الحالي الوصول إليها.
 
@@ -64,7 +82,8 @@ class UtilityBillingAPI(http.Controller):
     @http.route('/api/v1/utility/customer/lookup', type='json', auth='user', methods=['POST'])
     def customer_lookup(self, **kwargs):
         """Resolve an authorized customer by exact business identifier."""
-        customer, error_code = self._resolve_authorized_customer(getattr(request, 'jsonrequest', None) or {})
+        customer, error_code = self._resolve_authorized_customer(
+            self._request_params(kwargs))
         if error_code == 'CUSTOMER_IDENTIFIER_MISMATCH':
             return self._error(error_code, 'معرفات الحساب متعارضة')
         if error_code == 'CUSTOMER_IDENTIFIER_REQUIRED':
@@ -81,7 +100,7 @@ class UtilityBillingAPI(http.Controller):
     @http.route('/api/v1/utility/customer/qr_reference', type='json', auth='user', methods=['POST'])
     def update_customer_qr_reference(self, **kwargs):
         """Assign or change the current external QR reference idempotently."""
-        params = getattr(request, 'jsonrequest', None) or {}
+        params = self._request_params(kwargs)
         customer, error_code = self._resolve_authorized_customer(params)
         if error_code == 'CUSTOMER_IDENTIFIER_MISMATCH':
             return self._error(error_code, 'معرفات الحساب متعارضة')
@@ -251,7 +270,7 @@ class UtilityBillingAPI(http.Controller):
         if error:
             return error
         customer, error_code = self._resolve_authorized_customer(
-            getattr(request, 'jsonrequest', None) or {})
+            self._request_params(kwargs))
         if error_code == 'CUSTOMER_IDENTIFIER_MISMATCH':
             return self._error(error_code, 'Customer identifiers conflict.')
         if error_code == 'CUSTOMER_IDENTIFIER_REQUIRED':
@@ -271,7 +290,7 @@ class UtilityBillingAPI(http.Controller):
         custody record.  It intentionally does not queue or print an
         unacknowledged financial transaction on the device.
         """
-        params = getattr(request, 'jsonrequest', None) or {}
+        params = self._request_params(kwargs)
         collector, error = self._get_current_collector()
         if error:
             return error
@@ -388,7 +407,7 @@ class UtilityBillingAPI(http.Controller):
 
     @http.route('/api/v1/utility/billing/balance', type='json', auth='user', methods=['POST'])
     def billing_balance(self, **kwargs):
-        params = getattr(request, 'jsonrequest', None) or {}
+        params = self._request_params(kwargs)
         customer_number = params.get('customer_number')
         if not customer_number:
             return self._error('VALIDATION_ERROR', 'customer_number is required')
@@ -409,7 +428,7 @@ class UtilityBillingAPI(http.Controller):
 
     @http.route('/api/v1/utility/billing/bills', type='json', auth='user', methods=['POST'])
     def billing_bills(self, **kwargs):
-        params = getattr(request, 'jsonrequest', None) or {}
+        params = self._request_params(kwargs)
         customer_number = params.get('customer_number')
         limit = params.get('limit', 12)
         if not customer_number:
@@ -446,7 +465,7 @@ class UtilityBillingAPI(http.Controller):
 
     @http.route('/api/v1/utility/billing/payment_intent', type='json', auth='user', methods=['POST'])
     def billing_payment_intent(self, **kwargs):
-        params = getattr(request, 'jsonrequest', None) or {}
+        params = self._request_params(kwargs)
         order_id = params.get('order_id')
         amount = params.get('amount')
         provider_id = params.get('provider_id')
@@ -548,7 +567,7 @@ class UtilityBillingAPI(http.Controller):
 
     @http.route('/api/v1/utility/payment_gateway/webhook/<string:reference>', type='json', auth='public', methods=['POST'], csrf=False)
     def payment_gateway_webhook(self, reference, **kwargs):
-        params = getattr(request, 'jsonrequest', None) or {}
+        params = self._request_params(kwargs)
         # 1. Search transaction by reference WITHOUT locking first
         tx = request.env['utility.payment.gateway.transaction'].sudo().search([
             ('name', '=', reference),
@@ -613,7 +632,7 @@ class UtilityBillingAPI(http.Controller):
         - نبحث ضمن تلك الحسابات فقط — لا sudo().browse() قبل التفويض.
         - بعد التحقق من الهوية والملكية، يُنشأ أمر الخدمة.
         """
-        params = getattr(request, 'jsonrequest', None) or {}
+        params = self._request_params(kwargs)
         customer_id = params.get('customer_id')
         service_type = params.get('service_type')
         description = params.get('description')
@@ -645,7 +664,7 @@ class UtilityBillingAPI(http.Controller):
     @http.route('/api/v1/utility/reports/daily', type='json', auth='user', methods=['POST'])
     def reports_daily(self, **kwargs):
         from datetime import date
-        params = getattr(request, 'jsonrequest', None) or {}
+        params = self._request_params(kwargs)
         report_date = params.get('date', date.today().isoformat())
         region_id = params.get('region_id')
         area_id = params.get('area_id')

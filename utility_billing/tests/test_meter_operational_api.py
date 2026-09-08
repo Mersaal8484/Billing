@@ -150,6 +150,19 @@ class TestMeterOperationalBillingAPI(TransactionCase):
         self.assertTrue(result['success'])
         self.assertEqual(result['customer']['customer_id'], customer.id)
 
+    def test_customer_lookup_reads_jsonrpc_params_envelope(self):
+        """Live Odoo JSON routes receive identifiers below ``params``."""
+        meter, customer = self._meter_and_customer('JSONRPC-LOOKUP')
+        controller = utility_billing_api.UtilityBillingAPI()
+        with patch.object(utility_billing_api, 'request', self._request({
+                'jsonrpc': '2.0',
+                'method': 'call',
+                'params': {'lookup_value': meter.meter_number},
+            })):
+            result = controller.customer_lookup()
+        self.assertTrue(result['success'])
+        self.assertEqual(result['customer']['customer_id'], customer.id)
+
     def test_customer_lookup_by_operational_number_accepts_mobile_search_value(self):
         meter, customer = self._meter_and_customer('COLLECTOR-OPER-LOOKUP')
         controller = utility_billing_api.UtilityBillingAPI()
