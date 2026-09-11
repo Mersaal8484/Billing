@@ -1,7 +1,11 @@
+import logging
+
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError, AccessError
 
 import re
+
+_logger = logging.getLogger(__name__)
 
 PHONE_9_RE = re.compile(r'^\d{9}$')
 
@@ -80,6 +84,71 @@ class UtilityStaff(models.Model):
                 ('user_ids', 'in', record.user_id.ids)
             ]) if record.user_id else self.env['utility.route']
             record.route_count = len(assigned_routes | linked_routes)
+
+    def _sync_user_geographic_scope(self):
+        """مزامنة النطاق الجغرافي من utility.staff إلى res.users.assigned_region_ids/assigned_branch_ids.
+
+        يُستدعى تلقائياً بعد أي create() أو write() يُغيّر region_id أو area_id أو user_id،
+        ليُلغي الحاجة إلى خطوة يدوية منفصلة في Settings > Users لكل موظف جديد.
+
+        القيود:
+        - المزامنة أحادية الاتجاه فقط: staff → user. تعديل assigned_region_ids يدوياً من
+          Settings > Users يبقى ساري المفعول حتى تُغيَّر region_id على الموظف مجدداً.
+        - يستخدم sudo() لتجاوز قيد write() على res.users (Admin-only)، وهو مقبول لأن
+          تعديل utility.staff نفسه محمي بصلاحيات Admin في الـ ACL.
+        - يُسجَّل كل تغيير في الـ logger للتدقيق.
+        - إن بقي المستخدم بلا نطاق بعد المزامنة (لا region_id ولا area_id)، يُعاد تحذير.
+        """
+        for record in self:
+            if not record.user_id:
+                continue
+
+            user = record.user_id.sudo()
+
+            region_ids = record.region_id.ids if record.region_id else []
+            area_ids = record.area_id.ids if record.area_id else []
+
+            _logger.info(
+                'utility.staff [%s] "%s": مزامنة نطاق جغرافي → مستخدم uid=%s | '
+                'region_ids=%s area_ids=%s',
+                record.id, record.name, user.id, region_ids, area_ids,
+            )
+
+            user.write({
+                'assigned_region_ids': [(6, 0, region_ids)],
+                'assigned_branch_ids': [(6, 0, area_ids)],
+            })
+
+    def _warn_if_user_has_no_scope(self):
+        """يُعيد action تحذير مرئي إن كان المستخدم المرتبط بلا نطاق فعّال بعد الحفظ."""
+        warnings = []
+        for record in self:
+            if not record.user_id:
+                continue
+            user = record.user_id
+            # المستخدمون global أو admin لا يحتاجون نطاقاً صريحاً
+            if user._is_global_utility_scope():
+                continue
+            has_region = bool(user.assigned_region_ids)
+            has_branch = bool(user.assigned_branch_ids)
+            if not has_region and not has_branch:
+                warnings.append(record.name or str(record.id))
+
+        if warnings:
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('تحذير: مستخدمون بلا نطاق جغرافي'),
+                    'message': _(
+                        'الموظفون التاليون مرتبطون بمستخدم من وضع "مقيّد" لكن بدون منطقة '
+                        'أو فرع محدد — سيرون صفر سجلات: %s'
+                    ) % ', '.join(warnings),
+                    'type': 'warning',
+                    'sticky': True,
+                },
+            }
+        return None
 
     def action_view_collection_journal(self):
         self.ensure_one()
@@ -314,8 +383,26 @@ class UtilityStaff(models.Model):
                 ) % duplicate.display_name)
 
         res = super(UtilityStaff, self).write(vals)
+
+        # §2-أ مزامنة النطاق الجغرافي تلقائياً عند تغيير المنطقة أو الفرع أو المستخدم
+        _GEO_FIELDS = {'region_id', 'area_id', 'user_id'}
+        if _GEO_FIELDS & vals.keys():
+            self._sync_user_geographic_scope()
+            warning = self._warn_if_user_has_no_scope()
+            if warning:
+                return warning
+
         return res
 
     @api.model_create_multi
     def create(self, vals_list):
-        return super(UtilityStaff, self).create(vals_list)
+        records = super(UtilityStaff, self).create(vals_list)
+        # §2-أ مزامنة النطاق الجغرافي عند الإنشاء إن كانت region_id أو area_id أو user_id محددة
+        _GEO_FIELDS = {'region_id', 'area_id', 'user_id'}
+        if any(_GEO_FIELDS & set(v.keys()) for v in vals_list):
+            records._sync_user_geographic_scope()
+            warning = records._warn_if_user_has_no_scope()
+            if warning:
+                return warning
+        return records
+

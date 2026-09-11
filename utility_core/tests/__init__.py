@@ -22,3 +22,5 @@ from . import test_workflow_command_hardening
 from . import test_contract_template_clone_wizard
 # Phase 5
 from . import test_collector_no_coa_autocreate
+# §2-أ مزامنة النطاق الجغرافي — اختبارات الارتداد الأمنية
+from . import test_staff_scope_sync
