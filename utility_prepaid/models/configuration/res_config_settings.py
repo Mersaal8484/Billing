@@ -85,7 +85,7 @@ class ResConfigSettings(models.TransientModel):
         readonly=False, string='تفعيل استقطاع الديون')
     default_debt_policy_id = fields.Many2one('utility.prepaid.debt.policy',
         related='company_id.default_debt_policy_id', readonly=False,
-        string='سياسة الديون الافتراضية', default_model='utility.prepaid.debt.policy')
+        string='سياسة الديون الافتراضية')
     minimum_energy_percentage = fields.Float(related='company_id.minimum_energy_percentage',
         readonly=False, string='أقل نسبة طاقة بعد الاستقطاع (%)')
 
