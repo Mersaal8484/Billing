@@ -83,7 +83,7 @@ class ResConfigSettings(models.TransientModel):
 
     enable_debt_recovery = fields.Boolean(related='company_id.enable_debt_recovery',
         readonly=False, string='تفعيل استقطاع الديون')
-    default_debt_policy_id = fields.Many2one('utility.prepaid.debt.policy',
+    prepaid_debt_policy_id = fields.Many2one('utility.prepaid.debt.policy',
         related='company_id.default_debt_policy_id', readonly=False,
         string='سياسة الديون الافتراضية')
     minimum_energy_percentage = fields.Float(related='company_id.minimum_energy_percentage',

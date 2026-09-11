@@ -211,8 +211,8 @@
                                         <label for="enable_debt_recovery" class="ms-2"/>
                                     </div>
                                     <div class="mt-3" attrs="{'invisible': [('enable_debt_recovery', '=', False)]}">
-                                        <label for="default_debt_policy_id" class="o_light_label"/>
-                                        <field name="default_debt_policy_id"/>
+                                        <label for="prepaid_debt_policy_id" class="o_light_label"/>
+                                        <field name="prepaid_debt_policy_id"/>
                                     </div>
                                     <div class="mt-3" attrs="{'invisible': [('enable_debt_recovery', '=', False)]}">
                                         <label for="minimum_energy_percentage" class="o_light_label"/>
