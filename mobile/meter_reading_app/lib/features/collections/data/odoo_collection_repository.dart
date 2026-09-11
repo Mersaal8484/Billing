@@ -103,6 +103,19 @@ class OdooCollectionRepository implements CollectionRepository {
         .whereType<Map>()
         .map((value) {
       final bill = Map<String, dynamic>.from(value);
+      final residual = (bill['amount_residual'] as num?)?.toDouble() ?? 0;
+      final total = (bill['amount'] as num?)?.toDouble() ?? 0;
+      final isOverdue = bill['overdue'] == true;
+      final InvoiceStatus status;
+      if (residual <= 0) {
+        status = InvoiceStatus.paid;
+      } else if (isOverdue) {
+        status = InvoiceStatus.overdue;
+      } else if (total > 0 && residual < total) {
+        status = InvoiceStatus.partiallyPaid;
+      } else {
+        status = InvoiceStatus.unpaid;
+      }
       return CollectionInvoice(
         orderId: (bill['order_id'] as num).toInt(),
         invoiceId: (bill['invoice_id'] as num).toInt(),
@@ -112,12 +125,11 @@ class OdooCollectionRepository implements CollectionRepository {
             '—',
         dueDate: DateTime.tryParse(bill['due_date'] as String? ?? '') ??
             DateTime.now(),
-        amount: (bill['amount'] as num?)?.toDouble() ?? 0,
-        amountResidual: (bill['amount_residual'] as num?)?.toDouble() ?? 0,
-        status: bill['overdue'] == true
-            ? InvoiceStatus.overdue
-            : InvoiceStatus.unpaid,
+        amount: total,
+        amountResidual: residual,
+        status: status,
       );
+
     }).toList(growable: false);
     final customer = Customer(
       remoteId: customerId,

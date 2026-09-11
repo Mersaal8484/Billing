@@ -1,6 +1,7 @@
-﻿import '../../customers/domain/entities.dart';
+import '../../customers/domain/entities.dart';
 
-enum InvoiceStatus { unpaid, overdue, paid }
+enum InvoiceStatus { unpaid, overdue, paid, partiallyPaid }
+
 enum PaymentMethod { cash, card, wallet, transfer }
 
 class CollectionInvoice {
