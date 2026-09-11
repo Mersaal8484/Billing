@@ -356,6 +356,21 @@ class UtilityStaff(models.Model):
             })
 
         self.collection_journal_id = existing_journal.id
+
+        # ── تعيين حساب المقبوضات المعلقة على طريقة الدفع "Manual" ──────────────
+        # Odoo 16 يرفض إنشاء مدفوعات بدون هذا الحساب على سطر طريقة الدفع.
+        # نُعيّن الحساب من إعدادات الشركة إن وُجد، وإلا من الحساب الافتراضي لليومية.
+        company_outstanding = (
+            company.account_journal_payment_debit_account_id
+            or existing_journal.default_account_id
+        )
+        if company_outstanding:
+            for line in existing_journal.inbound_payment_method_line_ids:
+                if not line.payment_account_id:
+                    line.sudo().write({
+                        'payment_account_id': company_outstanding.id,
+                    })
+
         self.message_post(body=_(
             'تم إنشاء يومية التحصيل %s بواسطة %s.'
         ) % (existing_journal.name, self.env.user.name))
