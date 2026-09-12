@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_utility_transformer_loss_report_search" model="ir.ui.view">
+        <field name="name">utility.transformer.loss.report.search</field>
+        <field name="model">utility.transformer.loss.report</field>
+        <field name="arch" type="xml">
+            <search string="بحث تقرير الفاقد للمحولات">
+                <field name="date_range_id"/>
+                <field name="region_id"/>
+                <field name="area_id"/>
+                <field name="substation_id"/>
+                <field name="feeder_id"/>
+                <field name="transformer_id"/>
+                <field name="transformer_code"/>
+                <separator/>
+                <filter string="فاقد موجب" name="positive_loss" domain="[('loss_kwh', '&gt;', 0)]"/>
+                <filter string="فاقد سالب / طاقة مباعة أكبر" name="negative_loss" domain="[('loss_kwh', '&lt;', 0)]"/>
+                <filter string="بدون قراءة محول" name="missing_transformer_reading" domain="[('transformer_reading_id', '=', False)]"/>
+                <filter string="بدون فواتير مشتركي المحول" name="missing_customer_bills" domain="[('invoice_count', '=', 0)]"/>
+                <group expand="0" string="تجميع حسب">
+                    <filter string="الفترة" name="group_period" context="{'group_by': 'date_range_id'}"/>
+                    <filter string="المنطقة" name="group_region" context="{'group_by': 'region_id'}"/>
+                    <filter string="المنطقة الفرعية" name="group_area" context="{'group_by': 'area_id'}"/>
+                    <filter string="المحطة" name="group_substation" context="{'group_by': 'substation_id'}"/>
+                    <filter string="الفيدر / الخلية" name="group_feeder" context="{'group_by': 'feeder_id'}"/>
+                    <filter string="المحول" name="group_transformer" context="{'group_by': 'transformer_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="view_utility_transformer_loss_report_tree" model="ir.ui.view">
+        <field name="name">utility.transformer.loss.report.tree</field>
+        <field name="model">utility.transformer.loss.report</field>
+        <field name="arch" type="xml">
+            <tree string="تقرير الفاقد للمحولات جميع الفترات"
+                  create="false"
+                  edit="false"
+                  delete="false"
+                  decoration-danger="loss_kwh &lt; 0"
+                  decoration-warning="loss_percent &gt; 15">
+                <field name="date_range_id"/>
+                <field name="region_id"/>
+                <field name="area_id"/>
+                <field name="substation_id"/>
+                <field name="feeder_id"/>
+                <field name="transformer_id"/>
+                <field name="previous_reading" sum="إجمالي القراءة السابقة"/>
+                <field name="current_reading" sum="إجمالي القراءة الحالية"/>
+                <field name="energy_sent" sum="إجمالي الطاقة المرسلة"/>
+                <field name="energy_sold" sum="إجمالي الطاقة المباعة"/>
+                <field name="loss_kwh" sum="إجمالي الفاقد"/>
+                <field name="loss_percent"/>
+                <field name="customer_count" sum="إجمالي المشتركين"/>
+                <field name="invoice_count" sum="إجمالي الفواتير"/>
+                <field name="amount_total" sum="إجمالي الفواتير"/>
+                <field name="balance_due" sum="إجمالي المتبقي"/>
+                <field name="transformer_reading_id"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_utility_transformer_loss_report_pivot" model="ir.ui.view">
+        <field name="name">utility.transformer.loss.report.pivot</field>
+        <field name="model">utility.transformer.loss.report</field>
+        <field name="arch" type="xml">
+            <pivot string="تقرير الفاقد للمحولات جميع الفترات" disable_linking="1">
+                <field name="date_range_id" type="row"/>
+                <field name="substation_id" type="row"/>
+                <field name="transformer_id" type="row"/>
+                <field name="previous_reading" type="measure"/>
+                <field name="current_reading" type="measure"/>
+                <field name="energy_sent" type="measure"/>
+                <field name="energy_sold" type="measure"/>
+                <field name="loss_kwh" type="measure"/>
+                <field name="customer_count" type="measure"/>
+                <field name="invoice_count" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_utility_transformer_loss_report_graph" model="ir.ui.view">
+        <field name="name">utility.transformer.loss.report.graph</field>
+        <field name="model">utility.transformer.loss.report</field>
+        <field name="arch" type="xml">
+            <graph string="تحليل الفاقد للمحولات" type="bar">
+                <field name="date_range_id"/>
+                <field name="loss_kwh" type="measure"/>
+                <field name="energy_sent" type="measure"/>
+                <field name="energy_sold" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="action_utility_transformer_loss_report" model="ir.actions.act_window">
+        <field name="name">تقرير الفاقد للمحولات جميع الفترات</field>
+        <field name="res_model">utility.transformer.loss.report</field>
+        <field name="view_mode">pivot,graph,tree</field>
+        <field name="search_view_id" ref="view_utility_transformer_loss_report_search"/>
+        <field name="context">{'search_default_group_period': 1, 'search_default_group_substation': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                لا توجد بيانات فاقد للمحولات.
+            </p>
+            <p>
+                يظهر التقرير عند وجود فواتير مشتركي المحول أو قراءة دورية للمحول ضمن أي فترة.
+            </p>
+        </field>
+    </record>
+
+    <menuitem id="menu_utility_billing_reports"
+              name="التقارير"
+              parent="utility_core.menu_utility_root"
+              sequence="105"
+              groups="base.group_system,utility_core.group_utility_admin,utility_core.group_utility_billing_manager,utility_core.group_utility_supervisor,utility_core.group_utility_revenue_manager,utility_core.group_utility_auditor"/>
+
+    <menuitem id="menu_utility_transformer_loss_report"
+              name="تقرير الفاقد للمحولات جميع الفترات"
+              parent="menu_utility_billing_reports"
+              action="action_utility_transformer_loss_report"
+              sequence="10"
+              groups="base.group_system,utility_core.group_utility_admin,utility_core.group_utility_billing_manager,utility_core.group_utility_supervisor,utility_core.group_utility_revenue_manager,utility_core.group_utility_auditor"/>
+</odoo>

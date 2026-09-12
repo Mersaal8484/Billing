@@ -28,3 +28,4 @@ from . import utility_payment_allocation
 from . import utility_collection
 from . import utility_bank_settlement
 from . import utility_media_asset
+from . import utility_transformer_loss_report
