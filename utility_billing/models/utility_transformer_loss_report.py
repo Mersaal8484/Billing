@@ -70,31 +70,31 @@ class UtilityTransformerLossReport(models.Model):
                     SELECT
                         so.company_id,
                         so.date_range_id,
-                        customer.transformer_id,
+                        reading.transformer_snapshot_id AS transformer_id,
                         COUNT(so.id)::integer AS invoice_count,
                         COUNT(DISTINCT so.customer_id)::integer AS customer_count,
                         SUM(COALESCE(so.consumption, 0.0))::double precision AS energy_sold,
                         SUM(COALESCE(so.amount_total, 0.0))::double precision AS amount_total,
                         SUM(COALESCE(so.balance_due, 0.0))::double precision AS balance_due
                     FROM sale_order so
-                    JOIN utility_customer customer ON customer.id = so.customer_id
-                    WHERE so.customer_id IS NOT NULL
+                    JOIN utility_reading reading ON reading.id = so.reading_id
+                    WHERE so.reading_id IS NOT NULL
                       AND so.date_range_id IS NOT NULL
-                      AND customer.transformer_id IS NOT NULL
+                      AND reading.transformer_snapshot_id IS NOT NULL
                       AND so.state <> 'cancel'
-                    GROUP BY so.company_id, so.date_range_id, customer.transformer_id
+                    GROUP BY so.company_id, so.date_range_id, reading.transformer_snapshot_id
                 ),
                 ranked_transformer_readings AS (
                     SELECT
                         reading.id,
                         reading.company_id,
                         reading.date_range_id,
-                        reading.transformer_id,
+                        reading.transformer_snapshot_id AS transformer_id,
                         reading.previous_reading,
                         reading.reading_value,
                         reading.consumption,
                         ROW_NUMBER() OVER (
-                            PARTITION BY reading.company_id, reading.date_range_id, reading.transformer_id
+                            PARTITION BY reading.company_id, reading.date_range_id, reading.transformer_snapshot_id
                             ORDER BY
                                 CASE
                                     WHEN reading.state IN ('approved', 'billed') THEN 0
@@ -107,7 +107,7 @@ class UtilityTransformerLossReport(models.Model):
                     FROM utility_reading reading
                     WHERE reading.reading_category = 'transformer'
                       AND reading.reading_purpose = 'periodic'
-                      AND reading.transformer_id IS NOT NULL
+                      AND reading.transformer_snapshot_id IS NOT NULL
                       AND reading.date_range_id IS NOT NULL
                       AND COALESCE(reading.is_private_transformer, FALSE) = FALSE
                       AND reading.state IN ('approved', 'billed', 'queued')

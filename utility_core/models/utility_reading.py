@@ -74,6 +74,8 @@ class UtilityReading(models.Model):
         ('feeder', 'فيدر'),
     ], string='تصنيف القراءة', default='customer', required=True)
     transformer_id = fields.Many2one('utility.transformer', 'المحول', related='meter_id.transformer_id', store=True)
+    transformer_snapshot_id = fields.Many2one('utility.transformer', 'المحول الفعلي (بصمة)', copy=False, index=True,
+                                              help="بصمة تاريخية ثابتة للمحول وقت أخذ القراءة. لا تتغير إذا نقل المشترك لمحول آخر لاحقاً.")
     is_private_transformer = fields.Boolean('محول خاص', related='transformer_id.is_private', store=True)
     feeder_id = fields.Many2one('utility.feeder', 'الفيدر', related='meter_id.feeder_id', store=True)
 
@@ -795,6 +797,11 @@ class UtilityReading(models.Model):
             or (self.env.context.get('allow_billing_adjustment') and is_billing_mgr)
         )
 
+        if 'transformer_snapshot_id' in vals and not has_bypass:
+            for reading in self:
+                if reading.transformer_snapshot_id and vals['transformer_snapshot_id'] != reading.transformer_snapshot_id.id:
+                    raise ValidationError(_("لا يمكن تعديل بصمة المحول التاريخية (transformer_snapshot_id) بعد تعبئتها."))
+
         # Guard direct state mutations
         if 'state' in vals:
             target_state = vals['state']
@@ -887,6 +894,11 @@ class UtilityReading(models.Model):
             if meter:
                 vals.setdefault('account_id', meter.customer_id.id)
                 vals.setdefault('meter_multiplier', meter.multiplier or 1.0)
+                if not vals.get('transformer_snapshot_id'):
+                    vals['transformer_snapshot_id'] = meter.transformer_id.id
+            else:
+                if not vals.get('transformer_snapshot_id') and vals.get('transformer_id'):
+                    vals['transformer_snapshot_id'] = vals.get('transformer_id')
             if purpose == 'periodic' and not vals.get('date_range_id'):
                 account = self.env['utility.customer'].browse(vals.get('account_id')).exists() if vals.get('account_id') else (meter.customer_id if meter else False)
                 billing_period = account._get_effective_billing_period() if account else False
