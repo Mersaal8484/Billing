@@ -4,6 +4,18 @@ enum InvoiceStatus { unpaid, overdue, paid, partiallyPaid }
 
 enum PaymentMethod { cash, card, wallet, transfer }
 
+class CollectionPeriod {
+  final int id;
+  final String name;
+  final String state;
+
+  const CollectionPeriod({
+    required this.id,
+    required this.name,
+    required this.state,
+  });
+}
+
 class CollectionInvoice {
   final int orderId;
   final int invoiceId;
@@ -85,8 +97,45 @@ class CollectorDailySummary {
   });
 }
 
+class CollectorReportTransaction {
+  final String receiptNumber;
+  final String customerName;
+  final String customerNumber;
+  final double amount;
+  final DateTime? date;
+
+  const CollectorReportTransaction({
+    required this.receiptNumber,
+    required this.customerName,
+    required this.customerNumber,
+    required this.amount,
+    required this.date,
+  });
+}
+
+class CollectorReport {
+  final double totalAmount;
+  final int totalCount;
+  final List<CollectorReportTransaction> transactions;
+
+  const CollectorReport({
+    required this.totalAmount,
+    required this.totalCount,
+    required this.transactions,
+  });
+}
+
 abstract class CollectionRepository {
   Stream<List<CollectionAccount>> watchAccounts({String? query});
+  Future<CollectionPeriod?> syncPeriodInvoices();
+  String? get periodMessage;
+  CollectionPeriod? get currentPeriod;
+  Future<CollectorReport> collectorReport({
+    String? customerName,
+    String? customerNumber,
+    DateTime? dateFrom,
+    DateTime? dateTo,
+  });
   Future<CollectionAccount?> resolveQr(String payload);
   Future<CollectionAccount?> findById(String id);
   Future<CollectionReceipt> collect({

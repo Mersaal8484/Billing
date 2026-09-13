@@ -674,6 +674,8 @@ class UtilityReaderAPI(http.Controller):
         if not route_ids:
             return {
                 'success': True,
+                'period': None,
+                'period_state': None,
                 'subscribers': [],
                 'count': 0,
                 'debug': f'No routes for user {user.login}',
@@ -698,6 +700,23 @@ class UtilityReaderAPI(http.Controller):
                 '|', ('region_ids', '=', False), ('region_ids', 'in', route_regions),
             ])
         open_periods = request.env['date.range'].sudo().search(period_domain)
+        current_period = open_periods[:1]
+        period_data = {
+            'id': current_period.id,
+            'name': current_period.name,
+            'state': current_period.state,
+        } if current_period else None
+
+        if not current_period:
+            return {
+                'success': True,
+                'period': None,
+                'period_state': None,
+                'subscribers': [],
+                'count': 0,
+                'message': 'No open reading period is available for this reader scope.',
+            }
+
         readings_by_meter = {}
         meter_ids = customers.mapped('meter_id').ids
         if meter_ids and open_periods:
@@ -747,6 +766,8 @@ class UtilityReaderAPI(http.Controller):
 
         return {
             'success': True,
+            'period': period_data,
+            'period_state': current_period.state,
             'count': len(result),
             'subscribers': result,
         }

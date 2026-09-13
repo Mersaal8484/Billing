@@ -43,4 +43,32 @@ class BillingApiService {
     });
   }
 
+  Future<Map<String, dynamic>> getCollectorPeriodInvoices({
+    int? limit,
+    int? offset,
+  }) {
+    return _client.postJson('/api/v1/utility/collector/period/invoices', {
+      if (limit != null) 'limit': limit,
+      if (offset != null) 'offset': offset,
+    });
+  }
+
+  Future<Map<String, dynamic>> getCollectorReport({
+    String? customerName,
+    String? customerNumber,
+    String? dateFrom,
+    String? dateTo,
+  }) {
+    return _client.postJson('/api/v1/utility/collector/report', {
+      if (customerName != null && customerName.trim().isNotEmpty)
+        'customer_name': customerName.trim(),
+      if (customerNumber != null && customerNumber.trim().isNotEmpty)
+        'customer_number': customerNumber.trim(),
+      if (dateFrom != null && dateFrom.trim().isNotEmpty)
+        'date_from': dateFrom.trim(),
+      if (dateTo != null && dateTo.trim().isNotEmpty)
+        'date_to': dateTo.trim(),
+    });
+  }
+
 }

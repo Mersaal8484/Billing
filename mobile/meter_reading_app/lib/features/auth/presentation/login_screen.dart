@@ -41,11 +41,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const SizedBox(height: 32),
-                  CircleAvatar(
-                    radius: 38,
-                    backgroundColor: scheme.primaryContainer,
-                    child: Icon(Icons.speed_rounded,
-                        size: 38, color: scheme.onPrimaryContainer),
+                  Center(
+                    child: Container(
+                      width: 96,
+                      height: 96,
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.black,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: scheme.primary.withOpacity(0.12),
+                            blurRadius: 18,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: Image.asset(
+                        'assets/icons/pec_logo.png',
+                        fit: BoxFit.contain,
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -72,8 +88,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       labelText: 'اسم المستخدم',
                       prefixIcon: Icon(Icons.person_outline),
                     ),
-                    validator: (v) =>
-                        (v == null || v.isEmpty) ? 'مطلوب' : null,
+                    validator: (value) =>
+                        (value == null || value.isEmpty) ? 'مطلوب' : null,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
@@ -84,15 +100,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       prefixIcon: const Icon(Icons.lock_outline),
                       suffixIcon: IconButton(
                         tooltip: _obscure ? 'إظهار' : 'إخفاء',
-                        icon: Icon(_obscure
-                            ? Icons.visibility_off
-                            : Icons.visibility),
-                        onPressed: () =>
-                            setState(() => _obscure = !_obscure),
+                        icon: Icon(
+                          _obscure ? Icons.visibility_off : Icons.visibility,
+                        ),
+                        onPressed: () => setState(() => _obscure = !_obscure),
                       ),
                     ),
-                    validator: (v) =>
-                        (v == null || v.isEmpty) ? 'مطلوب' : null,
+                    validator: (value) =>
+                        (value == null || value.isEmpty) ? 'مطلوب' : null,
                   ),
                   if (_errorText != null) ...[
                     const SizedBox(height: 12),
@@ -112,7 +127,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ? const SizedBox(
                             height: 22,
                             width: 22,
-                            child: CircularProgressIndicator(strokeWidth: 2.5))
+                            child: CircularProgressIndicator(strokeWidth: 2.5),
+                          )
                         : const Text('تسجيل الدخول'),
                   ),
                 ],
@@ -139,20 +155,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         password: _passCtrl.text,
       );
 
-      // ✅ حفظ بيانات المستخدم والأدوار في Provider
       ref.read(currentUserProvider.notifier).state = userInfo;
       ref.read(authStateProvider.notifier).state = true;
 
       if (mounted) {
-        // توجيه حسب الدور
         _navigateByRole(userInfo.roles ?? {});
       }
-    } on OdooSessionExpiredException catch (e) {
-      setState(() => _errorText = e.message);
-    } on OdooApiException catch (e) {
-      setState(() => _errorText = e.message);
-    } catch (e) {
-      setState(() => _errorText = 'تعذر الاتصال بالسيرفر — تحقق من الشبكة');
+    } on OdooSessionExpiredException catch (error) {
+      setState(() => _errorText = error.message);
+    } on OdooApiException catch (error) {
+      setState(() => _errorText = error.message);
+    } catch (_) {
+      setState(
+        () => _errorText = 'تعذر الاتصال بالسيرفر — تحقق من الشبكة',
+      );
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -161,18 +177,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   void _navigateByRole(Map<String, bool> roles) {
     if (!mounted) return;
 
-    // مشرف → لوحة المشرف
     if (roles['is_supervisor'] == true) {
       context.go('/supervisor');
       return;
     }
-    // محصل فقط → شاشة التحصيل
-    if (roles['is_collector'] == true &&
-        roles['is_meter_reader'] != true) {
+    if (roles['is_collector'] == true && roles['is_meter_reader'] != true) {
       context.go('/collector');
       return;
     }
-    // كاشف أو عام → الرئيسية
     context.go('/dashboard');
   }
 }

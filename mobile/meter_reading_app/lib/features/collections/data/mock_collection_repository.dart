@@ -11,6 +11,25 @@ class MockCollectionRepository implements CollectionRepository {
     _accounts = List.unmodifiable(_mockAccounts());
   }
 
+  CollectionPeriod? _period = const CollectionPeriod(
+    id: 1,
+    name: 'فترة تحصيل تجريبية',
+    state: 'open',
+  );
+
+  @override
+  CollectionPeriod? get currentPeriod => _period;
+
+  @override
+  String? get periodMessage => null;
+
+  @override
+  Future<CollectionPeriod?> syncPeriodInvoices() async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    _ctrl.add(_accounts);
+    return _period;
+  }
+
   @override
   Stream<List<CollectionAccount>> watchAccounts({String? query}) {
     return Stream<List<CollectionAccount>>.multi((controller) {
@@ -41,6 +60,29 @@ class MockCollectionRepository implements CollectionRepository {
   Future<CollectionAccount?> findById(String id) async {
     try { return _accounts.firstWhere((a) => a.id == id); }
     catch (_) { return null; }
+  }
+
+  @override
+  Future<CollectorReport> collectorReport({
+    String? customerName,
+    String? customerNumber,
+    DateTime? dateFrom,
+    DateTime? dateTo,
+  }) async {
+    final transactions = _receipts.map((receipt) {
+      return CollectorReportTransaction(
+        receiptNumber: receipt.reference,
+        customerName: receipt.account.customer.name,
+        customerNumber: receipt.account.customer.customerNumber,
+        amount: receipt.amount,
+        date: receipt.paidAt,
+      );
+    }).toList(growable: false);
+    return CollectorReport(
+      totalAmount: transactions.fold(0, (sum, item) => sum + item.amount),
+      totalCount: transactions.length,
+      transactions: transactions,
+    );
   }
 
   @override

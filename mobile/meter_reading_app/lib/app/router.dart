@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../features/collections/domain/collection_models.dart';
 import '../features/collections/presentation/collection_account_screen.dart';
 import '../features/collections/presentation/collection_history_screen.dart';
+import '../features/collections/presentation/collection_report_screen.dart';
 import '../features/collections/presentation/collector_home_screen.dart';
 import '../features/collections/presentation/payment_screen.dart';
 import '../features/collections/presentation/qr_scanner_screen.dart';
@@ -96,6 +97,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
           path: '/collector/history',
           builder: (context, state) => const CollectionHistoryScreen()),
+      GoRoute(
+          path: '/collector/report',
+          builder: (context, state) => const CollectionReportScreen()),
       GoRoute(
           path: '/supervisor',
           builder: (context, state) => const SupervisorDashboardScreen()),

@@ -1,4 +1,4 @@
-from odoo import fields, http
+﻿from odoo import fields, http
 from odoo.exceptions import AccessError, UserError, ValidationError
 from odoo.http import request
 import hmac
@@ -35,10 +35,10 @@ class UtilityBillingAPI(http.Controller):
         return params if isinstance(params, dict) else payload
 
     def _get_authorized_accounts(self):
-        """إرجاع recordset لحسابات الكهرباء المسموح للمستخدم الحالي الوصول إليها.
+        """Ø¥Ø±Ø¬Ø§Ø¹ recordset Ù„Ø­Ø³Ø§Ø¨Ø§Øª Ø§Ù„ÙƒÙ‡Ø±Ø¨Ø§Ø¡ Ø§Ù„Ù…Ø³Ù…ÙˆØ­ Ù„Ù„Ù…Ø³ØªØ®Ø¯Ù… Ø§Ù„Ø­Ø§Ù„ÙŠ Ø§Ù„ÙˆØµÙˆÙ„ Ø¥Ù„ÙŠÙ‡Ø§.
 
-        للمستخدمين الداخليين: كل الحسابات.
-        لمستخدمي البوابة: الحسابات المرتبطة بـ partner الخاص بهم فقط.
+        Ù„Ù„Ù…Ø³ØªØ®Ø¯Ù…ÙŠÙ† Ø§Ù„Ø¯Ø§Ø®Ù„ÙŠÙŠÙ†: ÙƒÙ„ Ø§Ù„Ø­Ø³Ø§Ø¨Ø§Øª.
+        Ù„Ù…Ø³ØªØ®Ø¯Ù…ÙŠ Ø§Ù„Ø¨ÙˆØ§Ø¨Ø©: Ø§Ù„Ø­Ø³Ø§Ø¨Ø§Øª Ø§Ù„Ù…Ø±ØªØ¨Ø·Ø© Ø¨Ù€ partner Ø§Ù„Ø®Ø§Øµ Ø¨Ù‡Ù… ÙÙ‚Ø·.
         """
         user = request.env.user
         Customer = request.env['utility.customer']
@@ -51,7 +51,7 @@ class UtilityBillingAPI(http.Controller):
         ])
 
     def _authorize_account(self, customer_number):
-        """التحقق من ملكية حساب الكهرباء وإرجاعه إن وجد."""
+        """Ø§Ù„ØªØ­Ù‚Ù‚ Ù…Ù† Ù…Ù„ÙƒÙŠØ© Ø­Ø³Ø§Ø¨ Ø§Ù„ÙƒÙ‡Ø±Ø¨Ø§Ø¡ ÙˆØ¥Ø±Ø¬Ø§Ø¹Ù‡ Ø¥Ù† ÙˆØ¬Ø¯."""
         accounts = self._get_authorized_accounts()
         return accounts.filtered(lambda a: a.customer_number == customer_number)[:1]
 
@@ -85,16 +85,16 @@ class UtilityBillingAPI(http.Controller):
         customer, error_code = self._resolve_authorized_customer(
             self._request_params(kwargs))
         if error_code == 'CUSTOMER_IDENTIFIER_MISMATCH':
-            return self._error(error_code, 'معرفات الحساب متعارضة')
+            return self._error(error_code, 'Ù…Ø¹Ø±ÙØ§Øª Ø§Ù„Ø­Ø³Ø§Ø¨ Ù…ØªØ¹Ø§Ø±Ø¶Ø©')
         if error_code == 'CUSTOMER_IDENTIFIER_REQUIRED':
             return self._error(
                 error_code,
                 'A customer, meter, QR, or lookup identifier is required',
             )
         if error_code == 'CUSTOMER_IDENTIFIER_AMBIGUOUS':
-            return self._error(error_code, 'المعرف المدخل يطابق أكثر من حساب.')
+            return self._error(error_code, 'Ø§Ù„Ù…Ø¹Ø±Ù Ø§Ù„Ù…Ø¯Ø®Ù„ ÙŠØ·Ø§Ø¨Ù‚ Ø£ÙƒØ«Ø± Ù…Ù† Ø­Ø³Ø§Ø¨.')
         if not customer:
-            return self._error(error_code or 'CUSTOMER_NOT_FOUND', 'الحساب غير موجود')
+            return self._error(error_code or 'CUSTOMER_NOT_FOUND', 'Ø§Ù„Ø­Ø³Ø§Ø¨ ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯')
         return {'success': True, 'customer': self._customer_payload(customer)}
 
     @http.route('/api/v1/utility/customer/qr_reference', type='json', auth='user', methods=['POST'])
@@ -103,14 +103,14 @@ class UtilityBillingAPI(http.Controller):
         params = self._request_params(kwargs)
         customer, error_code = self._resolve_authorized_customer(params)
         if error_code == 'CUSTOMER_IDENTIFIER_MISMATCH':
-            return self._error(error_code, 'معرفات الحساب متعارضة')
+            return self._error(error_code, 'Ù…Ø¹Ø±ÙØ§Øª Ø§Ù„Ø­Ø³Ø§Ø¨ Ù…ØªØ¹Ø§Ø±Ø¶Ø©')
         if error_code == 'CUSTOMER_IDENTIFIER_REQUIRED':
             return self._error(
                 error_code,
                 'customer_id, customer_number or external_qr_reference is required',
             )
         if not customer:
-            return self._error(error_code or 'CUSTOMER_NOT_FOUND', 'الحساب غير موجود')
+            return self._error(error_code or 'CUSTOMER_NOT_FOUND', 'Ø§Ù„Ø­Ø³Ø§Ø¨ ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯')
         target_key = (
             'new_external_qr_reference'
             if 'new_external_qr_reference' in params
@@ -130,7 +130,7 @@ class UtilityBillingAPI(http.Controller):
         if owner:
             return self._error(
                 'QR_REFERENCE_ALREADY_ASSIGNED',
-                'معرف QR الخارجي مستخدم بالفعل لدى حساب آخر',
+                'Ù…Ø¹Ø±Ù QR Ø§Ù„Ø®Ø§Ø±Ø¬ÙŠ Ù…Ø³ØªØ®Ø¯Ù… Ø¨Ø§Ù„ÙØ¹Ù„ Ù„Ø¯Ù‰ Ø­Ø³Ø§Ø¨ Ø¢Ø®Ø±',
             )
         try:
             with request.env.cr.savepoint():
@@ -138,16 +138,16 @@ class UtilityBillingAPI(http.Controller):
         except IntegrityError:
             return self._error(
                 'QR_REFERENCE_ALREADY_ASSIGNED',
-                'معرف QR الخارجي مستخدم بالفعل لدى حساب آخر',
+                'Ù…Ø¹Ø±Ù QR Ø§Ù„Ø®Ø§Ø±Ø¬ÙŠ Ù…Ø³ØªØ®Ø¯Ù… Ø¨Ø§Ù„ÙØ¹Ù„ Ù„Ø¯Ù‰ Ø­Ø³Ø§Ø¨ Ø¢Ø®Ø±',
             )
         return {'success': True, 'customer': self._customer_payload(customer)}
 
     def _authorize_order(self, order_id):
-        """التحقق من ملكية الفاتورة وإرجاعها ضمن نطاق المستخدم المصرح له.
+        """Ø§Ù„ØªØ­Ù‚Ù‚ Ù…Ù† Ù…Ù„ÙƒÙŠØ© Ø§Ù„ÙØ§ØªÙˆØ±Ø© ÙˆØ¥Ø±Ø¬Ø§Ø¹Ù‡Ø§ Ø¶Ù…Ù† Ù†Ø·Ø§Ù‚ Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù… Ø§Ù„Ù…ØµØ±Ø­ Ù„Ù‡.
 
-        للمستخدمين الداخليين تُطبّق Record Rules تلقائياً عبر بيئة ORM العادية،
-        ويُضاف شرط ملكية الحساب بوصفه قيداً خاصاً بالـ endpoint.
-        لمستخدمي البوابة يُستخدم sudo لقراءة الفاتورة بعد التحقق من الملكية.
+        Ù„Ù„Ù…Ø³ØªØ®Ø¯Ù…ÙŠÙ† Ø§Ù„Ø¯Ø§Ø®Ù„ÙŠÙŠÙ† ØªÙØ·Ø¨Ù‘Ù‚ Record Rules ØªÙ„Ù‚Ø§Ø¦ÙŠØ§Ù‹ Ø¹Ø¨Ø± Ø¨ÙŠØ¦Ø© ORM Ø§Ù„Ø¹Ø§Ø¯ÙŠØ©ØŒ
+        ÙˆÙŠÙØ¶Ø§Ù Ø´Ø±Ø· Ù…Ù„ÙƒÙŠØ© Ø§Ù„Ø­Ø³Ø§Ø¨ Ø¨ÙˆØµÙÙ‡ Ù‚ÙŠØ¯Ø§Ù‹ Ø®Ø§ØµØ§Ù‹ Ø¨Ø§Ù„Ù€ endpoint.
+        Ù„Ù…Ø³ØªØ®Ø¯Ù…ÙŠ Ø§Ù„Ø¨ÙˆØ§Ø¨Ø© ÙŠÙØ³ØªØ®Ø¯Ù… sudo Ù„Ù‚Ø±Ø§Ø¡Ø© Ø§Ù„ÙØ§ØªÙˆØ±Ø© Ø¨Ø¹Ø¯ Ø§Ù„ØªØ­Ù‚Ù‚ Ù…Ù† Ø§Ù„Ù…Ù„ÙƒÙŠØ©.
         """
         try:
             order_id = int(order_id)
@@ -197,6 +197,25 @@ class UtilityBillingAPI(http.Controller):
                 'A dedicated cash journal must be configured for this collector.',
             )
         return collector, False
+
+    def _get_collector_scope_accounts(self):
+        """Return utility customers that the current collector can work on.
+
+        This keeps the mobile collector list aligned with the route assignment
+        model used by the reader endpoint.  Global utility users keep their
+        normal record-rule scope; restricted collectors must have assigned
+        routes and only receive accounts on those routes.
+        """
+        user = request.env.user
+        accounts = self._get_authorized_accounts()
+        if not user.has_group('utility_core.group_utility_collector'):
+            return request.env['utility.customer']
+        if user._is_global_utility_scope():
+            return accounts
+        routes = user.sudo().assigned_route_ids
+        if not routes:
+            return request.env['utility.customer']
+        return accounts.filtered(lambda account: account.route_id in routes)
 
     @staticmethod
     def _collection_receipt_payload(payment, collection, duplicate=False):
@@ -457,7 +476,7 @@ class UtilityBillingAPI(http.Controller):
 
     @http.route('/api/v1/utility/billing/pay', type='json', auth='user', methods=['POST'])
     def billing_pay(self, **kwargs):
-        """تم تعطيل الدفع المباشر من البوابة. استخدم /api/v1/utility/billing/payment_intent بدلاً منه."""
+        """ØªÙ… ØªØ¹Ø·ÙŠÙ„ Ø§Ù„Ø¯ÙØ¹ Ø§Ù„Ù…Ø¨Ø§Ø´Ø± Ù…Ù† Ø§Ù„Ø¨ÙˆØ§Ø¨Ø©. Ø§Ø³ØªØ®Ø¯Ù… /api/v1/utility/billing/payment_intent Ø¨Ø¯Ù„Ø§Ù‹ Ù…Ù†Ù‡."""
         return self._error(
             'ENDPOINT_DISABLED',
             'Direct payment creation is disabled. Use /api/v1/utility/billing/payment_intent instead.',
@@ -627,10 +646,10 @@ class UtilityBillingAPI(http.Controller):
 
     @http.route('/api/v1/utility/operations/service_request', type='json', auth='user', methods=['POST'])
     def service_request(self, **kwargs):
-        """إنشاء طلب خدمة.  التفويض يسبق أي وصول للسجل:
-        - نحدد أولاً الحسابات المصرح بها لهذا المستخدم (ORM Record Rules + ملكية حساب).
-        - نبحث ضمن تلك الحسابات فقط — لا sudo().browse() قبل التفويض.
-        - بعد التحقق من الهوية والملكية، يُنشأ أمر الخدمة.
+        """Ø¥Ù†Ø´Ø§Ø¡ Ø·Ù„Ø¨ Ø®Ø¯Ù…Ø©.  Ø§Ù„ØªÙÙˆÙŠØ¶ ÙŠØ³Ø¨Ù‚ Ø£ÙŠ ÙˆØµÙˆÙ„ Ù„Ù„Ø³Ø¬Ù„:
+        - Ù†Ø­Ø¯Ø¯ Ø£ÙˆÙ„Ø§Ù‹ Ø§Ù„Ø­Ø³Ø§Ø¨Ø§Øª Ø§Ù„Ù…ØµØ±Ø­ Ø¨Ù‡Ø§ Ù„Ù‡Ø°Ø§ Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù… (ORM Record Rules + Ù…Ù„ÙƒÙŠØ© Ø­Ø³Ø§Ø¨).
+        - Ù†Ø¨Ø­Ø« Ø¶Ù…Ù† ØªÙ„Ùƒ Ø§Ù„Ø­Ø³Ø§Ø¨Ø§Øª ÙÙ‚Ø· â€” Ù„Ø§ sudo().browse() Ù‚Ø¨Ù„ Ø§Ù„ØªÙÙˆÙŠØ¶.
+        - Ø¨Ø¹Ø¯ Ø§Ù„ØªØ­Ù‚Ù‚ Ù…Ù† Ø§Ù„Ù‡ÙˆÙŠØ© ÙˆØ§Ù„Ù…Ù„ÙƒÙŠØ©ØŒ ÙŠÙÙ†Ø´Ø£ Ø£Ù…Ø± Ø§Ù„Ø®Ø¯Ù…Ø©.
         """
         params = self._request_params(kwargs)
         customer_id = params.get('customer_id')
@@ -717,4 +736,153 @@ class UtilityBillingAPI(http.Controller):
             'total_bills': total_bills,
             'total_collections': total_collections,
             'active_alarms': active_alarms,
+        }
+
+
+    @http.route('/api/v1/utility/collector/period/invoices', type='json', auth='user', methods=['POST'])
+    def collector_period_invoices(self, **kwargs):
+        collector, error = self._get_current_collector()
+        if error:
+            return error
+
+        params = self._request_params(kwargs)
+        try:
+            limit = int(params.get('limit', 0) or 0)
+        except (TypeError, ValueError):
+            return self._error('VALIDATION_ERROR', 'limit must be numeric')
+        try:
+            offset = int(params.get('offset', 0) or 0)
+        except (TypeError, ValueError):
+            return self._error('VALIDATION_ERROR', 'offset must be numeric')
+
+        period = request.env['date.range'].search([
+            ('period_role', '=', 'payment'),
+            ('state', '=', 'open'),
+            '|', ('company_id', '=', False), ('company_id', '=', request.env.company.id)
+        ], order='date_start desc', limit=1)
+
+        if not period:
+            return {'success': True, 'period': None, 'invoices': []}
+
+        period_data = {
+            'id': period.id,
+            'name': period.name,
+            'state': period.state,
+        }
+
+        authorized_accounts = self._get_collector_scope_accounts()
+        if not authorized_accounts:
+            return {'success': True, 'period': period_data, 'invoices': []}
+
+        domain = [
+            ('company_id', '=', collector.company_id.id),
+            ('utility_customer_id', 'in', authorized_accounts.ids),
+            ('state', '=', 'posted'),
+            ('payment_state', 'in', ['not_paid', 'partial']),
+            ('move_type', '=', 'out_invoice'),
+            ('amount_residual', '>', 0),
+            ('utility_sale_order_id', '!=', False),
+        ]
+
+        reading_period = period.reading_period_id
+        if reading_period:
+            domain.append(('utility_sale_order_id.date_range_id', '=', reading_period.id))
+
+        invoices = request.env['account.move'].sudo().search(
+            domain,
+            order='invoice_date desc, id desc',
+            limit=limit or None,
+            offset=max(offset, 0),
+        )
+
+        invoice_list = []
+        for inv in invoices:
+            customer = inv.utility_customer_id
+            order = inv.utility_sale_order_id
+            meter = order.meter_id if order else False
+            invoice_list.append({
+                'customer_id': customer.id,
+                'customer_number': customer.customer_number,
+                'account_number': customer.account_number or customer.customer_number,
+                'customer_name': customer.name,
+                'meter_id': meter.id if meter else False,
+                'meter_number': meter.meter_number if meter else '',
+                'order_id': order.id if order else False,
+                'invoice_id': inv.id,
+                'invoice_number': inv.name,
+                'amount': inv.amount_total,
+                'amount_residual': inv.amount_residual,
+                'due_date': str(inv.invoice_date_due) if inv.invoice_date_due else str(inv.invoice_date),
+                'overdue': inv.invoice_date_due and inv.invoice_date_due < request.env.context.get('tz_date', fields.Date.today()),
+            })
+
+        return {
+            'success': True,
+            'period': period_data,
+            'invoices': invoice_list,
+        }
+
+
+
+    @http.route('/api/v1/utility/collector/report', type='json', auth='user', methods=['POST'])
+    def collector_report(self, **kwargs):
+        params = self._request_params(kwargs)
+        collector, error = self._get_current_collector()
+        if error:
+            return error
+        customer_name = params.get('customer_name', '').strip()
+        customer_number = params.get('customer_number', '').strip()
+        date_from = params.get('date_from')
+        date_to = params.get('date_to')
+
+        authorized_accounts = self._get_collector_scope_accounts()
+        if not authorized_accounts:
+            return {'success': True, 'total_amount': 0.0, 'total_count': 0, 'transactions': []}
+
+        domain = [
+            ('utility_customer_id', 'in', authorized_accounts.ids),
+            ('collector_id', '=', collector.id),
+            ('payment_type', '=', 'inbound'),
+            ('state', '=', 'posted'),
+        ]
+
+        if date_from:
+            domain.append(('date', '>=', date_from))
+        if date_to:
+            domain.append(('date', '<=', date_to))
+
+        if customer_name or customer_number:
+            customer_domain = [('id', 'in', authorized_accounts.ids)]
+            if customer_name:
+                customer_domain.append(('name', 'ilike', customer_name))
+            if customer_number:
+                customer_domain.append('|')
+                customer_domain.append(('customer_number', 'ilike', customer_number))
+                customer_domain.append(('account_number', 'ilike', customer_number))
+
+            filtered_customers = request.env['utility.customer'].sudo().search(customer_domain)
+            domain.append(('utility_customer_id', 'in', filtered_customers.ids))
+
+        payments = request.env['account.payment'].sudo().search(domain, order='date desc, id desc')
+
+        transactions = []
+        total_amount = 0.0
+
+        for pay in payments:
+            customer = pay.utility_customer_id or pay.utility_sale_order_id.customer_id
+            amount = pay.amount
+            total_amount += amount
+            transactions.append({
+                'receipt_number': pay.name or pay.ref or '',
+                'customer_name': customer.name if customer else '',
+                'customer_number': customer.customer_number if customer else '',
+                'amount': amount,
+                'date': str(pay.date),
+            })
+
+        return {
+            'success': True,
+            'total_amount': total_amount,
+            'total_count': len(transactions),
+            'transactions': transactions,
         }
