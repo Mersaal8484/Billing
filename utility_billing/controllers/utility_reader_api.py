@@ -652,6 +652,12 @@ class UtilityReaderAPI(http.Controller):
         """جلب المشتركين المخصصين للكاشف عبر utility.route.user_ids"""
         user = request.env.user
 
+        if not user.has_group('utility_core.group_utility_meter_reader'):
+            return self._error(
+                'READER_ROLE_REQUIRED',
+                'This operation is restricted to meter readers.',
+            )
+
         # البحث عبر utility.route.user_ids مباشرة
         routes = request.env['utility.route'].sudo().search([
             ('user_ids', 'in', [user.id]),
@@ -699,8 +705,11 @@ class UtilityReaderAPI(http.Controller):
             period_domain.extend([
                 '|', ('region_ids', '=', False), ('region_ids', 'in', route_regions),
             ])
-        open_periods = request.env['date.range'].sudo().search(period_domain)
-        current_period = open_periods[:1]
+        current_period = request.env['date.range'].sudo().search(
+            period_domain,
+            order='date_start desc, id desc',
+            limit=1,
+        )
         period_data = {
             'id': current_period.id,
             'name': current_period.name,
@@ -719,10 +728,10 @@ class UtilityReaderAPI(http.Controller):
 
         readings_by_meter = {}
         meter_ids = customers.mapped('meter_id').ids
-        if meter_ids and open_periods:
+        if meter_ids and current_period:
             current_readings = request.env['utility.reading'].sudo().search([
                 ('meter_id', 'in', meter_ids),
-                ('date_range_id', 'in', open_periods.ids),
+                ('date_range_id', '=', current_period.id),
                 ('reading_purpose', '=', 'periodic'),
                 ('active', '=', True),
             ], order='reading_date desc, id desc')

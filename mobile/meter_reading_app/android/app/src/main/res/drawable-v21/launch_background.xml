@@ -3,9 +3,8 @@
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:drawable="@android:color/white" />
 
-    <item>
-        <bitmap
-            android:gravity="center"
-            android:src="@drawable/launch_logo" />
-    </item>
+    <!-- Keep the pre-Android-12 launch screen consistent with the app icon. -->
+    <item
+        android:drawable="@mipmap/ic_launcher"
+        android:gravity="center" />
 </layer-list>

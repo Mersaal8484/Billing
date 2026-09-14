@@ -1,36 +1,53 @@
 import 'dart:async';
 import '../../../core/network/odoo_api_client.dart';
 import '../domain/entities.dart';
-import 'mock_assignment_repository.dart' show AssignmentRepository;
+import 'mock_assignment_repository.dart'
+    show AssignmentRepository, ReadingAssignmentSyncResult;
 
 class OdooAssignmentRepository implements AssignmentRepository {
   final OdooApiClient _client;
   final _changeHub = StreamController<List<ReadingAssignment>>.broadcast();
   List<ReadingAssignment> _all = [];
   bool _initialized = false;
+  Future<ReadingAssignmentSyncResult>? _inFlightFetch;
 
   OdooAssignmentRepository(this._client);
 
   String? _lastError;
   String? get lastError => _lastError;
 
-  Future<void> _fetchData() async {
+  Future<ReadingAssignmentSyncResult> _fetchData() {
+    return _inFlightFetch ??= _fetchDataInternal().whenComplete(() {
+      _inFlightFetch = null;
+    });
+  }
+
+  Future<ReadingAssignmentSyncResult> _fetchDataInternal() async {
     try {
       final response = await _client.postJson('/api/v1/utility/reader/subscribers', {});
       if (response['success'] == true) {
-        final subs = response['subscribers'] as List<dynamic>;
+        final subs = response['subscribers'] as List<dynamic>? ?? const [];
+        final rawPeriod = response['period'];
+        final period = rawPeriod is Map
+            ? Map<String, dynamic>.from(rawPeriod)
+            : null;
         final list = <ReadingAssignment>[];
         final now = DateTime.now();
 
         for (int i = 0; i < subs.length; i++) {
-          final s = subs[i] as Map<String, dynamic>;
-          final cId = s['id'] as int;
-          final mId = s['meter_id'] as int?;
+          final s = Map<String, dynamic>.from(subs[i] as Map);
+          final cId = int.tryParse(s['id']?.toString() ?? '');
+          if (cId == null) continue;
+          final mId = int.tryParse(s['meter_id']?.toString() ?? '');
 
           final customer = Customer(
             remoteId: cId,
             customerNumber: s['customer_number']?.toString() ?? '',
-            accountNumber: 'ACC-$cId',
+            accountNumber: _firstText(
+              s,
+              ['account_number', 'customer_number', 'subscriber_number'],
+              fallback: 'ACC-$cId',
+            ),
             name: s['name']?.toString() ?? '',
             address: s['address']?.toString(),
             regionName: s['route_name']?.toString(),
@@ -56,13 +73,32 @@ class OdooAssignmentRepository implements AssignmentRepository {
         _all = List.unmodifiable(list);
         _lastError = null;
         _notifyListeners();
+        return ReadingAssignmentSyncResult(
+          success: true,
+          hasOpenPeriod: period != null,
+          periodName: period?['name']?.toString(),
+          count: list.length,
+          message: response['message']?.toString(),
+        );
       } else {
-        _lastError = 'API returned success=false';
+        _lastError = response['error']?.toString() ?? 'API returned success=false';
         _notifyListeners();
+        return ReadingAssignmentSyncResult(
+          success: false,
+          hasOpenPeriod: false,
+          count: _all.length,
+          message: _lastError,
+        );
       }
     } catch (e) {
       _lastError = e.toString();
       _notifyListeners();
+      return ReadingAssignmentSyncResult(
+        success: false,
+        hasOpenPeriod: false,
+        count: _all.length,
+        message: _lastError,
+      );
     }
   }
 
@@ -74,6 +110,66 @@ class OdooAssignmentRepository implements AssignmentRepository {
         'skipped' => AssignmentStatus.skipped,
         _ => AssignmentStatus.pending,
       };
+
+  String _firstText(
+    Map<String, dynamic> values,
+    List<String> keys, {
+    String fallback = '',
+  }) {
+    for (final key in keys) {
+      final value = values[key];
+      if (value == null || value == false) continue;
+      final text = value.toString().trim();
+      if (text.isNotEmpty) return text;
+    }
+    return fallback;
+  }
+
+  String _cleanIdentifier(String value) => value.trim().toLowerCase();
+
+  Set<String> _payloadCandidates(String payload) {
+    final raw = payload.trim();
+    final values = <String>{};
+    void add(String? value) {
+      if (value == null) return;
+      final clean = _cleanIdentifier(value);
+      if (clean.isNotEmpty) values.add(clean);
+    }
+
+    add(raw);
+    if (raw.toLowerCase().startsWith('utility:')) {
+      add(raw.substring('utility:'.length));
+    }
+
+    final parts = raw.split('|').map((part) => part.trim()).toList();
+    if (parts.isNotEmpty && parts.first.toUpperCase().startsWith('UTILITY')) {
+      // Official meter QR shape:
+      // UTILITY-METER|company|meter_number|physical_serial|customer_number|...
+      if (parts.length > 2) add(parts[2]);
+      if (parts.length > 3) add(parts[3]);
+      if (parts.length > 4) add(parts[4]);
+      if (parts.length > 8) add(parts[8]);
+    }
+    return values;
+  }
+
+  Set<String> _assignmentIdentifiers(ReadingAssignment assignment) {
+    final values = <String>{};
+    void add(String? value) {
+      if (value == null) return;
+      final clean = _cleanIdentifier(value);
+      if (clean.isNotEmpty) values.add(clean);
+    }
+
+    add(assignment.customer.accountNumber);
+    add(assignment.customer.customerNumber);
+    add(assignment.meter.meterNumber);
+    add(assignment.meter.serialNumber);
+    add('UTILITY:${assignment.customer.accountNumber}');
+    add('UTILITY:${assignment.customer.customerNumber}');
+    add('UTILITY:${assignment.meter.meterNumber}');
+    return values;
+  }
 
   void _notifyListeners() {
     if (!_changeHub.isClosed) _changeHub.add(List.unmodifiable(_all));
@@ -93,8 +189,10 @@ class OdooAssignmentRepository implements AssignmentRepository {
       result = result
           .where((a) =>
               a.customer.name.toLowerCase().contains(q) ||
+              a.customer.customerNumber.toLowerCase().contains(q) ||
               a.customer.accountNumber.toLowerCase().contains(q) ||
-              a.meter.meterNumber.toLowerCase().contains(q))
+              a.meter.meterNumber.toLowerCase().contains(q) ||
+              (a.meter.serialNumber?.toLowerCase().contains(q) ?? false))
           .toList();
     }
     return result;
@@ -105,7 +203,7 @@ class OdooAssignmentRepository implements AssignmentRepository {
     return Stream<List<ReadingAssignment>>.multi((controller) {
       if (!_initialized) {
         _initialized = true;
-        _fetchData();
+        unawaited(_fetchData());
       }
       try {
         controller.add(_applyFilters(List.unmodifiable(_all), query: query, filter: filter));
@@ -125,6 +223,12 @@ class OdooAssignmentRepository implements AssignmentRepository {
       );
       controller.onCancel = sub.cancel;
     });
+  }
+
+  @override
+  Future<ReadingAssignmentSyncResult> syncOpenPeriodAssignments() {
+    _initialized = true;
+    return _fetchData();
   }
 
   @override
@@ -148,12 +252,9 @@ class OdooAssignmentRepository implements AssignmentRepository {
   @override
   Future<ReadingAssignment?> resolveQr(String payload) async {
     try {
-      final clean = payload.replaceAll('UTILITY:', '').trim().toLowerCase();
+      final candidates = _payloadCandidates(payload);
       return _all.firstWhere(
-        (a) =>
-            a.customer.accountNumber.toLowerCase() == clean ||
-            a.meter.meterNumber.toLowerCase() == clean ||
-            'utility:${a.customer.accountNumber.toLowerCase()}' == payload.trim().toLowerCase(),
+        (a) => _assignmentIdentifiers(a).any(candidates.contains),
       );
     } catch (_) {
       return null;

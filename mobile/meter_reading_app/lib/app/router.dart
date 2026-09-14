@@ -62,9 +62,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           path: '/collector',
           builder: (context, state) => const CollectorHomeScreen()),
       GoRoute(
-          path: '/collector/qr',
-          builder: (context, state) => const QrScannerScreen()),
-      GoRoute(
         path: '/collector/accounts/:id',
         builder: (context, state) =>
             CollectionAccountScreen(accountId: state.pathParameters['id']!),

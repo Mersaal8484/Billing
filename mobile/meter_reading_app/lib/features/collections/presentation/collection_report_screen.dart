@@ -270,11 +270,12 @@ class _CollectionReportScreenState
   }
 
   Widget _reportBody() {
-    final report = _report ?? const CollectorReport(
-      totalAmount: 0,
-      totalCount: 0,
-      transactions: [],
-    );
+    final report = _report ??
+        const CollectorReport(
+          totalAmount: 0,
+          totalCount: 0,
+          transactions: [],
+        );
 
     if (report.transactions.isEmpty) {
       return const EmptyState(

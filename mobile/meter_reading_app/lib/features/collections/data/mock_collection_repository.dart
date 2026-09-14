@@ -24,6 +24,9 @@ class MockCollectionRepository implements CollectionRepository {
   String? get periodMessage => null;
 
   @override
+  List<CollectionAccount> get syncedAccounts => _accounts;
+
+  @override
   Future<CollectionPeriod?> syncPeriodInvoices() async {
     await Future.delayed(const Duration(milliseconds: 300));
     _ctrl.add(_accounts);

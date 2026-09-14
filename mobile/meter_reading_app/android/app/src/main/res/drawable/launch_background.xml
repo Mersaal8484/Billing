@@ -3,9 +3,10 @@
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:drawable="@android:color/white" />
 
-    <item>
-        <bitmap
-            android:gravity="center"
-            android:src="@drawable/launch_logo" />
-    </item>
+    <!-- Use the normal adaptive launcher icon here.  The previous nodpi
+         institution crest is a full-size image, so Android drew it at its
+         native dimensions while Flutter was starting. -->
+    <item
+        android:drawable="@mipmap/ic_launcher"
+        android:gravity="center" />
 </layer-list>

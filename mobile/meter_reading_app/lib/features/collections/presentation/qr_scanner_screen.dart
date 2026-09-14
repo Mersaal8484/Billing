@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 
 import '../../../app/providers.dart';
 
@@ -14,38 +15,89 @@ class QrScannerScreen extends ConsumerStatefulWidget {
 }
 
 class _QrScannerScreenState extends ConsumerState<QrScannerScreen> {
-  bool _scanning = false;
-  bool _failed = false;
+  final _controller = MobileScannerController(
+    detectionSpeed: DetectionSpeed.noDuplicates,
+    facing: CameraFacing.back,
+  );
+  final _manualController = TextEditingController();
 
-  Future<void> _simulateScan() async {
+  bool _resolving = false;
+  String? _message;
+
+  @override
+  void dispose() {
+    _manualController.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleBarcode(BarcodeCapture capture) async {
+    if (_resolving) return;
+    final payload = capture.barcodes
+        .map((barcode) => barcode.rawValue?.trim())
+        .whereType<String>()
+        .firstWhere((value) => value.isNotEmpty, orElse: () => '');
+    if (payload.isEmpty) return;
+    await _resolvePayload(payload);
+  }
+
+  Future<void> _resolvePayload(String payload) async {
+    if (_resolving) return;
     setState(() {
-      _scanning = true;
-      _failed = false;
+      _resolving = true;
+      _message = null;
     });
 
-    if (widget.isReaderMode) {
-      final assignment = await ref
-          .read(assignmentRepositoryProvider)
-          .resolveQr('UTILITY:ACC-100000');
-      if (!mounted) return;
-      setState(() => _scanning = false);
-      if (assignment == null) {
-        setState(() => _failed = true);
+    try {
+      if (widget.isReaderMode) {
+        final repository = ref.read(assignmentRepositoryProvider);
+        await repository.syncOpenPeriodAssignments();
+        final assignment = await repository.resolveQr(payload);
+        if (!mounted) return;
+        if (assignment == null) {
+          setState(() {
+            _resolving = false;
+            _message =
+                'هذا الرمز غير موجود ضمن مهام فترة القراءة المفتوحة أو خارج مسارك.';
+          });
+          await _controller.start();
+          return;
+        }
+        context.go('/customers/${assignment.id}');
         return;
       }
-      context.go('/customers/${assignment.id}');
-    } else {
-      final account = await ref
-          .read(collectionRepositoryProvider)
-          .resolveQr('UTILITY:ACC-220000');
+
+      final repository = ref.read(collectionRepositoryProvider);
+      await repository.syncPeriodInvoices();
+      final account = await repository.resolveQr(payload);
       if (!mounted) return;
-      setState(() => _scanning = false);
       if (account == null) {
-        setState(() => _failed = true);
+        setState(() {
+          _resolving = false;
+          _message =
+              'هذا الرمز غير موجود ضمن فواتير فترة التحصيل المفتوحة أو خارج مسارك.';
+        });
+        await _controller.start();
         return;
       }
       context.go('/collector/accounts/${account.id}');
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _resolving = false;
+        _message = 'تعذر قراءة الرمز: $error';
+      });
+      await _controller.start();
     }
+  }
+
+  Future<void> _submitManualCode() async {
+    final payload = _manualController.text.trim();
+    if (payload.isEmpty) {
+      setState(() => _message = 'أدخل رقم المشترك أو الحساب أو العداد.');
+      return;
+    }
+    await _resolvePayload(payload);
   }
 
   @override
@@ -56,6 +108,13 @@ class _QrScannerScreenState extends ConsumerState<QrScannerScreen> {
         title: const Text('مسح QR'),
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            tooltip: 'تشغيل/إيقاف الفلاش',
+            onPressed: () => _controller.toggleTorch(),
+            icon: const Icon(Icons.flash_on_rounded),
+          ),
+        ],
       ),
       body: SafeArea(
         child: Padding(
@@ -66,23 +125,38 @@ class _QrScannerScreenState extends ConsumerState<QrScannerScreen> {
                 child: Center(
                   child: AspectRatio(
                     aspectRatio: 1,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.white, width: 3),
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      child: Center(
-                        child: _scanning
-                            ? const CircularProgressIndicator(
-                                color: Colors.white)
-                            : const Icon(Icons.qr_code_2_rounded,
-                                color: Colors.white70, size: 120),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(24),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          MobileScanner(
+                            controller: _controller,
+                            onDetect: _handleBarcode,
+                          ),
+                          DecoratedBox(
+                            decoration: BoxDecoration(
+                              border:
+                                  Border.all(color: Colors.white, width: 3),
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                          ),
+                          if (_resolving)
+                            const ColoredBox(
+                              color: Colors.black45,
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                   ),
                 ),
               ),
-              if (_failed)
+              if (_message != null)
                 Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
@@ -91,32 +165,45 @@ class _QrScannerScreenState extends ConsumerState<QrScannerScreen> {
                     color: Colors.red.withOpacity(0.18),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Text(
-                    'تعذر قراءة الرمز. نظف الملصق أو استخدم الإدخال اليدوي.',
-                    style: TextStyle(color: Colors.white),
+                  child: Text(
+                    _message!,
+                    style: const TextStyle(color: Colors.white),
                     textAlign: TextAlign.center,
                   ),
                 ),
-              FilledButton.icon(
-                onPressed: _scanning ? null : _simulateScan,
-                icon: const Icon(Icons.qr_code_scanner_rounded),
-                label: const Text('محاكاة مسح ناجح'),
-              ),
-              const SizedBox(height: 10),
-              OutlinedButton.icon(
-                onPressed: () => setState(() => _failed = true),
-                icon: const Icon(Icons.report_problem_outlined),
-                label: const Text('محاكاة فشل القراءة'),
-                style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    side: const BorderSide(color: Colors.white54)),
+              TextField(
+                controller: _manualController,
+                textInputAction: TextInputAction.search,
+                onSubmitted: (_) => _submitManualCode(),
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'إدخال يدوي للرمز أو رقم المشترك',
+                  hintStyle: const TextStyle(color: Colors.white70),
+                  prefixIcon: const Icon(
+                    Icons.keyboard_alt_outlined,
+                    color: Colors.white70,
+                  ),
+                  suffixIcon: IconButton(
+                    onPressed: _resolving ? null : _submitManualCode,
+                    icon: const Icon(Icons.search_rounded),
+                    color: Colors.white,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: const BorderSide(color: Colors.white54),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: const BorderSide(color: Colors.white),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
               ),
               const SizedBox(height: 10),
               TextButton.icon(
                 onPressed: () => context
                     .go(widget.isReaderMode ? '/customers' : '/collector'),
-                icon: const Icon(Icons.keyboard_alt_outlined),
-                label: const Text('إدخال يدوي'),
+                icon: const Icon(Icons.arrow_back_rounded),
+                label: const Text('رجوع للإدخال اليدوي'),
                 style: TextButton.styleFrom(foregroundColor: Colors.white),
               ),
             ],

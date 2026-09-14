@@ -17,6 +17,46 @@ class CustomerListScreen extends ConsumerStatefulWidget {
 class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
   String _query = '';
   AssignmentStatus? _filter;
+  bool _syncing = false;
+  String? _periodName;
+  String? _periodMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _syncAssignments());
+  }
+
+  Future<void> _syncAssignments() async {
+    if (_syncing) return;
+    setState(() => _syncing = true);
+
+    final result = await ref
+        .read(assignmentRepositoryProvider)
+        .syncOpenPeriodAssignments();
+    if (!mounted) return;
+
+    setState(() {
+      _periodName = result.periodName;
+      _periodMessage = result.hasOpenPeriod
+          ? null
+          : (result.message ?? 'لا توجد فترة قراءة مفتوحة حاليًا.');
+      _syncing = false;
+    });
+
+    final message = !result.success
+        ? 'تعذر تحديث مهام الكاشف: ${result.message ?? 'خطأ غير معروف'}'
+        : result.hasOpenPeriod
+            ? 'تم تنزيل ${result.count} مشترك للفترة: ${result.periodName ?? ''}'
+            : _periodMessage!;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor:
+            result.success ? null : Theme.of(context).colorScheme.error,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,6 +69,35 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: _syncing ? null : _syncAssignments,
+                icon: _syncing
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.sync_rounded),
+                label: Text(
+                  _syncing ? 'جارٍ تنزيل المشتركين...' : 'مزامنة المشتركين',
+                ),
+              ),
+            ),
+          ),
+          if (_periodName != null || _periodMessage != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: _ReaderPeriodBanner(
+                text: _periodName != null
+                    ? 'فترة القراءة الحالية: $_periodName'
+                    : _periodMessage!,
+                active: _periodName != null,
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
             child: FilledButton.icon(
               onPressed: () => context.push('/customers/qr'),
               icon: const Icon(Icons.qr_code_scanner_rounded),
@@ -102,6 +171,33 @@ class _CustomerListScreenState extends ConsumerState<CustomerListScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ReaderPeriodBanner extends StatelessWidget {
+  const _ReaderPeriodBanner({required this.text, required this.active});
+
+  final String text;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: active ? colors.primaryContainer : colors.errorContainer,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: active ? colors.onPrimaryContainer : colors.onErrorContainer,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }

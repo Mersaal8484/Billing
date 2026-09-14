@@ -30,7 +30,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+
     return Scaffold(
+      backgroundColor: const Color(0xFFF3FBF5),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -40,30 +42,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 24),
                   Center(
-                    child: Container(
-                      width: 96,
-                      height: 96,
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.black,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: scheme.primary.withOpacity(0.12),
-                            blurRadius: 18,
-                            offset: const Offset(0, 8),
+                    child: Image.asset(
+                      'assets/icons/pec_logo.png',
+                      width: 132,
+                      height: 132,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) {
+                        return CircleAvatar(
+                          radius: 66,
+                          backgroundColor: scheme.primary.withOpacity(0.12),
+                          child: Icon(
+                            Icons.electric_bolt,
+                            color: scheme.primary,
+                            size: 52,
                           ),
-                        ],
-                      ),
-                      child: Image.asset(
-                        'assets/icons/pec_logo.png',
-                        fit: BoxFit.contain,
-                      ),
+                        );
+                      },
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 18),
                   Text(
                     'تطبيق الكاشف والمتحصل',
                     textAlign: TextAlign.center,
@@ -84,6 +83,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   const SizedBox(height: 32),
                   TextFormField(
                     controller: _userCtrl,
+                    textDirection: TextDirection.ltr,
                     decoration: const InputDecoration(
                       labelText: 'اسم المستخدم',
                       prefixIcon: Icon(Icons.person_outline),
@@ -94,6 +94,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _passCtrl,
+                    textDirection: TextDirection.ltr,
                     obscureText: _obscure,
                     decoration: InputDecoration(
                       labelText: 'كلمة المرور',

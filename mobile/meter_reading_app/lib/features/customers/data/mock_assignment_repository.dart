@@ -6,11 +6,31 @@ import '../domain/entities.dart';
 abstract class AssignmentRepository {
   Stream<List<ReadingAssignment>> watchAssignments(
       {String? query, AssignmentStatus? filter});
+  Future<ReadingAssignmentSyncResult> syncOpenPeriodAssignments();
   Future<ReadingAssignment?> getById(String id);
   Future<ReadingAssignment?> lookupByMeterNumber(String meterNumber);
   Future<ReadingAssignment?> resolveQr(String payload);
   Future<void> markStatus(String assignmentId, AssignmentStatus status);
   void dispose();
+}
+
+/// Result of downloading the reader's assignments for the active period.
+/// The UI uses this only for the period banner and feedback message; the
+/// repository list remains the single source of assignment data.
+class ReadingAssignmentSyncResult {
+  final bool success;
+  final bool hasOpenPeriod;
+  final String? periodName;
+  final int count;
+  final String? message;
+
+  const ReadingAssignmentSyncResult({
+    required this.success,
+    required this.hasOpenPeriod,
+    required this.count,
+    this.periodName,
+    this.message,
+  });
 }
 
 /// Mock implementation — بيانات تجريبية يمنية واقعية.
@@ -41,11 +61,57 @@ class MockAssignmentRepository implements AssignmentRepository {
       result = result
           .where((a) =>
               a.customer.name.toLowerCase().contains(q) ||
+              a.customer.customerNumber.toLowerCase().contains(q) ||
               a.customer.accountNumber.toLowerCase().contains(q) ||
-              a.meter.meterNumber.toLowerCase().contains(q))
+              a.meter.meterNumber.toLowerCase().contains(q) ||
+              (a.meter.serialNumber?.toLowerCase().contains(q) ?? false))
           .toList();
     }
     return result;
+  }
+
+  String _cleanIdentifier(String value) => value.trim().toLowerCase();
+
+  Set<String> _payloadCandidates(String payload) {
+    final raw = payload.trim();
+    final values = <String>{};
+    void add(String? value) {
+      if (value == null) return;
+      final clean = _cleanIdentifier(value);
+      if (clean.isNotEmpty) values.add(clean);
+    }
+
+    add(raw);
+    if (raw.toLowerCase().startsWith('utility:')) {
+      add(raw.substring('utility:'.length));
+    }
+
+    final parts = raw.split('|').map((part) => part.trim()).toList();
+    if (parts.isNotEmpty && parts.first.toUpperCase().startsWith('UTILITY')) {
+      if (parts.length > 2) add(parts[2]);
+      if (parts.length > 3) add(parts[3]);
+      if (parts.length > 4) add(parts[4]);
+      if (parts.length > 8) add(parts[8]);
+    }
+    return values;
+  }
+
+  Set<String> _assignmentIdentifiers(ReadingAssignment assignment) {
+    final values = <String>{};
+    void add(String? value) {
+      if (value == null) return;
+      final clean = _cleanIdentifier(value);
+      if (clean.isNotEmpty) values.add(clean);
+    }
+
+    add(assignment.customer.accountNumber);
+    add(assignment.customer.customerNumber);
+    add(assignment.meter.meterNumber);
+    add(assignment.meter.serialNumber);
+    add('UTILITY:${assignment.customer.accountNumber}');
+    add('UTILITY:${assignment.customer.customerNumber}');
+    add('UTILITY:${assignment.meter.meterNumber}');
+    return values;
   }
 
   @override
@@ -74,6 +140,17 @@ class MockAssignmentRepository implements AssignmentRepository {
   }
 
   @override
+  Future<ReadingAssignmentSyncResult> syncOpenPeriodAssignments() async {
+    _notifyListeners();
+    return ReadingAssignmentSyncResult(
+      success: true,
+      hasOpenPeriod: true,
+      periodName: 'الفترة الحالية',
+      count: _all.length,
+    );
+  }
+
+  @override
   Future<ReadingAssignment?> getById(String id) async {
     try {
       return _all.firstWhere((a) => a.id == id);
@@ -96,13 +173,9 @@ class MockAssignmentRepository implements AssignmentRepository {
   Future<ReadingAssignment?> resolveQr(String payload) async {
     await Future.delayed(const Duration(milliseconds: 300));
     try {
-      final clean = payload.replaceAll('UTILITY:', '').trim().toLowerCase();
+      final candidates = _payloadCandidates(payload);
       return _all.firstWhere(
-        (a) =>
-            a.customer.accountNumber.toLowerCase() == clean ||
-            a.meter.meterNumber.toLowerCase() == clean ||
-            'utility:${a.customer.accountNumber.toLowerCase()}' ==
-                payload.trim().toLowerCase(),
+        (a) => _assignmentIdentifiers(a).any(candidates.contains),
       );
     } catch (_) {
       return null;

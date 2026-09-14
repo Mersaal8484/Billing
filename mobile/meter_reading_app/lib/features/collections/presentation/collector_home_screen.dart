@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -15,34 +17,18 @@ class CollectorHomeScreen extends ConsumerStatefulWidget {
 }
 
 class _CollectorHomeScreenState extends ConsumerState<CollectorHomeScreen> {
-  static const _pageSize = 50;
-
-  final _scrollController = ScrollController();
   String _query = '';
-  int _visibleLimit = _pageSize;
   bool _syncing = false;
+  // حالة محلية للفترة المفتوحة — لا نعتمد على ref.watch(repo).currentPeriod
+  // لأن collectionRepositoryProvider هو Provider عادي ولا يُعيد بناء الـ widget
+  // عند تغيير الحقول الداخلية للـ repository.
+  List<CollectionAccount> _syncedAccounts = const [];
+  bool? _hasPeriod; // null = لم يتم المزامنة بعد، false = لا فترة، true = فترة مفتوحة
 
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) => _syncPeriodInvoices());
-  }
-
-  @override
-  void dispose() {
-    _scrollController
-      ..removeListener(_onScroll)
-      ..dispose();
-    super.dispose();
-  }
-
-  void _onScroll() {
-    if (!_scrollController.hasClients) return;
-    final position = _scrollController.position;
-    if (position.pixels >= position.maxScrollExtent - 240) {
-      setState(() => _visibleLimit += _pageSize);
-    }
   }
 
   Future<void> _syncPeriodInvoices() async {
@@ -52,11 +38,22 @@ class _CollectorHomeScreenState extends ConsumerState<CollectorHomeScreen> {
       final period =
           await ref.read(collectionRepositoryProvider).syncPeriodInvoices();
       if (!mounted) return;
+      final syncedAccounts =
+          ref.read(collectionRepositoryProvider).syncedAccounts;
+      final invoiceCount =
+          syncedAccounts.fold<int>(0, (sum, a) => sum + a.invoices.length);
+      setState(() {
+        _syncedAccounts = syncedAccounts;
+        _hasPeriod = period != null; // ← تحديث الـ flag المحلي
+      });
+      _debugUiSync(period, syncedAccounts);
       final message = period == null
           ? (ref.read(collectionRepositoryProvider).periodMessage ??
               'لا توجد فترة تحصيل مفتوحة حالياً.')
-          : 'تم تحديث فواتير فترة التحصيل: ${period.name}';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+          : 'تم تنزيل $invoiceCount فاتورة لـ ${syncedAccounts.length} مشترك في: ${period.name}';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -70,46 +67,121 @@ class _CollectorHomeScreenState extends ConsumerState<CollectorHomeScreen> {
     }
   }
 
+
+  List<_InvoiceListEntry> _syncedInvoiceEntries() {
+    final entries = <_InvoiceListEntry>[];
+    for (final account in _syncedAccounts) {
+      for (final invoice in account.invoices) {
+        entries.add(_InvoiceListEntry(account: account, invoice: invoice));
+      }
+    }
+    entries.sort((a, b) {
+      final dateComparison = b.invoice.dueDate.compareTo(a.invoice.dueDate);
+      if (dateComparison != 0) return dateComparison;
+      return b.invoice.invoiceId.compareTo(a.invoice.invoiceId);
+    });
+    return List.unmodifiable(entries);
+  }
+
+  List<_InvoiceListEntry> _filteredSyncedInvoices() {
+    final query = _query.trim().toLowerCase();
+    final entries = _syncedInvoiceEntries();
+    if (query.isEmpty) return entries;
+    final filtered = entries.where((entry) {
+      return entry.searchableText.contains(query);
+    }).toList(growable: false);
+    _debugSearch(query, entries, filtered);
+    return filtered;
+  }
+
+  void _debugUiSync(
+    CollectionPeriod? period,
+    List<CollectionAccount> accounts,
+  ) {
+    assert(() {
+      debugPrint(
+        '[collector-ui] sync_completed period=${period?.name} '
+        'state_accounts=${accounts.length}',
+      );
+      for (final account in accounts.take(3)) {
+        debugPrint(
+          '[collector-ui] state_account=${jsonEncode({
+            'id': account.id,
+            'customer_number': account.customer.customerNumber,
+            'account_number': account.customer.accountNumber,
+            'customer_name': account.customer.name,
+            'meter_number': account.meter.meterNumber,
+            'due_total': account.dueTotal,
+            'invoices': account.invoices.length,
+          })}',
+        );
+      }
+      return true;
+    }());
+  }
+
+  void _debugSearch(
+    String query,
+    List<_InvoiceListEntry> source,
+    List<_InvoiceListEntry> filtered,
+  ) {
+    assert(() {
+      debugPrint(
+        '[collector-search] query="$query" '
+        'source_accounts=${_syncedAccounts.length} '
+        'source_invoices=${source.length} '
+        'matched_invoices=${filtered.length}',
+      );
+      for (final entry in source.take(3)) {
+        debugPrint(
+          '[collector-search] candidate=${jsonEncode({
+            'customer_number': entry.account.customer.customerNumber,
+            'account_number': entry.account.customer.accountNumber,
+            'meter_number': entry.account.meter.meterNumber,
+            'invoice_number': entry.invoice.invoiceNumber,
+            'name': entry.account.customer.name,
+          })}',
+        );
+      }
+      return true;
+    }());
+  }
+
   @override
   Widget build(BuildContext context) {
     final repository = ref.watch(collectionRepositoryProvider);
-    final accounts = ref.watch(collectionAccountsProvider(_query));
     final summary = repository.dailySummary();
     final period = repository.currentPeriod;
-    final periodMessage = repository.periodMessage;
+    final invoiceEntries = _filteredSyncedInvoices();
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('المتحصل'),
         actions: [
           IconButton(
-            tooltip: 'تقرير التحصيل',
+            tooltip: 'تقارير التحصيل',
             onPressed: () => context.push('/collector/report'),
             icon: const Icon(Icons.analytics_outlined),
           ),
-          IconButton(
-            tooltip: 'مسح QR',
-            onPressed: () => context.push('/collector/qr'),
-            icon: const Icon(Icons.qr_code_scanner_rounded),
-          ),
         ],
       ),
+      // ── Column + Expanded: بنفس بنية شاشة الكاشف، لا ListView خارجي ────
       body: Column(
         children: [
+          // مربع البحث
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
             child: TextField(
               textInputAction: TextInputAction.search,
-              onChanged: (value) => setState(() {
-                _query = value;
-                _visibleLimit = _pageSize;
-              }),
+              onChanged: (value) => setState(() => _query = value),
               decoration: const InputDecoration(
-                hintText: 'بحث يدوي برقم المشترك أو الحساب أو العداد أو الاسم',
+                hintText:
+                    'بحث برقم المشترك أو الحساب أو العداد أو الاسم أو الفاتورة',
                 prefixIcon: Icon(Icons.search_rounded),
               ),
             ),
           ),
+          // ملخص الجلسة
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
@@ -132,8 +204,9 @@ class _CollectorHomeScreenState extends ConsumerState<CollectorHomeScreen> {
               ],
             ),
           ),
+          // أزرار المزامنة والسجل
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
             child: Row(
               children: [
                 Expanded(
@@ -146,7 +219,9 @@ class _CollectorHomeScreenState extends ConsumerState<CollectorHomeScreen> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Icon(Icons.sync_rounded),
-                    label: Text(_syncing ? 'جارٍ التحديث...' : 'مزامنة الفواتير'),
+                    label: Text(
+                      _syncing ? 'جارٍ التحديث...' : 'مزامنة الفواتير',
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -158,50 +233,36 @@ class _CollectorHomeScreenState extends ConsumerState<CollectorHomeScreen> {
               ],
             ),
           ),
-          if (period != null || periodMessage != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: _PeriodBanner(
-                text: period != null
-                    ? 'فترة التحصيل الحالية: ${period.name}'
-                    : periodMessage!,
-                active: period != null,
-              ),
-            ),
+          // ── القائمة — Expanded يمنع Overflow ومطابق لبنية شاشة الكاشف ───
           Expanded(
-            child: accounts.when(
-              loading: () => const LoadingState(),
-              error: (e, _) => ErrorState(
-                message: 'تعذر تحميل حسابات التحصيل: $e',
-                onRetry: _syncPeriodInvoices,
-              ),
-              data: (list) {
-                if (list.isEmpty) {
-                  return EmptyState(
+            child: invoiceEntries.isEmpty
+                ? EmptyState(
                     icon: Icons.search_off_rounded,
-                    title: period == null ? 'لا توجد فترة تحصيل مفتوحة' : 'لا توجد نتائج',
-                    subtitle: period == null
+                    title: _hasPeriod == false
+                        ? 'لا توجد فترة تحصيل مفتوحة'
+                        : _syncedAccounts.isEmpty
+                            ? 'لا توجد فواتير لهذه الفترة'
+                            : 'لا توجد نتائج مطابقة للبحث',
+                    subtitle: _hasPeriod == false
                         ? 'افتح فترة تحصيل من النظام ثم اضغط مزامنة الفواتير.'
-                        : 'استخدم رقم الحساب أو اسم المشترك أو اضغط مزامنة الفواتير.',
-                  );
-                }
-                final visible = list.take(_visibleLimit).toList();
-                return ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  itemCount: visible.length + (visible.length < list.length ? 1 : 0),
-                  itemBuilder: (context, index) {
-                    if (index >= visible.length) {
-                      return const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 16),
-                        child: Center(child: Text('مرر لأسفل لعرض المزيد')),
-                      );
-                    }
-                    return _AccountWithInvoices(account: visible[index]);
-                  },
-                );
-              },
-            ),
+                        : _syncedAccounts.isEmpty
+                            ? 'اضغط مزامنة الفواتير لتحديث القائمة.'
+                            : 'ابحث برقم المشترك أو الحساب أو العداد أو الفاتورة.',
+                  )
+                : ListView.separated(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 8),
+                    itemCount: invoiceEntries.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 4),
+                    itemBuilder: (context, i) => _SyncedInvoiceTile(
+                      key: ValueKey(
+                        'collector-period-invoice-'
+                        '${invoiceEntries[i].account.id}-'
+                        '${invoiceEntries[i].invoice.invoiceId}',
+                      ),
+                      entry: invoiceEntries[i],
+                    ),
+                  ),
           ),
         ],
       ),
@@ -209,183 +270,34 @@ class _CollectorHomeScreenState extends ConsumerState<CollectorHomeScreen> {
   }
 }
 
-class _PeriodBanner extends StatelessWidget {
-  const _PeriodBanner({required this.text, required this.active});
-
-  final String text;
-  final bool active;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: active ? colors.primaryContainer : colors.errorContainer,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: active ? colors.onPrimaryContainer : colors.onErrorContainer,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-  }
-}
-
-class _AccountWithInvoices extends StatelessWidget {
-  const _AccountWithInvoices({required this.account});
-
-  final CollectionAccount account;
-
-  @override
-  Widget build(BuildContext context) {
-    final invoices = [...account.invoices]
-      ..sort((a, b) => b.dueDate.compareTo(a.dueDate));
-
-    final paid = invoices.where((i) => i.status == InvoiceStatus.paid).length;
-    final unpaid = invoices
-        .where((i) =>
-            i.status == InvoiceStatus.unpaid ||
-            i.status == InvoiceStatus.partiallyPaid)
-        .length;
-    final overdue =
-        invoices.where((i) => i.status == InvoiceStatus.overdue).length;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _CollectionAccountTile(account: account),
-        const SizedBox(height: 8),
-        _InvoiceSummaryBar(
-          total: invoices.length,
-          paid: paid,
-          unpaid: unpaid,
-          overdue: overdue,
-        ),
-        const SizedBox(height: 8),
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Text(
-            'فواتير المشترك',
-            style: Theme.of(context)
-                .textTheme
-                .titleSmall
-                ?.copyWith(fontWeight: FontWeight.w700),
-          ),
-        ),
-        if (invoices.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Center(
-              child: Text(
-                'لا توجد فواتير لهذا المشترك',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyMedium
-                    ?.copyWith(color: Theme.of(context).colorScheme.outline),
-              ),
-            ),
-          )
-        else
-          ...invoices.map(
-            (invoice) => _InvoiceCard(account: account, invoice: invoice),
-          ),
-        const SizedBox(height: 16),
-        const Divider(),
-      ],
-    );
-  }
-}
-
-class _InvoiceSummaryBar extends StatelessWidget {
-  const _InvoiceSummaryBar({
-    required this.total,
-    required this.paid,
-    required this.unpaid,
-    required this.overdue,
-  });
-
-  final int total;
-  final int paid;
-  final int unpaid;
-  final int overdue;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _SummaryChip(
-              label: 'إجمالي',
-              value: '$total',
-              color: colors.onSurfaceVariant,
-            ),
-            _SummaryChip(
-              label: 'مسددة',
-              value: '$paid',
-              color: Colors.green.shade700,
-            ),
-            _SummaryChip(
-              label: 'غير مسددة',
-              value: '$unpaid',
-              color: colors.onSurfaceVariant,
-            ),
-            _SummaryChip(label: 'متأخرة', value: '$overdue', color: colors.error),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SummaryChip extends StatelessWidget {
-  const _SummaryChip({
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  final String label;
-  final String value;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) => Column(
-        children: [
-          Text(
-            value,
-            style: TextStyle(
-              fontWeight: FontWeight.w800,
-              fontSize: 16,
-              color: color,
-            ),
-          ),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: color),
-          ),
-        ],
-      );
-}
-
-class _InvoiceCard extends StatelessWidget {
-  const _InvoiceCard({required this.account, required this.invoice});
+// ── مساعد لإنشاء إدخال بحث مُدمج من حساب + فاتورة ─────────────────────────
+class _InvoiceListEntry {
+  const _InvoiceListEntry({required this.account, required this.invoice});
 
   final CollectionAccount account;
   final CollectionInvoice invoice;
 
+  String get searchableText => [
+        account.customer.name,
+        account.customer.customerNumber,
+        account.customer.accountNumber,
+        account.meter.meterNumber,
+        invoice.invoiceNumber,
+      ].join(' ').toLowerCase();
+}
+
+// ── بطاقة الفاتورة الموحدة ───────────────────────────────────────────────────
+class _SyncedInvoiceTile extends StatelessWidget {
+  const _SyncedInvoiceTile({super.key, required this.entry});
+
+  final _InvoiceListEntry entry;
+
   @override
   Widget build(BuildContext context) {
+    final account = entry.account;
+    final invoice = entry.invoice;
     final colors = Theme.of(context).colorScheme;
+    final canCollect = invoice.amountResidual > 0;
     final (badgeColor, badgeText) = switch (invoice.status) {
       InvoiceStatus.paid => (Colors.green.shade700, 'مسدد'),
       InvoiceStatus.partiallyPaid => (Colors.orange.shade700, 'مدفوع جزئياً'),
@@ -393,72 +305,102 @@ class _InvoiceCard extends StatelessWidget {
       InvoiceStatus.unpaid => (colors.outline, 'غير مسدد'),
     };
 
-    final period =
-        '${invoice.dueDate.month.toString().padLeft(2, '0')}/${invoice.dueDate.year}';
-    final canCollect = invoice.amountResidual > 0;
-
     return Card(
-      margin: const EdgeInsets.only(bottom: 6),
+      margin: const EdgeInsets.only(bottom: 4),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        child: Row(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Icon(
-              invoice.status == InvoiceStatus.paid
-                  ? Icons.check_circle_outline_rounded
-                  : invoice.status == InvoiceStatus.overdue
-                      ? Icons.warning_amber_rounded
-                      : Icons.receipt_long_outlined,
-              color: badgeColor,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'فاتورة $period',
-                    style: const TextStyle(fontWeight: FontWeight.w700),
+            // ── الصف العلوي: أيقونة + بيانات المشترك + المبلغ + زر تحصيل ──
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CircleAvatar(
+                  backgroundColor: colors.primaryContainer,
+                  child: Icon(
+                    Icons.person_outline_rounded,
+                    color: colors.onPrimaryContainer,
                   ),
-                  Text(
-                    'رقم الفاتورة: ${invoice.invoiceNumber}',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  const SizedBox(height: 4),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 4,
-                    crossAxisAlignment: WrapCrossAlignment.center,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _StatusBadge(color: badgeColor, text: badgeText),
                       Text(
-                        'المتبقي: ${invoice.amountResidual.toStringAsFixed(0)} ريال',
+                        account.customer.name,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: colors.primary,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'رقم المشترك: ${account.customer.customerNumber}',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      Text(
+                        'رقم العداد: ${account.meter.meterNumber}',
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ],
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 8),
+                // زر التحصيل الأخضر على يمين اسم المشترك
+                canCollect
+                    ? FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.green.shade600,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                        ),
+                        onPressed: () => context.push(
+                          '/collector/payment/${account.id}',
+                          extra: invoice,
+                        ),
+                        icon: const Icon(Icons.payments_outlined, size: 16),
+                        label: const Text('تحصيل',
+                            style: TextStyle(fontSize: 13)),
+                      )
+                    : OutlinedButton(
+                        onPressed: null,
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                        ),
+                        child: const Text('مسددة',
+                            style: TextStyle(fontSize: 13)),
+                      ),
+              ],
             ),
-            const SizedBox(width: 8),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+            const SizedBox(height: 10),
+            // ── الصف السفلي: رقم الفاتورة + المبلغ المتبقي + الحالة ────────
+            Row(
               children: [
+                Expanded(
+                  child: Text(
+                    'الفاتورة: ${invoice.invoiceNumber}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+                const SizedBox(width: 8),
                 Text(
-                  '${invoice.amount.toStringAsFixed(0)} ريال',
-                  style: const TextStyle(fontWeight: FontWeight.w800),
+                  '${invoice.amountResidual.toStringAsFixed(2)} ر.ي',
+                  style: TextStyle(
+                    color: canCollect ? colors.primary : Colors.green.shade700,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
+                  ),
                 ),
-                const SizedBox(height: 6),
-                FilledButton.tonalIcon(
-                  onPressed: canCollect
-                      ? () => context.push(
-                            '/collector/payment/${account.id}',
-                            extra: invoice,
-                          )
-                      : null,
-                  icon: const Icon(Icons.payments_outlined, size: 18),
-                  label: const Text('تحصيل'),
-                ),
+                const SizedBox(width: 8),
+                _StatusBadge(color: badgeColor, text: badgeText),
               ],
             ),
           ],
@@ -468,6 +410,7 @@ class _InvoiceCard extends StatelessWidget {
   }
 }
 
+// ── شارة الحالة ──────────────────────────────────────────────────────────────
 class _StatusBadge extends StatelessWidget {
   const _StatusBadge({required this.color, required this.text});
 
@@ -494,6 +437,7 @@ class _StatusBadge extends StatelessWidget {
   }
 }
 
+// ── بطاقة ملخص الجلسة ────────────────────────────────────────────────────────
 class _SummaryTile extends StatelessWidget {
   const _SummaryTile({
     required this.icon,
@@ -519,57 +463,12 @@ class _SummaryTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(label, style: Theme.of(context).textTheme.bodySmall),
-                  Text(value, style: const TextStyle(fontWeight: FontWeight.w800)),
+                  Text(
+                    value,
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
                 ],
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CollectionAccountTile extends StatelessWidget {
-  const _CollectionAccountTile({required this.account});
-
-  final CollectionAccount account;
-
-  @override
-  Widget build(BuildContext context) {
-    final disconnected = account.meter.connectionStatus == 'disconnected';
-    return Card(
-      child: ListTile(
-        onTap: () => context.push('/collector/accounts/${account.id}'),
-        leading: CircleAvatar(
-          backgroundColor: disconnected
-              ? Theme.of(context).colorScheme.errorContainer
-              : Theme.of(context).colorScheme.primaryContainer,
-          child: Icon(
-            disconnected ? Icons.power_off_rounded : Icons.person_outline_rounded,
-            color: disconnected
-                ? Theme.of(context).colorScheme.onErrorContainer
-                : Theme.of(context).colorScheme.onPrimaryContainer,
-          ),
-        ),
-        title: Text(
-          account.customer.name,
-          style: const TextStyle(fontWeight: FontWeight.w700),
-        ),
-        subtitle: Text(
-          '${account.customer.accountNumber} · عداد ${account.meter.meterNumber}',
-        ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              '${account.dueTotal.toStringAsFixed(0)} ريال',
-              style: const TextStyle(fontWeight: FontWeight.w800),
-            ),
-            Text(
-              disconnected ? 'مقطوع' : 'متصل',
-              style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
         ),

@@ -774,14 +774,23 @@ class UtilityBillingAPI(http.Controller):
         if not authorized_accounts:
             return {'success': True, 'period': period_data, 'invoices': []}
 
+        # The collector home page is also the invoice list for the active
+        # collection period.  Do not limit it to unpaid moves: a collector
+        # must see paid invoices too, with their real status, so that the
+        # mobile list matches the billing period in Odoo and does not look
+        # empty after most invoices have been collected.
+        #
+        # New invoices always carry ``utility_customer_id``.  The second
+        # branch keeps migrated invoices visible when that stored link is
+        # absent but the linked utility sale order is valid.
         domain = [
             ('company_id', '=', collector.company_id.id),
-            ('utility_customer_id', 'in', authorized_accounts.ids),
             ('state', '=', 'posted'),
-            ('payment_state', 'in', ['not_paid', 'partial']),
             ('move_type', '=', 'out_invoice'),
-            ('amount_residual', '>', 0),
             ('utility_sale_order_id', '!=', False),
+            '|',
+            ('utility_customer_id', 'in', authorized_accounts.ids),
+            ('utility_sale_order_id.customer_id', 'in', authorized_accounts.ids),
         ]
 
         reading_period = period.reading_period_id
@@ -797,14 +806,22 @@ class UtilityBillingAPI(http.Controller):
 
         invoice_list = []
         for inv in invoices:
-            customer = inv.utility_customer_id
             order = inv.utility_sale_order_id
+            customer = inv.utility_customer_id or order.customer_id
+            if not customer:
+                # Defensive guard for malformed historic accounting moves.
+                # Such records must not be exposed without a validated
+                # customer scope.
+                continue
             meter = order.meter_id if order else False
             invoice_list.append({
                 'customer_id': customer.id,
                 'customer_number': customer.customer_number,
-                'account_number': customer.account_number or customer.customer_number,
-                'customer_name': customer.name,
+                # The mobile app keeps an ``account_number`` key for display
+                # compatibility, but ``utility.customer`` stores the account
+                # identifier as ``customer_number``.
+                'account_number': customer.customer_number,
+                'customer_name': customer.partner_id.name if customer.partner_id else '',
                 'meter_id': meter.id if meter else False,
                 'meter_number': meter.meter_number if meter else '',
                 'order_id': order.id if order else False,
@@ -820,6 +837,8 @@ class UtilityBillingAPI(http.Controller):
             'success': True,
             'period': period_data,
             'invoices': invoice_list,
+            'invoice_count': len(invoice_list),
+            'customer_count': len({item['customer_id'] for item in invoice_list}),
         }
 
 
@@ -854,11 +873,9 @@ class UtilityBillingAPI(http.Controller):
         if customer_name or customer_number:
             customer_domain = [('id', 'in', authorized_accounts.ids)]
             if customer_name:
-                customer_domain.append(('name', 'ilike', customer_name))
+                customer_domain.append(('partner_id.name', 'ilike', customer_name))
             if customer_number:
-                customer_domain.append('|')
                 customer_domain.append(('customer_number', 'ilike', customer_number))
-                customer_domain.append(('account_number', 'ilike', customer_number))
 
             filtered_customers = request.env['utility.customer'].sudo().search(customer_domain)
             domain.append(('utility_customer_id', 'in', filtered_customers.ids))
@@ -874,7 +891,10 @@ class UtilityBillingAPI(http.Controller):
             total_amount += amount
             transactions.append({
                 'receipt_number': pay.name or pay.ref or '',
-                'customer_name': customer.name if customer else '',
+                'customer_name': (
+                    customer.partner_id.name
+                    if customer and customer.partner_id else ''
+                ),
                 'customer_number': customer.customer_number if customer else '',
                 'amount': amount,
                 'date': str(pay.date),

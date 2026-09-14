@@ -8,11 +8,15 @@ class CollectionPeriod {
   final int id;
   final String name;
   final String state;
+  final int invoiceCount;
+  final int customerCount;
 
   const CollectionPeriod({
     required this.id,
     required this.name,
     required this.state,
+    this.invoiceCount = 0,
+    this.customerCount = 0,
   });
 }
 
@@ -128,6 +132,10 @@ class CollectorReport {
 abstract class CollectionRepository {
   Stream<List<CollectionAccount>> watchAccounts({String? query});
   Future<CollectionPeriod?> syncPeriodInvoices();
+  /// Snapshot built from the most recent successful period-invoice sync.
+  /// The collector home screen uses this as its displayed source after a
+  /// sync, rather than depending on a separate stream emission timing.
+  List<CollectionAccount> get syncedAccounts;
   String? get periodMessage;
   CollectionPeriod? get currentPeriod;
   Future<CollectorReport> collectorReport({

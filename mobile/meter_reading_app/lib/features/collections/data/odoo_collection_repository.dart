@@ -1,9 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../../../core/network/billing_api_service.dart';
 import '../../customers/domain/entities.dart';
 import '../domain/collection_models.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 /// Source of truth for field collections.  It never fabricates an account,
 /// payment or receipt: a receipt is kept locally only after Odoo confirms the
@@ -16,6 +19,11 @@ class OdooCollectionRepository implements CollectionRepository {
   final FlutterSecureStorage _storage;
   final List<CollectionReceipt> _receipts = [];
   final Map<String, CollectionAccount> _accounts = {};
+  // This is deliberately separate from `_accounts`: that map is a multi-key
+  // lookup cache (customer, account and meter identifiers).  The collector
+  // home list must always retain the exact snapshot produced by the most
+  // recent period-invoice sync, regardless of cache-key collisions.
+  List<CollectionAccount> _syncedPeriodAccounts = const [];
   final _changeHub = StreamController<List<CollectionAccount>>.broadcast();
   CollectionPeriod? _currentPeriod;
   String? _periodMessage;
@@ -25,6 +33,10 @@ class OdooCollectionRepository implements CollectionRepository {
 
   @override
   String? get periodMessage => _periodMessage;
+
+  @override
+  List<CollectionAccount> get syncedAccounts =>
+      List.unmodifiable(_syncedPeriodAccounts);
 
   @override
   Stream<List<CollectionAccount>> watchAccounts({String? query}) async* {
@@ -71,23 +83,97 @@ class OdooCollectionRepository implements CollectionRepository {
       _currentPeriod = null;
       _periodMessage = 'لا توجد فترة تحصيل مفتوحة حالياً';
       _accounts.clear();
+      _syncedPeriodAccounts = const [];
       _notify();
       return null;
     }
     final periodMap = Map<String, dynamic>.from(rawPeriod);
     _currentPeriod = CollectionPeriod(
-      id: (periodMap['id'] as num).toInt(),
+      id: _toInt(periodMap['id']) ?? 0,
       name: periodMap['name']?.toString() ?? '',
       state: periodMap['state']?.toString() ?? '',
+      invoiceCount: _toInt(result['invoice_count']) ?? 0,
+      customerCount: _toInt(result['customer_count']) ?? 0,
     );
     _periodMessage = null;
     final accounts = _mapPeriodInvoiceAccounts(result);
+    _syncedPeriodAccounts = List.unmodifiable(accounts);
+    _debugPeriodInvoiceSync(result, accounts);
     _accounts.clear();
     for (final account in accounts) {
       _cacheAccount(account);
     }
     _notify();
     return _currentPeriod;
+  }
+
+  void _debugPeriodInvoiceSync(
+    Map<String, dynamic> result,
+    List<CollectionAccount> accounts,
+  ) {
+    assert(() {
+      final rows = result['invoices'];
+      final rawRows = _periodInvoiceRows(result);
+      debugPrint(
+        '[collector-sync] period_invoice_count=${_currentPeriod?.invoiceCount} '
+        'period_customer_count=${_currentPeriod?.customerCount} '
+        'raw_invoices=${rawRows.length} mapped_accounts=${accounts.length} '
+        'result_keys=${result.keys.toList()} invoices_type=${rows.runtimeType}',
+      );
+      for (final row in rawRows.take(2)) {
+        debugPrint('[collector-sync] raw_invoice=${jsonEncode(row)}');
+      }
+      for (final account in accounts.take(3)) {
+        debugPrint(
+          '[collector-sync] mapped_account=${jsonEncode({
+            'id': account.id,
+            'customer_number': account.customer.customerNumber,
+            'account_number': account.customer.accountNumber,
+            'customer_name': account.customer.name,
+            'meter_number': account.meter.meterNumber,
+            'due_total': account.dueTotal,
+            'invoices': account.invoices.length,
+          })}',
+        );
+      }
+      return true;
+    }());
+  }
+
+  List<Map<String, dynamic>> _periodInvoiceRows(Map<String, dynamic> result) {
+    final rows = result['invoices'];
+    if (rows is List) {
+      return rows
+          .whereType<Map>()
+          .map((row) => Map<String, dynamic>.from(row))
+          .toList(growable: false);
+    }
+    return const [];
+  }
+
+  String _firstText(
+    Map<String, dynamic> values,
+    List<String> keys, {
+    String fallback = '',
+  }) {
+    for (final key in keys) {
+      final value = values[key];
+      if (value == null || value == false) continue;
+      final text = value.toString().trim();
+      if (text.isNotEmpty) return text;
+    }
+    return fallback;
+  }
+
+  int? _toInt(Object? value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '');
+  }
+
+  double _toDouble(Object? value) {
+    if (value is num) return value.toDouble();
+    return double.tryParse(value?.toString() ?? '') ?? 0;
   }
 
   @override
@@ -168,14 +254,14 @@ class OdooCollectionRepository implements CollectionRepository {
     final raw = result['account'];
     if (raw is! Map) return null;
     final account = Map<String, dynamic>.from(raw);
-    final customerId = (account['customer_id'] as num?)?.toInt();
+    final customerId = _toInt(account['customer_id']);
     if (customerId == null) return null;
     final bills = (account['bills'] as List? ?? const [])
         .whereType<Map>()
         .map((value) {
       final bill = Map<String, dynamic>.from(value);
-      final residual = (bill['amount_residual'] as num?)?.toDouble() ?? 0;
-      final total = (bill['amount'] as num?)?.toDouble() ?? 0;
+      final residual = _toDouble(bill['amount_residual']);
+      final total = _toDouble(bill['amount']);
       final isOverdue = bill['overdue'] == true;
       final InvoiceStatus status;
       if (residual <= 0) {
@@ -188,13 +274,15 @@ class OdooCollectionRepository implements CollectionRepository {
         status = InvoiceStatus.unpaid;
       }
       return CollectionInvoice(
-        orderId: (bill['order_id'] as num).toInt(),
-        invoiceId: (bill['invoice_id'] as num).toInt(),
+        orderId: _toInt(bill['order_id']) ?? 0,
+        invoiceId: _toInt(bill['invoice_id']) ?? 0,
         id: '${bill['invoice_id']}',
-        invoiceNumber: bill['invoice_number'] as String? ??
-            bill['bill_number'] as String? ??
-            '—',
-        dueDate: DateTime.tryParse(bill['due_date'] as String? ?? '') ??
+        invoiceNumber: _firstText(
+          bill,
+          ['invoice_number', 'bill_number', 'number', 'display_name'],
+          fallback: '—',
+        ),
+        dueDate: DateTime.tryParse(bill['due_date']?.toString() ?? '') ??
             DateTime.now(),
         amount: total,
         amountResidual: residual,
@@ -204,52 +292,84 @@ class OdooCollectionRepository implements CollectionRepository {
     }).toList(growable: false);
     final customer = Customer(
       remoteId: customerId,
-      customerNumber: account['customer_number'] as String? ?? '$customerId',
-      accountNumber: account['account_number'] as String? ??
-          account['customer_number'] as String? ??
-          '$customerId',
-      name: account['customer_name'] as String? ?? '—',
+      customerNumber: _firstText(
+        account,
+        [
+          'customer_number',
+          'account_number',
+          'billing_number',
+          'subscriber_number',
+          'customer_id',
+        ],
+        fallback: '$customerId',
+      ),
+      accountNumber: _firstText(
+        account,
+        [
+          'account_number',
+          'customer_number',
+          'billing_number',
+          'subscriber_number',
+        ],
+        fallback: '$customerId',
+      ),
+      name: _firstText(
+        account,
+        ['customer_name', 'subscriber_name', 'name', 'partner_name'],
+        fallback: '—',
+      ),
     );
     final meter = Meter(
-      remoteId: (account['meter_id'] as num?)?.toInt() ?? 0,
-      meterNumber: account['meter_number'] as String? ?? '—',
+      remoteId: _toInt(account['meter_id']) ?? 0,
+      meterNumber: _firstText(
+        account,
+        ['meter_number', 'nickname', 'meter', 'counter_number'],
+        fallback: '—',
+      ),
       customerRemoteId: customerId,
       paymentType: MeterPaymentType.postpaid,
-      connectionStatus: account['connection_status'] as String? ?? 'connected',
+      connectionStatus: account['connection_status']?.toString() ?? 'connected',
     );
     return CollectionAccount(
       id: customer.customerNumber,
       customer: customer,
       meter: meter,
-      balance: (account['accounting_balance'] as num?)?.toDouble() ?? 0,
-      debtAmount: (account['debt_amount'] as num?)?.toDouble() ?? 0,
-      currentBill: (account['current_bill'] as num?)?.toDouble() ?? 0,
-      dueAmount: (account['due_amount'] as num?)?.toDouble() ?? 0,
+      balance: _toDouble(account['accounting_balance']),
+      debtAmount: _toDouble(account['debt_amount']),
+      currentBill: _toDouble(account['current_bill']),
+      dueAmount: _toDouble(account['due_amount']),
       allowPartial: account['allow_partial'] != false,
       message: '',
-      qrPayload: account['external_qr_reference'] as String? ?? '',
+      qrPayload: account['external_qr_reference']?.toString() ?? '',
       invoices: bills,
     );
   }
 
   List<CollectionAccount> _mapPeriodInvoiceAccounts(Map<String, dynamic> result) {
-    final rows = (result['invoices'] as List? ?? const []).whereType<Map>();
+    final rows = _periodInvoiceRows(result);
     final grouped = <String, List<Map<String, dynamic>>>{};
     for (final row in rows) {
-      final item = Map<String, dynamic>.from(row);
-      final key = item['customer_number']?.toString() ??
-          item['customer_id']?.toString() ??
-          '';
+      final item = row;
+      final key = _firstText(
+        item,
+        [
+          'customer_number',
+          'account_number',
+          'billing_number',
+          'subscriber_number',
+          'customer_id',
+        ],
+      );
       if (key.isEmpty) continue;
       grouped.putIfAbsent(key, () => <Map<String, dynamic>>[]).add(item);
     }
 
     return grouped.entries.map((entry) {
       final first = entry.value.first;
-      final customerId = (first['customer_id'] as num?)?.toInt() ?? 0;
+      final customerId = _toInt(first['customer_id']) ?? 0;
       final invoices = entry.value.map((bill) {
-        final residual = (bill['amount_residual'] as num?)?.toDouble() ?? 0;
-        final total = (bill['amount'] as num?)?.toDouble() ?? 0;
+        final residual = _toDouble(bill['amount_residual']);
+        final total = _toDouble(bill['amount']);
         final isOverdue = bill['overdue'] == true;
         final InvoiceStatus status;
         if (residual <= 0) {
@@ -262,10 +382,14 @@ class OdooCollectionRepository implements CollectionRepository {
           status = InvoiceStatus.unpaid;
         }
         return CollectionInvoice(
-          orderId: (bill['order_id'] as num?)?.toInt() ?? 0,
-          invoiceId: (bill['invoice_id'] as num).toInt(),
+          orderId: _toInt(bill['order_id']) ?? 0,
+          invoiceId: _toInt(bill['invoice_id']) ?? 0,
           id: '${bill['invoice_id']}',
-          invoiceNumber: bill['invoice_number']?.toString() ?? '—',
+          invoiceNumber: _firstText(
+            bill,
+            ['invoice_number', 'bill_number', 'number', 'display_name'],
+            fallback: '—',
+          ),
           dueDate: DateTime.tryParse(bill['due_date']?.toString() ?? '') ??
               DateTime.now(),
           amount: total,
@@ -276,15 +400,40 @@ class OdooCollectionRepository implements CollectionRepository {
 
       final customer = Customer(
         remoteId: customerId,
-        customerNumber: first['customer_number']?.toString() ?? '$customerId',
-        accountNumber: first['account_number']?.toString() ??
-            first['customer_number']?.toString() ??
-            '$customerId',
-        name: first['customer_name']?.toString() ?? '—',
+        customerNumber: _firstText(
+          first,
+          [
+            'customer_number',
+            'account_number',
+            'billing_number',
+            'subscriber_number',
+            'customer_id',
+          ],
+          fallback: '$customerId',
+        ),
+        accountNumber: _firstText(
+          first,
+          [
+            'account_number',
+            'customer_number',
+            'billing_number',
+            'subscriber_number',
+          ],
+          fallback: '$customerId',
+        ),
+        name: _firstText(
+          first,
+          ['customer_name', 'subscriber_name', 'name', 'partner_name'],
+          fallback: '—',
+        ),
       );
       final meter = Meter(
-        remoteId: (first['meter_id'] as num?)?.toInt() ?? 0,
-        meterNumber: first['meter_number']?.toString() ?? '—',
+        remoteId: _toInt(first['meter_id']) ?? 0,
+        meterNumber: _firstText(
+          first,
+          ['meter_number', 'nickname', 'meter', 'counter_number'],
+          fallback: '—',
+        ),
         customerRemoteId: customerId,
         paymentType: MeterPaymentType.postpaid,
         connectionStatus: 'connected',
